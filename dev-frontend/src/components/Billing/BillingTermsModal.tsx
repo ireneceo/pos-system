@@ -165,10 +165,6 @@ const BillingTermsModal: React.FC<Props> = ({
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const thisMonthRange = () => {
-    const n = new Date();
-    return { start: ymd(new Date(n.getFullYear(), n.getMonth(), 1)), end: ymd(n) };
-  };
 
   // 온디맨드 월명세서 생성 — 매월 1일 자동 발행을 기다리지 않고 지금 발행.
   // 미청구(안 묶인) 거래내역을 한 장의 명세서(SOA)로 묶음. (2026-06-15)
@@ -180,7 +176,8 @@ const BillingTermsModal: React.FC<Props> = ({
       // 「직접 입력」일 때만 고른 날짜를 보낸다.
       const body = (periodMode === 'custom' && customStart && customEnd)
         ? { period_start: customStart, period_end: customEnd }
-        : (periodMode === 'thisMonth' ? { period_start: thisMonthRange().start, period_end: thisMonthRange().end } : {});
+        // 이번 달은 뜻만 보낸다 — 브라우저 시간(한국)이 매장(말레이시아)보다 하루 앞서면 «미래» 400 이었다 (2026-10-30)
+        : (periodMode === 'thisMonth' ? { period: 'this_month' } : {});
       const res = await fetch(`/api/${entityType}/soa/${restaurantId}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },

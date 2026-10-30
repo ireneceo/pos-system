@@ -2840,3 +2840,11 @@ Irene 「Submit 한 순서대로 나와야해. 생성일이 발주일이여야�
 - 화면: 공용 `components/PurchaseOrders/PoFileManageModal.tsx`(열기·다시 올리기·삭제, 삭제는 창 안 한 번 더 확인) — 발주 목록 «영수증 보기»·«Invoice»(외부 인보이스) · 발주 상세 «Re-upload / delete». 청구서 창 `TradeInvoiceActions` 에 «Delete invoice file»(확인창). 호출은 `utils/poAttachment.ts` 하나. 오너는 발주 목록에서 열기만(청구서 창은 스코프로 올리기·삭제 가능 — 기존 A-1 과 같음).
 - 검증: health-check invoice-actions A5(옛 파일 삭제·칸 비움·대조 유지·같이 쓰면 남김·400·401·폴더 밖 안 지움 · 고장주입 1 잡힘) · e2e `po-file-manage.spec.js` 2건×3회.
 - Fable 게이트 정정(2026-10-30 · `.claude/fable-gate-20261030-po-file-delete.md`): 오너가 청구서 창에서 «Delete invoice file» 을 누르면 서버가 403 이었다 — `middleware/buyerScope.js OWNER_ACTING_ROUTES` 에 POST 만 있고 DELETE `upload-invoice` 가 없었다. DELETE 를 더했다(다시 올리기 = 옛 파일 삭제라 힘이 같다 · 영수증 떼기는 그대로 매장 몫 403). A5 가 오너 스코프 떼기 200 · 영수증 떼기 403 · 올리기 200 을 상시 검사. e2e 는 데모 발주가 원래 가리키던 파일 바이트를 되돌린다.
+
+## 배송 완료 → 청구서 · 배송 완료 + 72시간 자동 완료 (2026-10-30 · Fable 설계 · [Claude Code] · 개발서버)
+- Irene: «고객이 안받았다고 주문완료가 안되면 어떻게 해? 일정기간이 지나면 그냥 완료처리 되어야 해. 인보이스가 안나오잖아. 배송완료되면 인보이스 나와야 하는 거 아니야?» · 설계 `.claude/fable-design-20261030-po-auto-complete.md`
+- **청구서 발행 시점 = «배송 완료»**: 판매자 `POST /seller-orders/:id/deliver` 와 택배 웹훅 delivered 가 커밋 뒤 `issueTradeInvoiceAfterCommit(po, { when: 'delivered' })`. 멱등이라 «주문 확정 시» 옵션·구매자 수령·자동 완료와 겹쳐도 1장. 외부(계정 없는) 업체는 delivered 가 없어 그대로 수령 때. 설정값 `invoice_trigger` 는 그대로, 문구만 «Order is delivered or received (default)».
+- **자동 완료**: `services/poAutoReceiveService.js`(`AUTO_RECEIVE_HOURS = 72` 한 곳) + `poAutoReceiveScheduler.js`(매시 5분 · SchedulerRun `po_auto_receive_hourly`). `delivered` 인 채 배송 완료(추적 이벤트 delivered 마지막 at) + 72h 지나면 행 잠금 + 상태 재확인 뒤 `markAllReceived(…, trackingSource:'auto_receive')` — 구매자 손 수령과 같은 재고 숫자. received 이벤트 note «Auto-completed …», `source:'auto_receive'`. 커밋 뒤 청구서 안전망 + 알림(판매자 buyer_received auto · 구매자 «자동 완료됐고 재고 들어갔다, 문제 있으면 반품»).
+- 대상 아님: shipped/in_transit(판매자가 배송 완료 안 누름) · partial_received · 취소 · 외부 업체. 자동 완료 뒤에도 불량 보고·반품(크레딧 노트)·결제 그대로. 옛 delivered 데이터도 같은 규칙(배포 뒤 첫 실행에 완료).
+- 화면: 응답 `auto_receive_at`(서버 계산) — 판매자 받은 주문 목록·상세 «Auto-completes …», 구매자 발주 목록·상세 진행 단계 «Confirm by … — completes automatically after». 배송 완료 메일에 «… 까지 확인 없으면 자동 완료» 한 문장.
+- 검사: health-check inventory AC1~AC4(+동시 실행) · 고장주입 3건(청구서 호출 제거 / 잠근 뒤 재확인 제거 / 상수 0) 모두 잡힘.

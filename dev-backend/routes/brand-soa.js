@@ -250,9 +250,18 @@ router.post(
       if ((periodStartDay && !periodEndDay) || (!periodStartDay && periodEndDay)) {
         return res.status(400).json({ success: false, message: 'Provide both period_start and period_end, or neither' });
       }
+      // «이번 달(오늘까지)» 은 날짜 대신 뜻만 받는다 — 오늘은 매장 달력으로 서비스가 정한다 (2026-10-30)
+      const { period } = req.body || {};
+      if (period !== undefined && period !== null && period !== '' && period !== 'this_month') {
+        return res.status(400).json({ success: false, message: 'period must be this_month' });
+      }
+      if (period === 'this_month' && (periodStartDay || periodEndDay)) {
+        return res.status(400).json({ success: false, message: 'Send either period or period_start/period_end' });
+      }
+      const periodPreset = period === 'this_month' ? 'this_month' : null;
 
       const { generateSoaNow } = require('../services/soaScheduler');
-      const result = await generateSoaNow({ issuerType: 'brand', issuerId: restaurant.brand_id, restaurantId, periodStartDay, periodEndDay });
+      const result = await generateSoaNow({ issuerType: 'brand', issuerId: restaurant.brand_id, restaurantId, periodStartDay, periodEndDay, periodPreset });
       if (!result.issued) {
         if (result.reason === 'period_end_in_future') {
           return res.status(400).json({ success: false, code: result.reason, message: 'period_end cannot be in the future' });

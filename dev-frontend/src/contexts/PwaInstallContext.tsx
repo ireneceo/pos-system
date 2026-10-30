@@ -22,6 +22,8 @@ interface PwaInstallState {
   // ── 아래가 판정 단일 소스. 새 코드는 `platform` 만 본다(위 boolean 들은 호환용). ──
   platform: InstallPlatform;      // windows / android / ios / mac / other
   safariMajor: number | null;     // Mac 사파리 17+ = `파일 › Dock에 추가` 가능
+  iosBrowser: IosBrowser | null;  // 아이폰·아이패드에서 어느 브라우저로 열었나 — 안내 문구가 갈린다
+  isIPad: boolean;
   installGuideOpen: boolean;
   openInstallGuide: () => void;
   closeInstallGuide: () => void;
@@ -102,6 +104,23 @@ function detectPlatform(): InstallPlatform {
   return 'other';
 }
 
+// 아이폰 «홈 화면에 추가» 는 브라우저마다 공유 버튼 자리가 다르고, 카톡·인스타 같은
+// 앱 안 브라우저에는 아예 없다(2026-10-30 Irene «아이폰인데 제대로 다운이 안돼»).
+export type IosBrowser = 'safari' | 'chrome' | 'edge' | 'firefox' | 'kakao' | 'inapp';
+
+function detectIosBrowser(platform: InstallPlatform): IosBrowser | null {
+  if (platform !== 'ios' || typeof navigator === 'undefined') return null;
+  const ua = navigator.userAgent || '';
+  if (/KAKAOTALK/i.test(ua)) return 'kakao';
+  if (/CriOS\//.test(ua)) return 'chrome';
+  if (/EdgiOS\//.test(ua)) return 'edge';
+  if (/FxiOS\//.test(ua)) return 'firefox';
+  // 앱 안 브라우저(인스타·페이스북·라인·네이버 …)는 이름표가 제각각이고, 대부분 `Safari/` 가 없다.
+  if (/Instagram|FBAN|FBAV|FB_IAB|Line\/|NAVER\(inapp|DaumApps|WhatsApp|Snapchat|everytimeApp/i.test(ua)) return 'inapp';
+  if (!/Safari\//.test(ua)) return 'inapp';
+  return 'safari';
+}
+
 /** iOS 메이저 버전(푸시 지원 안내용). 데스크톱 UA 인 iPad 에서는 못 읽어 null. */
 function detectIOSVersion(): number | null {
   if (typeof navigator === 'undefined') return null;
@@ -133,6 +152,8 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [platform] = useState<InstallPlatform>(detectPlatform());
   const [safariMajor] = useState<number | null>(detectSafariMajor());
   const [iosVersion] = useState<number | null>(detectIOSVersion());
+  const [iosBrowser] = useState<IosBrowser | null>(() => detectIosBrowser(platform));
+  const isIPad = platform === 'ios' && !/iPhone|iPod/.test(typeof navigator !== 'undefined' ? navigator.userAgent : '');
   const [installGuideOpen, setInstallGuideOpen] = useState(false);
   const isIOS = platform === 'ios';
   const isWindowsDesktop = platform === 'windows';
@@ -240,6 +261,8 @@ export const PwaInstallProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       shouldShowBanner,
       platform,
       safariMajor,
+      iosBrowser,
+      isIPad,
       installGuideOpen,
       openInstallGuide: () => setInstallGuideOpen(true),
       closeInstallGuide: () => setInstallGuideOpen(false)

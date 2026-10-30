@@ -169,6 +169,8 @@ async function applyWebhookEvent(eventId, req) {
     const updates = { status: mapped, tracking_info: newTracking };
     if (mapped === 'delivered') updates.actual_delivery_date = new Date();
     await po.update(updates);
+    // 배송 완료 = 청구서 발행 시점 (2026-10-30 po-auto-complete §2-1) — 판매자 «배송 완료» 와 같은 헬퍼
+    if (mapped === 'delivered') require('../services/purchaseOrderService').issueTradeInvoiceAfterCommit(po, { when: 'delivered' });
 
     // 6. Emit + (milestone) email
     if (req) emitPoEvent(req, po, 'seller-order-updated');

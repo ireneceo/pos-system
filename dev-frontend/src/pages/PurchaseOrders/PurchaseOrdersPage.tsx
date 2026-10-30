@@ -15,7 +15,7 @@ import DatePeriodFilter, { PeriodType, DateRange, calculatePeriodDateRange } fro
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useStore } from '../../contexts/StoreContext';
 import { getAuthToken } from '../../utils/auth';
-import { formatDate } from '../../utils/timezone';
+import { formatDate, formatDateTime } from '../../utils/timezone';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import PurchaseOrderDetailPage from './PurchaseOrderDetailPage';
 import AlertDialog from '../../components/Common/AlertDialog';
@@ -246,7 +246,7 @@ const ItemTable = styled.table`
   th.num { text-align: right; }
 `;
 
-type POStatus = 'draft' | 'pending_approval' | 'submitted' | 'confirmed' | 'shipped' | 'partial_received' | 'received' | 'cancelled';
+type POStatus = 'draft' | 'pending_approval' | 'submitted' | 'confirmed' | 'shipped' | 'delivered' | 'partial_received' | 'received' | 'cancelled';
 
 interface POListRow {
   id: number;
@@ -255,6 +255,7 @@ interface POListRow {
   po_number: string;
   seller_type: string;
   seller_name?: string | null;
+  auto_receive_at?: string | null;
   status: POStatus;
   schedule_id?: number | null;   // 정기 발주에서 만든 발주(2026-10-22 recurring-po)
   item_count?: number;
@@ -416,6 +417,7 @@ const StatusVariantMap: Record<POStatus, 'success' | 'warning' | 'error' | 'info
   submitted: 'warning',
   confirmed: 'warning',
   shipped: 'info',
+  delivered: 'info',
   partial_received: 'warning',
   received: 'success',
   cancelled: 'error'
@@ -1156,6 +1158,12 @@ const PurchaseOrdersPage: React.FC = () => {
                       {(row.status === 'shipped' || row.status === 'delivered') && (
                         <div style={{ fontSize: '11px', fontWeight: 600, color: '#0369A1', marginTop: 2 }}>
                           {t('list.badge.sellerShipped', { defaultValue: 'Seller marked as dispatched' })}
+                        </div>
+                      )}
+                      {/* 배송 완료 뒤 안 누르면 서버가 자동 완료 — 시각은 서버 계산(2026-10-30 po-auto-complete) */}
+                      {row.status === 'delivered' && !!row.auto_receive_at && (
+                        <div style={{ fontSize: '11px', color: '#6B7280', marginTop: 2 }}>
+                          {t('list.badge.autoCompletes', { defaultValue: 'Confirm by {{date}} — completes automatically after', date: formatDateTime(row.auto_receive_at) })}
                         </div>
                       )}
                       {/* 결제 여부 한 줄 (2026-10-29 Fable 설계 invoice-pay-flow R-2) — 아직 낼 단계가 아닌 행엔 안 찍는다 */}

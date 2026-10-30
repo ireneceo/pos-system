@@ -162,7 +162,11 @@
       "hintShipped": "Tiada tindakan diperlukan — pesanan ini sudah dalam penghantaran.",
       "cta": "Buka Pesanan",
       "textFallback": "{{buyer}} mengesahkan penerimaan {{poNumber}}. Jumlah: {{total}}.",
-      "subjectShipped": "Penerimaan disahkan: {{poNumber}} · {{buyer}}"
+      "subjectShipped": "Penerimaan disahkan: {{poNumber}} · {{buyer}}",
+      "autoCompleted": "Selesai secara automatik (pembeli tidak mengesahkan dalam 3 hari)",
+      "bodyAuto": "Pesanan belian <strong>{{poNumber}}</strong> untuk <strong>{{buyer}}</strong> telah diselesaikan secara automatik — pembeli tidak mengesahkan penerimaan dalam 3 hari selepas penghantaran.",
+      "headingAuto": "Pesanan Diselesaikan Secara Automatik",
+      "subjectAuto": "Selesai secara automatik: {{poNumber}} · {{buyer}}"
     },
     "returnExternalSend": {
       "subject": "Permintaan Pemulangan {{poNumber}} daripada {{buyer}}",
@@ -217,6 +221,16 @@
       "recordedSubject": "Pesanan tetap direkodkan: {{poNumber}} · {{seller}}",
       "recordedHeading": "Pesanan Tetap Minggu Ini Telah Direkodkan",
       "recordedBody": "Pesanan tetap <strong>{{schedule}}</strong> telah merekodkan pesanan minggu ini dengan <strong>{{seller}}</strong>. Tiada apa-apa dihantar kepada pembekal — mereka menghantar dan mengebil mengikut langganan seperti biasa. Tandakan diterima apabila barang tiba."
+    },
+    "autoCompleted": {
+      "subject": "Selesai secara automatik: {{poNumber}}",
+      "heading": "Pesanan Diselesaikan Secara Automatik",
+      "body": "Pesanan belian <strong>{{poNumber}}</strong> telah diselesaikan secara automatik pada {{date}} kerana penerimaan tidak disahkan dalam 3 hari selepas penghantaran. Stok telah ditambah ke inventori anda.",
+      "seller": "Penjual",
+      "status": "Selesai",
+      "hint": "Jika ada barang yang tiada atau rosak, buka pesanan dan minta pemulangan.",
+      "cta": "Buka Pesanan",
+      "textFallback": "{{poNumber}} telah diselesaikan secara automatik pada {{date}}. Stok telah ditambah. Jika ada yang tiada atau rosak, minta pemulangan daripada pesanan."
     }
   },
   "contextRequest": {

@@ -162,7 +162,11 @@
       "hintShipped": "无需处理 — 该订单已在配送中。",
       "cta": "打开采购单",
       "textFallback": "{{buyer}} 已确认收到 {{poNumber}}。合计：{{total}}。",
-      "subjectShipped": "已确认收货：{{poNumber}} · {{buyer}}"
+      "subjectShipped": "已确认收货：{{poNumber}} · {{buyer}}",
+      "autoCompleted": "已自动完成（买方3天内未确认）",
+      "bodyAuto": "<strong>{{buyer}}</strong> 的采购单 <strong>{{poNumber}}</strong> 已自动完成 — 买方在送达后3天内未确认收货。",
+      "headingAuto": "订单已自动完成",
+      "subjectAuto": "已自动完成：{{poNumber}} · {{buyer}}"
     },
     "returnExternalSend": {
       "subject": "{{buyer}} 的退货申请 — {{poNumber}}",
@@ -217,6 +221,16 @@
       "recordedSubject": "定期采购已记录：{{poNumber}} · {{seller}}",
       "recordedHeading": "本期定期采购已记录",
       "recordedBody": "定期采购 <strong>{{schedule}}</strong> 已记录本期向 <strong>{{seller}}</strong> 的订单。未向供应商发送任何内容 — 供应商按订阅照常送货并开票。到货后请确认收货。"
+    },
+    "autoCompleted": {
+      "subject": "已自动完成：{{poNumber}}",
+      "heading": "订单已自动完成",
+      "body": "由于送达后3天内未确认收货，采购单 <strong>{{poNumber}}</strong> 已于 {{date}} 自动完成。库存已入账。",
+      "seller": "卖方",
+      "status": "已完成",
+      "hint": "如有缺少或损坏的商品，请打开该采购单申请退货。",
+      "cta": "打开采购单",
+      "textFallback": "{{poNumber}} 已于 {{date}} 自动完成，库存已入账。如有缺少或损坏，请在采购单中申请退货。"
     }
   },
   "contextRequest": {

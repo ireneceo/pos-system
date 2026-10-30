@@ -758,14 +758,20 @@ async function startServer() {
     // Start standing-order (정기 발주) scheduler — hourly, buyer-local 07:00 (2026-10-22 recurring-po)
     recurringPoScheduler.start(io);
 
+    // Start PO auto-receive scheduler — hourly, delivered + 72h → received (2026-10-30 po-auto-complete)
+    require('./services/poAutoReceiveScheduler').start(io);
+
     // Start base64 image sweep — weekly Sunday 04:00 UTC, detects inline base64
     // images in DB columns and alerts System Admins (v3.30 perf incident guard).
     base64ImageSweep.start();
 
     // 포트 충돌 체크 - PM2 환경에서는 더 유연하게 처리
-    server.listen(PORT, '0.0.0.0', () => {
+    // 개발은 127.0.0.1 로만 듣는다(nginx 만 들어오게 — 상황판 개발 사이트 로그인 관문 우회 차단).
+    // 운영은 기존대로 모든 주소. LISTEN_HOST 로 바꿀 수 있음.
+    const LISTEN_HOST = process.env.LISTEN_HOST || (process.env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1');
+    server.listen(PORT, LISTEN_HOST, () => {
       console.log(`✓ Server is running on port ${PORT}`);
-      console.log(`✓ Server bound to 0.0.0.0:${PORT} (accessible from all IPs)`);
+      console.log(`✓ Server bound to ${LISTEN_HOST}:${PORT}`);
       console.log('✓ Invoice scheduler is running');
       console.log('✓ Subscription scheduler is running');
       console.log('✓ Socket.IO is running on all namespaces');

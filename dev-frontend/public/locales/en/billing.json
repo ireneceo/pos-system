@@ -43,7 +43,7 @@
     "noRecipients": "Statement created. No email recipient at the restaurant — add an admin email."
   },
   "trigger": {
-    "on_received": "Order is received (default)",
+    "on_received": "Order is delivered or received (default)",
     "on_confirmed": "Order is confirmed (before delivery)"
   }
 }

@@ -312,7 +312,59 @@ async function fireSellerApprovalRevokedNotification(po) {
   }
 }
 
+/**
+ * 배송 완료 뒤 3일 안에 «받았어요» 가 없어 서버가 완료했다 (2026-10-30 po-auto-complete §2-4).
+ *   판매자: 기존 «구매자 수령» 메일에 auto 표시(카테고리 buyer_received 그대로).
+ *   구매자: 자동 완료·재고 반영 안내(카테고리 seller_order_received — 구매자 쪽 발주 알림).
+ * 계정 없는 외부 공급업체는 판매자 수신자 0 → 조용히 건너뜀. throw 하지 않는다.
+ */
+async function fireAutoReceivedNotifications(po) {
+  const { loadPoEmailItems } = require('../utils/poEmailItems');
+  let items = [];
+  try { items = await loadPoEmailItems(po.id); } catch (_) { /* 품목 표 없이 */ }
+  // 판매자
+  try {
+    const list = await sellerAddressees(po);
+    const userIds = list.map(r => r.id);
+    console.log(`[notify] buyer_received(auto) po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=${userIds.length ? userIds.join(',') : 'none'}`);
+    if (userIds.length) {
+      const buyerName = await resolveBuyerName(po);
+      const { buyerReceivedEmail } = require('../utils/notificationTemplates');
+      const args = { buyerName, poNumber: po.po_number, total: po.total_amount, currency: po.currency || 'MYR', items, alreadyShipped: true, auto: true };
+      const _brandingEntity = sellerBrandingEntity(po);
+      await sendNotificationBatch(userIds, 'buyer_received', mailFor(list, (a, user) =>
+        Object.assign(buyerReceivedEmail({ ...args, link: goLink(a, 'seller_orders') }, user.preferred_language || 'en'), { _brandingEntity })));
+    }
+  } catch (e) {
+    console.error('[poNotifications] fireAutoReceivedNotifications(seller) error:', e.message);
+  }
+  // 구매자
+  try {
+    let list = [];
+    if (po.entity_type === 'restaurant') list = await getRestaurantAddressees(po.entity_id);
+    else if (po.entity_type === 'brand' || po.entity_type === 'foodcourt') list = await getEntityAddressees(po.entity_type, po.entity_id);
+    const userIds = list.map(r => r.id);
+    console.log(`[notify] po_auto_completed po=${po.po_number} buyer=${po.entity_type}:${po.entity_id} recipients=${userIds.length ? userIds.join(',') : 'none'}`);
+    if (!userIds.length) return;
+    let sellerName = '—';
+    try {
+      const { resolveSellers, getSellerName } = require('../utils/sellerNames');
+      const map = await resolveSellers([{ seller_type: po.seller_type, seller_entity_id: po.seller_entity_id }]);
+      sellerName = getSellerName(map, po.seller_type, po.seller_entity_id) || '—';
+    } catch (_) { /* keep default */ }
+    const { autoReceiveLabel } = require('./poAutoReceiveService');
+    const completedAt = await autoReceiveLabel(po, po.received_at ? new Date(po.received_at) : new Date());
+    const { poAutoCompletedEmail } = require('../utils/notificationTemplates');
+    const args = { sellerName, poNumber: po.po_number, total: po.total_amount, currency: po.currency || 'MYR', items, completedAt };
+    await sendNotificationBatch(userIds, 'seller_order_received', mailFor(list, (a, user) =>
+      poAutoCompletedEmail({ ...args, link: goLink(a, 'po_detail', { poId: po.id }) }, user.preferred_language || 'en')));
+  } catch (e) {
+    console.error('[poNotifications] fireAutoReceivedNotifications(buyer) error:', e.message);
+  }
+}
+
 module.exports = {
+  fireAutoReceivedNotifications,
   fireSellerApprovalRevokedNotification,
   fireSellerAmendedByBuyerNotification,
   resolveBuyerName,

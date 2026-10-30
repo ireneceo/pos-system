@@ -95,7 +95,8 @@
       "payViaSoaHint": "月结交易 — 请通过对账单（SOA）总额付款"
     },
     "badge": {
-      "sellerShipped": "供应商已开始配送"
+      "sellerShipped": "供应商已开始配送",
+      "autoCompletes": "请在 {{date}} 前确认 — 之后自动完成"
     },
     "reimburse": {
       "title": "个人垫付报销",

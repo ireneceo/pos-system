@@ -19,7 +19,7 @@ import { formatQuantity, qtyStepForUnit, lineQtyText, inactiveSellerProductText 
 import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku, poItemName, poShareText } from '../../utils/poShare';
 import { shareTextViaApps, AppShareResult } from '../../utils/appShare';
 import { returnShareText, shareReturnViaWhatsApp, shareReturnViaEmail, printReturnSheet } from '../../utils/returnShare';
-import { formatDate } from '../../utils/timezone';
+import { formatDate, formatDateTime } from '../../utils/timezone';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
 import { useAuth } from '../../contexts/AuthContext';
@@ -125,6 +125,7 @@ interface PODetail {
   staff_meal_total?: number;
   regular_total?: number;
   po_number: string;
+  auto_receive_at?: string | null;
   status: POStatus;
   seller_type: string;
   seller_id: number;
@@ -1048,6 +1049,10 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                 <strong>{t(`detail.timeline.${stage}`)}</strong>
                 {stageMeta[stage] && (
                   <div className="meta">{formatDate(stageMeta[stage]!)}</div>
+                )}
+                {/* 배송 완료 뒤 안 누르면 서버가 자동 완료 — 시각은 서버 계산(2026-10-30 po-auto-complete) */}
+                {stage === 'received' && status === 'delivered' && !!detail.auto_receive_at && (
+                  <div className="meta">{t('list.badge.autoCompletes', { defaultValue: 'Confirm by {{date}} — completes automatically after', date: formatDateTime(detail.auto_receive_at) })}</div>
                 )}
               </TimelineContent>
             </TimelineItem>

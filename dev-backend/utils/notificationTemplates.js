@@ -611,17 +611,18 @@ function poItemsTable(items, currency, poTotal, lang = 'en') {
  * 한 번도 안 빠졌다. 구매자가 받았다는 사실을 판매자에게 알리고 출고 기록을 요청한다.
  * 이미 출고된 발주면 요청 없이 사실만 알린다.
  */
-function buyerReceivedEmail({ buyerName, poNumber, total, currency, link, items, alreadyShipped }, lang = 'en') {
+function buyerReceivedEmail({ buyerName, poNumber, total, currency, link, items, alreadyShipped, auto = false }, lang = 'en') {
   const { getEmailText } = require('./i18n');
   const t = (k, p) => getEmailText(lang, 'po.buyerReceived.' + k, p);
   const safeBuyer = (buyerName || 'A buyer').toString().slice(0, 120);
   const safePo = (poNumber || '—').toString().slice(0, 80);
   const money = fmtMoney(total, currency);
-  const statusText = alreadyShipped ? t('alreadyShipped') : t('needsShip');
-  const statusColor = alreadyShipped ? '#10B981' : '#F59E0B';
+  // auto = 구매자가 3일 안에 안 눌러 서버가 완료(2026-10-30 po-auto-complete §2-4) — 배송 완료 뒤라 늘 «이미 배송됨»
+  const statusText = auto ? t('autoCompleted') : alreadyShipped ? t('alreadyShipped') : t('needsShip');
+  const statusColor = (auto || alreadyShipped) ? '#10B981' : '#F59E0B';
   const body = `
     <p style="color:#374151;font-size:16px;margin:0 0 16px;">
-      ${t('body', { buyer: safeBuyer, poNumber: safePo })}
+      ${auto ? t('bodyAuto', { buyer: safeBuyer, poNumber: safePo }) : t('body', { buyer: safeBuyer, poNumber: safePo })}
     </p>
     ${infoTable(
       infoRow(t('poNumber'), safePo) +
@@ -636,14 +637,50 @@ function buyerReceivedEmail({ buyerName, poNumber, total, currency, link, items,
     ${ctaButton(t('cta'), link || `${BASE_URL}/pos`)}`;
 
   // 2026-10-22: 재렌더 메타가 빠져 있었다(title·body 없이 불러 머리글 브랜딩·자격 띠가 안 붙었다).
-  const title = t('heading');
+  const title = auto ? t('headingAuto') : t('heading');
   return withRenderMeta({
-    subject: t(alreadyShipped ? 'subjectShipped' : 'subject', { poNumber: safePo, buyer: safeBuyer }),
+    subject: t(auto ? 'subjectAuto' : alreadyShipped ? 'subjectShipped' : 'subject', { poNumber: safePo, buyer: safeBuyer }),
     html: wrapTemplate(title, body, lang),
     text: t('textFallback', { poNumber: safePo, buyer: safeBuyer, total: money })
   }, title, body, lang, {
-    action: alreadyShipped ? { state: 'fyi', key: 'no_action' } : { state: 'action', key: 'record_dispatch' }
+    action: (auto || alreadyShipped) ? { state: 'fyi', key: 'no_action' } : { state: 'action', key: 'record_dispatch' }
   });
+}
+
+/**
+ * 배송 완료 뒤 3일 안에 «받았어요» 가 없어 서버가 완료했다 — **구매자**에게 (2026-10-30 po-auto-complete §2-4).
+ * 재고는 이미 들어갔고, 빠지거나 상한 게 있으면 그 발주에서 반품을 요청하면 된다.
+ */
+function poAutoCompletedEmail({ sellerName, poNumber, total, currency, link, items, completedAt }, lang = 'en') {
+  const { getEmailText } = require('./i18n');
+  const t = (k, p) => getEmailText(lang, 'po.autoCompleted.' + k, p);
+  const ts = (k, p) => getEmailText(lang, 'po.sellerReceived.' + k, p);
+  const title = t('heading');
+  const safeSeller = (sellerName || '—').toString().slice(0, 120);
+  const safePo = (poNumber || '—').toString().slice(0, 80);
+  const safeAt = (completedAt || '').toString().slice(0, 60);
+  const money = fmtMoney(total, currency);
+  const body = `
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">
+      ${t('body', { poNumber: safePo, date: safeAt })}
+    </p>
+    ${infoTable(
+      infoRow(ts('poNumber'), safePo) +
+      infoRow(t('seller'), safeSeller) +
+      infoRow(ts('total'), `<span style="color:${BRAND_COLOR};font-weight:700;">${money}</span>`) +
+      infoRow(ts('status'), `<span style="color:#10B981;font-weight:600;">${t('status')}</span>`)
+    )}
+    ${poItemsTable(items, currency, total, lang)}
+    <p style="color:#6B7280;font-size:14px;margin:0 0 16px;line-height:1.6;">
+      ${t('hint')}
+    </p>
+    ${ctaButton(t('cta'), link || `${BASE_URL}/pos/purchase-orders/history`)}`;
+
+  return withRenderMeta({
+    subject: t('subject', { poNumber: safePo }),
+    html: wrapTemplate(title, body, lang),
+    text: t('textFallback', { poNumber: safePo, date: safeAt })
+  }, title, body, lang, { action: { state: 'fyi', key: 'no_action' } });
 }
 
 function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link, items }, lang = 'en') {
@@ -1337,6 +1374,7 @@ module.exports = {
   // Sprint 4 — Supply Chain Order Lifecycle
   sellerOrderReceivedEmail,
   buyerReceivedEmail,
+  poAutoCompletedEmail,
   poApprovalPendingEmail,
   poApprovalResultEmail,
   poBuyerConfirmEmail,

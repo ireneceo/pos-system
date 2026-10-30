@@ -14,7 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 const PwaInstallBanner: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
-  const { canInstall, isIOS, iosVersion, isWindowsDesktop, desktopAppUrl, isAndroidBrowser, androidAppUrl, promptInstall, dismissBanner, shouldShowBanner, platform, openInstallGuide } = usePwaInstall();
+  const { canInstall, isIOS, iosVersion, iosBrowser, isWindowsDesktop, desktopAppUrl, isAndroidBrowser, androidAppUrl, promptInstall, dismissBanner, shouldShowBanner, platform, openInstallGuide } = usePwaInstall();
   const { isAuthenticated } = useAuth();
 
   // PWA/iOS install banner stays scoped to /pos (as before). The Windows desktop
@@ -96,7 +96,9 @@ const PwaInstallBanner: React.FC = () => {
               : isAndroidBrowser
               ? t('common:pwa.androidApp.body', 'Get the Android app for reliable kitchen printing over WiFi or Bluetooth.')
               : isIOS
-                ? (oldIos
+                ? (iosBrowser === 'kakao' || iosBrowser === 'inapp'
+                    ? t('common:pwa.installBanner.iosInApp', "Open this page in Safari to add it to your Home Screen.")
+                    : oldIos
                     ? t('common:pwa.installBanner.iosOldGuide')
                     : t('common:pwa.installBanner.iosGuide'))
                 : t('common:pwa.installBanner.androidDesktopGuide')}
@@ -152,6 +154,26 @@ const PwaInstallBanner: React.FC = () => {
             >
               {t('common:pwa.guide.qrLink', 'Installing on an Android tablet? Scan a QR code')}
             </button>
+          )}
+
+          {/* 2026-10-30 Irene «아이폰인데 제대로 다운이 안돼» — 아이폰은 문구 한 줄뿐이라 누를 곳이 없었다.
+              브라우저별 순서가 있는 같은 안내창을 연다. */}
+          {isIOS && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={openInstallGuide}
+                style={{
+                  background: '#635BFF', color: '#fff', border: '1px solid #635BFF',
+                  padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', transition: 'opacity 0.15s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.opacity = '0.85'; }}
+                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+              >
+                {t('common:pwa.installBanner.iosButton', 'How to install')}
+              </button>
+            </div>
           )}
 
           {!isWindowsDesktop && !isAndroidBrowser && canInstall && !isIOS && (

@@ -95,7 +95,8 @@
       "payViaSoaHint": "월결제 거래입니다 — SOA(정산서) 총액으로 결제하세요"
     },
     "badge": {
-      "sellerShipped": "업체가 배송 시작"
+      "sellerShipped": "업체가 배송 시작",
+      "autoCompletes": "{{date}}까지 확인 — 그 뒤 자동 완료"
     },
     "reimburse": {
       "title": "개인금액 정산",

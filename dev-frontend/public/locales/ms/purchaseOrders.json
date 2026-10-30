@@ -95,7 +95,8 @@
       "payViaSoaHint": "Dibilkan bulanan — bayar melalui Penyata Akaun (SOA)"
     },
     "badge": {
-      "sellerShipped": "Penjual mula penghantaran"
+      "sellerShipped": "Penjual mula penghantaran",
+      "autoCompletes": "Sahkan sebelum {{date}} — selesai automatik selepas itu"
     },
     "reimburse": {
       "title": "Bayar balik wang peribadi",

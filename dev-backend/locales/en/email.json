@@ -162,7 +162,11 @@
       "hintShipped": "No action needed — this order is already out for delivery.",
       "cta": "Open Order",
       "textFallback": "{{buyer}} confirmed receipt of {{poNumber}}. Total: {{total}}.",
-      "subjectShipped": "Receipt confirmed: {{poNumber}} · {{buyer}}"
+      "subjectShipped": "Receipt confirmed: {{poNumber}} · {{buyer}}",
+      "autoCompleted": "Completed automatically (buyer did not confirm within 3 days)",
+      "bodyAuto": "Purchase order <strong>{{poNumber}}</strong> for <strong>{{buyer}}</strong> was completed automatically — the buyer did not confirm receipt within 3 days of delivery.",
+      "headingAuto": "Order Completed Automatically",
+      "subjectAuto": "Completed automatically: {{poNumber}} · {{buyer}}"
     },
     "returnExternalSend": {
       "subject": "Return Request {{poNumber}} from {{buyer}}",
@@ -217,6 +221,16 @@
       "recordedSubject": "Standing order recorded: {{poNumber}} · {{seller}}",
       "recordedHeading": "This Week's Standing Order Was Recorded",
       "recordedBody": "Your standing order <strong>{{schedule}}</strong> recorded this week's order with <strong>{{seller}}</strong>. Nothing was sent to the supplier — they deliver and invoice under your subscription as usual. Mark it received when the goods arrive."
+    },
+    "autoCompleted": {
+      "subject": "Completed automatically: {{poNumber}}",
+      "heading": "Order Completed Automatically",
+      "body": "Purchase order <strong>{{poNumber}}</strong> was completed automatically on {{date}} because receipt was not confirmed within 3 days of delivery. The stock has been added to your inventory.",
+      "seller": "Seller",
+      "status": "Completed",
+      "hint": "If anything was missing or damaged, open the order and request a return.",
+      "cta": "Open Order",
+      "textFallback": "{{poNumber}} was completed automatically on {{date}}. Stock has been added. If anything was missing or damaged, request a return from the order."
     }
   },
   "contextRequest": {

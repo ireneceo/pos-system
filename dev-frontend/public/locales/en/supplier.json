@@ -254,7 +254,8 @@
     "loading": "Loading…",
     "badge": {
       "needsDispatch": "Buyer confirmed receipt — record delivery",
-      "notYetDispatched": "{{count}} item(s) not yet dispatched"
+      "notYetDispatched": "{{count}} item(s) not yet dispatched",
+      "autoCompletes": "Auto-completes {{date}}"
     },
     "amend": {
       "title": "Edit order items",

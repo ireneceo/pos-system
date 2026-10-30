@@ -1,0 +1,98 @@
+diff --git a/dev-backend/routes/brand-soa.js b/dev-backend/routes/brand-soa.js
+index 64e07a663..6d1910707 100644
+--- a/dev-backend/routes/brand-soa.js
++++ b/dev-backend/routes/brand-soa.js
+@@ -250,9 +250,18 @@ router.post(
+       if ((periodStartDay && !periodEndDay) || (!periodStartDay && periodEndDay)) {
+         return res.status(400).json({ success: false, message: 'Provide both period_start and period_end, or neither' });
+       }
++      // «이번 달(오늘까지)» 은 날짜 대신 뜻만 받는다 — 오늘은 매장 달력으로 서비스가 정한다 (2026-10-30)
++      const { period } = req.body || {};
++      if (period !== undefined && period !== null && period !== '' && period !== 'this_month') {
++        return res.status(400).json({ success: false, message: 'period must be this_month' });
++      }
++      if (period === 'this_month' && (periodStartDay || periodEndDay)) {
++        return res.status(400).json({ success: false, message: 'Send either period or period_start/period_end' });
++      }
++      const periodPreset = period === 'this_month' ? 'this_month' : null;
+ 
+       const { generateSoaNow } = require('../services/soaScheduler');
+-      const result = await generateSoaNow({ issuerType: 'brand', issuerId: restaurant.brand_id, restaurantId, periodStartDay, periodEndDay });
++      const result = await generateSoaNow({ issuerType: 'brand', issuerId: restaurant.brand_id, restaurantId, periodStartDay, periodEndDay, periodPreset });
+       if (!result.issued) {
+         if (result.reason === 'period_end_in_future') {
+           return res.status(400).json({ success: false, code: result.reason, message: 'period_end cannot be in the future' });
+diff --git a/dev-backend/routes/foodcourt-soa.js b/dev-backend/routes/foodcourt-soa.js
+index 636073871..d8d97f78a 100644
+--- a/dev-backend/routes/foodcourt-soa.js
++++ b/dev-backend/routes/foodcourt-soa.js
+@@ -217,9 +217,18 @@ router.post(
+       if ((periodStartDay && !periodEndDay) || (!periodStartDay && periodEndDay)) {
+         return res.status(400).json({ success: false, message: 'Provide both period_start and period_end, or neither' });
+       }
++      // «이번 달(오늘까지)» 은 날짜 대신 뜻만 받는다 — 오늘은 매장 달력으로 서비스가 정한다 (2026-10-30)
++      const { period } = req.body || {};
++      if (period !== undefined && period !== null && period !== '' && period !== 'this_month') {
++        return res.status(400).json({ success: false, message: 'period must be this_month' });
++      }
++      if (period === 'this_month' && (periodStartDay || periodEndDay)) {
++        return res.status(400).json({ success: false, message: 'Send either period or period_start/period_end' });
++      }
++      const periodPreset = period === 'this_month' ? 'this_month' : null;
+ 
+       const { generateSoaNow } = require('../services/soaScheduler');
+-      const result = await generateSoaNow({ issuerType: 'foodcourt', issuerId: restaurant.foodcourt_id, restaurantId, periodStartDay, periodEndDay });
++      const result = await generateSoaNow({ issuerType: 'foodcourt', issuerId: restaurant.foodcourt_id, restaurantId, periodStartDay, periodEndDay, periodPreset });
+       if (!result.issued) {
+         if (result.reason === 'period_end_in_future') {
+           return res.status(400).json({ success: false, code: result.reason, message: 'period_end cannot be in the future' });
+diff --git a/dev-backend/services/soaScheduler.js b/dev-backend/services/soaScheduler.js
+index 0db33c8ad..e75f00758 100644
+--- a/dev-backend/services/soaScheduler.js
++++ b/dev-backend/services/soaScheduler.js
+@@ -613,6 +613,9 @@ async function generateSoaNow({
+   issuerType, issuerId, restaurantId,
+   periodStartDay: periodStartIn = null,   // 'YYYY-MM-DD' (구매 매장 달력)
+   periodEndDay: periodEndIn = null,
++  // 'this_month' = 매장 달력의 이번 달 1일~오늘. 화면이 브라우저 시간으로 날짜를 만들면 한국(+9)에서
++  // 자정 넘어 누를 때 말레이시아(+8)보다 하루 앞서 «미래» 400 이 났다(2026-10-30 운영 K-DINE IPC).
++  periodPreset = null,
+   includeOlderUnbundled = true
+ }) {
+   if (issuerType === 'supplier') {
+@@ -643,6 +646,10 @@ async function generateSoaNow({
+   const todayDay = getCurrentLocalDate(buyerTz);          // 매장 달력의 오늘
+   let periodStartDay = periodStartIn || null;
+   let periodEndDay = periodEndIn || null;
++  if (periodPreset === 'this_month') {
++    periodStartDay = `${todayDay.slice(0, 7)}-01`;
++    periodEndDay = todayDay;
++  }
+   if (!periodStartDay || !periodEndDay) {
+     const [ty, tm] = todayDay.split('-').map(Number);
+     const prevY = tm === 1 ? ty - 1 : ty;
+diff --git a/dev-frontend/src/components/Billing/BillingTermsModal.tsx b/dev-frontend/src/components/Billing/BillingTermsModal.tsx
+index 00d7082a9..404310546 100644
+--- a/dev-frontend/src/components/Billing/BillingTermsModal.tsx
++++ b/dev-frontend/src/components/Billing/BillingTermsModal.tsx
+@@ -165,10 +165,6 @@ const BillingTermsModal: React.FC<Props> = ({
+   const [customStart, setCustomStart] = useState('');
+   const [customEnd, setCustomEnd] = useState('');
+   const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+-  const thisMonthRange = () => {
+-    const n = new Date();
+-    return { start: ymd(new Date(n.getFullYear(), n.getMonth(), 1)), end: ymd(n) };
+-  };
+ 
+   // 온디맨드 월명세서 생성 — 매월 1일 자동 발행을 기다리지 않고 지금 발행.
+   // 미청구(안 묶인) 거래내역을 한 장의 명세서(SOA)로 묶음. (2026-06-15)
+@@ -180,7 +176,8 @@ const BillingTermsModal: React.FC<Props> = ({
+       // 「직접 입력」일 때만 고른 날짜를 보낸다.
+       const body = (periodMode === 'custom' && customStart && customEnd)
+         ? { period_start: customStart, period_end: customEnd }
+-        : (periodMode === 'thisMonth' ? { period_start: thisMonthRange().start, period_end: thisMonthRange().end } : {});
++        // 이번 달은 뜻만 보낸다 — 브라우저 시간(한국)이 매장(말레이시아)보다 하루 앞서면 «미래» 400 이었다 (2026-10-30)
++        : (periodMode === 'thisMonth' ? { period: 'this_month' } : {});
+       const res = await fetch(`/api/${entityType}/soa/${restaurantId}/generate`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },

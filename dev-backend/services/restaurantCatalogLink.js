@@ -47,17 +47,17 @@ async function brandProductVisibleToRestaurant(bp, rid, transaction) {
 async function linkCatalogProductToRestaurant(rid, body = {}) {
   const t = await Ingredient.sequelize.transaction();
   try {
-    const SupplierContract = require('../models/SupplierContract');
     const FoodcourtProduct = require('../models/FoodcourtProduct');
     const catalogLink = require('../utils/catalogLink');
 
     const seller = await catalogLink.resolveSellerProduct({
       body,
       transaction: t,
-      supplierContract: (supplierCompanyId) => SupplierContract.findOne({
-        where: { entity_type: 'restaurant', entity_id: rid, supplier_company_id: supplierCompanyId, status: 'active' },
-        transaction: t
-      }),
+      // 발주(verifySellerRelation)·기존 아이템에 연결(seller-sources)과 같은 판정 — 오너 공통 업체(상속)도 통과,
+      //   매장이 끈 것(자기 terminated 행)은 막는다. 예전엔 매장 자기 계약만 봐서 오너 공통 업체 상품을
+      //   «내 아이템에 추가» 하면 403 NO_ACTIVE_CONTRACT 였다(2026-10-29 오너 다매장 점검).
+      supplierContract: (supplierCompanyId) => require('../utils/supplierAccess')
+        .findEffectiveContract(supplierCompanyId, { type: 'restaurant', id: rid }),
       // ✅ 이 패밀리만 verifySellerRelation(restaurant.brand_id === seller_entity_id)과 정합한다.
       //    새 코드는 이 의미를 따를 것. 다른 패밀리는 다르다 — utils/catalogLink.js 상단 참조.
       brandSellerEntityId: async () => {

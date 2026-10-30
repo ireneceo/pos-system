@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, ModalButton } from '../UI';
 import { QRCodeSVG } from 'qrcode.react';
@@ -18,11 +18,27 @@ import { usePwaInstall } from '../../contexts/PwaInstallContext';
 const InstallGuideModal: React.FC = () => {
   const { t } = useTranslation(['common']);
   const {
-    installGuideOpen, closeInstallGuide, platform, safariMajor,
+    installGuideOpen, closeInstallGuide, platform, safariMajor, iosBrowser, isIPad, iosVersion,
     canInstall, promptInstall, desktopAppUrl, androidAppUrl,
   } = usePwaInstall();
+  const [copied, setCopied] = useState(false);
 
   if (!installGuideOpen) return null;
+
+  const copyLink = async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // 앱 안 브라우저는 clipboard API 가 막혀 있기도 하다 — 옛 방식으로 한 번 더.
+      const ta = document.createElement('textarea');
+      ta.value = url; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch { /* 복사 못 해도 안내 문구는 그대로 */ }
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+  };
 
   const Step: React.FC<{ n: number; children: React.ReactNode }> = ({ n, children }) => (
     <li style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
@@ -56,11 +72,41 @@ const InstallGuideModal: React.FC = () => {
       );
     }
     if (platform === 'ios') {
+      // 2026-10-30 Irene «아이폰인데 제대로 다운이 안돼» — 예전 안내는 «아래쪽 공유 버튼» 하나였다.
+      // iOS 26 사파리는 공유가 ••• 안에 있고, 크롬은 주소창 오른쪽, 카톡·인스타 안 브라우저는 홈 화면 추가가 아예 없다.
+      // 크롬·엣지·파이어폭스의 «홈 화면에 추가» 는 iOS 16.4 부터 — 그 전이면 사파리로 보낸다.
+      const needSafari = iosBrowser === 'kakao' || iosBrowser === 'inapp'
+        || (iosBrowser !== 'safari' && iosVersion !== null && iosVersion < 17);
+      if (needSafari) {
+        return (
+          <>
+            <p style={{ fontSize: 14, color: '#0A2540', lineHeight: 1.6, margin: '0 0 12px' }}>
+              {iosBrowser === 'kakao' || iosBrowser === 'inapp'
+                ? t('common:pwa.guide.ios.inApp', "This page is open inside another app, which can't add it to your Home Screen. Open it in Safari first.")
+                : t('common:pwa.guide.ios.oldBrowser', 'On this iOS version only Safari can add it to your Home Screen. Open it in Safari first.')}
+            </p>
+            <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+              <Step n={1}>{iosBrowser === 'kakao'
+                ? t('common:pwa.guide.ios.kakaoOpen', 'Tap "Open in Safari" below.')
+                : t('common:pwa.guide.ios.copyOpen', 'Tap "Copy link" below, open Safari, and paste it into the address bar.')}</Step>
+              <Step n={2}>{t('common:pwa.guide.ios.thenFollow', 'In Safari, open this install guide again (How to install) and follow the steps.')}</Step>
+            </ol>
+          </>
+        );
+      }
+      const shareStep = (() => {
+        if (iosBrowser === 'chrome') return t('common:pwa.guide.ios.shareChrome', 'Tap the Share button (square with an arrow) at the right end of the address bar.');
+        if (iosBrowser === 'edge' || iosBrowser === 'firefox') return t('common:pwa.guide.ios.shareMenu', 'Open the browser menu (☰ or •••) at the bottom, then tap Share.');
+        if (isIPad) return t('common:pwa.guide.ios.shareIPad', 'Tap the Share button (square with an arrow) at the top right, next to the address bar.');
+        if (safariMajor !== null && safariMajor >= 26) return t('common:pwa.guide.ios.share26', 'Tap ••• at the bottom right, next to the address bar, then tap Share.');
+        return t('common:pwa.guide.ios.shareSafari', 'Tap the Share button (square with an arrow) at the bottom of the screen. If the bar is hidden, scroll up a little.');
+      })();
       return (
         <ol style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          <Step n={1}>{t('common:pwa.guide.ios.share', 'Tap the Share button in the browser toolbar.')}</Step>
-          <Step n={2}>{t('common:pwa.guide.ios.add', 'Choose "Add to Home Screen".')}</Step>
-          <Step n={3}>{t('common:pwa.guide.ios.open', 'Open it from the Home Screen — it runs in its own window.')}</Step>
+          <Step n={1}>{shareStep}</Step>
+          <Step n={2}>{t('common:pwa.guide.ios.addScroll', 'Scroll down the list and choose "Add to Home Screen". (Not there? Tap "View More" or "Edit Actions" at the bottom of the list.)')}</Step>
+          <Step n={3}>{t('common:pwa.guide.ios.addConfirm', 'If you see "Open as Web App", leave it on, then tap Add at the top right.')}</Step>
+          <Step n={4}>{t('common:pwa.guide.ios.open', 'Open it from the Home Screen — it runs in its own window.')}</Step>
         </ol>
       );
     }
@@ -99,6 +145,17 @@ const InstallGuideModal: React.FC = () => {
         {t('common:pwa.guide.downloadAndroid', 'Download app')}
       </ModalButton>;
     }
+    if (platform === 'ios' && iosBrowser === 'kakao') {
+      // 카카오톡 안 브라우저 → 기기 기본 브라우저(사파리)로 같은 주소를 연다.
+      return <ModalButton as="a" href={`kakaotalk://web/openExternal?url=${encodeURIComponent(window.location.href)}`} variant="primary">
+        {t('common:pwa.guide.ios.openSafari', 'Open in Safari')}
+      </ModalButton>;
+    }
+    if (platform === 'ios' && (iosBrowser === 'inapp' || (iosBrowser !== 'safari' && iosVersion !== null && iosVersion < 17))) {
+      return <ModalButton variant="primary" onClick={copyLink}>
+        {copied ? t('common:pwa.guide.ios.copied', 'Link copied') : t('common:pwa.guide.ios.copyLink', 'Copy link')}
+      </ModalButton>;
+    }
     if (canInstall) {
       return <ModalButton variant="primary" onClick={async () => { await promptInstall(); closeInstallGuide(); }}>
         {t('common:pwa.guide.install', 'Install')}
@@ -110,11 +167,11 @@ const InstallGuideModal: React.FC = () => {
   return (
     <Modal
       isOpen={installGuideOpen}
-      onClose={closeInstallGuide}
+      onClose={() => { setCopied(false); closeInstallGuide(); }}
       title={t('common:pwa.guide.title', 'Install the app') as string}
       size="small"
       footer={<>
-        <ModalButton variant="secondary" onClick={closeInstallGuide}>
+        <ModalButton variant="secondary" onClick={() => { setCopied(false); closeInstallGuide(); }}>
           {t('common:button.close', 'Close')}
         </ModalButton>
         {primary}

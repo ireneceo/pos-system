@@ -254,7 +254,8 @@
     "loading": "加载中…",
     "badge": {
       "needsDispatch": "买家已确认收货 — 请记录配送",
-      "notYetDispatched": "{{count}} 个商品未发货"
+      "notYetDispatched": "{{count}} 个商品未发货",
+      "autoCompletes": "{{date}} 自动完成"
     },
     "amend": {
       "title": "修改订单项目",

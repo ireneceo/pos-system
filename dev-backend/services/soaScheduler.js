@@ -613,6 +613,9 @@ async function generateSoaNow({
   issuerType, issuerId, restaurantId,
   periodStartDay: periodStartIn = null,   // 'YYYY-MM-DD' (구매 매장 달력)
   periodEndDay: periodEndIn = null,
+  // 'this_month' = 매장 달력의 이번 달 1일~오늘. 화면이 브라우저 시간으로 날짜를 만들면 한국(+9)에서
+  // 자정 넘어 누를 때 말레이시아(+8)보다 하루 앞서 «미래» 400 이 났다(2026-10-30 운영 K-DINE IPC).
+  periodPreset = null,
   includeOlderUnbundled = true
 }) {
   if (issuerType === 'supplier') {
@@ -643,6 +646,10 @@ async function generateSoaNow({
   const todayDay = getCurrentLocalDate(buyerTz);          // 매장 달력의 오늘
   let periodStartDay = periodStartIn || null;
   let periodEndDay = periodEndIn || null;
+  if (periodPreset === 'this_month') {
+    periodStartDay = `${todayDay.slice(0, 7)}-01`;
+    periodEndDay = todayDay;
+  }
   if (!periodStartDay || !periodEndDay) {
     const [ty, tm] = todayDay.split('-').map(Number);
     const prevY = tm === 1 ? ty - 1 : ty;

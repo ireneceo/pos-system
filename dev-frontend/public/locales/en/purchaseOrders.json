@@ -95,7 +95,8 @@
       "payViaSoaHint": "Billed monthly — pay through the Statement of Account (SOA)"
     },
     "badge": {
-      "sellerShipped": "Seller started delivery"
+      "sellerShipped": "Seller started delivery",
+      "autoCompletes": "Confirm by {{date}} — completes automatically after"
     },
     "reimburse": {
       "title": "Reimburse personal money",

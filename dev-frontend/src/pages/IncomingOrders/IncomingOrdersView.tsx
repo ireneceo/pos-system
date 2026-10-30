@@ -18,7 +18,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import DateField from '../../components/Common/DateField';
 import ConfirmModal from '../../components/ConfirmModal';
 import { getAuthToken } from '../../utils/auth';
-import { formatDate } from '../../utils/timezone';
+import { formatDate, formatDateTime } from '../../utils/timezone';
 import { useTabParam } from '../../hooks/useTabParam';
 import { lineQtyText, formatQuantity } from '../../utils/unitConversion';
 import { supplierFacingName, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp, shareSellerPackingListViaWhatsApp, sellerOrderShareText, sellerPackingListText } from '../../utils/poShare';
@@ -198,6 +198,7 @@ interface IncomingOrderRow {
   is_service_only?: boolean;
   // 배송 대상인데 아직 안 보낸 줄 수 (2026-10-08 품목별 발송 — 서버가 센다)
   unshipped_count?: number;
+  auto_receive_at?: string | null;
   item_count?: number;
   items?: IncomingOrderItem[];
   total_amount?: number | string | null;
@@ -1432,6 +1433,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               {tNs('orders.badge.needsDispatch', 'Buyer confirmed receipt — record dispatch')}
                             </div>
                           )}
+                          {/* 배송 완료 뒤 구매자가 안 누르면 서버가 자동 완료 — 시각은 서버 계산(2026-10-30 po-auto-complete) */}
+                          {row.status === 'delivered' && !!row.auto_receive_at && (
+                            <div style={{ fontSize: '11px', fontWeight: 500, color: '#6B7280', marginTop: 2 }}>
+                              {tNs('orders.badge.autoCompletes', 'Auto-completes {{date}}').replace('{{date}}', formatDateTime(row.auto_receive_at))}
+                            </div>
+                          )}
                           {/* 품목별 발송 (2026-10-08) — 일부만 보낸 주문 */}
                           {!!row.shipped_at && (row.unshipped_count || 0) > 0 && (
                             <div style={{ fontSize: '11px', fontWeight: 600, color: '#B45309', marginTop: 2 }}>
@@ -2162,6 +2169,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 <DataTableStatus variant={StatusVariantMap[detailFull.status] || 'info'}>
                   {tNs(`status.${sellerStatusKey(detailFull.status)}`, sellerStatusKey(detailFull.status))}
                 </DataTableStatus>
+                {detailFull.status === 'delivered' && !!detailFull.auto_receive_at && (
+                  <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
+                    {tNs('orders.badge.autoCompletes', 'Auto-completes {{date}}').replace('{{date}}', formatDateTime(detailFull.auto_receive_at))}
+                  </div>
+                )}
               </div>
               <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8 }}>
                 <div style={{ fontSize: 11, color: '#4B5563', fontWeight: 600, textTransform: 'uppercase' }}>

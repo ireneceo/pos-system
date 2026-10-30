@@ -254,7 +254,8 @@
     "loading": "불러오는 중…",
     "badge": {
       "needsDispatch": "구매자가 수령 확인 — 배송 기록 필요",
-      "notYetDispatched": "{{count}}개 품목 미발송"
+      "notYetDispatched": "{{count}}개 품목 미발송",
+      "autoCompletes": "{{date}} 자동 완료"
     },
     "amend": {
       "title": "주문 품목 수정",

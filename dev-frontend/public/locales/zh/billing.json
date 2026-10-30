@@ -43,7 +43,7 @@
     "noRecipients": "对账单已开具。餐厅没有可接收邮件的管理员 — 请添加管理员邮箱。"
   },
   "trigger": {
-    "on_received": "订单收货时（默认）",
+    "on_received": "订单送达或收货时（默认）",
     "on_confirmed": "订单确认时（发货前）"
   }
 }

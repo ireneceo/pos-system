@@ -55,7 +55,8 @@ async function hcCleanupPurchaseOrders(ids, { waitMs = 5000 } = {}) {
   let pending = [...list];
   while (pending.length && Date.now() < deadline) {
     const rows = await PurchaseOrder.findAll({ where: { id: pending }, attributes: ['id', 'status', 'trade_invoice_id'], paranoid: false });
-    pending = rows.filter((r) => r.status === 'received' && !r.trade_invoice_id).map((r) => r.id);
+    // delivered 도 기다린다 — 배송 완료 때 청구서가 난다(2026-10-30 po-auto-complete)
+    pending = rows.filter((r) => (r.status === 'received' || r.status === 'delivered') && !r.trade_invoice_id).map((r) => r.id);
     if (pending.length === 0) break;
     await new Promise((r) => setTimeout(r, 200));
   }
@@ -442,6 +443,39 @@ function defineContextRequestTests({ adminToken }) {
     const pc = await request('GET', '/context-requests/pending-count', null, sa);
     const saPost = await request('POST', '/context-requests', { entity_type: 'brand', entity_id: 17, role: 'Brand Manager' }, sa);
     return list.status === 403 && pc.status === 200 && typeof pc.body?.data?.count === 'number' && saPost.status === 403;
+  });
+
+  // 2026-10-30 운영 사고(K-DINE IPC) — «This month» 를 한국 자정 넘어 누르면 브라우저 날짜가 매장보다 하루 앞서
+  // period_end_in_future 400. 이제 화면은 { period: 'this_month' } 만 보내고 날짜는 매장 달력으로 서버가 정한다.
+  // 쓰기 없음: 데모 매장 39 에 묶을 것이 없을 때만 this_month 를 부른다(있으면 그 칸만 건너뜀 — 정산서를 만들지 않게).
+  test('auth', 'SOA «이번 달» — 브랜드·푸드코트 period=this_month 는 미래 판정에 안 걸림 · 다른 값·날짜 섞기 400 · 익명 401', async () => {
+    const bg = await tokenFor('demo-brand@purplehere.com');
+    const fg = await tokenFor('demo-foodcourt@purplehere.com');
+    if (!bg || !fg) return false;
+    const { sequelize } = require('../config/database');
+    const [[r39]] = await sequelize.query('SELECT brand_id, foodcourt_id FROM restaurants WHERE id = 39');
+    const pending = async (type, id) => {
+      const [[a]] = await sequelize.query(`SELECT COUNT(*) n FROM invoices WHERE invoice_category='trade' AND issuer_type=? AND issuer_id=? AND payer_type='restaurant' AND payer_id=39 AND parent_soa_invoice_id IS NULL AND status NOT IN ('paid','cancelled')`, { replacements: [type, id] });
+      const [[b]] = await sequelize.query(`SELECT COUNT(*) n FROM purchase_orders WHERE seller_type=? AND seller_entity_id=? AND entity_type='restaurant' AND entity_id=39 AND trade_invoice_id IS NULL AND status IN ('confirmed','shipped','in_transit','delivered','partial_received','received','closed')`, { replacements: [type, id] });
+      return Number(a.n) + Number(b.n);
+    };
+    const ok = [];
+    for (const [type, tok, id] of [['brand', bg, r39?.brand_id], ['foodcourt', fg, r39?.foodcourt_id]]) {
+      if (!id) return false;
+      const url = `/${type}/soa/39/generate`;
+      if (await pending(type, id) === 0) {
+        const tm = await request('POST', url, { period: 'this_month' }, tok);
+        ok.push(tm.status === 400 && tm.body?.code === 'no_invoices');
+      }
+      const bad = await request('POST', url, { period: 'next_month' }, tok);
+      const mix = await request('POST', url, { period: 'this_month', period_start: '2026-10-01', period_end: '2026-10-02' }, tok);
+      const anon = await request('POST', url, { period: 'this_month' }, null);
+      // 400 만 보면 지난달 기본으로 떨어진 no_invoices 도 통과한다(고장주입으로 확인) — 문구까지 대조
+      ok.push(bad.status === 400 && /period must be this_month/.test(bad.body?.message || ''),
+        mix.status === 400 && /either period or/.test(mix.body?.message || ''),
+        anon.status === 401);
+    }
+    return ok.length >= 6 && ok.every(Boolean);
   });
 
   // 승인 즉시 반영(.claude/fable-design-20261016-staff-approval-live.md §6.1) — RA 직원 목록 «연결 계정» opt-in.
@@ -7118,6 +7152,203 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
     finally { await cleanQ6(fx); }
   });
+
+  // ══════════════════════════════════════════════════════════════════
+  // 배송 완료 → 청구서 · 배송 완료 + 72h 자동 완료 (2026-10-30 Fable 설계 .claude/fable-design-20261030-po-auto-complete.md §3)
+  //   Irene «고객이 안받았다고 주문완료가 안되면 어떻게 해? … 배송완료되면 인보이스 나와야 하는 거 아니야?»
+  //   AC1 배송 완료 즉시 청구서 1장(구매자가 뒤에 받아도 1장) · AC2 71h 전 0건 · 73h 뒤 완료+재고+이벤트+멱등
+  //   AC3 구매자가 먼저 받으면 0건 · AC4 비대상(shipped·partial_received·cancelled) 0건 · AC5 응답 auto_receive_at · 알림 로그
+  // ══════════════════════════════════════════════════════════════════
+  async function acDeliver(fx) {
+    const { PurchaseOrder } = require('../models');
+    const jwtLib = require('jsonwebtoken');
+    const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.bgUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    await PurchaseOrder.update({ status: 'confirmed' }, { where: { id: fx.po.id } });
+    const s = await request('POST', `/seller-orders/${fx.po.id}/ship`, { tracking_info: { carrier: 'ZZ' } }, auth);
+    if (s.status !== 200) return { err: `ship ${s.status}` };
+    const d = await request('POST', `/seller-orders/${fx.po.id}/deliver`, {}, auth);
+    if (d.status !== 200) return { err: `deliver ${d.status} ${JSON.stringify(d.body).slice(0, 120)}` };
+    const po = await PurchaseOrder.findByPk(fx.po.id);
+    const { deliveredAtOf } = require('../services/poAutoReceiveService');
+    return { auth, po, deliveredAt: deliveredAtOf(po) };
+  }
+  async function acWaitInvoice(poId, ms = 4000) {
+    const { PurchaseOrder } = require('../models');
+    const end = Date.now() + ms;
+    while (Date.now() < end) {
+      const p = await PurchaseOrder.findByPk(poId, { attributes: ['id', 'trade_invoice_id'] });
+      if (p && p.trade_invoice_id) return p.trade_invoice_id;
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return null;
+  }
+  const H = 3600 * 1000;
+
+  test('inventory', '배송 완료 → 청구서 즉시 1장 · 구매자가 뒤에 받아도 같은 1장 (AC1)', async () => {
+    const { Invoice } = require('../models');
+    if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      const r = await acDeliver(fx);
+      if (r.err) return fail(r.err);
+      const invId = await acWaitInvoice(fx.po.id);
+      if (!invId) return fail('배송 완료 뒤 청구서 없음');
+      const inv = await Invoice.findByPk(invId);
+      if (inv.invoice_category !== 'trade' || Math.abs(Number(inv.total_amount) - Number(r.po.total_amount)) > 0.005) return fail(`청구서 모양 ${inv.invoice_category} ${inv.total_amount}`);
+      const m = await request('POST', `/purchase-orders/${fx.po.id}/mark-received`, {}, { Authorization: `Bearer ${demoRaToken}` });
+      if (m.status !== 200) return fail(`mark-received ${m.status}`);
+      await new Promise(res => setTimeout(res, 800));
+      const n = await Invoice.count({ where: { notes: { [require('sequelize').Op.like]: `%${fx.po.po_number}%` } } });
+      const { PurchaseOrder } = require('../models');
+      const after = await PurchaseOrder.findByPk(fx.po.id);
+      if (after.trade_invoice_id !== invId) return fail(`청구서 id 바뀜 ${invId}→${after.trade_invoice_id}`);
+      if (n > 1) return fail(`청구서 ${n}장`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cleanQ6(fx); }
+  });
+
+  test('inventory', '배송 완료 + 72h 자동 완료 — 71h 0건 · 73h 완료·재고·이벤트·멱등 · 응답 auto_receive_at · 알림 (AC2·AC5)', async () => {
+    const { PurchaseOrder, PurchaseOrderItem, Product } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    let seen = [], origLog = null;
+    try {
+      const { runAutoReceive, AUTO_RECEIVE_HOURS } = require('../services/poAutoReceiveService');
+      const r = await acDeliver(fx);
+      if (r.err) return fail(r.err);
+      if (!r.deliveredAt) return fail('배송 완료 시각 없음');
+      const invId = await acWaitInvoice(fx.po.id);
+      // 응답 칸 — 판매자 상세 · 구매자 상세
+      const expect = new Date(r.deliveredAt.getTime() + 72 * H).toISOString();
+      const gs = await request('GET', `/seller-orders/${fx.po.id}`, null, r.auth);
+      if (gs.body?.data?.auto_receive_at !== expect) return fail(`판매자 auto_receive_at ${gs.body?.data?.auto_receive_at} 기대 ${expect}`);
+      if (demoRaToken) {
+        const gb = await request('GET', `/purchase-orders/${fx.po.id}`, null, { Authorization: `Bearer ${demoRaToken}` });
+        if (gb.body?.data?.auto_receive_at !== expect) return fail(`구매자 auto_receive_at ${gb.body?.data?.auto_receive_at}`);
+      }
+      if (AUTO_RECEIVE_HOURS !== 72) return fail(`AUTO_RECEIVE_HOURS=${AUTO_RECEIVE_HOURS}`);
+      const stock0 = Number((await Product.findByPk(fx.buyerProd.id)).current_stock);
+
+      const r71 = await runAutoReceive({ now: new Date(r.deliveredAt.getTime() + 71 * H), onlyIds: [fx.po.id] });
+      const p71 = await PurchaseOrder.findByPk(fx.po.id);
+      if (r71.completed !== 0 || p71.status !== 'delivered') return fail(`71h completed=${r71.completed} status=${p71.status}`);
+      if (Number((await Product.findByPk(fx.buyerProd.id)).current_stock) !== stock0) return fail('71h 재고 변동');
+
+      // 자동 완료는 이 프로세스에서 돈다 — 알림 발송 로그도 여기 console 로 나온다(pm2 로그 아님)
+      //   흘려보내면서 적어 둔다(검사 끝 finally 에서 원래대로)
+      seen = [];
+      origLog = console.log;
+      console.log = (...a) => { seen.push(a.join(' ')); origLog(...a); };
+      // 동시에 두 번 돌아도(정각 틱 겹침) 완료·재고는 한 번 — 행 잠금 + 잠근 뒤 재확인
+      const both = await Promise.all([1, 2].map(() => runAutoReceive({ now: new Date(r.deliveredAt.getTime() + 73 * H), onlyIds: [fx.po.id] })));
+      const r73 = { completed: both[0].completed + both[1].completed };
+      const p73 = await PurchaseOrder.findByPk(fx.po.id);
+      if (r73.completed !== 1 || p73.status !== 'received' || !p73.received_at) return fail(`73h completed=${r73.completed} status=${p73.status}`);
+      const it = await PurchaseOrderItem.findByPk(fx.item.id);
+      if (Number(it.quantity_received) !== Number(it.quantity_ordered)) return fail(`수령량 ${it.quantity_received}/${it.quantity_ordered}`);
+      const stock1 = Number((await Product.findByPk(fx.buyerProd.id)).current_stock);
+      if (Math.abs(stock1 - (stock0 + 3)) > 0.001) return fail(`재고 ${stock0}→${stock1}, 기대 +3`);
+      const evs = p73.tracking_info?.events || [];
+      const last = evs[evs.length - 1];
+      if (!last || last.status !== 'received' || last.source !== 'auto_receive' || !/Auto-completed/.test(last.note || '')) return fail(`이벤트 ${JSON.stringify(last)}`);
+      if (invId && p73.trade_invoice_id !== invId) return fail('청구서 id 바뀜');
+
+      // 멱등 — 두 번 더
+      for (let i = 0; i < 2; i++) {
+        const again = await runAutoReceive({ now: new Date(r.deliveredAt.getTime() + 80 * H), onlyIds: [fx.po.id] });
+        if (again.completed !== 0) return fail(`재실행 completed=${again.completed}`);
+      }
+      if (Math.abs(Number((await Product.findByPk(fx.buyerProd.id)).current_stock) - stock1) > 0.001) return fail('재실행 재고 변동');
+      const gs2 = await request('GET', `/seller-orders/${fx.po.id}`, null, r.auth);
+      if (gs2.body?.data?.auto_receive_at !== null) return fail('완료 뒤 auto_receive_at 이 null 아님');
+
+      // 알림 — 판매자(auto) · 구매자(자동 완료). 발송은 setImmediate 뒤라 잠깐 더 붙잡고 본다
+      {
+        let sl = null, bl = null;
+        for (let i = 0; i < 16 && !(sl && bl); i++) {
+          sl = seen.find(l => l.includes('[notify] buyer_received(auto)') && l.includes(`po=${fx.po.po_number}`));
+          bl = seen.find(l => l.includes('[notify] po_auto_completed') && l.includes(`po=${fx.po.po_number}`));
+          if (!(sl && bl)) await new Promise(res => setTimeout(res, 250));
+        }
+        if (!sl || /recipients=none/.test(sl)) return fail(`판매자 알림 로그 ${sl || '없음'}`);
+        if (!bl || /recipients=none/.test(bl)) return fail(`구매자 알림 로그 ${bl || '없음'}`);
+      }
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { if (origLog) console.log = origLog; await cleanQ6(fx); }
+  });
+
+  test('inventory', '자동 완료 — 구매자가 먼저 받으면 0건·재고 1회 / 비대상(shipped·partial_received·cancelled) 0건 (AC3·AC4)', async () => {
+    const { PurchaseOrder, Product } = require('../models');
+    if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      const { runAutoReceive } = require('../services/poAutoReceiveService');
+      const r = await acDeliver(fx);
+      if (r.err) return fail(r.err);
+      await acWaitInvoice(fx.po.id); // 배송 완료 청구서가 붙은 뒤 받는다(사람 손 속도 — 같은 순간 두 길이 겹치는 것은 이 검사 대상 아님)
+      const stock0 = Number((await Product.findByPk(fx.buyerProd.id)).current_stock);
+      const m = await request('POST', `/purchase-orders/${fx.po.id}/mark-received`, {}, { Authorization: `Bearer ${demoRaToken}` });
+      if (m.status !== 200) return fail(`mark-received ${m.status}`);
+      const res = await runAutoReceive({ now: new Date(r.deliveredAt.getTime() + 73 * H), onlyIds: [fx.po.id] });
+      if (res.completed !== 0) return fail(`먼저 받은 뒤 completed=${res.completed}`);
+      const stock1 = Number((await Product.findByPk(fx.buyerProd.id)).current_stock);
+      if (Math.abs(stock1 - (stock0 + 3)) > 0.001) return fail(`재고 ${stock0}→${stock1}, 기대 +3 한 번`);
+      // 비대상 — 배송 완료 이벤트는 그대로 두고 상태만 바꿔 본다
+      for (const st of ['shipped', 'partial_received', 'cancelled']) {
+        await PurchaseOrder.update({ status: st }, { where: { id: fx.po.id } });
+        const x = await runAutoReceive({ now: new Date(r.deliveredAt.getTime() + 100 * H), onlyIds: [fx.po.id] });
+        if (x.completed !== 0 || x.candidates !== 0) return fail(`${st} completed=${x.completed} candidates=${x.candidates}`);
+        const p = await PurchaseOrder.findByPk(fx.po.id);
+        if (p.status !== st) return fail(`${st} 상태가 ${p.status} 로 바뀜`);
+      }
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cleanQ6(fx); }
+  });
+
+  // AC6 (2026-10-30 Fable 게이트) — 자동 완료가 발주 행을 잡고 있는 동안 구매자가 «받았어요» 를 눌러도 재고는 한 번.
+  //   구매자 수령 두 길(/mark-received · /receive)도 발주 행을 잠그고 읽어야 성립한다. 잠금을 빼면 200 + 재고 두 번으로 깨진다.
+  for (const path of ['mark-received', 'receive']) {
+    test('inventory', `자동 완료 중 구매자 ${path} 동시 — 재고 한 번 · 구매자 쪽 400 (AC6)`, async () => {
+      const { PurchaseOrder, Product } = require('../models');
+      if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+      const fx = await makeQ6Fixture();
+      if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+      const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+      const database = require('../config/database');
+      let t = null;
+      try {
+        const r = await acDeliver(fx);
+        if (r.err) return fail(r.err);
+        await acWaitInvoice(fx.po.id);
+        const stock0 = Number((await Product.findByPk(fx.buyerProd.id)).current_stock);
+        // 자동 완료와 같은 순서 — 발주 행 잠금 → 상태 확인 → markAllReceived
+        t = await database.sequelize.transaction();
+        const locked = await PurchaseOrder.findByPk(fx.po.id, { lock: t.LOCK.UPDATE, transaction: t });
+        if (locked.status !== 'delivered') return fail(`잠근 뒤 상태 ${locked.status}`);
+        const body = path === 'receive' ? { items: [{ item_id: fx.item.id, quantity_received: 3 }] } : {};
+        const pending = request('POST', `/purchase-orders/${fx.po.id}/${path}`, body, { Authorization: `Bearer ${demoRaToken}` });
+        await new Promise(res => setTimeout(res, 400));
+        const { markAllReceived } = require('../services/purchaseOrderReceive');
+        const rcv = await markAllReceived(locked, { userId: null, note: 'HC AC6 auto', trackingSource: 'auto_receive' }, t);
+        if (!rcv.ok) return fail(`markAllReceived ${rcv.message}`);
+        await t.commit(); t = null;
+        const resp = await pending;
+        const stock1 = Number((await Product.findByPk(fx.buyerProd.id)).current_stock);
+        if (Math.abs(stock1 - (stock0 + 3)) > 0.001) return fail(`재고 ${stock0}→${stock1}, 기대 +3 한 번 (구매자 응답 ${resp.status})`);
+        if (resp.status !== 400) return fail(`구매자 응답 ${resp.status}, 기대 400`);
+        return true;
+      } catch (e) { return fail(`예외: ${e.message}`); }
+      finally { if (t && !t.finished) { try { await t.rollback(); } catch {} } await cleanQ6(fx); }
+    });
+  }
 
   // ══════════════════════════════════════════════════════════════════
   // A안(Fable 2026-10-01 · .claude/fable-design-20261001-a-plan.md §4) — 판매자는 매장에 아직 안 담긴

@@ -117,6 +117,7 @@ sendPushToSupplier(supplierCompanyId, payload)
 | `services/push.ts` | 신규 | register/subscribe/unsubscribe/reconcilePermissionState/getPreferences/updatePreferences/sendTestPush |
 | `contexts/PwaInstallContext.tsx` | 신규 | beforeinstallprompt 이벤트 캡처 + isStandalone + iOS UA 분기 + localStorage 7일 dismiss |
 | `components/Common/PwaInstallBanner.tsx` | 신규 | 우측 하단 고정 banner — Android `Install` CTA / iOS 가이드 / 7일 dismiss |
+| (2026-10-30 보강) `PwaInstallContext.iosBrowser` · `InstallGuideModal` | 수정 | 아이폰 배너에 «How to install» 버튼 → 안내창이 브라우저별 순서: 사파리 26=••• → 공유 · 사파리 이전/아이패드=공유 버튼 · 크롬=주소창 오른쪽 · 엣지·파이어폭스=메뉴 → 공유 · 카톡=`kakaotalk://web/openExternal` 로 사파리 열기 · 그 밖 앱 안 브라우저·iOS 16 이하 비사파리=링크 복사 후 사파리 |
 | `components/Common/NotificationToaster.tsx` | 신규 | Socket.IO `/notifications` 연결 + 200ms ping debounce + Web Audio chime + 우상단 토스트 (max 3 stack) |
 | `components/Settings/PushPreferencesCard.tsx` | 신규 | 마스터 토글 + 카테고리 + muted hours + 테스트 푸시 |
 | `pages/Landing/InstallPage.tsx` | 신규 (`/install`) | UA 분기 가이드 (Android/iOS/macOS/Windows) + iOS 16 미만 경고 + 기능 카드 3개 |

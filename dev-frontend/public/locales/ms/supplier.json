@@ -254,7 +254,8 @@
     "loading": "Memuatkan…",
     "badge": {
       "needsDispatch": "Pembeli sahkan penerimaan — rekod penghantaran",
-      "notYetDispatched": "{{count}} item belum dihantar"
+      "notYetDispatched": "{{count}} item belum dihantar",
+      "autoCompletes": "Selesai automatik {{date}}"
     },
     "amend": {
       "title": "Ubah item pesanan",

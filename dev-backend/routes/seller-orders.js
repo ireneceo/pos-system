@@ -186,6 +186,8 @@ async function sellerNameOf(po) {
  * (= 배송 대상인데 아직 안 보낸 줄 수)를 붙인다. 서비스 판정은 수령·출고와 같은 함수(serviceLineIdsOf).
  * 화면은 이 숫자 하나로 «N품목 미발송 · 나머지 보내기» 와 «배송 완료» 단추를 정한다.
  */
+const { attachAutoReceiveAt } = require('../services/poAutoReceiveService');
+
 async function attachShipmentState(obj) {
   const { serviceLineIdsOf } = require('../utils/orderFulfillment');
   const svc = await serviceLineIdsOf(sequelize, obj.id);
@@ -254,6 +256,8 @@ router.get('/', async (req, res) => {
       // 배송이 없는 주문인가 — 화면이 «배송 처리» 대신 «완료 처리» 를 띄우는 근거 (2026-09-13)
       obj.is_service_only = await isServiceOnlyOrder(sequelize, po.id);
       await attachShipmentState(obj);
+      // 배송 완료 뒤 자동 완료 예정 시각 — 기한 계산은 서버 한 곳(po-auto-complete §2-5)
+      attachAutoReceiveAt(obj);
       return obj;
     }));
     await attachSellerProductInfo(data);
@@ -552,6 +556,7 @@ router.get('/:id', async (req, res) => {
     const obj = po.toJSON();
     obj.buyer = await resolveBuyerInfo(po);
     await attachShipmentState(obj);
+    attachAutoReceiveAt(obj);
     await attachSellerProductInfo(obj);
     await attachSellerProductCategory(obj); // 상세 품목을 판매자 카테고리별로 묶어 보이게(2026-09-29 Irene)
     res.json({ success: true, data: obj });
@@ -1105,13 +1110,18 @@ router.post('/:id/deliver', async (req, res) => {
       return locked;
     });
     emitPoEvent(req, po, 'seller-order-updated');
+    // 배송 완료 = 청구서 발행 시점 (2026-10-30 Fable 설계 po-auto-complete §2-1) — 멱등이라 확정 때·수령 때와 겹쳐도 1장
+    const { issueTradeInvoiceAfterCommit } = require('../services/purchaseOrderService');
+    issueTradeInvoiceAfterCommit(po, { when: 'delivered' });
 
     setImmediate(async () => {
       try {
+        const { autoReceiveDeadlineOf, autoReceiveLabel } = require('../services/poAutoReceiveService');
+        const autoAt = await autoReceiveLabel(po, autoReceiveDeadlineOf(po));
         const html = buyerMail(
           'Order Delivered',
           (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">Your purchase order <strong>${po.po_number}</strong> has been delivered.</p>
-           <p style="color:#6B7280;font-size:14px;margin:0 0 16px;">Please confirm receipt in your system.</p>
+           <p style="color:#6B7280;font-size:14px;margin:0 0 16px;">Please confirm receipt in your system.${autoAt ? ` If not confirmed by <strong>${autoAt}</strong>, the order will be completed automatically and the stock added.` : ''}</p>
            <div style="text-align:center;margin:24px 0;"><a href="${link}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Confirm Receipt</a></div>`
         );
         await fireBuyerNotification(po, 'seller_order_received', {

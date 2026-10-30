@@ -225,6 +225,8 @@ const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
 // PO CRUD: list/get/suggestions/create/bulk/update/pdf
 // split from purchase-orders.js (2026-05-03)
 
+const { attachAutoReceiveAt } = require('../services/poAutoReceiveService');
+
 router.get('/purchase-orders', async (req, res) => {
   try {
     if (!req.buyerEntity && !req.buyerIsAdmin) {
@@ -412,6 +414,7 @@ router.get('/purchase-orders', async (req, res) => {
       const payable = payableFrom(plain, plain.is_external);
       plain.payable_amount = payable.amount;
       plain.payable_basis = payable.basis;
+      attachAutoReceiveAt(plain); // 배송 완료 뒤 자동 완료 예정 시각(po-auto-complete §2-5)
       if (includeItems) {
         plain.items = itemsByPo[p.id] || [];
         plain.seller = getSeller(sellerMap, p.seller_type, p.seller_entity_id);
@@ -665,6 +668,7 @@ router.get('/purchase-orders/:id', async (req, res) => {
     const payableOne = payableFrom(plain, plain.is_external);
     plain.payable_amount = payableOne.amount;
     plain.payable_basis = payableOne.basis;
+    attachAutoReceiveAt(plain); // 배송 완료 뒤 자동 완료 예정 시각(po-auto-complete §2-5)
     // 구매자 품목 수정 가능 여부 — POST /amend 거부와 같은 함수(utils/poAmend.buyerAmendBlock · 2026-10-15 buyer-po-edit §4-2)
     {
       const { buyerAmendBlock } = require('../utils/poAmend');

@@ -73,6 +73,14 @@ async function isOwnedByActor(kind, me, actor, q) {
   const type = actor && actor.entity_type;
   const id = Number(actor && actor.entity_id);
   if (!type || !Number.isFinite(id)) return false;
+  // 오너 공통 업체(§H-3) — 오너가 고친 값은 **소유 매장의 재고아이템**까지(브랜드 공유 재료·BG 재고아이템은 밖).
+  //   예전엔 오너 실체가 어떤 행과도 안 맞아 오너가 가격을 고쳐도 매장 원가가 그대로였다(2026-10-29 오너 다매장 점검).
+  if (type === 'owner') {
+    if (kind !== 'ingredient' || me.owner_type !== 'restaurant' || !me.restaurant_id) return false;
+    const [o] = await q(`SELECT id FROM restaurant_managers WHERE restaurant_id = :r AND manager_id = :u AND relationship_type = 'ownership' LIMIT 1`,
+      { r: me.restaurant_id, u: id });
+    return !!o;
+  }
   if (kind === 'ingredient') {
     if (me.owner_type !== type) return false;
     const col = { restaurant: 'restaurant_id', brand: 'brand_id', foodcourt: 'foodcourt_id' }[type];

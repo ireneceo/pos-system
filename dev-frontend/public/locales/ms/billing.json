@@ -43,7 +43,7 @@
     "noRecipients": "Penyata telah dijana. Tiada penerima e-mel di restoran — tambah e-mel pentadbir."
   },
   "trigger": {
-    "on_received": "Pesanan diterima (lalai)",
+    "on_received": "Pesanan dihantar atau diterima (lalai)",
     "on_confirmed": "Pesanan disahkan (sebelum penghantaran)"
   }
 }

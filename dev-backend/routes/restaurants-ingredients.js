@@ -496,6 +496,14 @@ router.get('/:restaurantId/stock-products', authenticateToken, checkRestaurantAc
 //   이미 매핑된 supplier_product 면 기존 ingredient 그대로 반환 (idempotent).
 // ============================================
 router.post('/:restaurantId/ingredients/from-catalog', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  // 재고아이템 연결은 매장 관리자 몫(2026-10-22 Irene ② · §H-4) — 오너는 checkRestaurantAccess 를 통과하므로 여기서 막는다.
+  //   buyerScope 의 연결 라우트(/api/ingredients* · /seller-catalog)가 오너에게 403 인 것과 같은 문.
+  //   예외 = buyerScope.resolveBuyerFromUser 와 같은 규칙: 소속 매장(restaurant_id)이 있는 오너는 그 매장에서는 매장 구매자다
+  //   (seller-sources 가 이미 그렇게 통과) — 두 문이 어긋나지 않게 같은 조건(2026-10-29 Fable 게이트 정정).
+  if (req.user && req.user.role === 'Restaurant Owner'
+      && parseInt(req.user.restaurant_id, 10) !== parseInt(req.params.restaurantId, 10)) {
+    return res.status(403).json({ success: false, message: 'Stock item links are managed by the restaurant admin' });
+  }
   // 본문은 services/restaurantCatalogLink.js 로 옮겼다(2026-09-30) — 판매자 주문 추가도 같은 함수를 쓴다.
   const { linkCatalogProductToRestaurant } = require('../services/restaurantCatalogLink');
   const r = await linkCatalogProductToRestaurant(parseInt(req.params.restaurantId, 10), req.body || {});

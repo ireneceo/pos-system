@@ -908,7 +908,8 @@ router.post('/purchase-orders/:id/mark-received', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
 
-    const po = await PurchaseOrder.findByPk(id, { transaction: t });
+    // 행 잠금 — 자동 완료(services/poAutoReceiveService)·다른 수령 길과 같은 순간에 겹쳐도 재고는 한 번(2026-10-30 Fable 게이트)
+    const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
     if (!po) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     if (!checkPOOwnership(po, req)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Not found' }); }
     // 수령은 **발주가 실제로 나간 뒤**에만 가능하다. 예전엔 received/cancelled 만 막아서
@@ -1042,8 +1043,10 @@ router.post('/purchase-orders/:id/receive', async (req, res) => {
       await t.rollback();
       return res.status(404).json({ success: false, message: 'Purchase order not found' });
     }
+    // 행 잠금(발주 행만) — 자동 완료·다른 수령 길과 겹쳐도 재고는 한 번(2026-10-30 Fable 게이트)
     const po = await PurchaseOrder.findByPk(id, {
       include: [{ model: PurchaseOrderItem, as: 'items' }],
+      lock: { level: t.LOCK.UPDATE, of: PurchaseOrder },
       transaction: t
     });
     if (!po) {
