@@ -406,6 +406,47 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
   });
 }
 
+// ── 기기 오프라인 판정 기록 받기 (docs/OFFLINE_MODE_DESIGN.md §16-5) ──
+// 익명 401 · 정상 200 accepted · 배열 아님 400. 시험 행은 request_id 로 지운다. 고정물 = dev demo RA.
+function defineOfflineEventsTests() {
+  const jwtLib = require('jsonwebtoken');
+  const authFor = async (email) => {
+    const { sequelize } = require('../config/database');
+    const [[u]] = await sequelize.query('SELECT id FROM users WHERE email = ? LIMIT 1', { replacements: [email] });
+    return u ? { Authorization: `Bearer ${jwtLib.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` } : null;
+  };
+
+  test('security', '오프라인 기록 — 익명 POST /offline-events → 401', async () => {
+    const r = await request('POST', '/offline-events', { events: [] });
+    return r.status === 401;
+  });
+
+  test('auth', '오프라인 기록 — 데모 RA: 정상 1건 200 accepted · 같은 id skipped · 배열 아님 400', async () => {
+    const auth = await authFor('demo-restaurant@purplehere.com');
+    if (!auth) return false;
+    const { sequelize } = require('../config/database');
+    const id = `hc-offline-${Date.now()}`;
+    const ev = { id, startedAt: new Date(Date.now() - 30000).toISOString(), recoveredAt: new Date().toISOString(), durationMs: 30000,
+      recoveredBy: 'ping', trigger: 'probe', probes: [{ at: new Date().toISOString(), kind: 'http', status: 429, ms: 12 }],
+      navigatorOnLine: true, path: '/pos', mainPos: false, swVersion: null, ua: 'health-check', bogus: 'x',
+      tz: 'Asia/Kuala_Lumpur', visibility: 'visible', slowRes: { n: 1, maxMs: 3500, maxName: 'main.js' } };
+    try {
+      const a = await request('POST', '/offline-events', { events: [ev] }, auth);
+      const b = await request('POST', '/offline-events', { events: [ev] }, auth);
+      const c2 = await request('POST', '/offline-events', { events: 'nope' }, auth);
+      const [[row]] = await sequelize.query("SELECT level, details FROM system_logs WHERE service = 'offline-detect' AND request_id = ? LIMIT 1", { replacements: [id] });
+      const det = row ? (typeof row.details === 'string' ? JSON.parse(row.details) : row.details) : null;
+      return a.status === 200 && a.body?.data?.accepted === 1
+        && b.status === 200 && b.body?.data?.skipped === 1
+        && c2.status === 400
+        && row && row.level === 'warning' && det && det.bogus === undefined
+        && det.tz === 'Asia/Kuala_Lumpur' && det.slowRes && det.slowRes.n === 1;
+    } finally {
+      await sequelize.query("DELETE FROM system_logs WHERE service = 'offline-detect' AND request_id = ?", { replacements: [id] });
+    }
+  });
+}
+
 // ── 역할 추가 요청 (멀티 로그인 v1.3, .claude/fable-design-20261005-context-request.md §5.6) ──
 // DB 를 쓰지 않는 경로만(익명 401 · demo 403 · 범위 밖 403 · 조회 200). 고정물 = dev demo RA/BG(이메일로 찾는다).
 function defineContextRequestTests({ adminToken }) {
@@ -476,6 +517,18 @@ function defineContextRequestTests({ adminToken }) {
         anon.status === 401);
     }
     return ok.length >= 6 && ok.every(Boolean);
+  });
+
+  // 2026-10-30 Irene «배송완료일 기준으로 다 발행일 맞춰» — 청구서 발행일 = 마지막 delivered 기록 → 받은 날 → 없으면 null(만드는 날).
+  test('trade', '청구서 발행일 = 배송 완료일 — delivered 기록 우선 · 받은 날 대체 · 기록 없음/미래는 null · 문자열 기록도 읽음', async () => {
+    const { deliveredAtOf } = require('../services/purchaseOrderService');
+    const ev = (at) => ({ events: [{ at: '2026-10-14T10:00:00.000Z', status: 'shipped' }, { at, status: 'delivered' }] });
+    const iso = (d) => (d ? d.toISOString() : null);
+    return iso(deliveredAtOf({ tracking_info: ev('2026-10-15T17:58:34.997Z'), received_at: new Date('2026-10-30T17:27:00Z') })) === '2026-10-15T17:58:34.997Z'
+      && iso(deliveredAtOf({ tracking_info: { events: [] }, received_at: new Date('2026-10-20T03:00:00Z') })) === '2026-10-20T03:00:00.000Z'
+      && deliveredAtOf({ tracking_info: null, received_at: null }) === null
+      && deliveredAtOf({ tracking_info: ev('2099-01-01T00:00:00.000Z'), received_at: null }) === null
+      && iso(deliveredAtOf({ tracking_info: JSON.stringify(ev('2026-10-23T03:42:37.996Z')), received_at: null })) === '2026-10-23T03:42:37.996Z';
   });
 
   // 승인 즉시 반영(.claude/fable-design-20261016-staff-approval-live.md §6.1) — RA 직원 목록 «연결 계정» opt-in.
@@ -12526,6 +12579,7 @@ async function runTests(allTests, category) {
   defineAuthTests(ctx);
   defineAdminSearchDiscountTests(ctx);
   defineContextRequestTests(ctx);
+  defineOfflineEventsTests();
   defineSecurityTests(ctx);
   definePosTests(ctx);
   defineMobileTests(ctx);

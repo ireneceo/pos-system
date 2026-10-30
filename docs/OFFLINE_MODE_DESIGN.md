@@ -512,3 +512,140 @@ export function overlayTableStatuses(statuses: Record<string, any>, ops, orders)
 ① 오프라인 신규주문 → 티켓 1장, 복구 후 재인쇄 0 (기존 기능 회귀 확인) ② 오프라인 라운드(기존 주문) → 라운드 티켓 1장, 복구 후 0 ③ 오프라인 취소(주방 발행됐던 주문) → CANCELLED 안내 1장, 복구 후 0 ④ 오프라인 테이블이동 → TABLE CHANGED 1장, 복구 후 0 ⑤ 프린터 전원 OFF 상태로 오프라인 라운드 → 복구 후 폴러가 정확히 1장(zero 방지 경로) ⑥ 온라인 회귀: 일반 주문/라운드/취소/이동 인쇄 종전과 동일.
 
 **E. 배포**: 마이그레이션 0(ProcessedOp 기존) → sync-database 불필요. SW 버전 bump. 운영 배포는 Irene `/배포`만.
+
+---
+
+## 16. 오프라인 오탐 원인 가시화 — health 한도 제외 + 기기 기록·복구 시 전송 (2026-10-30 Fable 설계 · Irene «권고대로»)
+
+> 배경: 운영에서 보조기기 잠금 화면(«Offline — orders are handled by the main POS»)이 인터넷이 멀쩡한데 떴다. 운영 서버는 지금 Cloudflare 없이 nginx 직결, 부하·메모리 정상, 백엔드 재시작 0. 실측으로 확인된 **구조적 후보 1개**: `/api/health` 가 `app.use('/api/', apiLimiter)`(IP당 15분 5000회) **뒤**에 정의돼 한도에 세어진다 — 매장 전 기기가 한 공인 IP 라 한도를 넘기면 연결 확인 자체가 429 → 3회 연속 → 잠금. **운영이 실제로 429 였는지는 확인 못 함**(nginx 로그는 root). 그래서 ① 그 후보를 제거하고 ② 다음 재발 때 기기가 «왜·언제» 를 남겨 서버로 올리게 한다. 운영 배포는 다음 배포 때(이 설계 범위 밖).
+
+### 16-0. 바뀌지 않는 것 (가드레일)
+- `OfflineContext.tsx` 의 판정 상수(8s 간격 · 6s 타임아웃 · 연속 3회) · 상태 머신 · `runSync` 호출 — **그대로**. 이번 일은 «기록» 을 끼우는 것이지 «판정» 을 바꾸는 게 아니다.
+- `OfflineLockOverlay.tsx` · `offlineMainPos.ts` · 문구(i18n) — 무접촉. 사용자에게 보이는 화면 변화 0.
+- `apiLimiter` 의 `max`·`windowMs` · `authLimiter`·`pinLimiter`·`mobileOrderLimiter` · `app.set('trust proxy', 1)` 값 — 그대로(nginx 가 앞에 있으니 1 이 맞다).
+- 🔒 인쇄 보호파일 8개 · KDS 단계 로직 — 열지 않는다. 새 DB 테이블·ENUM 변경 **없음**(기존 `system_logs` 재사용, category 는 기존 값 `system`).
+- 새 UI 화면 없음. 읽기는 기존 System Admin ▸ System Logs 화면.
+
+### 16-1. 서버 — health 를 한도에서 뺀다 (`dev-backend/server.js`)
+1. `apiLimiter`(188행 부근)에 `skip` 추가 — 라우트 위치는 옮기지 않는다(diff 최소, 의도가 한 곳에 보임):
+   ```js
+   const apiLimiter = rateLimit({
+     windowMs: 15 * 60 * 1000,
+     max: 5000,
+     // 2026-10-30: 연결 확인 핑(/api/health)은 세지 않는다 — 한도가 차면 «연결 끊김» 으로 오판돼 보조기기가 잠겼다(§16).
+     skip: (req) => req.originalUrl.split('?')[0] === '/api/health',
+     ...
+   ```
+   (`req.path` 는 마운트 경로가 잘려 `/health` 가 되므로 `originalUrl` 로 비교.)
+2. 75행 주석만 고친다: `// Nginx 프록시 신뢰 (Rate Limiter 가 손님 공인 IP 를 보게) — Cloudflare 는 2026-10 현재 미사용`. 값은 그대로 `1`.
+3. health 응답 내용·위치(411행)·다른 미들웨어(helmet·securityHeaders·sqlInjectionProtection)는 그대로 — GET 이라 body 파서도 무관. **더 뺄 것 없음.**
+4. **(Fable 보완 2026-10-30 18:1x UTC) 한도 키를 손님 실주소로** — 같은 `apiLimiter` 에 `keyGenerator: (req) => clientIp(req) || req.ip` 한 줄(`utils/clientIp` 는 이미 Cloudflare 대역이면 `CF-Connecting-IP`, 아니면 nginx 가 덮어쓴 `X-Real-IP` 를 쓴다 — 위조 차단 포함). 이유: `trust proxy 1` + nginx `$proxy_add_x_forwarded_for` 라 **Cloudflare 를 켜면 `req.ip` 가 Cloudflare 지점 주소**가 되어 전 매장·전 방문자가 한 주소로 15분 5000회를 나눠 쓴다 → 그때 다른 API 까지 429 = Irene 가 말한 «켜면 엄청 느리고 자꾸 오프라인» 의 구조적 후보. 지금(DNS only)은 `clientIp(req)` 와 `req.ip` 가 같아 **동작 변화 0**, 켜는 날부터 효과. 10-29 판단서 §6 의 권고를 이 묶음에 넣는다(같은 파일·같은 게이트). `authLimiter`·`pinLimiter`·`mobileOrderLimiter` 도 같은 키를 쓴다 — 한 줄씩, 값은 그대로.
+
+### 16-2. 프론트 — 연결 확인은 «순수 도달 검사» 로 (`dev-frontend/src/utils/httpClient.ts`)
+- `POS_BYPASS_PATHS` 에 `'/api/health'` 한 줄 추가 → 핑에 Authorization 토큰을 싣지 않는다(서버 health 는 토큰을 보지 않으므로 동작 변화 0; 연결 확인이 로그인 상태와 무관해진다). GET dedupe 는 `?t=` 로 이미 매번 다른 키 — 손대지 않는다.
+
+### 16-3. 프론트 — 기기 기록 (신규 `dev-frontend/src/utils/offlineEvents.ts`, 100줄 안팎)
+**저장소**: `localStorage['offline_events_v1']` = `OfflineEvent[]`. **상한**: 최대 30건 · 직렬화 32KB(넘으면 오래된 것부터 버림). 보낸 건은 지운다(전송 실패분만 남음).
+**한 건 모양**(이 키만 — 서버도 같은 화이트리스트로 받는다):
+```ts
+interface ProbeFail { at: string; kind: 'timeout'|'http'|'network'; status?: number; ms: number; retryAfter?: string; rlRemaining?: string; }
+interface OfflineEvent {
+  id: string;            // crypto.randomUUID() (없으면 Date.now()+random)
+  startedAt: string;     // ISO — 오프라인 판정 순간
+  recoveredAt?: string;  // ISO — 복구 순간 (없으면 아직 오프라인/새로고침으로 끊김)
+  durationMs?: number;
+  recoveredBy?: 'ping'|'reload';   // reload = 오프라인 중 새로고침 뒤 첫 핑 성공으로 닫힘
+  trigger: 'probe'|'navigator_offline'|'offline_event';   // 3회 실패 / navigator.onLine false / window 'offline'
+  probes: ProbeFail[];   // 판정 직전 실패 ≤3건 (trigger 가 probe 가 아니면 비어 있을 수 있음)
+  navigatorOnLine: boolean;
+  path: string;          // location.pathname 만 (query 제외, ≤120자)
+  mainPos: boolean;      // isOfflineMainPos()
+  swVersion: string|null;// navigator.serviceWorker?.controller 가 있으면 sw.js SW_VERSION 을 알 길이 없으므로 null 허용 — 빌드 식별은 ua+timestamp 로 충분
+  ua: string;            // navigator.userAgent ≤200자
+  storeId?: number;      // localStorage 'user' 의 restaurant_id 가 있으면 (try/catch)
+  // ── Fable 보완(2026-10-30 18:1x UTC) — «로그인 직후 큰 내려받기에 핑이 묻혔나» 와 «기기가 어디·어떤 회선인가» 를 가르는 6개. 전부 선택·try/catch.
+  sinceLoadMs?: number;  // performance.now() at startedAt — 화면을 연 지 몇 초 만에 오프라인이 됐나(«포스 로그인하면» 가설)
+  visibility?: 'visible'|'hidden'; // document.visibilityState — 숨은 탭은 브라우저가 타이머·요청을 늦춘다
+  conn?: { type?: string; rtt?: number; downlink?: number }; // navigator.connection(크롬·안드로이드만) effectiveType·rtt·downlink
+  tz?: string;           // Intl.DateTimeFormat().resolvedOptions().timeZone ≤40자 — 한국/말레이시아 기기 구분
+  role?: string;         // localStorage 'user' 의 role ≤40자 — 브랜드/매장/오너 (BG 는 메인 POS 가 없어 항상 잠금)
+  slowRes?: { n: number; maxMs: number; maxName: string }; // startedAt 직전 30초 안에 시작된 리소스(performance.getEntriesByType('resource')) 중 3초 넘게 걸린 것(**/api/health 제외** — 시간 초과된 연결 확인 자체가 세어지면 모든 timeout 에서 n≥1 이 돼 신호가 사라진다, Fable 재검증 2026-10-30)의 수·최장 ms·그 이름(경로 끝 ≤80자) — 번들·이미지 내려받기가 핑을 가렸는지
+}
+```
+**함수**:
+- `noteProbeFailure(f: ProbeFail)` — 메모리 링(최근 3건)에 쌓는다. 성공 핑에서 `clearProbeFailures()`.
+- `recordOfflineStart(trigger)` — 열린 건(`recoveredAt` 없음)이 이미 있으면 새로 만들지 않는다(중복 방지). 링의 실패 3건을 `probes` 로 넣고 저장.
+- `recordOfflineEnd(by: 'ping'|'reload')` — 열린 건에 `recoveredAt`·`durationMs`·`recoveredBy` 를 채운다.
+- `flushOfflineEvents()` — `getAuthToken()` 이 없으면 아무것도 안 함(토큰 없이 보내면 401 → 자동 로그아웃 경로를 건드리므로). 닫힌 건만 ≤20건씩 `POST /api/offline-events { events }` → 2xx 면 그 id 들을 지운다. 실패하면 그대로 둔다(다음 복구·다음 앱 시작에 재시도). 예외는 전부 삼킨다 — **이 유틸은 절대 throw 하지 않는다**(판정 로직을 깨면 안 된다).
+
+### 16-4. 프론트 — 끼우는 자리 (`dev-frontend/src/contexts/OfflineContext.tsx`, 10줄 안팎)
+- `ping()` 의 `navigator.onLine === false` 분기: `goOffline('navigator_offline')`.
+- `res.ok` 아님: `noteProbeFailure({ at, kind:'http', status: res.status, ms, retryAfter: res.headers.get('Retry-After') ?? undefined, rlRemaining: res.headers.get('RateLimit-Remaining') ?? undefined })` 뒤 기존 카운트 로직 → 임계 도달 시 `goOffline('probe')`.
+- `catch (e)`: `kind: e?.name === 'AbortError' ? 'timeout' : 'network'`.
+- `res.ok`: `clearProbeFailures()`; **첫 성공 핑**(마운트 뒤 1회)에서 열린 건이 남아 있으면 `recordOfflineEnd('reload')` 후 `flushOfflineEvents()`.
+- `goOffline(trigger)` 에서 상태 전환 직후 `recordOfflineStart(trigger)`. `window 'offline'` 핸들러는 `goOffline('offline_event')`.
+- `goOnline()` 의 `if (was)` 블록: 기존 `runSync` 그대로 두고, 그 **옆에** `recordOfflineEnd('ping'); flushOfflineEvents().catch(()=>{})` — runSync 를 기다리지 않는다(둘은 독립).
+- `ms` 는 fetch 전후 `performance.now()` 차.
+
+### 16-5. 서버 — 받는 곳 (신규 `dev-backend/routes/offline-events.js` + `server.js` 마운트 1줄)
+- 마운트(진단 라우트들 옆, 586~588행 근처): `app.use('/api/offline-events', offlineEventsLimiter, authenticateToken, require('./routes/offline-events'));`
+  - `offlineEventsLimiter = rateLimit({ windowMs: 15*60*1000, max: 60, message: { success:false, message:'Too many reports' } })` — IP당. 한도에 걸린 기기는 기록을 지우지 않고 다음에 다시 보낸다.
+  - 인증: `authenticateToken` 만(모든 로그인 직원·관리자 기기가 보고 주체 — KDS·보조 POS 포함). `checkRestaurantAccess` 불필요: 매장 데이터에 닿지 않고, `storeId` 는 «기기가 주장한 값» 으로 details 에만 적는다. 읽기는 System Admin 전용(기존 `/api/system-logs`)이라 노출 경계 없음.
+- `POST /` — body `{ events: OfflineEvent[] }`:
+  - 검증(직접 화이트리스트 — 중첩 배열이라 express-validator 보다 짧고 명확): `events` 가 배열 · 1~20건; 건마다 §16-3 키만 골라 담고(미지 키 버림 — Fable 보완 6개 `sinceLoadMs`·`visibility`(enum)·`conn`(3키·문자열 ≤20·숫자)·`tz`·`role`·`slowRes`(n·maxMs 숫자 · maxName ≤80) 도 같은 식으로 받는다), 타입 검사(문자열 ≤300자 로 자름, 숫자는 유한, `probes` ≤3 · kind/trigger 는 enum), 골라 담은 결과의 `JSON.stringify` 길이 > 3000 이면 그 건만 거부. `id`·`startedAt`·`trigger` 없으면 그 건 거부. 전부 거부·배열 아님 → 400 `{success:false,message}`.
+  - 중복 방지: `SystemLog.findOne({ where:{ service:'offline-detect', request_id: ev.id } })` 있으면 skip(응답 유실로 재전송된 건).
+  - 저장: `systemLogger.warn('system', 'offline-detect', message, details, meta)` — level **warning**(error 면 시간당 메일 알림이 나간다 — 외부 발송은 이 설계 범위 밖, 쓰지 않는다).
+    - `message`: `` `Device offline ${Math.round((durationMs||0)/1000)}s · trigger=${trigger} · first=${probes[0]?.kind ?? '-'}${probes[0]?.status ? '/'+probes[0].status : ''} · ${mainPos?'main':'sub'} · ${path}` ``
+    - `details`: 정제된 event + `{ receivedAt: new Date().toISOString() }`
+    - `meta`: `{ userId: req.user.id, userName: req.user.name||req.user.email, ipAddress: clientIp(req) (utils/clientIp), userAgent: ev.ua, requestId: ev.id, duration: ev.durationMs, statusCode: ev.probes?.[0]?.status }`
+  - 응답: `res.json({ success:true, data:{ accepted, skipped, rejected } })`. 표준 형식(`error:` 키 금지).
+- 이 라우트는 **새 인증 라우트 = 보안 경계** → 구현 뒤 `check-sensitive-diff` 가 FABLE 게이트 대상으로 잡는 게 정상. Fable 검증 1회(§16-7 숫자를 넘긴다).
+
+### 16-6. 읽는 법 (Irene·우리)
+- 화면: System Admin ▸ `/pos/admin/logs` → Service 필터 `offline-detect` (기존 화면, 변경 0). 한 줄 = 기기 1대의 오프라인 1회. message 에 지속시간·방아쇠·첫 실패 종류/상태코드·메인/보조·화면이 보이고, details 펼치면 실패 3건의 시각·종류·ms·Retry-After 가 있다.
+- SQL(개발·운영 공통, 읽기 전용): `SELECT timestamp,user_name,ip_address,message FROM system_logs WHERE service='offline-detect' ORDER BY timestamp DESC LIMIT 50;`
+- 판독 가이드: `http/429` = 한도(이 수정으로 사라져야 함) · `timeout` 연속 = 서버 느림(같은 서버 PlanQ 재시작·메모리 압박 의심 — 시각을 pm2 로그와 맞춘다) · `network` = DNS/TLS/회선 · `offline_event`/`navigator_offline` = 기기 와이파이·절전.
+- (Fable 보완) `timeout` + `sinceLoadMs` 작음(< 60초) + `slowRes.n` ≥ 1 = **화면 여는 순간의 큰 내려받기(번들 1MB·메뉴 이미지)가 같은 HTTP/2 연결에서 핑을 밀어낸 것** — 서버가 아니라 기기↔서버 **회선 품질**(손실·지연) 문제. `tz`·`conn.rtt` 로 어느 나라·어떤 회선인지 본다. `recoveredBy='reload'` 인 행의 `durationMs` 는 믿지 않는다(기기를 껐다 켠 시간까지 들어감).
+
+### 16-7. 검증 (완료 선언의 정의 — 숫자로 남긴다)
+**A. 서버 한도 제외**
+1. `pm2 restart dev-backend` → `curl -sD - -o /dev/null https://dev.purplehere.com/api/health` 에 `RateLimit-Limit`/`RateLimit-Remaining` 헤더가 **없다**(한도에 세이면 standardHeaders 가 붙는다 — 이게 skip 의 직접 증거). 다른 `/api/*` GET 엔 헤더가 **있다**(한도 살아 있음).
+2. 고장주입(dev 파일 임시 수정 → restart → 측정 → 원복 → restart, `git diff` 로 의도 줄만 남았는지 확인):
+   - `max: 5` 로 낮춤 → `/api/restaurants` 류 아무 API 6회 → 6번째 **429** (한도 작동) · 같은 상태에서 `/api/health` 20회 → **20/20 200** (제외 작동).
+   - skip 줄을 지움(max 5 유지) → `/api/health` 6번째 **429** (반증: 가드를 빼면 실제로 실패) → 둘 다 원복.
+**B. 기기 기록·전송 (Playwright, dev 데모 매장 38 `restaurant` 역할, 보조기기 = `offline_main_pos` 미설정)**
+3. `page.route('**/api/health**', r => r.fulfill({status:429, headers:{'Retry-After':'900','RateLimit-Remaining':'0'}, body:'{}'}))` → ≤30초 안에 잠금 오버레이 표시 → `localStorage.offline_events_v1` 1건: `trigger='probe'`, `probes.length=3`, `probes[0].kind='http'`, `status=429`, `retryAfter='900'`, `recoveredAt` 없음.
+4. `unroute` → ≤10초 안에 오버레이 소멸 → `page.waitForRequest(POST /api/offline-events)` 응답 200 `accepted:1` → localStorage 비어 있음 → DB `system_logs` 에 `service='offline-detect' AND request_id=<id>` 1행, `level='warning'`, `user_id` = 시험 계정.
+5. 같은 식으로 `route.abort()` → `kind='network'` / 7초 지연 뒤 fulfill → `kind='timeout'` / `context.setOffline(true)` → `trigger='offline_event'` 각 1건.
+6. 오프라인 중 새로고침: 3 상태에서 `page.reload()`(라우트 유지) → unroute → 첫 핑 성공 → 전송된 행의 `recoveredBy='reload'`.
+7. 같은 id 두 번 POST → 두 번째 `skipped:1`, 행 1개. 상한: localStorage 에 40건 주입 → 30건만 남음.
+8. 온라인 평상시(실패 0) → 네트워크 탭에 `/api/offline-events` 요청 0 · localStorage 키 없음(회귀 0).
+**C. 보안·입력**
+9. 익명 POST → 401 · 토큰 있고 `events` 가 배열 아님 → 400 · 3KB 넘는 건 1개 섞음 → `rejected:1` · 미지 키 → 저장 행 details 에 없음 · 한도: `max:3` 로 임시 낮춰 4번째 429(원복).
+10. `health-check.js` 에 위 9 중 «익명 401 · 정상 200 accepted · 배열 아님 400» 3건 추가(시험 행은 끝에 `request_id` 로 삭제). 데모 계정만.
+**D. 기계 게이트**: `check-print-guard` 변경 0(건드린 파일 중 보호파일 없음 — 뜨면 사고·원복) · `check-design-guard` · `verify-all`(health-check 새 3건 포함) · 프론트는 **코드 확정 → `build:dev` 1회 → `--full` 1회**, `sw.js` SW_VERSION 은 맨 마지막에 올린다 · `check-sensitive-diff` → 게이트 대상 뜨면 Fable 검증 1회.
+
+### 16-8. 리스크 (사전 합의)
+- **운영 원인이 429 였는지는 여전히 미확인.** 이 설계는 후보 1개 제거 + 다음 재발 때 원인이 기록으로 남게 하는 것. 재발 기록이 `timeout` 이면 서버 쪽(같은 서버 PlanQ 재시작·메모리)을 보고, `network/offline_event` 면 매장 와이파이 쪽이다.
+- health 가 무제한이 된다: 응답이 작고 nginx 가 앞에 있어 실질 위험 낮음. 필요하면 나중에 nginx `limit_req` 로 — 지금은 안 한다.
+- 전송 시 토큰이 만료돼 있으면 401 → httpClient 가 자동 로그아웃한다(다른 모든 API 와 같은 기존 동작). 토큰 없으면 안 보내는 것으로 최소 방어; 완전 회피는 범위 밖.
+- 회선이 깜빡이는 매장은 기기당 한 번 끊길 때마다 1행 — 기기 30건·IP 60회/15분·system_logs 삭제 라우트가 상한. 합치기(coalesce)는 넣지 않는다(기록이 적을수록 원인 판독이 어려워진다).
+
+### 16-9. 원인 판정 현황 — 2026-10-30 Irene 운영 «오프라인» (Fable 판정 · 18:1x UTC)
+**결론: 원인은 확정하지 못했다. 서버 결함은 아니다. 가장 맞아떨어지는 후보는 «기기 ↔ 운영서버 직결 회선 품질(아시아 → 독일) + 화면 여는 순간의 큰 내려받기» 이고, 이 설계(§16)의 기록이 다음 재발 때 그것을 숫자로 가른다.**
+
+| 사실 | 출처 | 뜻 |
+|---|---|---|
+| 운영 서버: 부하 0.01 · 메모리 4.4GB 여유 · 백엔드 재시작 0 · health 0.05초(DB 안 씀) · nginx limit_req 없음 | Opus ssh 읽기 | 서버가 24초 넘게 못 받은 적 없음 |
+| Irene(브랜드 제너럴) 요청이 15:25~15:52 UTC 끊김 없이 처리됨 | 운영 out.log | 서버는 그 시간 그 계정을 계속 받았다 |
+| 운영 직결 = TLS 1.3 · **HTTP/2 한 연결** · 인증서 정상(12-08 까지) · DNS 300초 | Fable curl | 한 연결에 핑과 번들·이미지가 같이 탄다 — 패킷 손실이 있으면 핑도 같이 멈춘다(HTTP/2 는 TCP 손실에 전부 묶임) |
+| 바깥 측정 `/api/health`: 일본 0.77초 5/5 · 싱가포르 0.9~2.3초 5/5 · **홍콩 3/5(2회 시간 초과)** · ICMP 전부 차단 | check-host(Opus) | 서버가 0.05초인데 아시아에서 1~2초·일부 시간 초과 = **아시아 → 독일 경로가 고르지 않다** |
+| 잠금 화면은 «메인 POS 가 아닌 모든 기기» 에 뜬다 · 브랜드 제너럴은 메인 POS 지정 자체가 없다 | OfflineLockOverlay.tsx · offlineMainPos.ts | BG 로 들어간 기기는 핑 3회만 늦으면 **반드시** 전체 화면이 잠긴다(«브랜드제너럴로 뭘 하려는데 계속») |
+| «포스 로그인하면» 그때만 · 다른 건 문제 없음 | Irene | 로그인 직후 = 번들 1MB·청크·메뉴 이미지·설정을 한꺼번에 내려받는 순간. 그 뒤 한가할 땐 핑이 잘 간다 |
+| Cloudflare 켜져 있을 땐 «엄청 느리고 자꾸 오프라인» | Irene | `trust proxy 1` 이라 Cloudflare 경유 시 req.ip = Cloudflare 지점 주소 → 전 매장이 15분 5000회를 나눠 씀(→ §16-1-4) + 말레이시아 지점 장애(10-29 판단서) |
+| Opus 재현(60초, 오프라인 없음)은 운영서버와 같은 독일 데이터센터에서 돌림 | Opus | Irene 의 경로를 대표하지 못한다 — 재현 실패가 «문제 없음» 의 증거가 아니다 |
+| 운영 429 발생 여부 · Irene 기기의 실패 종류(시간 초과/거절/회선) | 없음 — nginx 기록은 root 전용, 기기 기록 없음 | **이 공백을 §16 이 메운다** |
+
+**순위:** ① 회선 품질 + 로그인 직후 내려받기 겹침(`timeout`) ② 한도 429(`http/429` — Irene 혼자서는 5000 을 못 채우므로 지금은 낮음, Cloudflare 켜면 높음) ③ 기기 와이파이·절전(`offline_event`). 기록이 쌓이면 이 순서를 바꾼다.
+**그 외 조사 사실(이번엔 안 건드림):** 운영 error.log 에 `[AUTH] No token found in request` 가 연속으로 많이 찍힘 — 토큰 없는 요청이 보호 경로를 두드린 것(로그아웃 뒤 남은 폴링 또는 봇). 오프라인과 무관하나 다음 평소 작업 때 출처 1회 확인. nginx `listen 443 ssl` 에 http2 가 안 적혀 있는데 h2 가 협상됨 — 같은 포트의 다른 server 블록(planq.kr 또는 purplehere-ip)이 켠 것, 이상 아님.
+**Cloudflare 다시 켤 조건(10-29 §4)에 1개 추가:** §16-1-4(한도 키 = 손님 실주소)가 운영에 배포된 뒤에만 켠다.

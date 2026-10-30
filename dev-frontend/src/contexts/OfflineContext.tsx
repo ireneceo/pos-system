@@ -8,6 +8,10 @@
  * 1단계 범위 = 감지 + 상태 제공 + 배너. 큐/동기화/로컬인쇄는 다음 단계에서 이 컨텍스트 위에 얹는다.
  */
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import {
+  noteProbeFailure, clearProbeFailures, hasOpenOfflineEvent, recordOfflineStart, recordOfflineEnd,
+  flushOfflineEvents, type OfflineTrigger,
+} from '../utils/offlineEvents';
 // 상대 '/api/*' 는 설치된 fetch 인터셉터(utils/httpClient)가 API_BASE_URL 로 자동 prefix 한다.
 
 interface OfflineState {
@@ -39,11 +43,15 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     let alive = true;
+    // 마운트 뒤 첫 성공 핑: 오프라인 중 새로고침돼 열린 채 남은 기록을 'reload' 로 닫고, 못 보낸 기록을 다시 보낸다(§16-3·4).
+    let openAtMount = hasOpenOfflineEvent();
+    let firstOk = true;
 
-    const goOffline = () => {
+    const goOffline = (trigger: OfflineTrigger) => {
       if (!alive || offlineRef.current) return;
       offlineRef.current = true;
       setIsOffline(true);
+      recordOfflineStart(trigger);
     };
     const goOnline = () => {
       if (!alive) return;
@@ -58,6 +66,9 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .then(({ runSync }) => runSync())
           .catch(() => {})
           .finally(() => { if (alive) setIsReconnecting(false); });
+        // 오프라인 «왜·언제» 기록을 닫아 서버로 — runSync 와 독립(기다리지 않는다).
+        recordOfflineEnd('ping');
+        flushOfflineEvents().catch(() => {});
       }
       setIsOffline(false);
     };
@@ -66,9 +77,10 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // 브라우저가 확실히 오프라인이라고 하면 핑 생략하고 즉시 오프라인.
       if (typeof navigator !== 'undefined' && navigator.onLine === false) {
         failRef.current = FAIL_THRESHOLD;
-        goOffline();
+        goOffline('navigator_offline');
         return;
       }
+      const t0 = performance.now();
       try {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), PING_TIMEOUT_MS);
@@ -76,18 +88,36 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           method: 'GET', signal: ctrl.signal, cache: 'no-store',
         });
         clearTimeout(timer);
-        if (res.ok) { failRef.current = 0; goOnline(); }
-        else { failRef.current += 1; if (failRef.current >= FAIL_THRESHOLD) goOffline(); }
-      } catch {
+        if (res.ok) {
+          clearProbeFailures();
+          if (firstOk) {
+            firstOk = false;
+            if (openAtMount) recordOfflineEnd('reload');
+            flushOfflineEvents().catch(() => {}); // 보낼 것이 없으면 요청하지 않는다
+          }
+          failRef.current = 0; goOnline();
+        } else {
+          noteProbeFailure({
+            at: new Date().toISOString(), kind: 'http', status: res.status, ms: Math.round(performance.now() - t0),
+            retryAfter: res.headers.get('Retry-After') ?? undefined,
+            rlRemaining: res.headers.get('RateLimit-Remaining') ?? undefined,
+          });
+          failRef.current += 1; if (failRef.current >= FAIL_THRESHOLD) goOffline('probe');
+        }
+      } catch (e) {
+        noteProbeFailure({
+          at: new Date().toISOString(), kind: (e as Error)?.name === 'AbortError' ? 'timeout' : 'network',
+          ms: Math.round(performance.now() - t0),
+        });
         failRef.current += 1;
-        if (failRef.current >= FAIL_THRESHOLD) goOffline();
+        if (failRef.current >= FAIL_THRESHOLD) goOffline('probe');
       }
     };
 
     ping();
     const iv = setInterval(ping, PING_INTERVAL_MS);
     const onOnlineEvt = () => ping();
-    const onOfflineEvt = () => { failRef.current = FAIL_THRESHOLD; goOffline(); };
+    const onOfflineEvt = () => { failRef.current = FAIL_THRESHOLD; goOffline('offline_event'); };
     window.addEventListener('online', onOnlineEvt);
     window.addEventListener('offline', onOfflineEvt);
 

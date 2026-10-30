@@ -72,7 +72,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const app = express();
-app.set('trust proxy', 1); // Cloudflare/Nginx 프록시 신뢰 (Rate Limiter 정확한 IP 감지)
+app.set('trust proxy', 1); // Nginx 프록시 신뢰 (Rate Limiter 가 손님 공인 IP 를 보게) — Cloudflare 는 2026-10 현재 미사용
 const server = http.createServer(app);
 const { syncDatabase } = require('./db');
 const invoiceScheduler = require('./services/invoiceScheduler');
@@ -166,6 +166,11 @@ app.use('/seo-html', require('./routes/seo-html'));
 // ============================================
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
+const { clientIp } = require('./utils/clientIp');
+// 한도는 손님 실주소로 센다 — Cloudflare 를 켜면 req.ip 가 Cloudflare 지점 주소가 돼 전 매장이 한 통을 나눠 쓴다(docs/OFFLINE_MODE_DESIGN.md §16-1-4).
+//   지금(Cloudflare 미사용)은 clientIp(req) === req.ip 라 동작 변화 0. ipKeyGenerator 는 IPv6 를 /56 단위로 묶는다(라이브러리 권장).
+const limiterKey = (req) => ipKeyGenerator(clientIp(req) || req.ip);
 const { securityHeaders, sqlInjectionProtection } = require('./middleware/security');
 
 // Helmet - HTTP 헤더 보안 (CSP는 프론트엔드에서 관리하므로 비활성화)
@@ -188,6 +193,9 @@ app.use(sqlInjectionProtection);
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5000,
+  keyGenerator: limiterKey,
+  // 2026-10-30: 연결 확인 핑(/api/health)은 세지 않는다 — 한도가 차면 «연결 끊김» 으로 오판돼 보조기기가 잠겼다(docs/OFFLINE_MODE_DESIGN.md §16).
+  skip: (req) => req.originalUrl.split('?')[0] === '/api/health',
   message: { success: false, error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false
@@ -198,6 +206,7 @@ app.use('/api/', apiLimiter);
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
+  keyGenerator: limiterKey,
   message: { success: false, error: 'Too many login attempts, please try again later.' }
 });
 app.use('/api/auth/login', authLimiter);
@@ -207,6 +216,7 @@ app.use('/api/auth/login', authLimiter);
 const mobileOrderLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 60,
+  keyGenerator: limiterKey,
   message: { success: false, error: 'Too many orders, please try again later.' }
 });
 // 2026-10-09 사전점검 L1: 주문 추적 화면이 3초마다 부르는 GET /api/mobile/order/:id 까지 이 60회에 세어져,
@@ -223,6 +233,7 @@ app.use('/api/mobile/order', (req, res, next) => (req.method === 'POST' ? mobile
 const pinLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 50,
+  keyGenerator: limiterKey,
   message: { success: false, error: { message: 'Too many PIN attempts, please try again later.', code: 'PIN_RATE_LIMITED' } }
 });
 app.use('/api/staff/verify-pin', pinLimiter);
@@ -610,6 +621,16 @@ app.use('/api', foodcourtFloorPlansRouter);  // Floor plans — /foodcourt-branc
 const { exec } = require('child_process');
 const { authenticateToken, requireRole } = require('./middleware/auth');
 app.use('/api/system-logs', authenticateToken, requireRole('System Admin'), systemLogsRouter);
+// 기기 오프라인 판정 기록 — 복구 때 기기가 «왜·언제» 를 올린다(docs/OFFLINE_MODE_DESIGN.md §16). 읽기는 위 system-logs(System Admin).
+const offlineEventsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  keyGenerator: limiterKey,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many reports' }
+});
+app.use('/api/offline-events', offlineEventsLimiter, authenticateToken, require('./routes/offline-events'));
 // 소켓 인증 모니터 통계 (Phase B 강제 전환 안전 판단용 — withToken vs withoutToken 비율 + 토큰없는 클라 출처). 2026-06-16
 app.get('/api/socket-auth-monitor', authenticateToken, requireRole('System Admin'), (req, res) => {
   res.json({ success: true, data: getSocketAuthStats() });

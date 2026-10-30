@@ -7,6 +7,7 @@ import { shouldDedupe, buildDedupeKey, dedupedFetch, invalidateDedupe } from './
 // - 토큰 자동 주입 안 함
 // - 401 자동 로그아웃 안 함
 const POS_BYPASS_PATHS = [
+  '/api/health', // 연결 확인 — 로그인 상태와 무관한 순수 도달 검사(docs/OFFLINE_MODE_DESIGN.md §16-2)
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/signup',
