@@ -439,7 +439,8 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res, next) =>
     });
 
     // Build reset URL
-    const baseUrl = process.env.FRONTEND_URL || 'https://dev.purplehere.com';
+    // 운영 .env 에 FRONTEND_URL 이 없다 — 예전엔 개발 주소로 떨어져 운영 리셋 링크가 개발서버로 갔다(2026-11-01 aidan).
+    const baseUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
     const resetUrl = `${baseUrl}/reset-password?token=${rawToken}&email=${encodeURIComponent(user.email)}`;
 
     const emailData = passwordResetEmail({
@@ -734,7 +735,10 @@ router.post('/switch-context', authenticateToken, async (req, res, next) => {
           restaurant_id: user.restaurant_id,
           brand_id: user.brand_id,
           foodcourt_id: user.foodcourt_id,
-          manager_id: user.manager_id
+          manager_id: user.manager_id,
+          // 본래 계정의 메뉴 권한 — /me·로그인과 같은 값. 빠지면 브랜드·푸드코트 매니저·Staff 가
+          // «본래 계정» 카드를 고른 직후 사이드바가 Settings 하나만 남는다(새로고침해야 보임 · 2026-11-01 aidan).
+          permissions: userContexts.parsePermissions(user.permissions) || []
         },
         context: userContexts.deriveDefaultContext(user)
       }, 'Switched to default context');

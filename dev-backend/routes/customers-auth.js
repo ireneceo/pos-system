@@ -479,7 +479,7 @@ router.post('/forgot-password', async (req, res) => {
       }
     }
 
-    const baseUrl = process.env.FRONTEND_URL || 'https://dev.purplehere.com';
+    const baseUrl = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
     const resetLink = resetSlug
       ? `${baseUrl}/mobile/${resetSlug}/reset-password?token=${resetToken}`
       : `${baseUrl}/mobile/reset-password?token=${resetToken}`;

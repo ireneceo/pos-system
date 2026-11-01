@@ -355,6 +355,39 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
     return r.status === 403;
   });
 
+  // 2026-11-01 Irene «aidan 관리자 메뉴가 안 떠요 … 전에 고쳤는데 왜 또» — 모자가 있는 브랜드 매니저가 선택 화면에서
+  //   «본래 계정» 카드를 고르면 전환 응답에 permissions 가 빠져 사이드바가 Settings 하나만 남았다(새로고침해야 보임).
+  test('auth', '전환 — 본래 계정 복귀 응답에 메뉴 권한(permissions)이 실린다 (브랜드 매니저)', async () => {
+    const { sequelize } = require('../config/database');
+    const tag = 'zzhcdefperm' + Date.now().toString(36);
+    const perms = ['dashboard', 'management', 'operations'];
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, brand_id, permissions, is_active, email_verified, is_demo, is_test, createdAt, updatedAt) VALUES (?, ?, 'x', 'Brand Manager', 1, ?, 1, 1, 0, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`, JSON.stringify(perms)] });
+    try {
+      const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const sw = await request('POST', '/auth/switch-context', { target: 'default' }, auth);
+      const got = sw.body?.data?.user?.permissions;
+      if (sw.status !== 200 || !Array.isArray(got) || got.join(',') !== perms.join(',')) {
+        console.log(c.gray(`      (전환 ${sw.status} permissions=${JSON.stringify(got)})`));
+        return false;
+      }
+      return true;
+    } finally {
+      await sequelize.query('DELETE FROM users WHERE id = ?', { replacements: [uid] }).catch(() => {});
+    }
+  });
+
+  // 같은 날 «비밀번호 리셋에서 비번 설정이 안 됨» — 운영 .env 에 FRONTEND_URL 이 없어 리셋 메일 링크가 개발서버로 갔다.
+  test('auth', '메일 링크 주소 — FRONTEND_URL 없을 때 운영은 운영 주소 (개발 주소로 떨어지지 않음)', async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const root = path.join(__dirname, '..');
+    const files = ['routes', 'services', 'utils'].flatMap(d => fs.readdirSync(path.join(root, d)).filter(n => n.endsWith('.js')).map(n => `${d}/${n}`));
+    const bad = files
+      .filter(f => /process\.env\.FRONTEND_URL\s*\|\|\s*'https:\/\/dev\.purplehere\.com'/.test(fs.readFileSync(path.join(root, f), 'utf8')));
+    if (bad.length) console.log(c.gray(`      (개발 주소 대체: ${bad.join(', ')})`));
+    return bad.length === 0;
+  });
+
   test('auth', '오너 모자 — 소유행 없는 계정의 오너 ctx 위조 → 네이티브 폴백 + 헤더', async () => {
     const decoded = jwtLib.decode(adminToken) || {};
     const forged = jwtLib.sign(

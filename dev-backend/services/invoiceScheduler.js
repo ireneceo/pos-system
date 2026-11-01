@@ -10,7 +10,7 @@ const { normalizeAdditionalCharges } = require('../utils/paymentSettingsHelper')
 const { sendNotification, getRestaurantAdminAndOwnerIds } = require('../utils/notificationService');
 const { invoiceCreatedEmail } = require('../utils/notificationTemplates');
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://dev.purplehere.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://purplehere.com' : 'https://dev.purplehere.com');
 const ADVANCE_DAYS = 14; // Generate invoices 14 days before billing day
 
 class InvoiceScheduler {
