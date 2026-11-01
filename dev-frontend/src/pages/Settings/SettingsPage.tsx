@@ -36,6 +36,7 @@ import { Button as UIButton } from '../../components/UI/Button';
 import { methodOpenIn, splitKioskFromMobile, KIOSK_HIDDEN_METHODS } from '../../utils/paymentChannel';
 import { isOfflineMainPos, setOfflineMainPos } from '../../utils/offlineMainPos';
 import { openCustomerDisplay, isAutoOpenEnabled, setAutoOpenEnabled, resetCustomerDisplayPosition } from '../../utils/customerDisplay';
+import OwnerApprovalRulesPanel from '../../components/PurchaseOrders/OwnerApprovalRulesPanel';
 // 스타일 컴포넌트
 const SettingsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -987,6 +988,18 @@ const SettingsPage: React.FC = () => {
   const cashFloatRef = useRef<AutoSaveHandle>(null);  // 개시 시재 모드 (이월/고정)
   const requireCancelReasonRef = useRef<AutoSaveHandle>(null);  // 취소/삭제 사유 off|optional|required
   const requirePoOwnerApprovalRef = useRef<AutoSaveHandle>(null);  // 발주 오너 승인 (오너 연결 시 기본 ON)
+  // 오너가 연결된 매장이면 이 스위치는 오너만 바꾼다(2026-11-01 Irene «권고대로» · Fable §G-7-8 A안) — 서버도 같은 규칙으로 막는다
+  const [poMasterLocked, setPoMasterLocked] = useState(false);
+  useEffect(() => {
+    const rid = user?.restaurantId;
+    if (!rid) return;
+    let alive = true;
+    fetch(`/api/purchase-orders/approval-exemptions?restaurant_id=${rid}`, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => { if (alive && j?.success) setPoMasterLocked(!!j.has_owner && !j.can_edit); })
+      .catch(() => { /* 못 읽으면 예전처럼 — 서버가 어차피 막는다 */ });
+    return () => { alive = false; };
+  }, [user?.restaurantId]);
   const mobileOrderQuickOrderRef = useRef<AutoSaveHandle>(null);
   const crossSellEnabledRef = useRef<AutoSaveHandle>(null);
   const mobileOrderShowFeaturedRef = useRef<AutoSaveHandle>(null);
@@ -4049,12 +4062,18 @@ const SettingsPage: React.FC = () => {
                     <p style={{ fontSize: '12px', color: '#4B5563', margin: 0 }}>
                       {t('settings:operations.requirePoOwnerApprovalDesc', { defaultValue: 'When on and an Owner is connected, purchase orders need Owner approval before they are sent to the supplier. Default on when an Owner is connected.' })}
                     </p>
+                    {poMasterLocked && (
+                      <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '4px 0 0' }}>
+                        {t('settings:operations.requirePoOwnerApprovalLocked', { defaultValue: 'Only the Owner can change this — PO Approvals → Approval rules.' })}
+                      </p>
+                    )}
                   </div>
                   <AutoSaveField ref={requirePoOwnerApprovalRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
                         type="checkbox"
                         checked={(operationSettings as any).requirePoOwnerApproval !== false}
+                        disabled={poMasterLocked}
                         onChange={(e) => {
                           const v = e.target.checked;
                           setOperationSettings(prev => ({ ...prev, requirePoOwnerApproval: v } as any));
@@ -4065,6 +4084,10 @@ const SettingsPage: React.FC = () => {
                     </ToggleSwitch>
                   </AutoSaveField>
                 </Toggle>
+                {/* 오너가 정한 승인 예외(공급업체·카테고리·품목) — 읽기 전용, 편집은 오너 화면 (2026-11-01 §G-7-6 ②) */}
+                {user?.restaurantId && (operationSettings as any).requirePoOwnerApproval !== false && (
+                  <OwnerApprovalRulesPanel restaurantId={Number(user.restaurantId)} readOnly />
+                )}
               </SettingsCard>
 
               {/* 주문 알림음 — 새 주문(전 화면 공통) + 서빙 준비완료. (주방은 주방 스테이션 섹션에서 별도) */}

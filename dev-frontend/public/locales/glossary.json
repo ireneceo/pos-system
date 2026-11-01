@@ -443,6 +443,11 @@
       "ko": "정기 발주",
       "zh": "定期采购",
       "ms": "Pesanan tetap"
+    },
+    "Approval exemption": {
+      "ko": "승인 예외",
+      "zh": "审批豁免",
+      "ms": "Pengecualian kelulusan"
     }
   }
 }

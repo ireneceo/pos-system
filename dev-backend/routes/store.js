@@ -11,6 +11,7 @@ const {
   guardShallowSettings,
   normalizePaymentSettings,
 } = require('../utils/settingsGuard');
+const { isPoMasterLocked, applyPoMasterKeep } = require('../utils/poOwnerApproval');
 
 // Get store settings
 router.get('/settings', authenticateToken, checkRestaurantAccess, async (req, res) => {
@@ -145,6 +146,9 @@ router.put('/settings', authenticateToken, async (req, res) => {
     // 못하게 막는다 (thefire kitchenPrinter wipe 재발 방지의 한 축). 권한 없는 사용자의 저장에서는
     // printer_settings 필드를 통째로 건너뛰어 기존 DB 값을 보존한다.
     const canEditPrinterSettings = req.user.role === 'Restaurant Admin' || req.user.role === 'System Admin';
+    // 발주 오너 승인 스위치 — 오너 연결 매장이면 오너·SA 만 바꾼다(2026-11-01 Irene «권고대로» · Fable §G-7-8 A안)
+    const poMasterLocked = await isPoMasterLocked(req.user, restaurantId);
+
 
     // Validate currency against system-allowed currencies
     if (req.body.currency) {
@@ -255,6 +259,10 @@ router.put('/settings', authenticateToken, async (req, res) => {
           let valueToSave = result.value;
           if (result.action === 'merged') {
             console.warn(`  🛡️  [anti-wipe] merged ${field}: ${result.reason}`);
+          }
+          // 발주 오너 승인 스위치 — 오너 연결 매장이면 오너·SA 만 바꾼다(2026-11-01 §G-7-8 A · utils/poOwnerApproval)
+          if (field === 'operation_settings' && poMasterLocked && applyPoMasterKeep(valueToSave, existingVal)) {
+            console.warn(`  🔒 requirePoOwnerApproval kept (role=${req.user.role}) — Owner/SA only`);
           }
 
           // Migrate legacy payment method keys on save (post-guard, on the

@@ -242,6 +242,7 @@ restaurants(id,name,status)). **exclude 목록이 아니라 allowlist** 인 이�
 - ✅ **인보이스 조회**: 모든 issuer의 인보이스 확인
 - ✅ **인보이스 결제**: payment_model='restaurant_owner'일 때 결제 제출
 - ✅ **발주 승인** (2026-06-21): 소유 레스토랑 발주를 공급처 전송 전 승인/반려 (`requirePoOwnerApproval` ON 시). 상세 `docs/PURCHASE_ORDER_SYSTEM.md §G`
+- ✅ **발주 승인 예외·스위치** (2026-11-01): 승인 예외 규칙(공급업체·카테고리·품목) 쓰기와 `requirePoOwnerApproval` 스위치 변경은 **그 매장 ownership 오너·System Admin 만** — 매장 관리자는 읽기만(설정 저장 두 길에서 서버가 값 유지). 상세 `docs/PURCHASE_ORDER_SYSTEM.md §G-7`
 - ❌ **메뉴 관리**: Restaurant Admin 영역
 - ❌ **주문 처리**: Restaurant Admin/Staff 영역
 - ❌ **직원 관리**: Restaurant Admin 영역

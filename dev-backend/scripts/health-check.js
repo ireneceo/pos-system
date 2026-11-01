@@ -96,6 +96,7 @@ const opts = {
 };
 for (const arg of args) {
   if (arg.startsWith('--category=')) opts.category = arg.split('=')[1];
+  else if (arg.startsWith('--grep=')) opts.grep = arg.slice('--grep='.length);
   else if (arg === '--verbose') opts.verbose = true;
   else if (arg === '--quiet') opts.quiet = true;
   else if (arg.startsWith('--host=')) opts.host = arg.split('=')[1];
@@ -104,6 +105,7 @@ for (const arg of args) {
 
 Options:
   --category=NAME   특정 카테고리만 실행 (auth, security, pos, mobile, payment, referral)
+  --grep=TEXT       이름에 TEXT 가 든 테스트만
   --verbose         응답 본문까지 출력
   --quiet           통과는 숨기고 실패만
   --host=URL        대상 호스트 (기본: http://localhost:3001)
@@ -385,7 +387,20 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
     const bad = files
       .filter(f => /process\.env\.FRONTEND_URL\s*\|\|\s*'https:\/\/dev\.purplehere\.com'/.test(fs.readFileSync(path.join(root, f), 'utf8')));
     if (bad.length) console.log(c.gray(`      (개발 주소 대체: ${bad.join(', ')})`));
-    return bad.length === 0;
+    // 2026-11-01 — 하드코딩 개발 주소(예: systemLogger 로그 링크)도 잡는다. 통과 = 같은 줄·앞 2줄에 NODE_ENV 분기가 있거나,
+    //   경로 없는 주소 하나만 있는 목록 줄(소켓 CORS 허용 목록). 주석 줄은 제외.
+    const hard = [];
+    for (const f of files) {
+      const lines = fs.readFileSync(path.join(root, f), 'utf8').split('\n');
+      lines.forEach((ln, i) => {
+        if (!/https:\/\/dev\.purplehere\.com/.test(ln) || /^\s*(\/\/|\*)/.test(ln)) return;
+        if (/NODE_ENV/.test(lines.slice(Math.max(0, i - 2), i + 1).join('\n'))) return;
+        if (/^\s*'https:\/\/dev\.purplehere\.com',?\s*$/.test(ln)) return;
+        hard.push(`${f}:${i + 1}`);
+      });
+    }
+    if (hard.length) console.log(c.gray(`      (하드코딩 개발 주소: ${hard.join(', ')})`));
+    return bad.length === 0 && hard.length === 0;
   });
 
   test('auth', '오너 모자 — 소유행 없는 계정의 오너 ctx 위조 → 네이티브 폴백 + 헤더', async () => {
@@ -4494,6 +4509,20 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   }
 
+  /** 오너 승인 예외 규칙을 잠시 치웠다 되돌린다(2026-11-01 §G-7) — «승인 ON = 전부 승인 대기» 를 전제로 한 계약이
+   *  개발서버 매장에 남은 예외 규칙(확인용 예시 등) 때문에 깨지지 않게. stash → 행 배열, restore(행 배열). */
+  async function hcStashApprovalRules(restaurantId) {
+    const { PoApprovalExemption } = require('../models');
+    const rows = await PoApprovalExemption.findAll({ where: { restaurant_id: restaurantId }, raw: true });
+    if (rows.length) await PoApprovalExemption.destroy({ where: { id: rows.map(r => r.id) } });
+    return rows;
+  }
+  async function hcRestoreApprovalRules(rows) {
+    if (!rows || !rows.length) return;
+    const { PoApprovalExemption } = require('../models');
+    await PoApprovalExemption.bulkCreate(rows, { ignoreDuplicates: true });
+  }
+
   /** 데모 매장 + 그 매장 재료 중 공급업체 매핑이 있는 것 — 없으면 케이스가 «준비물 없음» 으로 건너뛴다.
    *  ⚠ 오너가 연결된 매장은 **승인이 기본 ON** 이다(`isApprovalRequiredForRestaurant`: 오너 있으면
    *     명시적 false 가 아닌 한 ON). 그래서 정상 경로는 오너 **없는** 매장, 승인 경로는 오너 **있는**
@@ -4682,6 +4711,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     const orig = rest.operation_settings ? JSON.parse(JSON.stringify(rest.operation_settings)) : {};
     const poId = await dpMakeDraft(ctx2);
     if (!poId) { await dpCleanup(); return false; }
+    const stashedRules = await hcStashApprovalRules(ctx2.restaurant_id);
     try {
       const before = Number((await sequelize.query(`SELECT current_stock c FROM ingredients WHERE id=${ctx2.ingredient_id}`))[0][0].c);
       await rest.update({ operation_settings: { ...orig, requirePoOwnerApproval: true } });
@@ -4695,6 +4725,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
         && Math.abs(after - before) < 0.001;
     } finally {
       await rest.update({ operation_settings: orig });
+      await hcRestoreApprovalRules(stashedRules);
       await dpCleanup();
     }
   });
@@ -4723,6 +4754,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       await sequelize.query('UPDATE ingredient_seller_products SET unit_price = :p WHERE id = :i', { replacements: { p: RPO.origPrice, i: RPO.mapping } });
     }
     if (RPO.rest && RPO.origSettings) await RPO.rest.update({ operation_settings: RPO.origSettings });
+    if (RPO.stashedRules) { await hcRestoreApprovalRules(RPO.stashedRules); RPO.stashedRules = null; }
   }
   const rpoTok = (uid) => ({ Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '15m' })}` });
   function rpoAt(dateStr, hhmm) {
@@ -4746,6 +4778,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     RPO.rest = await Restaurant.findByPk(2);
     RPO.origSettings = RPO.rest.operation_settings ? JSON.parse(JSON.stringify(RPO.rest.operation_settings)) : {};
     await RPO.rest.update({ operation_settings: { ...RPO.origSettings, requirePoOwnerApproval: true } });
+    RPO.stashedRules = await hcStashApprovalRules(2);
     RPO.ra = rpoTok(ra.id); RPO.owner = rpoTok(ow.id); RPO.ownerId = Number(ow.id);
     const today = D.localParts(new Date(), 'Asia/Kuala_Lumpur').date;
     RPO.tomorrow = D.addDays(today, 1);
@@ -12536,8 +12569,228 @@ function defineAttendanceTests() {
 // ============================================
 // 실행기
 // ============================================
+// ──────────────────────────────────────────────────────────────────────────────
+// 오너 승인 예외 규칙 (2026-11-01 Fable 설계 docs/PURCHASE_ORDER_SYSTEM.md §G-7-7) — 계약 1건(여러 단계)
+//   데모 매장 2(오너 289 연결 · 승인 ON 으로 고정) · 외부 공급업체 16434(X) · 가입 공급업체 20(Y).
+//   표지: 발주 notes 'ZZ-HC-POX' · 규칙 note 'ZZ-HC-POX' · 재료/분류 이름 'ZZ-HC-POX-' · 시작·끝 정리(멱등).
+// ──────────────────────────────────────────────────────────────────────────────
+const POX_NOTE = 'ZZ-HC-POX';
+async function poxCleanup(origSettings) {
+  const { sequelize } = require('../config/database');
+  const [pos] = await sequelize.query(`SELECT id FROM purchase_orders WHERE notes = '${POX_NOTE}'`);
+  if (pos.length) await hcCleanupPurchaseOrders(pos.map(r => r.id), { waitMs: 0 });
+  await sequelize.query(`DELETE FROM po_approval_exemptions WHERE note = '${POX_NOTE}' OR (restaurant_id = 2 AND target_id IN (SELECT id FROM ingredient_categories WHERE name LIKE 'ZZ-HC-POX-%'))`);
+  await sequelize.query("DELETE FROM po_approval_exemptions WHERE restaurant_id = 2 AND scope = 'ingredient' AND target_id IN (SELECT id FROM ingredients WHERE name LIKE 'ZZ-HC-POX-%')");
+  await sequelize.query("DELETE FROM ingredient_seller_products WHERE ingredient_id IN (SELECT id FROM ingredients WHERE restaurant_id = 2 AND name LIKE 'ZZ-HC-POX-%')");
+  await sequelize.query("DELETE FROM ingredients WHERE restaurant_id = 2 AND name LIKE 'ZZ-HC-POX-%'");
+  await sequelize.query("DELETE FROM supplier_products WHERE name LIKE 'ZZ-HC-POX-%'");
+  await sequelize.query("DELETE FROM ingredient_categories WHERE restaurant_id = 2 AND name LIKE 'ZZ-HC-POX-%'");
+  if (origSettings) {
+    const { Restaurant } = require('../models');
+    const r = await Restaurant.findByPk(2);
+    await r.update({ operation_settings: origSettings });
+  }
+}
+
+test('pos', '오너 승인 예외 — 규칙 0 회귀·공급업체·카테고리 전부/한 줄·품목·5경로·수정·정기·마스터 OFF·권한·미리보기=게이트·스위치는 오너만', async () => {
+  const { sequelize } = require('../config/database');
+  const { Restaurant, Ingredient, IngredientCategory, PurchaseOrder, PurchaseOrderItem } = require('../models');
+  const { evaluateApproval, isApprovalRequiredForPo } = require('../utils/poOwnerApproval');
+  const tok = (uid) => ({ Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '15m' })}` });
+  const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+  const [[ra]] = await sequelize.query("SELECT id FROM users WHERE role = 'Restaurant Admin' AND restaurant_id = 2 AND is_active = 1 LIMIT 1");
+  const [[ow]] = await sequelize.query("SELECT manager_id id FROM restaurant_managers WHERE restaurant_id = 2 AND relationship_type = 'ownership' LIMIT 1");
+  const [[other]] = await sequelize.query("SELECT manager_id id FROM restaurant_managers WHERE relationship_type = 'ownership' AND manager_id NOT IN (SELECT manager_id FROM restaurant_managers WHERE restaurant_id = 2) LIMIT 1");
+  const [[foreignIng]] = await sequelize.query("SELECT id FROM ingredients WHERE restaurant_id = 38 LIMIT 1");
+  const [[prod]] = await sequelize.query("SELECT id FROM products WHERE restaurant_id = 2 AND is_active = 1 AND is_set_menu = 0 AND recipe_id IS NULL AND product_recipe_id IS NULL AND ingredient_id IS NULL LIMIT 1");
+  if (!ra || !ow || !other || !foreignIng || !prod) { console.log('      (준비물 없음 — 매장 2 RA/오너/다른 오너/재고 프로덕트)'); return true; }
+  const RA = tok(ra.id), OW = tok(ow.id), OTHER = tok(other.id);
+  const X = 16434, Y = 20;
+  const rest = await Restaurant.findByPk(2);
+  const orig = rest.operation_settings ? JSON.parse(JSON.stringify(rest.operation_settings)) : {};
+  await poxCleanup(null);
+  // 매장 2 에 이미 있는 규칙(확인용 예시 등)은 잠시 치웠다가 끝에 되돌린다 — 이 계약은 «규칙 0» 에서 출발한다
+  const { PoApprovalExemption } = require('../models');
+  const stashed = (await PoApprovalExemption.findAll({ where: { restaurant_id: 2 }, raw: true }));
+  if (stashed.length) await PoApprovalExemption.destroy({ where: { id: stashed.map(r => r.id) } });
+  await rest.update({ operation_settings: { ...orig, requirePoOwnerApproval: true } });
+  const steps = [];
+  const ok = (name, cond, extra = '') => { steps.push(name); if (!cond) throw new Error(`단계 실패: ${name} ${extra}`); };
+  try {
+    const stamp = Date.now();
+    const catA = await IngredientCategory.create({ owner_type: 'restaurant', restaurant_id: 2, name: `ZZ-HC-POX-A-${stamp}` });
+    const catB = await IngredientCategory.create({ owner_type: 'restaurant', restaurant_id: 2, name: `ZZ-HC-POX-B-${stamp}` });
+    const { SupplierProduct, IngredientSellerProduct } = require('../models');
+    const spX = await SupplierProduct.create({ supplier_company_id: X, name: `ZZ-HC-POX-SP-${stamp}`, unit: 'kg', unit_price: 5, min_order_quantity: 1, is_active: true });
+    const [[spY]] = await sequelize.query(`SELECT id FROM supplier_products WHERE supplier_company_id = ${Y} AND is_active = 1 AND COALESCE(min_order_quantity, 1) <= 2 ORDER BY id LIMIT 1`);
+    if (!spY) { console.log('      (준비물 없음 — 공급업체 20 최소주문 2 이하 상품)'); return true; }
+    const mk = async (n, cat) => {
+      const ing = await Ingredient.create({ owner_type: 'restaurant', restaurant_id: 2, name: `ZZ-HC-POX-${n}-${stamp}`, unit: 'kg', ingredient_category_id: cat.id, is_active: true });
+      for (const [sid, spid] of [[X, spX.id], [Y, spY.id]]) {
+        await IngredientSellerProduct.create({ ingredient_id: ing.id, seller_type: 'supplier', seller_entity_id: sid, seller_product_id: spid, unit_price: 5, is_active: true });
+      }
+      return ing;
+    };
+    const a1 = await mk('A1', catA), a2 = await mk('A2', catA), b1 = await mk('B1', catB);
+    const draft = async (seller, ings) => {
+      const r = await request('POST', '/purchase-orders', {
+        seller_type: 'supplier', seller_entity_id: seller, notes: POX_NOTE,
+        items: ings.map(i => ({ ingredient_id: i.id, quantity_ordered: 2, unit: 'kg', unit_price: 5 }))
+      }, RA);
+      if (!r.body?.data?.id) throw new Error(`초안 ${r.status} ${r.body?.message || ''}`);
+      return r.body.data.id;
+    };
+    const submit = async (id) => request('POST', `/purchase-orders/${id}/submit`, {}, RA);
+    const statusOf = async (id) => (await PurchaseOrder.findByPk(id, { attributes: ['status', 'approval_required', 'tracking_info'] }));
+    const lastNote = (po) => { const ev = po.tracking_info?.events || []; return ev.length ? ev[ev.length - 1].note : ''; };
+    const preview = async (id) => {
+      const r = await request('GET', '/purchase-orders?status=draft&limit=100', null, RA);
+      const row = (r.body?.data || []).find(p => p.id === id);
+      return row ? row.approval_preview : null;
+    };
+    const addRule = (body, who = OW) => request('POST', '/purchase-orders/approval-exemptions', { restaurant_id: 2, note: POX_NOTE, ...body }, who);
+    const delRule = (id, who = OW) => request('DELETE', `/purchase-orders/approval-exemptions/${id}`, null, who);
+    const previewVsGate = [];
+    const submitAndCompare = async (id) => {
+      const pv = await preview(id);
+      await submit(id);
+      const po = await statusOf(id);
+      previewVsGate.push(pv && ((pv.required && po.status === 'pending_approval') || (!pv.required && po.status === 'submitted')));
+      return { pv, po };
+    };
+
+    // 1. 규칙 0 → 예전과 같다
+    let d = await draft(X, [a1]);
+    let res1 = await submitAndCompare(d);
+    ok('1 규칙 0 → pending_approval', res1.po.status === 'pending_approval');
+
+    // 9. 권한 (먼저 — 규칙 쓰기 경계)
+    ok('9 익명 GET 401', (await request('GET', '/purchase-orders/approval-exemptions?restaurant_id=2')).status === 401);
+    ok('9 RA POST 403', (await addRule({ scope: 'seller', seller_type: 'supplier', target_id: X }, RA)).status === 403);
+    ok('9 남의 매장 오너 POST 403', (await addRule({ scope: 'seller', seller_type: 'supplier', target_id: X }, OTHER)).status === 403);
+    ok('9 남의 매장 재료 id 400', (await addRule({ scope: 'ingredient', target_id: foreignIng.id })).status === 400);
+    ok('9 계약 없는 공급업체 400', (await addRule({ scope: 'seller', seller_type: 'supplier', target_id: 999999 })).status === 400);
+    const r1 = await addRule({ scope: 'seller', seller_type: 'supplier', target_id: X });
+    const r1b = await addRule({ scope: 'seller', seller_type: 'supplier', target_id: X });
+    ok('9 오너 POST 201 · 두 번째 같은 id(멱등)', r1.status === 201 && r1b.status === 200 && r1b.body?.data?.id === r1.body?.data?.id);
+    const g = await request('GET', '/purchase-orders/approval-exemptions?restaurant_id=2', null, RA);
+    ok('9 RA GET 200 · can_edit false · 이름', g.status === 200 && g.body?.can_edit === false && (g.body?.data || []).some(x => x.id === r1.body.data.id && x.display_name));
+    ok('9 RA DELETE 403', (await delRule(r1.body.data.id, RA)).status === 403);
+    const cands = await request('GET', '/purchase-orders/approval-exemptions/candidates?restaurant_id=2&scope=seller', null, RA);
+    ok('9 후보(seller)에 X·Y', (cands.body?.data || []).some(x => x.target_id === X) && (cands.body?.data || []).some(x => x.target_id === Y));
+
+    // 2. 판매자 규칙
+    d = await draft(X, [b1]);
+    let r = await submitAndCompare(d);
+    ok('2 X 규칙 → submitted · 승인 불필요 · 문구', r.po.status === 'submitted' && !r.po.approval_required && /exempt supplier/.test(lastNote(r.po)), `${r.po.status}`);
+    d = await draft(Y, [b1]);
+    r = await submitAndCompare(d);
+    ok('2 다른 공급업체 Y → pending_approval', r.po.status === 'pending_approval', r.po.status);
+
+    // 5. 같은 판정을 bulk·mark-sent-external 도 탄다
+    const bulk = await request('POST', '/purchase-orders/bulk', { auto_submit: true, groups: [{ seller_type: 'supplier', seller_entity_id: X, notes: POX_NOTE, items: [{ ingredient_id: b1.id, quantity_ordered: 2, unit: 'kg', unit_price: 5 }] }] }, RA);
+    const bulkIds = (bulk.body?.data?.orders || []).map(p => p.id);
+    const bulkPo = bulkIds.length ? await statusOf(bulkIds[0]) : null;
+    ok('5 bulk auto_submit X → submitted', bulkPo && bulkPo.status === 'submitted', `${bulk.status} ${JSON.stringify(bulk.body?.data)?.slice(0, 120)}`);
+    d = await draft(X, [a1]);
+    await request('POST', `/purchase-orders/${d}/mark-sent-external`, { method: 'manual' }, RA);
+    ok('5 mark-sent-external X → submitted', (await statusOf(d)).status === 'submitted');
+
+    // 3. 카테고리 규칙 (판매자 규칙 지움)
+    ok('3 규칙 삭제 200', (await delRule(r1.body.data.id)).status === 200);
+    const rc = await addRule({ scope: 'ingredient_category', target_id: catA.id });
+    ok('3 카테고리 규칙 201', rc.status === 201);
+    d = await draft(Y, [a1, a2]);
+    r = await submitAndCompare(d);
+    ok('3 줄 전부 카테고리 A → submitted · all items exempt', r.po.status === 'submitted' && /all items exempt/.test(lastNote(r.po)), r.po.status);
+    d = await draft(Y, [a1, b1]);
+    const items3 = await PurchaseOrderItem.findAll({ where: { purchase_order_id: d }, raw: true });
+    const bLine = items3.find(i => i.ingredient_id === b1.id);
+    r = await submitAndCompare(d);
+    ok('3 한 줄 다른 카테고리 → pending · 막은 줄 = 그 줄 하나', r.po.status === 'pending_approval' && r.pv && r.pv.blocking_line_ids.length === 1 && r.pv.blocking_line_ids[0] === bLine.id, JSON.stringify(r.pv));
+
+    // 4. 품목 규칙 (재료 + 프로덕트) — 판정 함수 직접(같은 함수를 게이트가 부른다)
+    const ri = await addRule({ scope: 'ingredient', target_id: b1.id });
+    const rp = await addRule({ scope: 'product', target_id: prod.id });
+    ok('4 품목 규칙 201×2', ri.status === 201 && rp.status === 201, `${ri.status} ${rp.status} ${rp.body?.message || ''}`);
+    const restNow = await Restaurant.findByPk(2, { attributes: ['id', 'operation_settings'] });
+    let v = await evaluateApproval({ restaurant: restNow, seller_type: 'supplier', seller_entity_id: Y, lines: [{ id: 1, ingredient_id: b1.id }, { id: 2, product_id: prod.id }] });
+    ok('4 재료+프로덕트 둘 다 규칙 → 예외', !v.required && v.reason === 'exempt_lines');
+    await delRule(rp.body.data.id);
+    v = await evaluateApproval({ restaurant: restNow, seller_type: 'supplier', seller_entity_id: Y, lines: [{ id: 1, ingredient_id: b1.id }, { id: 2, product_id: prod.id }] });
+    ok('4 프로덕트 규칙 지우면 → 승인 · 막은 줄 2', v.required && v.blocking_line_ids.join() === '2');
+    v = await evaluateApproval({ restaurant: restNow, seller_type: 'supplier', seller_entity_id: Y, lines: [{ id: 3, product_ingredient_id: 5 }] });
+    ok('4 다른 타깃(BG 재고아이템) → 예외 아님(fail-closed)', v.required);
+    d = await draft(Y, [b1, a2]);
+    r = await submitAndCompare(d);
+    ok('4 HTTP: 재료 규칙 B1 + 카테고리 A2 → submitted', r.po.status === 'submitted', r.po.status);
+
+    // 6. 수정 게이트 — 예외 발주에 예외 아닌 줄이 붙으면 승인 대상(isApprovalRequiredForPo = 수정 게이트 2개가 보는 판정)
+    const exemptPo = await PurchaseOrder.findByPk(d);
+    ok('6 예외 발주 → 수정 판정 false', (await isApprovalRequiredForPo(exemptPo)) === false);
+    const c1 = await mk('C1', catB);
+    const added = await PurchaseOrderItem.create({ purchase_order_id: d, ingredient_id: c1.id, quantity_ordered: 1, unit: 'kg', unit_price: 1, line_total: 1 });
+    ok('6 예외 아닌 줄 추가 → 수정 판정 true', (await isApprovalRequiredForPo(exemptPo)) === true);
+    await added.destroy();
+
+    // 7. 정기 발주 틀 — 예외 판매자면 승인 없이 활성
+    const rs = await addRule({ scope: 'seller', seller_type: 'supplier', target_id: X });
+    const srcPo = await draft(X, [c1]);
+    const D = require('../utils/poScheduleDates');
+    const tomorrow = D.addDays(D.localParts(new Date(), 'Asia/Kuala_Lumpur').date, 1);
+    const sch = await request('POST', '/purchase-orders/schedules', { source_po_id: srcPo, frequency: 'weekly', weekday: new Date(tomorrow + 'T00:00:00Z').getUTCDay(), name: `ZZ-HC-POX-${stamp}` }, RA);
+    const sid = sch.body?.data?.id;
+    const srow = sid ? (await sequelize.query(`SELECT status, approval_required FROM purchase_order_schedules WHERE id = ${sid}`))[0][0] : null;
+    ok('7 예외 판매자 틀 → active · 승인 불필요', srow && srow.status === 'active' && !Number(srow.approval_required), `${sch.status} ${sch.body?.message || ''} ${JSON.stringify(srow)}`);
+    await delRule(rs.body.data.id);
+    const svc = require('../services/poScheduleService');
+    const sFull = await sequelize.query(`SELECT seller_type, seller_entity_id, line_items FROM purchase_order_schedules WHERE id = ${sid}`, { type: sequelize.QueryTypes.SELECT });
+    v = await evaluateApproval({ restaurant: restNow, seller_type: sFull[0].seller_type, seller_entity_id: sFull[0].seller_entity_id, lines: svc.parseLines(sFull[0].line_items) });
+    ok('7 규칙 지운 뒤 틀 판정 → 승인 필요', v.required);
+    await sequelize.query(`DELETE FROM purchase_order_schedule_runs WHERE schedule_id = ${sid}`);
+    await sequelize.query(`DELETE FROM purchase_order_schedules WHERE id = ${sid}`);
+
+    // 8. 마스터 OFF → 규칙과 무관하게 전부 submitted (규칙이 마스터를 켜지 못한다)
+    await rest.update({ operation_settings: { ...orig, requirePoOwnerApproval: false } });
+    d = await draft(Y, [c1]);
+    r = await submitAndCompare(d);
+    ok('8 마스터 OFF → submitted', r.po.status === 'submitted' && r.pv && r.pv.reason === 'master_off', `${r.po.status} ${JSON.stringify(r.pv)}`);
+    await rest.update({ operation_settings: { ...orig, requirePoOwnerApproval: true } });
+
+    // 11. 마스터 스위치는 오너·SA 만 (2026-11-01 Irene «권고대로» · §G-7-8 A안)
+    const masterNow = async () => { const r0 = await Restaurant.findByPk(2); return r0.operation_settings.requirePoOwnerApproval; };
+    const osFull = (await Restaurant.findByPk(2)).operation_settings;
+    await request('PUT', '/store/settings?restaurantId=2', { operation_settings: { ...osFull, requirePoOwnerApproval: false } }, RA);
+    ok('11 RA 설정 저장으로 스위치 못 끔(값 유지)', (await masterNow()) === true);
+    await request('PUT', '/restaurants/2', { operation_settings: { ...osFull, requirePoOwnerApproval: false } }, RA);
+    ok('11 RA 매장 수정으로도 못 끔', (await masterNow()) === true);
+    ok('11 RA approval-master 403', (await request('PUT', '/purchase-orders/approval-master', { restaurant_id: 2, on: false }, RA)).status === 403);
+    ok('11 남의 매장 오너 approval-master 403', (await request('PUT', '/purchase-orders/approval-master', { restaurant_id: 2, on: false }, OTHER)).status === 403);
+    ok('11 on 값 아님 400', (await request('PUT', '/purchase-orders/approval-master', { restaurant_id: 2, on: 'no' }, OW)).status === 400);
+    const mOff = await request('PUT', '/purchase-orders/approval-master', { restaurant_id: 2, on: false }, OW);
+    const afterOff = await Restaurant.findByPk(2);
+    ok('11 오너 끄기 200 · 다른 설정 그대로', mOff.status === 200 && afterOff.operation_settings.requirePoOwnerApproval === false
+      && afterOff.operation_settings.timeZone === osFull.timeZone && JSON.stringify(afterOff.operation_settings.businessHours || null) === JSON.stringify(osFull.businessHours || null));
+    const g11 = await request('GET', '/purchase-orders/approval-exemptions?restaurant_id=2', null, RA);
+    ok('11 GET master_on false · has_owner true', g11.body?.master_on === false && g11.body?.has_owner === true);
+    await request('PUT', '/purchase-orders/approval-master', { restaurant_id: 2, on: true }, OW);
+    ok('11 오너 다시 켜기', (await masterNow()) === true);
+
+    // 10. 미리보기 = 게이트
+    ok(`10 미리보기 = 제출 결과 ${previewVsGate.filter(Boolean).length}/${previewVsGate.length}`, previewVsGate.length >= 7 && previewVsGate.every(Boolean));
+    console.log(c.gray(`      (단계 ${steps.length} 통과 · 미리보기=게이트 ${previewVsGate.filter(Boolean).length}/${previewVsGate.length})`));
+    return true;
+  } catch (e) {
+    return fail(e.message);
+  } finally {
+    await poxCleanup(orig);
+    if (stashed.length) await PoApprovalExemption.bulkCreate(stashed, { ignoreDuplicates: true });
+  }
+});
+
 async function runTests(allTests, category) {
-  const filtered = category ? allTests.filter((t) => t.category === category) : allTests;
+  const filtered = (category ? allTests.filter((t) => t.category === category) : allTests)
+    .filter((t) => !opts.grep || t.name.includes(opts.grep));
   if (filtered.length === 0) {
     console.error(c.red(`카테고리 '${category}'에 해당하는 테스트가 없습니다.`));
     process.exit(1);

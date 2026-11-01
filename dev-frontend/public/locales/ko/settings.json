@@ -1229,6 +1229,7 @@
   "operations.cancelReasonRequired": "필수",
   "operations.requirePoOwnerApprovalLabel": "발주 시 오너 승인 필요",
   "operations.requirePoOwnerApprovalDesc": "오너가 연결된 매장에서, 발주를 공급처로 보내기 전 오너 승인이 필요합니다. 오너 연결 시 기본 켜짐.",
+  "operations.requirePoOwnerApprovalLocked": "오너만 바꿀 수 있습니다 — 발주 승인 → 승인 규칙.",
   "printer.kitchenCopies": "인쇄 매수",
   "printer.copies1": "1장",
   "printer.copies2": "2장",

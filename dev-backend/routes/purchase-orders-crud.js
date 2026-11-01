@@ -423,6 +423,23 @@ router.get('/purchase-orders', async (req, res) => {
       return plain;
     });
 
+    // 보내기 전 발주(draft)마다 오너 승인 판정 — 제출 게이트(applySubmitGate)와 **같은 함수**(§G-7-4 ④).
+    //   화면이 «오너 있음 ∧ 마스터 ON» 을 추측하던 것을 대신한다(예외 규칙이 생기면 추측이 틀린다).
+    if (req.query.status === 'draft') {
+      const { evaluatePoApproval, resolveOwnerRestaurantIds } = require('../utils/poOwnerApproval');
+      const ownedIds = enriched.some(p => p.entity_type === 'restaurant') ? await resolveOwnerRestaurantIds(req.user) : [];
+      for (const plain of enriched) {
+        if (plain.status !== 'draft' || plain.entity_type !== 'restaurant') continue;
+        const v = await evaluatePoApproval(plain);
+        const byOwner = v.required && ownedIds.includes(parseInt(plain.entity_id, 10));
+        plain.approval_preview = {
+          required: v.required && !byOwner,
+          reason: byOwner ? 'owner_submitter' : v.reason,
+          blocking_line_ids: byOwner ? [] : v.blocking_line_ids
+        };
+      }
+    }
+
     res.json({
       success: true,
       data: enriched,

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { ownCategoryWhere, brandCategoryWhere } = require('../utils/restaurantStockScopes');
 
 /**
  * 카테고리를 지울 때, 그 안의 재료를 어디로 보낼지 정한다 (2026-09-16 Irene 지시).
@@ -310,7 +311,7 @@ router.get('/restaurants/:restaurantId/ingredient-categories', authenticateToken
 
     // 레스토랑 자체 카테고리
     const ownCategories = await IngredientCategory.findAll({
-      where: { restaurant_id },
+      where: ownCategoryWhere(restaurant),
       order: [['display_order', 'ASC'], ['name', 'ASC']],
       include: [{
         model: Ingredient,
@@ -334,7 +335,7 @@ router.get('/restaurants/:restaurantId/ingredient-categories', authenticateToken
     //    자체 카테고리)는 대상 아님 — 관리자가 자기 것을 껐다 켤 수 있어야 하므로 그대로 표시.
     if (restaurant.brand_id) {
       const brandCategories = await IngredientCategory.findAll({
-        where: { brand_id: restaurant.brand_id, is_active: true },
+        where: brandCategoryWhere(restaurant),
         order: [['display_order', 'ASC'], ['name', 'ASC']],
         include: [{
           model: Ingredient,

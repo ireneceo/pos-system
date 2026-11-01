@@ -1230,6 +1230,147 @@ Irene: «발주할 때 여기 저기에 있는 왓츠앱으로 보내기처럼 �
 
 ---
 
+## §G-7. 오너 승인 예외 — 공급업체·카테고리·품목 단위로 «승인 없이 보내기» (2026-11-01 · Fable 설계 · 구현 완료 · G-7-8 A안 적용)
+
+> Irene 원문(2026-11-01): «레스토랑오너가 승인하는 거 레스토랑별로, 카테고리별로, 아이템별로, 공급업체별로 할지 말지 선택하게 해줄 수 있어? 예를 들면 패키지는 담당자가 따로인데 바로 바로 주문하면 갖다주면 되는데 내가 승인할 때까지 일이 멈추고 그래서.»
+>
+> 한 문장: **오너 승인(§G)은 그대로 두고, 오너가 «이건 나한테 묻지 말고 바로 보내» 라고 지정한 공급업체·재료 카테고리·품목을 예외로 뺀다.** 판정은 지금도 하나인 `utils/poOwnerApproval.js` 안에서만 바뀌고, 발주가 나가는 5경로(§G-5)·수정 게이트·정기 발주는 손대지 않고 그대로 혜택을 본다.
+
+### G-7-1. 범위
+
+| 단위 | 지금 | 이번 |
+|---|---|---|
+| 레스토랑별 | **이미 있음** — `operation_settings.requirePoOwnerApproval`(오너 연결 시 기본 ON) | 그대로(마스터). 아래 예외는 마스터가 ON 일 때만 뜻이 있다 |
+| 공급업체별 | 없음 | **예외 규칙** `scope='seller'` — 발주 1건 = 판매자 1곳이므로 발주 통째로 예외 |
+| 카테고리별 | 없음 | **예외 규칙** `scope='ingredient_category'` — 재료 카테고리(`ingredient_categories` id) 기준 |
+| 품목별 | 없음 | **예외 규칙** `scope='ingredient'` · `scope='product'`(레시피 없는 재고 프로덕트) |
+
+안 들어가는 것(의도적): BG·FG 발주(오너 개념 없음 — §G-2 그대로) · 금액 상한(«N 링깃 이하는 승인 생략») — Irene 가 말하지 않았고 정기 발주 허용폭(§4-2 recurring)과 겹치는 개념이라 별건 · 예외 규칙 추가 시 이미 `pending_approval` 인 발주의 자동 통과(소급 없음 — 오너가 큐에서 승인하면 된다) · 발주를 예외/비예외로 **자동 분할**하는 것(아래 G-7-3 ③ 기각 사유).
+
+### G-7-2. 판정 규칙 (단일 소스 — `utils/poOwnerApproval.js`)
+
+발주 1건에 대해 **승인 필요** ⇔ ① 구매자가 레스토랑 ∧ ② 오너 연결 ∧ ③ 마스터 `requirePoOwnerApproval !== false` ∧ ④ **예외에 해당하지 않음** ∧ ⑤ 제출자가 그 매장 오너가 아님(기존 예외, `applySubmitGate` 그대로).
+
+④ 예외 판정 — 이 순서로, 하나라도 맞으면 예외:
+1. **판매자 규칙** — 발주의 `(seller_type, seller_entity_id)` 가 규칙에 있으면 발주 전체 예외. (`system_admin` 은 `seller_entity_id` 가 NULL 이라 규칙에는 `0` 으로 저장.)
+2. **줄 규칙** — 발주 **모든 줄**이 각각 «품목 규칙에 있음» 또는 «그 줄 재료의 `ingredient_category_id` 가 카테고리 규칙에 있음» 이면 예외. **한 줄이라도 아니면 발주 전체가 승인 대상**이고, 막은 줄 id 를 판정 결과에 담아 화면이 «이 품목 때문에 승인 필요» 를 보여 준다.
+   - 줄 타깃은 `utils/stockTarget.resolveStockTarget`(넷 중 하나) 로 뽑는다. 레스토랑 발주에서 실제로 오는 것은 `ingredient_id`·`product_id` 둘. `product_ingredient_id`·`brand_product_id` 가 오면(올 수 없지만) **예외 아님**으로 본다(fail-closed).
+   - `product_id` 줄의 «카테고리» 는 `Product.category`(메뉴 분류 문자열) 라 재료 카테고리와 다른 이름공간이다 → **카테고리 규칙은 재료 줄에만** 적용하고, 프로덕트 줄은 품목 규칙(`scope='product'`)으로만 뺀다. 죽은 축 `Ingredient.category` ENUM(운영 386건 전부 `other`) 은 쓰지 않는다.
+   - 줄이 0개면 예외 아님(어차피 제출 불가).
+3. 규칙이 하나도 없으면 지금과 100% 같다(회귀 0).
+
+**왜 «모든 줄» 인가(③ 분할 기각):** 승인은 발주 상태(`pending_approval`)라 줄 단위로 쪼갤 수 없다. 섞인 발주를 예외분/승인분 두 발주로 자동 분할하면 발주 번호·배송비(`computeTotalsWithDelivery`)·최소주문·판매자 화면이 전부 두 번 생기고, 같은 판매자 초안은 `mergeDraft`·consolidate 가 다시 합친다 — 되돌리기 어려운 구조 변경이다. 「패키지 담당자가 바로 주문」은 보통 **다른 공급업체**이거나 **한 카테고리 발주**라 «모든 줄» 로 충분하고, 섞였을 때는 승인 쪽(보수적)으로 간다.
+
+**시간 기준:** 예외는 **판정 시점**의 규칙·줄·재료 카테고리로 본다. 판매자 인상 수정(`applyAmendRaiseGate`)·구매자 보낸 뒤 수정(`applyBuyerAmendGate`)도 **수정된 줄**로 다시 판정한다 — 예외 발주에 예외 아닌 줄을 더하면 그때 승인 대기로 간다(기존 «수정도 승인하게» 와 같은 방향). 규칙을 지우면 다음 제출부터 승인 대상(소급 없음).
+
+### G-7-3. 데이터 — 새 표 `po_approval_exemptions` (모델 `PoApprovalExemption`)
+
+| 칸 | 타입 | 뜻 |
+|---|---|---|
+| id | INT PK | |
+| restaurant_id | INT NOT NULL, index | 규칙은 **매장마다** 따로(오너가 여러 매장을 가져도 매장별로 다르게) |
+| scope | ENUM('seller','ingredient_category','ingredient','product') NOT NULL | expand-only(`lib/enumExpand`) |
+| seller_type | ENUM('none','system_admin','brand','foodcourt','supplier') NOT NULL DEFAULT 'none' | `scope='seller'` 일 때만 실제 값. NULL 대신 'none' 인 이유 = 아래 UNIQUE 가 NULL 을 못 거른다 |
+| target_id | INT NOT NULL | seller → seller_entity_id(`system_admin` 은 0) · 그 외 → 카테고리/재료/프로덕트 id |
+| note | VARCHAR(255) NULL | 오너 메모(«포장재 담당 Ali») |
+| created_by_user_id | INT NOT NULL | 누가 뺐는지 — 승인 권한을 넘기는 기록이라 필수 |
+| created_at / updated_at | | |
+
+- **UNIQUE(restaurant_id, scope, seller_type, target_id)** — 같은 규칙 두 줄 금지(멱등 POST = 있으면 그 행 반환).
+- 타깃 FK 없음(발주 표들과 같은 «느슨한 참조»). 재료·카테고리·공급업체가 지워지면 규칙은 화면에 «(deleted)» 로 보이고 판정에서는 자연히 안 맞는다(지워진 재료는 새 발주 줄에 올 수 없다). 오너가 지운다.
+- 하드 삭제. 감사는 `utils/activityLogger.logActivity`(entity_type `po_approval_exemption`, action create/delete, restaurant_id 명시) 로 오너 «Change History» 에 남긴다.
+- 마이그 `scripts/migrate-po-approval-exemptions.js`(CREATE TABLE IF NOT EXISTS · 멱등) + `migrations.registry.json` `deploy`. `models/index.js` 에 `Restaurant.hasMany(PoApprovalExemption)` + export.
+
+**왜 `operation_settings` JSON 이 아니라 표인가:** ① 규칙은 다른 행(공급업체·카테고리·재료)을 가리키므로 이름 붙이기·죽은 참조 표시에 조인이 필요하다 ② 여러 매장 오너 화면이 `restaurant_id IN (...)` 한 번으로 본다(JSON 이면 매장마다 설정 전체를 읽는다) ③ 누가 언제 뺐는지가 행에 남는다 ④ `settingsGuard` 의 «빠진 키는 기존 보존» 깊은 병합은 **목록을 비우는 쓰기**와 상성이 나쁘다(5/31 패턴 방지 장치가 여기선 «지웠는데 살아남는» 함정이 된다). `docs/TRADE_STRUCTURE.md` 「기존 개념에 새 목록 금지」와의 관계: 이 표는 **승인 정책**이라는 새 개념이고 재료·상품·공급업체의 두 번째 목록이 아니다 — 후보 목록은 전부 기존 단일 소스에서 읽고(G-7-5), 이 표는 id 만 가리킨다.
+
+### G-7-4. 서버
+
+**① 판정 (`utils/poOwnerApproval.js`)** — 새 함수 하나, 기존 함수는 안쪽만 바뀐다:
+```
+evaluateApproval({ restaurant, seller_type, seller_entity_id, lines }, t)
+  → { required:boolean, reason:'not_restaurant'|'no_owner'|'master_off'|'exempt_seller'|'exempt_lines'|'required',
+      blocking_line_ids:number[] }        // required 일 때 예외에 안 걸린 줄
+evaluatePoApproval(po, t)                 // 줄을 **직접** PurchaseOrderItem.findAll 로 읽는다 —
+                                          // 5 호출부 중 3곳(mark-sent-external · bulk · seller 대리)은 po.items 를 안 싣는다(실측)
+```
+- `isApprovalRequiredForPo(po, t)` = `(await evaluatePoApproval(po, t)).required` — 그래서 `applyAmendRaiseGate`·`applyBuyerAmendGate`·`seller-orders.js:1382·1471`·`purchase-orders-amend.js:88` 은 **무접촉**으로 예외를 반영한다.
+- `applySubmitGate` — `isApprovalRequiredForRestaurant` 자리에 `evaluatePoApproval`. 예외로 나갈 때 tracking 한 줄: `Submitted (Owner approval skipped — exempt supplier)` / `… — all items exempt`, 이벤트 extra `{ approval_exempt:'seller'|'lines' }`. `approval_required` 는 지금처럼 false. 오너 제출자 예외·`preApproved` 분기 순서는 그대로.
+- `isApprovalRequiredForRestaurant` 는 남긴다(마스터 질문 — 설정 화면·정기 발주 틀 공통) — 단 정기 발주 틀 판정은 아래 ③.
+- 줄 → 카테고리 해석: `ingredient_id` 들을 한 번에 `Ingredient.findAll(attributes:[id, ingredient_category_id])`. 줄에 타깃이 없고 `ingredient_seller_product_id` 만 있으면(정기 발주 raw 줄) `IngredientSellerProduct` 로 타깃을 푼다.
+
+**② API — `routes/purchase-orders-approval.js`** (buyer 블랭킷 가드보다 앞에 마운트된 그 파일. 경로는 `/purchase-orders/approval-exemptions…` 로 두어 기존 `/purchase-orders/:id/...` 와 안 겹치게 — `:id` 라우트보다 **앞에** 선언):
+| 메서드 | 경로 | 가드 | 뜻 |
+|---|---|---|---|
+| GET | `/purchase-orders/approval-exemptions?restaurant_id=N` | `authenticateToken` + `userCanAccessRestaurant`(RA·재고 직원·오너·SA 읽기) | 규칙 목록 + 표시 이름(`display_name`, 지워졌으면 `deleted:true`) |
+| GET | `/purchase-orders/approval-exemptions/candidates?restaurant_id=N&scope=seller\|ingredient_category\|ingredient\|product&q=` | 같은 읽기 가드 | 고를 후보(G-7-5 출처). `ingredient`·`product` 는 `q` 2자 이상·최대 30건 |
+| POST | `/purchase-orders/approval-exemptions` `{restaurant_id, scope, seller_type?, target_id, note?}` | `requireOwnerScope` + 그 매장 소유(`req.ownerRestaurantIds` 포함 또는 SA) | 멱등 생성 · 후보 출처에 있는 id 만 받는다(남의 매장 재료 id 400) · activity log |
+| DELETE | `/purchase-orders/approval-exemptions/:id` | 같은 쓰기 가드 + 행의 restaurant_id 소유 | 삭제 · activity log |
+
+쓰기 = **오너(ownership)·System Admin 만.** 매장 관리자는 읽기만 — 승인은 오너의 권한이고 예외는 그 권한을 넘기는 행위라 넘기는 사람이 정한다(매장 관리자가 스스로를 예외로 빼면 승인 자체가 무의미). `OWNER_ACTING_ROUTES` 에는 넣지 않는다(오너 자격으로 직접 부르는 라우트라 전환이 필요 없다).
+
+**③ 정기 발주 틀 (`routes/purchase-orders-recurring.js` `approvalStateFor`)** — 매장만 보던 것을 **틀의 판매자+`line_items`** 로 `evaluateApproval` 에 넘긴다(호출 4곳 135·172·251·294 는 인자만 바뀜). 예외 틀은 오너 승인 없이 활성 → 스케줄러가 만든 발주도 `submitDraftInTx → applySubmitGate → evaluatePoApproval` 로 예외 통과. 나중에 규칙을 지우면 다음 회차부터 `pending_approval`(틀 `approved_at` 없음 → preApproved 불성립 — fail-closed, 손댈 것 없음).
+
+**④ Staging 안내 — 서버가 발주마다 판정을 준다.** 지금 `PurchaseOrderStagingPage.tsx:289~305` 는 «오너 있음 ∧ 마스터 ON» 을 **화면이 추측**해 Send/WhatsApp/Email 을 통째로 잠근다 — 예외가 생기면 이 추측이 틀린다(예외 발주의 보내기 버튼이 잠긴다). 초안 목록(`GET /purchase-orders?status=draft` 가 쓰는 라우트)의 각 행에 `approval_preview: { required, reason, blocking_line_ids }` 를 **같은 `evaluatePoApproval`** 로 붙인다(초안 행에만 — 건수 적음). 화면은 이 값으로 발주별로 잠근다. 오너 제출자 예외는 `preview` 에도 반영(actor 넘김).
+
+### G-7-5. 후보 목록의 출처 (새 목록 만들지 않는다 — 기존 라우트 본문을 함수로 빼서 둘이 같이 부른다)
+
+| scope | 출처(단일 소스) | 할 일 |
+|---|---|---|
+| seller | `routes/buyer-sellers.js GET /buyer-sellers` 본문(계약 중 공급업체 + 내 브랜드/푸드코트 + POS 카탈로그) **+ 외부(미가입) 공급업체** — 외부 업체가 이 목록에 어떻게 섞여 있는지 구현자가 실측(`AllSuppliersView` 가 쓰는 라우트)해 **발주 작성 화면이 판매자로 고를 수 있는 집합과 같게** 맞춘다 | 본문을 `utils/buyerSellers.listBuyerSellers(buyer)` 로 추출, 라우트·후보 둘 다 호출 |
+| ingredient_category | `routes/ingredient-categories.js:296 GET /restaurants/:id/ingredient-categories` 의 `own_categories + brand_categories`(두 벌 그대로 — 이름이 겹쳐도 **합치지 않고** «(brand)» 꼬리표로 구분, 매칭은 id) | 쿼리 부분 함수 추출 |
+| ingredient | 그 매장 재료(`Ingredient.restaurant_id = rid`) + 매장이 보는 브랜드 재료(`routes/ingredients.js:608 brand-ingredients` 와 같은 범위) — 이름 `LIKE %q%` | 범위 함수 추출 또는 재사용 |
+| product | 레시피 없는 재고 프로덕트(발주 줄 `product_id` 가 될 수 있는 것 = `createPurchaseOrderCore` 의 `product_id` 분기가 받는 조건과 같게) — 이름 `LIKE %q%` | 조건을 그 분기와 같은 함수로 |
+
+⚠ 재료 카테고리 두 벌 문제(`docs/TRADE_STRUCTURE.md ⑧` · 메모리 reference_ingredient_category_two_sets): 뒷날 브랜드 벌을 매장 벌로 합치면 브랜드 카테고리 id 를 가리키던 규칙은 «(deleted)» 가 되어 **예외가 조용히 풀린다(=승인 대상으로 돌아간다 — fail-closed 방향)**. 그 합치기 작업의 체크리스트에 «`po_approval_exemptions.scope='ingredient_category'` 재매핑» 한 줄을 넣는다.
+
+### G-7-6. 화면 (RA 디자인 기준 · 공용 컴포넌트 · `purchaseOrders` 네임스페이스 4언어 · glossary «Approval exemption / 승인 예외 / 审批豁免 / Pengecualian kelulusan»)
+
+**① 오너 — `OwnerPoApprovalsPage` 에 탭 «Approval rules»(승인 규칙) 추가** (종류가 다르니 탭. 기존 승인 대기·승인 완료·정기 발주 탭 옆):
+- 매장 고르기(소유 매장 1개면 숨김) → 위에 그 매장의 마스터 상태 한 줄(«Require my approval: On/Off» — 읽기 전용, 아래 G-7-8 질문 결과에 따라 토글) → 규칙 `DataTable`: Type(Supplier/Category/Item) · Name(지워졌으면 «(deleted)» 회색) · Note · Added(by·when, 매장 타임존) · 행 액션 `IconButton` 삭제(`ConfirmModal`).
+- «Add rule» `Button` → 공용 `Modal`: 종류 세그먼트(Supplier / Category / Item) → `SelectComponents` 의 Select(공급업체·카테고리는 전체 목록, 품목은 검색 입력 → 후보) → Note → 저장. 빈 상태 = `DataTableEmpty` 텍스트 «No exemptions — every purchase order of this restaurant needs your approval.»
+- **승인 대기 행의 승인 모달(`approveTarget` ConfirmModal)에 체크 1개**: «Don't ask again for purchase orders to *<seller_name>*» — 켜고 승인하면 `POST approval-exemptions(scope=seller)` 뒤 `approve`. 포장재 공급업체 같은 가장 흔한 경우를 큐 안에서 한 번에 끝내기 위함. (카테고리·품목은 탭에서 — v1 범위 제한.)
+
+**② 매장 관리자 — `SettingsPage` 운영 탭, 기존 «Require Owner approval» 토글 바로 아래** 읽기 전용 목록: «Exempt from Owner approval (set by the Owner): Supplier A · Category Packaging · Item Cup lid 12oz». 비어 있으면 한 줄 «No exemptions». 편집 버튼 없음 + 설명 «Managed by the Owner in PO Approvals → Approval rules».
+
+**③ Staging(`PurchaseOrderStagingPage`)** — 발주 카드마다 `approval_preview` 로: 예외면 «Owner approval not required (exempt supplier / all items exempt)» 회색 배지 + 보내기 버튼 열림, 승인 대상이면 지금 배지 + 막은 줄 이름을 «Needs approval because of: 갈색 천끈, …» 로. 전역 추측(`needsOwnerApproval` state·`/api/restaurants/:rid` 호출) 삭제.
+
+**④ 발주 상세(`PurchaseOrderDetailPage`)** — tracking 이벤트 문구가 이미 보이므로 추가 없음.
+
+### G-7-7. 검증 (구현자가 돌리고 숫자로 · 고장주입 의무 · Fable 게이트 대상 — 돈·주문 무결성 + 권한 경계)
+
+health-check `pos`(또는 기존 오너 승인 계약이 있는 카테고리) 에 계약 1건(여러 단계)·fixture 는 기존 `dpCtx(true)`(데모 매장 38 + 임시 오너) 재사용, 표지 `ZZ-HC-POX-`, 시작·끝 정리 멱등:
+1. 규칙 0개 → 기존과 동일(RA 제출 `pending_approval`).
+2. **판매자 규칙**: 외부 공급업체 X 규칙 → X 발주 RA 제출 = `submitted` · `approval_required=false` · tracking `approval_exempt='seller'` · 판매자 통지 경로 진입(기존 비승인 경로와 같은 분기) / 같은 매장 다른 공급업체 Y = `pending_approval`.
+3. **카테고리 규칙**: 줄 전부 그 카테고리 재료 → `submitted` / 한 줄만 다른 카테고리 → `pending_approval` + `approval_preview.blocking_line_ids` 가 그 줄 하나.
+4. **품목 규칙**: `ingredient` 1건 + `product` 1건 섞인 발주, 둘 다 규칙 → 통과; 품목 규칙 하나 지우면 승인 대상.
+5. **5경로 공유**: ②번 조건으로 `bulk auto_submit`·`mark-sent-external` 도 `submitted`(게이트 호출부 무접촉 증명).
+6. **수정 게이트**: 예외 발주를 구매자가 고쳐 예외 아닌 줄 추가 → `pending_approval`(`edited_by_buyer`) / 예외 줄만 수량 변경 → 상태 그대로. 판매자 인상 수정도 같은 두 갈래.
+7. **정기 발주**: 예외 판매자 틀 → `approval_required=false` 로 활성 · 스케줄러 1회차 `submitted` / 규칙 삭제 뒤 다음 회차 `pending_approval`.
+8. **마스터 OFF** → 규칙 유무 무관 전부 `submitted`(규칙이 마스터를 켜지 못함). **오너 제출자** → 규칙 무관 `submitted`(기존).
+9. **권한**: 익명 401 · RA POST/DELETE 403 · 남의 매장 오너 POST 403 · 남의 매장 재료 id POST 400 · RA GET 200 · 같은 규칙 POST 2회 = 같은 id(멱등) · `/pos/owner/po-approvals` 탭·Settings 읽기 목록 실브라우저 mount(console.error 0).
+10. **Staging preview = 게이트 결과**: 초안 행 `approval_preview.required` 와 실제 제출 결과가 10건 전부 일치.
+
+**고장주입(반증 없는 통과는 통과가 아님):** `evaluateApproval` 의 «모든 줄» 을 «한 줄이라도» 로 바꾸면 ③이 실패 · 판매자 규칙 매칭에서 `seller_entity_id` 비교를 빼면 ②의 Y 케이스가 실패 · POST 가드에서 소유 검사를 빼면 ⑨ 남의 매장 403 이 실패. 세 개 다 1회씩 실제로 깨서 확인 후 원복.
+
+기계 게이트: `verify-all`(변경 후 `check-sensitive-diff.js` 가 권한 경계 ⑤로 분류될 것 — Fable 게이트 PASS 전 완료 선언 금지) · `check-print-guard`(인쇄 무접촉 0건) · `check-design-guard` · `npm run i18n:verify` · 프론트 빌드 1회 + `--full` sweep 1회(빌드 순서 규칙).
+
+### G-7-8. Irene 에게 물을 것 (각 선택지에 Fable 권고)
+
+**Q. 마스터 토글 «Require Owner approval» 을 지금처럼 매장 관리자도 끌 수 있게 둘까요, 오너만 바꾸게 옮길까요?**
+- A안 **오너만**(권고): 예외 규칙을 오너만 쓰게 하면서 마스터는 매장 관리자가 끌 수 있으면 반쪽 문이다(관리자가 마스터를 끄면 예외가 필요 없다). 오너 «Approval rules» 탭의 매장 줄에 마스터 토글을 두고(저장은 새 쓰기 라우트 `PUT /purchase-orders/approval-master {restaurant_id, on}` → `operation_settings.requirePoOwnerApproval`), Settings 쪽 토글은 **오너가 연결된 매장에서는 읽기 전용**(연결 안 된 매장은 어차피 무효). 서버: `store.js PUT /settings` 에서 오너·SA 가 아니면 `requirePoOwnerApproval` 키를 기존 값으로 되돌린다. 바뀌는 건 «누가 끄는가» 뿐, 현재 값은 그대로라 운영 매장 동작 변화 0.
+- B안 **지금대로**(관리자도 끔): 코드 변경 최소. 대신 예외 규칙의 «오너만» 이 형식에 그친다.
+- Fable 권고 = **A안**, 이번 작업에 포함(작은 변경이고 같은 게이트에서 한 번에 검증).
+
+**→ 2026-11-01 Irene 답: «권고대로 진행해 줘» = A안 적용.** 구현: `PUT /purchase-orders/approval-master`(오너·SA · 이 키만 고침 · activity log) · 오너 «Approval rules» 탭에 «Turn off/on approval» 버튼 · 서버 잠금은 `utils/poOwnerApproval.isPoMasterLocked/applyPoMasterKeep` 하나를 **설정을 쓰는 두 라우트**(`store.js PUT /settings` · `restaurants-crud.js PUT /:id`)가 같이 부른다(오너 연결 매장 ∧ SA 아님 ∧ 그 매장 오너 아님 → 기존 값 유지) · Settings 스위치는 오너 연결 매장에서 오너 아니면 잠김(+안내 한 줄) · GET 규칙 응답에 `has_owner`.
+
+그 외는 묻지 않고 정했다: 섞인 발주는 승인 쪽(G-7-2) · 저장은 표(G-7-3) · 쓰기는 오너·SA 만(G-7-4 ②) · 소급 없음 · 승인 모달 체크는 판매자만(v1).
+
+### G-7-9. 운영 반영
+- 마이그 1개(표 생성 · 멱등 · `deploy`) · ENUM 신규(기존 ENUM 변경 없음) · SW bump 는 프론트 변경 마지막에 1회 · 롤백 = 표를 안 읽으면 규칙 0개와 같아 코드만 되돌리면 된다(데이터 호환).
+- 운영 반영: 다음 배포 때. 배포 전 Fable 게이트(diff 범위 = 이 절 · 위 검증 숫자 · 고장주입 3건).
+
+---
+
 ## 장바구니 수량 병합 (2026-08-28 배포 v3.80)
 
 **같은 품목을 다시 담으면 줄이 늘지 않고 수량이 합쳐진다.**

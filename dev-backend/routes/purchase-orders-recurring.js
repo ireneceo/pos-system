@@ -20,7 +20,7 @@ const { PurchaseOrder, PurchaseOrderItem, PurchaseOrderSchedule, PurchaseOrderSc
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { sanitizeString } = require('../middleware/validation');
-const { isApprovalRequiredForRestaurant, resolveOwnerRestaurantIds } = require('../utils/poOwnerApproval');
+const { evaluateApproval, resolveOwnerRestaurantIds } = require('../utils/poOwnerApproval');
 const { resolveSellers, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 const D = require('../utils/poScheduleDates');
 const svc = require('../services/poScheduleService');
@@ -40,11 +40,12 @@ function cadenceFrom(body, fallback = {}) {
   return out;
 }
 
-/** 틀 승인 상태 — 승인 필요 매장이고 작성자가 그 매장 오너가 아니면 pending_approval. */
-async function approvalStateFor(entityType, entityId, user) {
+/** 틀 승인 상태 — 승인 필요 매장이고 작성자가 그 매장 오너가 아니면 pending_approval.
+ *  틀의 판매자+줄로 발주와 같은 판정(utils/poOwnerApproval.evaluateApproval · 예외 규칙 반영 §G-7-4 ③). */
+async function approvalStateFor(entityType, entityId, user, { seller_type, seller_entity_id, lines } = {}) {
   if (entityType !== 'restaurant') return { required: false, byOwner: false };
   const restaurant = await Restaurant.findByPk(entityId, { attributes: ['id', 'operation_settings'] });
-  const required = await isApprovalRequiredForRestaurant(restaurant);
+  const { required } = await evaluateApproval({ restaurant, seller_type, seller_entity_id, lines: svc.parseLines(lines) });
   if (!required) return { required: false, byOwner: false };
   const owned = await resolveOwnerRestaurantIds(user);
   return { required: true, byOwner: owned.includes(Number(entityId)) };
@@ -132,7 +133,7 @@ router.post('/purchase-orders/schedules/preview', async (req, res) => {
     });
     if (!p.ok) return res.status(400).json({ success: false, code: p.error.code, message: p.error.message });
     const first = await svc.computeFirstRunDate({ entity_type: src.po.entity_type, entity_id: src.po.entity_id, ...cadence });
-    const appr = await approvalStateFor(src.po.entity_type, src.po.entity_id, req.user);
+    const appr = await approvalStateFor(src.po.entity_type, src.po.entity_id, req.user, { seller_type: src.po.seller_type, seller_entity_id: src.po.seller_entity_id, lines: src.lines });
     const sellerMap = await resolveSellers([src.po]);
     res.json({
       success: true,
@@ -169,7 +170,7 @@ router.post('/purchase-orders/schedules', async (req, res) => {
     const p = await svc.previewSchedule(base);
     if (!p.ok) return res.status(400).json({ success: false, code: p.error.code, message: `This standing order cannot be placed now: ${p.error.message}` });
 
-    const appr = await approvalStateFor(src.po.entity_type, src.po.entity_id, req.user);
+    const appr = await approvalStateFor(src.po.entity_type, src.po.entity_id, req.user, { seller_type: src.po.seller_type, seller_entity_id: src.po.seller_entity_id, lines: src.lines });
     const now = new Date();
     const first = await svc.computeFirstRunDate({ ...base, ...cadence }, now);
     const status = (appr.required && !appr.byOwner) ? 'pending_approval' : 'active';
@@ -248,7 +249,7 @@ router.put('/purchase-orders/schedules/:id', async (req, res) => {
       preview = await svc.previewSchedule({ ...s.toJSON(), line_items: patch.line_items || cur });
       if (!preview.ok) return res.status(400).json({ success: false, code: preview.error.code, message: `This standing order cannot be placed now: ${preview.error.message}` });
       // 오너가 본 내용(품목 수량·주기)이 바뀌었다 → 승인 필요 매장이면 다시 승인(§4-4)
-      const appr = await approvalStateFor(s.entity_type, s.entity_id, req.user);
+      const appr = await approvalStateFor(s.entity_type, s.entity_id, req.user, { seller_type: s.seller_type, seller_entity_id: s.seller_entity_id, lines: patch.line_items || cur });
       patch.approval_required = appr.required;
       patch.approved_total = preview.total;
       if (appr.required && !appr.byOwner) {
@@ -291,7 +292,7 @@ router.post('/purchase-orders/schedules/:id/resume', async (req, res) => {
     const s = await loadOwned(req, res); if (!s) return;
     if (s.status !== 'paused') return res.status(400).json({ success: false, message: 'Only paused standing orders can be resumed' });
     // 반려로 멈춘 틀은 승인부터(반려 사유가 남아 있음) — 승인 필요 매장이면 승인 대기로 돌아간다
-    const appr = await approvalStateFor(s.entity_type, s.entity_id, req.user);
+    const appr = await approvalStateFor(s.entity_type, s.entity_id, req.user, { seller_type: s.seller_type, seller_entity_id: s.seller_entity_id, lines: s.line_items });
     const needsApproval = appr.required && !appr.byOwner && (!s.approved_at || s.rejected_at);
     await s.update({
       status: needsApproval ? 'pending_approval' : 'active',

@@ -84,6 +84,8 @@ interface POStaging {
   payment_status?: 'unpaid' | 'paid' | 'refunded' | null;
   payment_method?: string | null;
   seller_name?: string | null;
+  // 오너 승인 판정 — 서버가 제출 게이트와 같은 함수로 발주마다 준다(2026-11-01 §G-7-4 ④). 레스토랑 발주만.
+  approval_preview?: { required: boolean; reason: string; blocking_line_ids: number[] } | null;
 }
 
 const PageHeader = styled.div`
@@ -162,6 +164,33 @@ const InfoLine = styled.div`
   border-radius: 6px;
   margin-bottom: 8px;
 `;
+
+/** 오너 승인 판정 한 줄 (2026-11-01 §G-7-6 ③) — 서버 approval_preview 를 그대로 보여 준다.
+ *  예외면 «승인 필요 없음(사유)», 승인 대상인데 일부 줄만 막으면 그 줄 이름. 오너 미연결·마스터 OFF·오너 본인은 아무것도 안 보인다. */
+const ApprovalPreviewLine: React.FC<{ po: POStaging; itemLabel: (it: POItem) => string }> = ({ po, itemLabel }) => {
+  const { t } = useTranslation('purchaseOrders');
+  const pv = po.approval_preview;
+  if (!pv) return null;
+  if (!pv.required) {
+    if (pv.reason !== 'exempt_seller' && pv.reason !== 'exempt_lines') return null;
+    return (
+      <div style={{ fontSize: 12, color: '#6B7280', margin: '0 0 8px' }}>
+        {pv.reason === 'exempt_seller'
+          ? t('approvalRules.previewExemptSeller', 'Owner approval not required — this supplier is exempt.')
+          : t('approvalRules.previewExemptLines', 'Owner approval not required — every item is exempt.')}
+      </div>
+    );
+  }
+  const items = po.items || [];
+  const blocking = items.filter(it => pv.blocking_line_ids.includes(it.id));
+  if (!blocking.length || blocking.length === items.length) return null;   // 전부 막힘 = 평소 승인 — 아래 기존 안내로 충분
+  return (
+    <div style={{ fontSize: 12, color: '#92400E', margin: '0 0 8px' }}>
+      {t('approvalRules.previewBlocking', 'Needs Owner approval because of:')} {blocking.map(itemLabel).join(', ')}
+    </div>
+  );
+};
+
 /**
  * 합계·전체제출 바 — 2026-08-31 Irene: "이 내용은 푸터에 하단에 붙어서 계속 하단 따라다녀야지."
  *
@@ -265,9 +294,6 @@ const PurchaseOrderStagingPage: React.FC = () => {
   const [pdfPreview, setPdfPreview] = useState<{ po: POStaging; html: string } | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const pdfFrameRef = useRef<HTMLIFrameElement | null>(null);
-  // 오너 승인이 필요한 매장이면 **승인 전에 공급업체로 보내면 안 된다**.
-  // (서버는 이미 pending_approval 로 막지만, 화면이 WhatsApp/Email 발송을 권하면 통제가 무의미해진다.)
-  const [needsOwnerApproval, setNeedsOwnerApproval] = useState(false);
   const [nameMode, setNameMode] = useState<NameMode>(loadNameMode);
 
   const changeNameMode = (m: NameMode) => {
@@ -286,22 +312,6 @@ const PurchaseOrderStagingPage: React.FC = () => {
     return it.seller_product_name || internal;
   };
 
-  useEffect(() => {
-    // 오너가 고른 매장 자격으로 보낸 발주는 승인 생략(2026-10-04 Fable owner-po-on-behalf ① — 서버 applySubmitGate 와 같은 규칙)
-    if (isOwner) { setNeedsOwnerApproval(false); return; }
-    const rid = (user as any)?.restaurant_id || (user as any)?.restaurantId;
-    if (!rid) return;
-    (async () => {
-      try {
-        const res = await fetch(`/api/restaurants/${rid}`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
-        const j = await res.json();
-        const data = j?.data || j;
-        const hasOwner = Array.isArray(data?.managers) && data.managers.some((m: any) => m.role === 'Restaurant Owner');
-        const setting = data?.operation_settings?.requirePoOwnerApproval;
-        setNeedsOwnerApproval(!!hasOwner && setting !== false);
-      } catch { /* 조회 실패 시 기존 동작 유지 */ }
-    })();
-  }, [user, isOwner]);
 
   /**
    * 목록 새로고침.
@@ -562,7 +572,11 @@ const PurchaseOrderStagingPage: React.FC = () => {
     return lines.length ? ` ${tt('orderCutoff.lateConfirmTitle', 'Some cutoffs have passed:')} ${lines.join(' ')}` : '';
   })();
 
-  const renderPO = (po: POStaging, isExternal: boolean) => (
+  // 오너 승인이 필요한 발주면 **승인 전에 공급업체로 보내면 안 된다** — 서버 판정(approval_preview)을 발주마다 그대로 쓴다.
+  //   (예전엔 «오너 있음 ∧ 설정 ON» 을 화면이 추측해 전부 잠갔다 — 승인 예외 규칙이 생기면 틀린다 · §G-7-4 ④)
+  const renderPO = (po: POStaging, isExternal: boolean) => {
+    const needsOwnerApproval = !!po.approval_preview?.required;
+    return (
     <POCard key={po.id} $external={isExternal}>
       <POHead>
         <POSellerBox>
@@ -607,6 +621,8 @@ const PurchaseOrderStagingPage: React.FC = () => {
           ))}
         </ItemsBlock>
       )}
+
+      <ApprovalPreviewLine po={po} itemLabel={itemLabel} />
 
       {isExternal ? (
         <>
@@ -709,7 +725,8 @@ const PurchaseOrderStagingPage: React.FC = () => {
         </>
       )}
     </POCard>
-  );
+    );
+  };
 
   return (
     // flex column + Content flex:1 — 목록이 짧아도 SubmitBar 가 하단에 붙어 있게 (위 SubmitBar 주석 참조)

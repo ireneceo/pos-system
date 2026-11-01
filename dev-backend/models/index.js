@@ -98,6 +98,7 @@ const PurchaseOrderReturn = require('./PurchaseOrderReturn');
 // 정기 발주 (2026-10-22 Fable 설계 recurring-po)
 const PurchaseOrderSchedule = require('./PurchaseOrderSchedule');
 const PurchaseOrderScheduleRun = require('./PurchaseOrderScheduleRun');
+const PoApprovalExemption = require('./PoApprovalExemption');
 const StockTake = require('./StockTake');
 const StockTakeItem = require('./StockTakeItem');
 const StockAlert = require('./StockAlert');
@@ -888,6 +889,9 @@ PurchaseOrderItem.belongsTo(IngredientSellerProduct, { foreignKey: 'ingredient_s
 PurchaseOrderSchedule.hasMany(PurchaseOrderScheduleRun, { foreignKey: 'schedule_id', as: 'runs', constraints: false });
 PurchaseOrderScheduleRun.belongsTo(PurchaseOrderSchedule, { foreignKey: 'schedule_id', as: 'schedule', constraints: false });
 PurchaseOrder.belongsTo(PurchaseOrderSchedule, { foreignKey: 'schedule_id', as: 'schedule', constraints: false });
+// 오너 발주 승인 예외 규칙 (2026-11-01 §G-7-3) — 매장마다
+Restaurant.hasMany(PoApprovalExemption, { foreignKey: 'restaurant_id', as: 'poApprovalExemptions', constraints: false });
+PoApprovalExemption.belongsTo(Restaurant, { foreignKey: 'restaurant_id', as: 'restaurant', constraints: false });
 
 // Sprint 7: Carrier ↔ CarrierWebhookEvent / InventoryTransaction ↔ PurchaseOrder
 Carrier.hasMany(CarrierWebhookEvent, { foreignKey: 'carrier_id', as: 'webhookEvents' });
@@ -1202,6 +1206,7 @@ module.exports = {
   PurchaseOrderItem,
   PurchaseOrderSchedule,
   PurchaseOrderScheduleRun,
+  PoApprovalExemption,
   // Referral System
   ReferralWallet,
   ReferralCommission,

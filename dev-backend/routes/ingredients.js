@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { brandIngredientWhere } = require('../utils/restaurantStockScopes');
 
 // 재료 목록 통합 (docs/INGREDIENT_UNIFICATION_DESIGN.md F3).
 // 브랜드 재료는 Stock Items 의 거울이라 사람이 직접 만들지 않는다. 되돌리지 말 것 —
@@ -626,11 +627,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
     // is_active:true — BG가 비활성화한 브랜드 재료는 레스토랑에서 흐리게가 아니라 아예 숨김
     // (카테고리와 동일 원칙, Irene 2026-07-05). 레스토랑 자체 재료의 비활성 흐림은 별개(관리용).
     const brandIngredients = await Ingredient.findAll({
-      where: {
-        brand_id: restaurant.brand_id,
-        owner_type: 'brand',
-        is_active: true
-      },
+      where: brandIngredientWhere(restaurant),
       order: [['name', 'ASC']],
       include: [
         {

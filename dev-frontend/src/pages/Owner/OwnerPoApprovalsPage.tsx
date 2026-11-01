@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { formatCurrency } from '../../utils/currency';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
@@ -12,7 +12,6 @@ import {
   FormGroup, FormLabel
 } from '../../components/UI';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
-import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import AlertDialog from '../../components/Common/AlertDialog';
 import { Modal } from '../../components/UI/Modal';
 import { Button } from '../../components/UI/Button';
@@ -24,6 +23,7 @@ import { sharePoViaWhatsApp, sharePoViaEmail, poShareText } from '../../utils/po
 import { shareTextViaApps } from '../../utils/appShare';
 import { setOwnerPoRestaurantId } from '../../utils/ownerPoScope';
 import OwnerPoTabs from '../../components/PurchaseOrders/OwnerPoTabs';
+import OwnerApprovalRulesPanel from '../../components/PurchaseOrders/OwnerApprovalRulesPanel';
 import OrderCutoffBadge, { useMinuteNow } from '../../components/PurchaseOrders/OrderCutoffBadge';
 import type { OrderWindows } from '../../utils/orderCutoff';
 import { useStore } from '../../contexts/StoreContext';
@@ -34,6 +34,7 @@ interface PendingPO {
   restaurant_name: string | null;
   seller_name?: string | null;
   seller_type?: string;
+  seller_entity_id?: number | null;
   item_count?: number;
   items?: Array<{ id: number }>;
   total_amount: number | string;
@@ -126,7 +127,11 @@ const OwnerPoApprovalsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<number | null>(null);
 
+  const [searchParams] = useSearchParams();
+  const view = searchParams.get('view') === 'rules' ? 'rules' : 'pending';
   const [approveTarget, setApproveTarget] = useState<PendingPO | null>(null);
+  // 승인 창의 «다음부터 이 공급업체는 묻지 않기» — 켜고 승인하면 공급업체 예외 규칙을 먼저 만든다(§G-7-6 ①)
+  const [skipSellerNext, setSkipSellerNext] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<PendingPO | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [alert, setAlert] = useState<{ title: string; message: string } | null>(null);
@@ -161,10 +166,23 @@ const OwnerPoApprovalsPage: React.FC = () => {
   const doApprove = async () => {
     if (!approveTarget) return;
     const target = approveTarget;
+    const addSellerRule = skipSellerNext;
     setApproveTarget(null);
+    setSkipSellerNext(false);
     setBusyId(target.id);
     try {
       const token = getAuthToken();
+      if (addSellerRule) {
+        const rr = await fetch('/api/purchase-orders/approval-exemptions', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            restaurant_id: Number(target.entity_id), scope: 'seller',
+            seller_type: target.seller_type, target_id: target.seller_entity_id ?? 0
+          })
+        });
+        if (!rr.ok) setAlert({ title: t('approvalRules.tab', 'Approval rules'), message: t('approvalRules.saveFailed', 'Could not save the rule.') as string });
+      }
       const res = await fetch(`/api/purchase-orders/${target.id}/approve`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` }
       });
@@ -274,6 +292,25 @@ const OwnerPoApprovalsPage: React.FC = () => {
   };
 
   const pendingCount = useMemo(() => rows.filter(r => !(r.id in approved)).length, [rows, approved]);
+
+  if (view === 'rules') {
+    return (
+      <Container>
+        <Header>
+          <div>
+            <Title>{t('ownerApprovals.title')}</Title>
+            <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>
+              {t('approvalRules.subtitle', 'Choose which suppliers, categories or items can be ordered without your approval.')}
+            </div>
+          </div>
+        </Header>
+        <Content>
+          <OwnerPoTabs active="rules" pendingCount={pendingCount} />
+          <OwnerApprovalRulesPanel timeZone={storeTimeZone} />
+        </Content>
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -454,18 +491,33 @@ const OwnerPoApprovalsPage: React.FC = () => {
         </DataTableContainer>
       </Content>
 
-      {/* 승인 확인 */}
-      <ConfirmDialog
+      {/* 승인 확인 — «다음부터 이 공급업체는 묻지 않기» 체크(§G-7-6 ①) */}
+      <Modal
         isOpen={!!approveTarget}
-        onClose={() => setApproveTarget(null)}
-        onConfirm={doApprove}
-        title={t('ownerApprovals.approveTitle')}
-        message={(approveTarget?.is_external
-          ? t('ownerApprovals.approveConfirmExternal', { po: approveTarget?.po_number || '' })
-          : t('ownerApprovals.approveConfirm', { po: approveTarget?.po_number || '' })) as string}
-        confirmText={t('ownerApprovals.approve') as string}
-        variant="info"
-      />
+        onClose={() => { setApproveTarget(null); setSkipSellerNext(false); }}
+        title={t('ownerApprovals.approveTitle') as string}
+        maxWidth="460px"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => { setApproveTarget(null); setSkipSellerNext(false); }}>{t('common.cancel')}</Button>
+            <Button variant="primary" onClick={doApprove}>{t('ownerApprovals.approve')}</Button>
+          </>
+        }
+      >
+        <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.5 }}>
+          {(approveTarget?.is_external
+            ? t('ownerApprovals.approveConfirmExternal', { po: approveTarget?.po_number || '' })
+            : t('ownerApprovals.approveConfirm', { po: approveTarget?.po_number || '' })) as string}
+        </div>
+        {approveTarget && (
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 16, fontSize: 13, color: '#4B5563', cursor: 'pointer' }}>
+            <input type="checkbox" checked={skipSellerNext} onChange={(e) => setSkipSellerNext(e.target.checked)} style={{ marginTop: 2 }} />
+            <span>
+              {t('approvalRules.skipSellerNext', { seller: approveTarget.seller_name || '', defaultValue: "Don't ask again for purchase orders to {{seller}}" }) as string}
+            </span>
+          </label>
+        )}
+      </Modal>
 
       {/* 반려 사유 입력 */}
       {rejectTarget && (

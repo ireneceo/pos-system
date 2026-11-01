@@ -12,16 +12,17 @@
  *   POST /purchase-orders/:id/approve             — 승인 → submitted (판매자 통지)
  *   POST /purchase-orders/:id/reject              — 반려 → draft (사유)
  *   POST /purchase-orders/:id/revoke-approval     — 승인취소 → pending_approval (2026-10-22 Fable 설계)
+ *   GET/POST/DELETE /purchase-orders/approval-exemptions… — 오너 승인 예외 규칙 (2026-11-01 Fable 설계 §G-7-4 ②)
  */
 const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const database = require('../config/database');
 const { PurchaseOrder, PurchaseOrderItem, PurchaseOrderSchedule, Restaurant } = require('../models');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticateToken, checkRestaurantAccess } = require('../middleware/auth');
 const { sanitizeString } = require('../middleware/validation');
 const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeService');
-const { resolveOwnerRestaurantIds, canRevokeApproval } = require('../utils/poOwnerApproval');
+const { resolveOwnerRestaurantIds, canRevokeApproval, isApprovalRequiredForRestaurant, restaurantHasOwner } = require('../utils/poOwnerApproval');
 const { resolveSellers, getSeller, getSellerName, isExternalSeller } = require('../utils/sellerNames');
 const {
   fireSellerSubmittedNotification,
@@ -65,6 +66,164 @@ function ownsPO(po, req) {
 
 // per-route 가드만 적용 — 블랭킷 router.use 금지(레스토랑 Admin 의 발주 생성/조회까지 403 으로
 // 막아버린다). 매칭 안 되는 /purchase-orders/* 는 이 라우터를 통과해 purchaseOrdersRouter 로 폴스루.
+
+// ============================================
+// 오너 승인 예외 규칙 (2026-11-01 Fable 설계 docs/PURCHASE_ORDER_SYSTEM.md §G-7-4 ②)
+//   읽기 = 그 매장에 접근 가능한 사람(RA·직원·오너·SA) · 쓰기 = 그 매장 ownership 오너·System Admin 만.
+//   승인은 오너의 권한이고 예외는 그 권한을 넘기는 행위라 넘기는 사람이 정한다.
+//   ⚠ /purchase-orders/:id/… 라우트보다 앞에 둔다(이 파일·purchaseOrdersRouter 둘 다).
+// ============================================
+const { PoApprovalExemption } = require('../models');
+const exemptionsUtil = require('../utils/poApprovalExemptions');
+const { logActivity } = require('../utils/activityLogger');
+
+function parseRid(v) {
+  const n = parseInt(v, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+function ownsRestaurantId(req, rid) {
+  if (req.ownerIsAdmin) return true;
+  return Array.isArray(req.ownerRestaurantIds) && req.ownerRestaurantIds.includes(rid);
+}
+
+// GET /purchase-orders/approval-exemptions?restaurant_id=N — 규칙 목록(표시 이름 포함)
+router.get('/purchase-orders/approval-exemptions', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const rid = parseRid(req.query.restaurant_id);
+    if (!rid) return res.status(400).json({ success: false, message: 'restaurant_id is required' });
+    const rows = await PoApprovalExemption.findAll({ where: { restaurant_id: rid }, order: [['created_at', 'DESC']] });
+    const data = await exemptionsUtil.describeRules(rows);
+    const owned = req.user.role === 'System Admin' ? true : (await resolveOwnerRestaurantIds(req.user)).includes(rid);
+    // 마스터(레스토랑별 «오너 승인») 상태 — 규칙은 마스터가 ON 일 때만 뜻이 있다(§G-7-1). 판정 함수와 같은 조건.
+    const restaurant = await Restaurant.findByPk(rid, { attributes: ['id', 'operation_settings'] });
+    const master_on = !!restaurant && (await isApprovalRequiredForRestaurant(restaurant));
+    const has_owner = await restaurantHasOwner(rid);
+    res.json({ success: true, data, can_edit: owned, master_on, has_owner });
+  } catch (e) {
+    console.error('[po-approval] GET exemptions error:', e.message);
+    res.status(500).json({ success: false, message: 'Failed to load approval exemptions' });
+  }
+});
+
+// GET /purchase-orders/approval-exemptions/candidates?restaurant_id=N&scope=…&q= — 고를 후보
+router.get('/purchase-orders/approval-exemptions/candidates', authenticateToken, checkRestaurantAccess, async (req, res) => {
+  try {
+    const rid = parseRid(req.query.restaurant_id);
+    const scope = String(req.query.scope || '');
+    if (!rid) return res.status(400).json({ success: false, message: 'restaurant_id is required' });
+    if (!exemptionsUtil.SCOPES.includes(scope)) return res.status(400).json({ success: false, message: 'Invalid scope' });
+    const data = await exemptionsUtil.listCandidates(rid, scope, req.query.q);
+    res.json({ success: true, data });
+  } catch (e) {
+    console.error('[po-approval] GET exemption candidates error:', e.message);
+    res.status(500).json({ success: false, message: 'Failed to load candidates' });
+  }
+});
+
+// POST /purchase-orders/approval-exemptions — 규칙 추가(멱등: 같은 규칙이면 그 행)
+router.post('/purchase-orders/approval-exemptions', authenticateToken, requireOwnerScope, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const rid = parseRid(body.restaurant_id);
+    const scope = String(body.scope || '');
+    if (!rid) return res.status(400).json({ success: false, message: 'restaurant_id is required' });
+    if (!ownsRestaurantId(req, rid)) return res.status(403).json({ success: false, message: 'Only the Owner of this restaurant can change approval rules' });
+    if (!exemptionsUtil.SCOPES.includes(scope)) return res.status(400).json({ success: false, message: 'Invalid scope' });
+    const sellerType = scope === 'seller' ? String(body.seller_type || '') : 'none';
+    if (scope === 'seller' && !exemptionsUtil.SELLER_TYPES.includes(sellerType)) {
+      return res.status(400).json({ success: false, message: 'Invalid seller_type' });
+    }
+    const targetId = scope === 'seller' && sellerType === 'system_admin' ? 0 : parseInt(body.target_id, 10);
+    if (!Number.isFinite(targetId) || targetId < 0 || (targetId === 0 && sellerType !== 'system_admin')) {
+      return res.status(400).json({ success: false, message: 'target_id is required' });
+    }
+    const cand = await exemptionsUtil.findCandidate(rid, scope, sellerType, targetId);
+    if (!cand) return res.status(400).json({ success: false, code: 'TARGET_NOT_AVAILABLE', message: 'This item is not available for this restaurant' });
+    const note = body.note != null ? (sanitizeString(String(body.note)) || '').slice(0, 255) || null : null;
+
+    const where = { restaurant_id: rid, scope, seller_type: sellerType, target_id: targetId };
+    const existing = await PoApprovalExemption.findOne({ where });
+    if (existing) {
+      const [described] = await exemptionsUtil.describeRules([existing]);
+      return res.json({ success: true, data: described, existed: true });
+    }
+    let row;
+    try {
+      row = await PoApprovalExemption.create({ ...where, note, created_by_user_id: req.user.id });
+    } catch (err) {
+      if (err && err.name === 'SequelizeUniqueConstraintError') {
+        row = await PoApprovalExemption.findOne({ where });
+        const [described] = await exemptionsUtil.describeRules([row]);
+        return res.json({ success: true, data: described, existed: true });
+      }
+      throw err;
+    }
+    await logActivity(req, {
+      restaurant_id: rid, action_type: 'create', entity_type: 'po_approval_exemption', entity_id: row.id,
+      entity_name: cand.name, changes: { scope, seller_type: sellerType, target_id: targetId, note },
+      description: `Owner approval exemption added: ${scope} «${cand.name}»`
+    });
+    const [described] = await exemptionsUtil.describeRules([row]);
+    res.status(201).json({ success: true, data: described });
+  } catch (e) {
+    console.error('[po-approval] POST exemption error:', e.message);
+    res.status(500).json({ success: false, message: 'Failed to save approval exemption' });
+  }
+});
+
+// DELETE /purchase-orders/approval-exemptions/:exemptionId — 규칙 삭제(다음 제출부터 승인 대상 · 소급 없음)
+router.delete('/purchase-orders/approval-exemptions/:exemptionId', authenticateToken, requireOwnerScope, async (req, res) => {
+  try {
+    const row = await PoApprovalExemption.findByPk(parseInt(req.params.exemptionId, 10) || 0);
+    if (!row) return res.status(404).json({ success: false, message: 'Rule not found' });
+    if (!ownsRestaurantId(req, Number(row.restaurant_id))) return res.status(403).json({ success: false, message: 'Only the Owner of this restaurant can change approval rules' });
+    const [described] = await exemptionsUtil.describeRules([row]);
+    await row.destroy();
+    await logActivity(req, {
+      restaurant_id: Number(row.restaurant_id), action_type: 'delete', entity_type: 'po_approval_exemption', entity_id: row.id,
+      entity_name: described.display_name || null, changes: { scope: row.scope, seller_type: row.seller_type, target_id: row.target_id },
+      description: `Owner approval exemption removed: ${row.scope} «${described.display_name || row.target_id}»`
+    });
+    res.json({ success: true, data: { id: row.id } });
+  } catch (e) {
+    console.error('[po-approval] DELETE exemption error:', e.message);
+    res.status(500).json({ success: false, message: 'Failed to remove approval exemption' });
+  }
+});
+
+// PUT /purchase-orders/approval-master {restaurant_id, on} — 발주 오너 승인 스위치(operation_settings.requirePoOwnerApproval)
+//   2026-11-01 Irene «권고대로» · Fable §G-7-8 A안: 오너 연결 매장의 스위치는 그 매장 오너·SA 만 바꾼다.
+//   operation_settings 의 이 키 하나만 고친다(나머지 설정 무접촉 — 행을 잠그고 읽은 값에 덮어쓴다).
+router.put('/purchase-orders/approval-master', authenticateToken, requireOwnerScope, async (req, res) => {
+  const t = await database.sequelize.transaction();
+  try {
+    const rid = parseRid(req.body?.restaurant_id);
+    if (!rid) { await t.rollback(); return res.status(400).json({ success: false, message: 'restaurant_id is required' }); }
+    if (!ownsRestaurantId(req, rid)) { await t.rollback(); return res.status(403).json({ success: false, message: 'Only the Owner of this restaurant can change this' }); }
+    if (typeof req.body?.on !== 'boolean') { await t.rollback(); return res.status(400).json({ success: false, message: 'on must be true or false' }); }
+    const restaurant = await Restaurant.findByPk(rid, { attributes: ['id', 'operation_settings'], transaction: t, lock: t.LOCK.UPDATE });
+    if (!restaurant) { await t.rollback(); return res.status(404).json({ success: false, message: 'Restaurant not found' }); }
+    let os = restaurant.getDataValue('operation_settings');
+    if (typeof os === 'string') { try { os = JSON.parse(os); } catch (_) { os = {}; } }
+    os = os && typeof os === 'object' ? { ...os } : {};
+    const before = os.requirePoOwnerApproval;
+    os.requirePoOwnerApproval = req.body.on;
+    restaurant.operation_settings = os;
+    restaurant.changed('operation_settings', true);
+    await restaurant.save({ transaction: t });
+    await t.commit();
+    await logActivity(req, {
+      restaurant_id: rid, action_type: 'update', entity_type: 'restaurant_settings', entity_id: rid,
+      entity_name: 'requirePoOwnerApproval', changes: { requirePoOwnerApproval: { from: before === undefined ? null : before, to: req.body.on } },
+      description: `Owner approval for purchase orders turned ${req.body.on ? 'on' : 'off'}`
+    });
+    res.json({ success: true, data: { restaurant_id: rid, on: req.body.on } });
+  } catch (e) {
+    try { await t.rollback(); } catch (_) {}
+    console.error('[po-approval] PUT approval-master error:', e.message);
+    res.status(500).json({ success: false, message: 'Failed to update Owner approval setting' });
+  }
+});
 
 // ============================================
 // GET /purchase-orders/pending-approval — 오너 승인 대기 큐

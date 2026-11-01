@@ -4,6 +4,7 @@
 const express = require('express');
 const { menuCategoryError } = require('../utils/menuCategoryTree');
 const router = express.Router();
+const { stockProductWhere } = require('../utils/restaurantStockScopes');
 require('../models'); // Load associations
 const { readableIngredient, writableIngredient } = require('../utils/brandStockAccess');
 const { conversionStatusFor } = require('../services/sellerLinkConversion');
@@ -438,15 +439,7 @@ router.get('/:restaurantId/stock-products', authenticateToken, checkRestaurantAc
     const rid = parseInt(req.params.restaurantId, 10);
     const { Product, IngredientSellerProduct } = require('../models');
     const rows = await Product.findAll({
-      where: {
-        restaurant_id: rid,
-        is_active: true,
-        is_set_menu: false,
-        recipe_id: null,
-        product_recipe_id: null,
-        // 재료(재고아이템)를 그대로 가리키는 메뉴는 그 재료 줄이 곧 이 물건이다 — BG 쪽과 같은 규칙.
-        ingredient_id: null,
-      },
+      where: stockProductWhere(rid),   // utils/restaurantStockScopes — 승인 예외 후보와 같은 조건
       // ⚠ products 는 createdAt(카멜)이다 — 다른 테이블과 달리 underscored 가 아니다
       attributes: ['id', 'name', 'stock_unit', 'current_stock', 'min_stock', 'category', 'createdAt'],
       order: [['name', 'ASC']],

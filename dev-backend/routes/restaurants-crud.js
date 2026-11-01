@@ -1801,7 +1801,11 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     }
     if (req.body.operation_settings !== undefined) {
       const r = guardOperationSettings(req.body.operation_settings, restaurant.getDataValue('operation_settings'), req.params.id);
-      if (r.action !== 'reject') updateData.operation_settings = r.value;
+      if (r.action !== 'reject') {
+        // 발주 오너 승인 스위치 — 오너 연결 매장이면 오너·SA 만 바꾼다(2026-11-01 §G-7-8 A · store.js 와 같은 함수)
+        await require('../utils/poOwnerApproval').keepPoMasterUnlessOwner(r.value, restaurant.getDataValue('operation_settings'), req.user, req.params.id);
+        updateData.operation_settings = r.value;
+      }
     }
     if (req.body.table_settings !== undefined) {
       const r = guardShallowSettings('table_settings', req.body.table_settings, restaurant.getDataValue('table_settings'), req.params.id);
