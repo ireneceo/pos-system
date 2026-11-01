@@ -1502,6 +1502,7 @@ router.put('/brand-products/:productId/toggle-active', authenticateToken, requir
  * body:
  *   existing_stock_item_id  기존 재고아이템에 붙이기(이걸 주면 아무것도 새로 만들지 않는다)
  *   name·unit·base_quantity·min_stock  새로 만들 때의 값(비면 프로덕트 값)
+ *   category_id · category_name  새로 만들 때의 재고 카테고리(id 우선 · 이름은 같은 이름 재사용/없으면 생성 — ⑫)
  *   force                   같은 이름이 있어도 새로 만든다
  *   seller_source           { seller_type, seller_entity_id, seller_product_id, unit_price, unit_conversion? }
  *                           = 우리가 **사 오는** 쪽. 비면 연결만 하고 끝난다.
@@ -1559,11 +1560,19 @@ router.post('/brand-products/:productId/stock-item', authenticateToken, requireB
           });
         }
       }
+      // 재고 카테고리 — 화면 칸에서 고른 것(category_id) 또는 «‹상품 카테고리› 로 새로 만들기»(category_name).
+      //   만드는 순간 한 번만 정한다(상품 분류와 동기화 없음 · docs/TRADE_STRUCTURE.md ⑫).
+      const { resolveStockItemCategory } = require('../utils/stockItemCategory');
+      const cat = await resolveStockItemCategory({
+        ownerUserId: req.bgOwnerId, categoryId: body.category_id, categoryName: body.category_name, transaction: t
+      });
+      if (cat.error) { await t.rollback(); return res.status(cat.error.status).json(cat.error.body); }
       const { generateCode } = require('../utils/codeGenerator');
       const code = await generateCode(ProductIngredientModel, 'PI', { whereClause: { owner_user_id: req.bgOwnerId } });
       const bq = parseFloat(body.base_quantity != null ? body.base_quantity : product.base_quantity);
       stockItem = await ProductIngredientModel.create({
         owner_user_id: req.bgOwnerId,
+        category_id: cat.id,
         code,
         name,
         unit: sanitizeString(String(body.unit || product.unit || '')).slice(0, 20) || null,

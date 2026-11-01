@@ -877,3 +877,13 @@ Irene 의 「가격관리도 각자」 가 **공급업체 상품 정가까지 �
 - «직원식 사용» 입력(재고 줄이기, 거래 종류 `staff_meal`)은 **2단계** — Irene 「세고 싶다」 뒤 별도 묶음. POS 스탭밀 결제·일일 스탭밀 정산 0 변경.
 - 마이그 `scripts/migrate-staff-meal-category-flag.js`(deploy, 멱등): 칸 추가 + 이름이 Staff Meal/직원식/스탭밀(공백·대소문자 무시)인 매장 분류를 켬 — 운영 예상 1건(#23 매장 10). 매장 10 재료 8개 이동은 `scripts/migrate-staff-meal-ingredients-20261007.js`(manual · 드라이런 → Irene 표 승인 → `--apply` · `--undo`).
 - 혼동 주의: §2-4 «상품 종류»(재고 세는 축)와 다른 축이다 — 이건 «비용의 성격»이다.
+
+## [Fable 판정] ⑫ 상품 창에서 재고아이템을 같이 만들 때의 카테고리 (2026-11-01)
+> Irene 원문(11-01) 「브랜드제너럴에서 프로덕트 카테고리를 만들고 아이템을 스톡아이템으로 추가하면 해당 카테고리도 그대로 추가되서 연결되어야 하는 거 아니야?」
+> 사실: `POST /brand-products/:id/stock-item`(brand-products.js:1509~)은 `category_id` 를 아예 안 넣어 새 재고아이템이 항상 «미분류». 상품 분류 = `brand_product_categories`, BG 재고아이템 분류 = `product_ingredient_categories` — **다른 개념 두 벌(판매 분류 / 재료 분류)이고 둘 다 정본**(⑧ 판정과 같은 선: 브랜드 쪽 «진짜» 재료 분류 = `product_ingredient_categories`). 개발 owner 6·22 는 이름이 겹치는 쌍 0 · 운영 brand 1 은 상품 분류 20 vs 재료 분류 18(Meat/Seafood…) 로 대개 다르다.
+- **결정 = 보이는 선택칸 + 기본값은 Irene 기대.** 상품 창 «재고아이템도 같이 만들기» 블록(새로 만들 때만)에 **재고 카테고리 선택칸** 1개. 기본값: 같은 이름(공백·대소문자 무시)의 활성 재고 카테고리가 있으면 그것 / 없으면 **«‹상품 카테고리 이름› 으로 새로 만들기»** 옵션 / 그 밖에 기존 재고 카테고리 전부 + «없음». 상품에 카테고리가 없으면 기본 «없음».
+- **조용한 자동 복제(find-or-create 만, 칸 없음)는 기각** — 2026-07-05 미러가 상품 분류 이름으로 재료 분류를 만들어 두 벌을 낳은 것과 같은 모양이고, 판매 분류(Korean BBQ)가 재료 분류(Meat) 목록에 사람 모르게 섞인다. **두 분류표 사이 FK·이후 동기화도 기각** — 연결은 만드는 순간 한 번(멀티마스터 금지, 상품 분류를 나중에 바꿔도 재고아이템 분류는 안 따라간다).
+- 서버: 같은 라우트가 `category_id`(소유·활성 검사, 아니면 404) 또는 `category_name`(같은 트랜잭션에서 find-or-create · 이름 trim·대소문자 무시 · display_order=max+1, POST /product-ingredient-categories 와 같은 값) 을 받는다. 둘 다 오면 `category_id`. `existing_stock_item_id`(기존 것 붙이기)·409 뒤 «기존 것 쓰기» 는 그 재고아이템 분류를 건드리지 않는다. 헬퍼 1곳 `utils/stockItemCategory.js resolveStockItemCategory`.
+- 반대 방향(재고아이템 → 상품 `register-as-product`·발주 카탈로그 `new_product`)은 **이번 범위 밖** — 판매 분류는 카탈로그·매장이 보는 구조라 재료 분류 이름을 기본으로 밀어 넣지 않는다. Irene 가 원하면 «기존 상품 분류 고르기(만들기 없음)» 로 별건.
+- 안전망: 인스펙션 `ING-UNI-035` 같은 주인 안 활성 재고 카테고리 이름 중복 0(026 과 같은 꼴 — CUTOFF 뒤 생성분 차단 + 전수 목록) · 고장주입 2(소유 검사 제거 → 타 주인 category_id 가 통과하는지 / find 단계 제거 → 같은 이름 두 번째 호출이 2줄 만드는지).
+- **구현 현황 (2026-11-01 [Claude Code] · Irene «권고대로»):** 헬퍼 `dev-backend/utils/stockItemCategory.js` `resolveStockItemCategory` · 라우트 `brand-products.js` stock-item(새로 만들 때만) · 화면 `BrandProductsTab.tsx` «Stock item category» 칸 · 4언어 `products.siCategory*`. 인스펙션 `ING-UNI-035` 의 차단 기준일은 파일 공용 CUTOFF(09-04)가 아니라 **이 기능 날짜 `2026-11-01`** — (주인, 이름) 유니크 인덱스가 없어 운영에 옛 중복이 있을 수 있고 운영 읽기로 확인하지 못했기 때문(옛 중복은 `035L` 목록). 비교식은 헬퍼와 같은 `LOWER(TRIM(name))`. 자체 검증: API 6/6 · 고장주입 2/2(소유 검사 제거 → 다른 주인 카테고리 201 로 잡힘 / 찾기 제거 → 같은 이름 2줄 + 035 FAIL) · 실브라우저 저장 1회 · verify-all --full 23/24(남은 1 = 배포 기록).

@@ -30,7 +30,10 @@ async function sendAlertEmail(level, service, message, details) {
     const levelColor = level === 'critical' ? '#DC2626' : '#D97706';
     const levelLabel = level.toUpperCase();
     const detailsHtml = details ? `<pre style="background:#F8FAFC;border:1px solid #E6EBF1;border-radius:4px;padding:12px;font-size:12px;overflow-x:auto;max-height:300px;">${JSON.stringify(details, null, 2)}</pre>` : '';
-    const logsUrl = 'https://dev.purplehere.com/pos/admin/logs';
+    const frontendBase = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production'
+      ? 'https://purplehere.com'
+      : 'https://dev.purplehere.com');
+    const logsUrl = `${frontendBase}/pos/admin/logs`;
 
     await sendPlatformEmail({
       to: recipient,

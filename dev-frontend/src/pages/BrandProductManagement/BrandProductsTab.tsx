@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { parseMinOrderQty, OrderMode, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel, stockSpecLabel, formatQuantity } from '../../utils/unitConversion';
 import { formatUnitPrice } from '../../utils/currency';
 import { marginStateOf } from '../../utils/productMargin';
@@ -598,6 +598,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   const handleOpenModal = (product?: Product) => {
     // 창을 열 때마다 초기화 — 지난번 체크가 남아 재고아이템이 조용히 또 만들어지면 안 된다.
     setCreateStockItem(false);
+    setSiCategoryTouched(false);
     setStockDup({ open: false, productId: null, candidates: [] });
     if (product) {
       setEditingProduct(product);
@@ -691,6 +692,37 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
   // 원가·재고는 **재고아이템 한 곳**에 산다 — 상품 창은 그 칸을 보여 주고 고친다(두 번째 저장소가 아니다).
   //   새 재고아이템(체크) = 원가·개시 재고를 같이 만든다 · 연결된 재고아이템 = 그 값을 읽고, 바뀐 것만 그쪽에 쓴다.
   //   2026-10-22 Fable 설계 D1·D2 (.claude/fable-design-20261021-product-form-cost-stock.md)
+  // 새 재고아이템의 재고 카테고리 — 만드는 순간 한 번만 정한다(docs/TRADE_STRUCTURE.md ⑫ · 2026-11-01 Fable).
+  //   '' = 없음 · 'new' = «‹상품 카테고리› 로 새로 만들기»(서버가 같은 이름을 찾아 다시 쓰고 없으면 만든다) · 숫자 = 기존 재고 카테고리.
+  //   기본값 = 상품 카테고리와 같은 이름(공백·대소문자 무시)의 재고 카테고리, 없으면 'new'. 사람이 고르면 그 값을 지킨다.
+  const [stockCategories, setStockCategories] = useState<{ id: number; name: string; emoji?: string | null }[]>([]);
+  const [siCategory, setSiCategory] = useState('');
+  const [siCategoryTouched, setSiCategoryTouched] = useState(false);
+  const productCategoryName = useMemo(() => {
+    const c = categories.find(cat => String(cat.id) === String(formData.category_id));
+    return c ? String(c.name || '').trim() : '';
+  }, [categories, formData.category_id]);
+  const sameNameStockCategory = useMemo(() => {
+    const key = productCategoryName.toLowerCase();
+    return key ? stockCategories.find(c => String(c.name || '').trim().toLowerCase() === key) || null : null;
+  }, [productCategoryName, stockCategories]);
+  useEffect(() => {
+    if (!showModal || !createStockItem) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/product-ingredient-categories?is_active=true', { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+        const data = await res.json().catch(() => null);
+        if (!cancelled && data?.success) setStockCategories(Array.isArray(data.data) ? data.data : []);
+      } catch (e) { console.error('Failed to fetch stock item categories:', e); }
+    })();
+    return () => { cancelled = true; };
+  }, [showModal, createStockItem]);
+  useEffect(() => {
+    // 사람이 고른 값은 지킨다 — 단 'new' 는 상품 카테고리를 따라간다(같은 이름이 생기면 그것으로).
+    if (siCategoryTouched && siCategory !== 'new') return;
+    setSiCategory(sameNameStockCategory ? String(sameNameStockCategory.id) : (productCategoryName ? 'new' : ''));
+  }, [siCategoryTouched, siCategory, sameNameStockCategory, productCategoryName]);
   const [siCost, setSiCost] = useState('0');
   const [siStock, setSiStock] = useState('0');
   const [siOrig, setSiOrig] = useState<{ cost: number; stock: number } | null>(null);
@@ -783,6 +815,26 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               qty: selfStock
             })}
           </OrderModeHint>
+        )}
+        {mode === 'new' && (
+          <UIFormGroup style={{ marginBottom: 0 }}>
+            <FormLabel>{t('products.siCategoryLabel', { defaultValue: 'Stock item category' })}</FormLabel>
+            <FormSelect
+              value={siCategory}
+              onChange={(e) => { setSiCategoryTouched(true); setSiCategory(e.target.value); }}
+            >
+              <option value="">{t('products.siCategoryNone', { defaultValue: 'No category' })}</option>
+              {productCategoryName && !sameNameStockCategory && (
+                <option value="new">{t('products.siCategoryCreateSame', { defaultValue: 'Create “{{name}}”', name: productCategoryName })}</option>
+              )}
+              {stockCategories.map(c => (
+                <option key={c.id} value={String(c.id)}>{c.emoji ? `${c.emoji} ` : ''}{c.name}</option>
+              ))}
+            </FormSelect>
+            <OrderModeHint>
+              {t('products.siCategoryHint', { defaultValue: 'Set once when the stock item is created. Changing the product category later does not change it.' })}
+            </OrderModeHint>
+          </UIFormGroup>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
           <UIFormGroup style={{ marginBottom: 0 }}>
@@ -909,7 +961,9 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
             unit: formData.unit || null,
             base_quantity: parseFloat(formData.base_quantity) || 1,
             unit_cost: numOrZero(siCost),
-            ...(formData.product_kind === 'stock' ? { current_stock: numOrZero(siStock) } : {})
+            ...(formData.product_kind === 'stock' ? { current_stock: numOrZero(siStock) } : {}),
+            ...(siCategory === 'new' && productCategoryName ? { category_name: productCategoryName }
+              : /^\d+$/.test(siCategory) ? { category_id: Number(siCategory) } : {})
           });
           if (!ok) { fetchProducts(); fetchStockItems(); return; }
         }

@@ -803,7 +803,11 @@
     "siStockFailed": "stok",
     "siSaveFailed": "Produk disimpan, tetapi {{what}} item stok tidak dapat dikemas kini",
     "stockItemExistsKeepsValues": "Stok dan kos item stok itu kekal. Anda boleh mengubahnya dalam Edit Product.",
-    "siStockInPacks": "= {{packs}} {{pkg}}"
+    "siStockInPacks": "= {{packs}} {{pkg}}",
+    "siCategoryLabel": "Kategori item stok",
+    "siCategoryNone": "Tiada kategori",
+    "siCategoryCreateSame": "Cipta “{{name}}”",
+    "siCategoryHint": "Ditetapkan sekali semasa item stok dicipta. Menukar kategori produk kemudian tidak mengubahnya."
   },
   "brandIngredientsPage": {
     "subtitle": "Senarai bahan tunggal. Hidupkan perkongsian jenama untuk guna dalam resipi dan pesanan."

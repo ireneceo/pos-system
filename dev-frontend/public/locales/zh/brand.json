@@ -803,7 +803,11 @@
     "siStockFailed": "库存",
     "siSaveFailed": "商品已保存，但库存项目的{{what}}未能更新",
     "stockItemExistsKeepsValues": "该库存项目的库存和成本保持不变。可在 Edit Product 中修改。",
-    "siStockInPacks": "= {{packs}} {{pkg}}"
+    "siStockInPacks": "= {{packs}} {{pkg}}",
+    "siCategoryLabel": "库存项目类别",
+    "siCategoryNone": "无类别",
+    "siCategoryCreateSame": "新建“{{name}}”",
+    "siCategoryHint": "仅在创建库存项目时设置一次。之后更改商品类别不会随之改变。"
   },
   "brandIngredientsPage": {
     "subtitle": "唯一的食材清单。开启品牌共享后即可用于配方与采购。"

@@ -407,6 +407,31 @@ module.exports = {
           + dupCatRows.slice(0, 5).map(r => `매장 ${r.rid}(${String(r.rname).slice(0, 14)}) «${r.nm}» ${r.c}개`).join(' · ')
         : '', true);
 
+    // ING-UNI-035 (차단 · 2026-11-01 Fable 판정 ⑫): BG 재고아이템 카테고리(product_ingredient_categories)는
+    //   같은 주인 안에 같은 이름 활성 줄이 하나뿐. 상품 창 «‹상품 카테고리› 로 새로 만들기» 가 이름으로
+    //   찾아 다시 쓰고 없을 때만 만든다(utils/stockItemCategory.js) — 그 «찾기» 가 빠지면 같은 이름이 쌓인다.
+    //   비교식은 그 함수와 같은 LOWER(TRIM(name)) — 검사와 수정이 같은 기준을 쓴다.
+    //   표에 (주인, 이름) 유니크 인덱스가 없어 옛 중복이 있을 수 있다 → 차단은 이 기능 날짜 뒤 생성분이 낀 것만, 전수는 목록.
+    const PIC_CUTOFF = '2026-11-01';
+    const dupPicRows = await q(`
+      SELECT owner_user_id o, LOWER(TRIM(name)) nm, COUNT(*) c, SUM(created_at >= '${PIC_CUTOFF}') has_new
+        FROM product_ingredient_categories
+       WHERE is_active = 1 AND TRIM(name) <> ''
+       GROUP BY owner_user_id, LOWER(TRIM(name))
+      HAVING COUNT(*) > 1`);
+    const newDupPic = dupPicRows.filter(r => Number(r.has_new) > 0);
+    add(`ING-UNI-035 재고아이템 카테고리 같은 주인 안 이름 중복 0 (>=${PIC_CUTOFF} 생성분)`,
+      newDupPic.length === 0,
+      newDupPic.length
+        ? `${newDupPic.length}쌍 — 상품 창 «새로 만들기» 가 같은 이름을 또 만들었는지 확인(utils/stockItemCategory.js). 예: `
+          + newDupPic.slice(0, 5).map(r => `주인 ${r.o} «${r.nm}» ${r.c}개`).join(' · ')
+        : '');
+    add(`ING-UNI-035L 재고아이템 카테고리 같은 주인 안 이름 중복 (전수 · 목록)`,
+      dupPicRows.length === 0,
+      dupPicRows.length
+        ? `${dupPicRows.length}쌍. 예: ` + dupPicRows.slice(0, 5).map(r => `주인 ${r.o} «${r.nm}» ${r.c}개`).join(' · ')
+        : '', true);
+
     // ── 준비된 재고(1차 가공) 불변식 (2026-09-17 Fable 판정) ────────────────────────
     //   Fable 은 017·018·019 라 불렀으나 그 번호는 이 파일에서 이미 쓰고 있어 다음 빈 번호로 잡았다.
     //   세는 단위: 행(건).

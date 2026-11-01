@@ -803,7 +803,11 @@
     "siStockFailed": "stock",
     "siSaveFailed": "Product saved, but the stock item {{what}} could not be updated",
     "stockItemExistsKeepsValues": "That stock item's stock and cost stay as they are. You can change them in Edit Product.",
-    "siStockInPacks": "= {{packs}} {{pkg}}"
+    "siStockInPacks": "= {{packs}} {{pkg}}",
+    "siCategoryLabel": "Stock item category",
+    "siCategoryNone": "No category",
+    "siCategoryCreateSame": "Create “{{name}}”",
+    "siCategoryHint": "Set once when the stock item is created. Changing the product category later does not change it."
   },
   "brandIngredientsPage": {
     "subtitle": "The single list of ingredients. Turn on brand sharing to use them in recipes and orders."
