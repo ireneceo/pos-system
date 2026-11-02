@@ -652,8 +652,10 @@ const ProfilePage: React.FC = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        setPasswordError(errorData.error || 'Failed to change password');
+        const errorData = await response.json().catch(() => ({}));
+        // 항상 글자로 — 옛 응답은 error 가 객체({message,code})라 그대로 그리면 화면이 깨졌다(2026-11-01).
+        const msg = errorData?.message || errorData?.error?.message || (typeof errorData?.error === 'string' ? errorData.error : '');
+        setPasswordError(msg || 'Failed to change password');
         return;
       }
 

@@ -403,6 +403,87 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
     return bad.length === 0 && hard.length === 0;
   });
 
+  // 2026-11-01 Irene «브랜드제너럴 매니저가 비밀번호 찾기 및 변경이 안된대 … 모든 아이디 역할과 모든 경로» —
+  //   ① 내 프로필 변경: 현재 비번이 틀리면 서버가 error 객체를 줘서 화면이 깨졌다(모든 역할) → message 글자
+  //   ② 남의 id 로 변경이 됐다(현재 비번만 알면) → 본인만 403 ③ 찾기 메일이 is_test 표시 실제 사람에게 버려졌다 → selfRequested
+  test('auth', '비밀번호 — 본인 변경·남의 id 403·틀린 현재 비번은 글자 응답·재설정 링크 1회용·찾기 메일 본인요청', async () => {
+    const { sequelize } = require('../config/database');
+    const bcryptLib = require('bcrypt');
+    const cryptoLib = require('crypto');
+    const tag = 'zzhcpw' + Date.now().toString(36);
+    const hash = await bcryptLib.hash('Start1234A', 10);
+    const ids = [];
+    // 데모 브랜드에만 붙인다(실브랜드 id 를 하드코딩하지 않음 — Fable 권고 2026-11-01)
+    const [[demoBrand]] = await sequelize.query('SELECT id FROM brands WHERE is_demo = 1 ORDER BY id LIMIT 1');
+    if (!demoBrand) { console.log(c.gray('      (데모 브랜드 없음)')); return false; }
+    const mk = async (sfx) => {
+      const [id] = await sequelize.query(`INSERT INTO users (username, email, password, role, brand_id, is_active, email_verified, is_demo, is_test, createdAt, updatedAt) VALUES (?, ?, ?, 'Brand Manager', ?, 1, 1, 0, 0, NOW(), NOW())`, { replacements: [tag + sfx, `${tag}${sfx}@example.com`, hash, demoBrand.id] });
+      ids.push(id); return id;
+    };
+    const fail = (why) => { console.log(c.gray(`      (${why})`)); return false; };
+    try {
+      const a = await mk('a'); const b = await mk('b');
+      const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: a }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const wrong = await request('PATCH', `/users/${a}/password`, { currentPassword: 'Nope1234Z', newPassword: 'Next1234B' }, auth);
+      if (wrong.status !== 400 || typeof wrong.body?.message !== 'string') return fail(`틀린 현재 비번 ${wrong.status} message=${JSON.stringify(wrong.body)}`);
+      const other = await request('PATCH', `/users/${b}/password`, { currentPassword: 'Start1234A', newPassword: 'Cross1234E' }, auth);
+      if (other.status !== 403) return fail(`남의 id 변경 ${other.status}`);
+      const self = await request('PATCH', `/users/${a}/password`, { currentPassword: 'Start1234A', newPassword: 'Next1234B' }, auth);
+      const login = await request('POST', '/auth/login', { email: `${tag}a@example.com`, password: 'Next1234B' });
+      if (self.status !== 200 || login.status !== 200) return fail(`본인 변경 ${self.status} → 로그인 ${login.status}`);
+      const raw = cryptoLib.randomBytes(16).toString('hex');
+      await sequelize.query('UPDATE users SET reset_token = ?, reset_token_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?', { replacements: [await bcryptLib.hash(raw, 10), b] });
+      const rs = await request('POST', '/auth/reset-password', { email: `${tag}b@example.com`, token: raw, password: 'Reset1234C' });
+      const login2 = await request('POST', '/auth/login', { email: `${tag}b@example.com`, password: 'Reset1234C' });
+      const reuse = await request('POST', '/auth/reset-password', { email: `${tag}b@example.com`, token: raw, password: 'Again1234D' });
+      if (rs.status !== 200 || login2.status !== 200 || reuse.status !== 400) return fail(`재설정 ${rs.status} → 로그인 ${login2.status} · 재사용 ${reuse.status}`);
+      const admin404 = await request('POST', '/users/999999999/reset-password', null, { Authorization: `Bearer ${adminToken}` });
+      if (admin404.status !== 404 || typeof admin404.body?.message !== 'string') return fail(`관리자 리셋 없는 id ${admin404.status} ${JSON.stringify(admin404.body)}`);
+      // 찾기 메일 판정 — is_test 표시여도 본인요청이면 보냄, 기본(알림)은 버림. 주소는 실제처럼 보이는 도메인(placeholder 차단에 안 걸리게).
+      const mail = `${tag}t@gmail.com`;
+      await sequelize.query('UPDATE users SET email = ?, is_test = 1 WHERE id = ?', { replacements: [mail, b] });
+      const { screenRecipients } = require('../utils/emailService');
+      const dflt = await screenRecipients(mail, { allowUnverified: true });
+      const self2 = await screenRecipients(mail, { allowUnverified: true, selfRequested: true });
+      if (dflt.ok !== false || self2.ok !== true) return fail(`메일 판정 기본=${dflt.ok} 본인요청=${self2.ok}`);
+      return true;
+    } finally {
+      if (ids.length) await sequelize.query(`DELETE FROM users WHERE id IN (${ids.map(Number).join(',')})`).catch(() => {});
+    }
+  });
+
+  // 2026-11-02 Irene «권고대로»(A) — 손님(모바일) 재설정 링크가 서버 메모리에만 있어 재시작(배포)마다 깨졌다 → DB(customers.reset_token_*).
+  //   DB 에 직접 넣은 링크가 통하면 = 메모리가 아니라 DB 를 본다(메모리였다면 이 검사는 «Invalid» 로 실패).
+  test('auth', '손님 재설정 링크 — DB 보관(재시작에도 유지) · 재설정 후 재사용 400 · 만료 400 · 응답에 링크 칸 없음', async () => {
+    const { sequelize } = require('../config/database');
+    const bcryptLib = require('bcrypt');
+    const cryptoLib = require('crypto');
+    const tag = 'zzhccpw' + Date.now().toString(36);
+    const raw = cryptoLib.randomBytes(32).toString('hex');
+    const sha = (t) => cryptoLib.createHash('sha256').update(t).digest('hex');
+    const fail = (why) => { console.log(c.gray(`      (${why})`)); return false; };
+    const [cid] = await sequelize.query(`INSERT INTO customers (phone, email, name, password_hash, type, reset_token_hash, reset_token_expires, created_at, updated_at) VALUES (?, ?, '[확인용] hc', ?, 'member', ?, DATE_ADD(NOW(), INTERVAL 1 HOUR), NOW(), NOW())`,
+      { replacements: ['+6019' + String(Date.now()).slice(-7), `${tag}@example.com`, await bcryptLib.hash('Start123', 10), sha(raw)] });
+    try {
+      const v = await request('GET', `/customers/verify-reset-token?token=${raw}`);
+      if (v.body?.valid !== true) return fail(`DB 링크 확인 ${JSON.stringify(v.body)}`);
+      const rs = await request('POST', '/customers/reset-password', { token: raw, password: 'NewPass1' });
+      const lg = await request('POST', '/customers/auth', { identifier: `${tag}@example.com`, password: 'NewPass1' });
+      const again = await request('POST', '/customers/reset-password', { token: raw, password: 'Again123' });
+      if (rs.status !== 200 || lg.status !== 200 || again.status !== 400) return fail(`재설정 ${rs.status} → 로그인 ${lg.status} · 재사용 ${again.status}`);
+      const raw2 = cryptoLib.randomBytes(32).toString('hex');
+      await sequelize.query('UPDATE customers SET reset_token_hash = ?, reset_token_expires = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?', { replacements: [sha(raw2), cid] });
+      const late = await request('POST', '/customers/reset-password', { token: raw2, password: 'Late1234' });
+      if (late.status !== 400) return fail(`만료 ${late.status}`);
+      const Customer = require('../models/Customer');
+      const json = (await Customer.findByPk(cid)).toJSON();
+      if (Object.keys(json).some(k => k.startsWith('reset_token'))) return fail('toJSON 에 reset_token 칸');
+      return true;
+    } finally {
+      await sequelize.query('DELETE FROM customers WHERE id = ?', { replacements: [cid] }).catch(() => {});
+    }
+  });
+
   test('auth', '오너 모자 — 소유행 없는 계정의 오너 ctx 위조 → 네이티브 폴백 + 헤더', async () => {
     const decoded = jwtLib.decode(adminToken) || {};
     const forged = jwtLib.sign(

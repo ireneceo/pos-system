@@ -457,7 +457,9 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res, next) =>
       text: emailData.text,
       // 본인 주소로만 가는 메일(인증메일과 같은 부류) — 미인증 새 계정도 비번을 되찾을 수 있어야 한다.
       // 없으면 email_verified=false 라서 조용히 버려졌다(2026-09-24 재현).
-      allowUnverified: true
+      allowUnverified: true,
+      // 본인이 방금 주소를 쳐서 요청한 메일 — 시험 표시(is_test) 계정이어도 보낸다(emailService.screenRecipients 주석).
+      selfRequested: true
     }).catch(err => {
       console.error('[ForgotPassword] Email send failed:', err.message);
     });

@@ -159,6 +159,11 @@ async function screenRecipients(rawTo, opts = {}) {
   // allowUnverified: 인증메일 등 "미인증 주소에 닿아야 하는" 메일은 email_verified 체크를 건너뜀.
   // placeholder/형식오류 차단은 allowUnverified 여부와 무관하게 항상 적용(바운스 원천 차단).
   const allowUnverified = !!(opts && opts.allowUnverified);
+  // selfRequested: 그 주소 주인이 방금 직접 요청한 메일(비밀번호 찾기) — 시험 표시(is_test)·데모 매장만 닿음 판정은 건너뛴다.
+  //   이 두 판정은 «아무도 안 읽는 시드 메일함으로 알림이 가서 반송되는 것» 을 막으려는 것인데, 본인이 주소를 쳐서
+  //   요청한 메일은 그 메일함이 실제로 있다는 뜻이다. 막으면 is_test 로 표시된 실제 사람이 비밀번호를 영영 못 찾는다(2026-11-01).
+  //   형식·placeholder 차단과 반송 3회 차단은 그대로 적용된다. 데모 계정(users.is_demo)은 찾기 라우트가 먼저 거른다.
+  const selfRequested = !!(opts && opts.selfRequested);
   const list = Array.isArray(rawTo) ? rawTo : [rawTo];
   const kept = [];
   const dropped = [];
@@ -175,7 +180,7 @@ async function screenRecipients(rawTo, opts = {}) {
       );
       row = rows[0] || null;
     } catch (_e) { /* DB 조회 실패 시 막지 않음 — 발송 흐름 우선 */ }
-    if (row && (row.is_test === true || row.is_test === 1)) {
+    if (!selfRequested && row && (row.is_test === true || row.is_test === 1)) {
       dropped.push({ addr, why: 'is_test account' });
       continue;
     }
@@ -185,7 +190,7 @@ async function screenRecipients(rawTo, opts = {}) {
     //   ⛔ 주소 **이름**으로 판정하지 않는다(사람을 이름으로 거르는 것) — 이 프로젝트 원칙은
     //      데모 판정을 **데이터(is_demo)** 로 한다. 그래서 "이 사람이 닿는 매장이 하나라도 실매장인가"를 묻고,
     //      **전부 데모이면** 발송하지 않는다. 닿는 매장이 아예 없으면(플랫폼 계정 등) 막지 않는다.
-    if (row && row.id) {
+    if (!selfRequested && row && row.id) {
       try {
         const reach = await sequelize.query(
           `SELECT COUNT(*) AS total, SUM(CASE WHEN r.is_demo = 1 THEN 1 ELSE 0 END) AS demo
@@ -297,7 +302,8 @@ async function sendPlatformEmail(mailOptions) {
     }
 
     // 2026-06-01: 미인증/placeholder 주소 발송 차단 (모든 platform 메일 공통).
-    const screenP = await screenRecipients(mailOptions.to, { allowUnverified: mailOptions.allowUnverified });
+    const screenP = await screenRecipients(mailOptions.to, { allowUnverified: mailOptions.allowUnverified, selfRequested: mailOptions.selfRequested });
+    delete mailOptions.selfRequested;
     if (!screenP.ok) {
       console.log(`[email-guard] Platform email NOT sent — no valid/verified recipient. subject="${mailOptions.subject || ''}" dropped=${JSON.stringify(screenP.dropped)}`);
       return { success: true, skipped: true, reason: 'unverified-or-invalid-recipient' };
@@ -524,6 +530,7 @@ async function sendEntityOrPlatformEmail(entityType, entityId, mailOptions) {
 }
 
 module.exports = {
+  screenRecipients, // 검사(health-check)용 — 발송 판정을 직접 확인
   getEmailSettings,
   getPlatformEmailSettings,
   getIssuerEmailSettings,

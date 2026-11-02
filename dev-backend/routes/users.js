@@ -1208,43 +1208,51 @@ async function deleteUserHandler(req, res) {
   }
 }
 
-// Update user password
+// Update user password — 본인만(내 프로필 «Change Password»). 다른 사람 비밀번호는 reset-password 경로(관리자).
+//   응답은 표준 { success, message } — 예전 error 객체({message,code})를 화면이 글자로 그리려다 깨졌다(2026-11-01, 모든 역할).
 router.patch('/:id/password', authenticateToken, demoProtection, async (req, res) => {
   try {
-    const { currentPassword, newPassword } = req.body;
+    const { currentPassword, newPassword } = req.body || {};
+    // 모자(멀티아이디)로 들어와도 req.user.id 는 본래 계정 id 다(projectContext 가 id 를 바꾸지 않음).
+    if (String(req.params.id) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'You can only change your own password.' });
+    }
     const user = await User.findByPk(req.params.id);
-
     if (!user) {
-      return res.status(404).json({ success: false, error: { message: 'User not found', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current password and new password are required' });
     }
 
     // Verify current password
-    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    const isValidPassword = await bcrypt.compare(String(currentPassword), user.password);
     if (!isValidPassword) {
-      return res.status(400).json({ success: false, error: { message: 'Current password is incorrect', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
     }
 
-    // Validate new password strength
-    if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({ success: false, error: { message: 'Password must be at least 8 characters long', code: 'VALIDATION_ERROR' } });
+    // Validate new password strength (가입·재설정과 같은 규칙)
+    if (typeof newPassword !== 'string' || newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters long' });
     }
     if (!/[a-z]/.test(newPassword)) {
-      return res.status(400).json({ success: false, error: { message: 'Password must contain at least one lowercase letter', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, message: 'Password must contain at least one lowercase letter' });
     }
     if (!/[A-Z]/.test(newPassword)) {
-      return res.status(400).json({ success: false, error: { message: 'Password must contain at least one uppercase letter', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, message: 'Password must contain at least one uppercase letter' });
     }
     if (!/[0-9]/.test(newPassword)) {
-      return res.status(400).json({ success: false, error: { message: 'Password must contain at least one number', code: 'VALIDATION_ERROR' } });
+      return res.status(400).json({ success: false, message: 'Password must contain at least one number' });
     }
 
-    // Hash and update new password
+    // Hash and update new password (남아 있던 찾기 링크도 무효)
     const hashedPassword = await bcrypt.hash(newPassword, 10);
-    await user.update({ password: hashedPassword });
+    await user.update({ password: hashedPassword, reset_token: null, reset_token_expires: null });
 
     res.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    console.error('[Users] Error changing password:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to change password' });
   }
 });
 
@@ -1259,13 +1267,13 @@ router.post('/:id/reset-password', authenticateToken, async (req, res) => {
     const user = await User.findByPk(req.params.id);
 
     if (!user) {
-      return res.status(404).json({ success: false, error: { message: 'User not found', code: 'NOT_FOUND' } });
+      return res.status(404).json({ success: false, message: 'User not found' });
     }
 
     // 데모 계정만 비밀번호 리셋 차단 (자정마다 자동 리셋되는 계정이라 의미 없음).
     // is_test 는 통계 제외용 표시일 뿐 — 실제 staff 계정이므로 admin 이 비번 리셋 가능해야 함.
     if (user.is_demo) {
-      return res.status(403).json({ success: false, error: 'Demo account passwords cannot be changed.' });
+      return res.status(403).json({ success: false, message: 'Demo account passwords cannot be changed.' });
     }
 
     // 권한 체크 (계층):
@@ -1275,7 +1283,7 @@ router.post('/:id/reset-password', authenticateToken, async (req, res) => {
     //   Restaurant Admin → 본인 매장의 Staff (+ 본인 자신)
     //   Restaurant Owner → 본인 소유 매장의 user
     //   기타             → 차단
-    const FORBIDDEN_RESP = { success: false, error: { message: 'Not authorized to reset this user\'s password', code: 'FORBIDDEN' } };
+    const FORBIDDEN_RESP = { success: false, message: 'Not authorized to reset this user\'s password' };
 
     if (req.user.role === 'System Admin') {
       // OK
@@ -1350,7 +1358,8 @@ router.post('/:id/reset-password', authenticateToken, async (req, res) => {
       tempPassword: tempPassword
     });
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    console.error('[Users] Error resetting password:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to reset password' });
   }
 });
 

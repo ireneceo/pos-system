@@ -786,7 +786,8 @@ const ManagersPage: React.FC = () => {
           setPasswordCopied(false);
           setShowSuccessModal(true);
         } else {
-          setActionError('Password reset failed');
+          const errorData = await response.json().catch(() => ({}));
+          setActionError(errorData?.message || 'Password reset failed');
         }
       } else if (confirmAction === 'toggle') {
         const userId = selectedManager.id.replace('mgr-', '');

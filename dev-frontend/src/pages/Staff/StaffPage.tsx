@@ -707,8 +707,9 @@ const StaffPage: React.FC = () => {
           setShowPasswordModal(true);
         }
       } else {
-        const errorData = await response.json();
-        setErrorMessage(errorData.error || 'Failed to reset password');
+        const errorData = await response.json().catch(() => ({}));
+        const msg = errorData?.message || errorData?.error?.message || (typeof errorData?.error === 'string' ? errorData.error : '');
+        setErrorMessage(msg || 'Failed to reset password');
       }
     } catch (error) {
       setErrorMessage((error as Error).message);

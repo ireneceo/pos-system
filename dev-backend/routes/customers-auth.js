@@ -13,7 +13,19 @@ const { emailLayout, getLogoAttachment } = require('../utils/emailTemplates');
 const { signCustomerToken } = require('../utils/customerJwt');
 
 // 재설정 토큰 저장소 (실제 운영에서는 Redis나 DB 사용 권장)
-const resetTokens = new Map();
+// 비밀번호 찾기 링크 — DB(customers.reset_token_*)에 sha256 으로 보관(2026-11-02 Irene «권고대로» A).
+//   예전엔 이 자리의 메모리 Map 이라 서버 재시작(배포)마다 그 전에 보낸 링크가 전부 깨졌다.
+const hashResetToken = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
+async function findCustomerByResetToken(token) {
+  if (!token || typeof token !== 'string' || token.length > 200) return { customer: null, expired: false };
+  const customer = await Customer.findOne({ where: { reset_token_hash: hashResetToken(token) } });
+  if (!customer) return { customer: null, expired: false };
+  if (!customer.reset_token_expires || new Date(customer.reset_token_expires).getTime() < Date.now()) {
+    return { customer, expired: true };
+  }
+  return { customer, expired: false };
+}
+const clearResetToken = (customer) => customer.update({ reset_token_hash: null, reset_token_expires: null, reset_token_slug: null });
 
 /**
  * POST /api/customers/auth
@@ -315,17 +327,17 @@ router.get('/verify-reset-token', async (req, res) => {
       });
     }
 
-    const tokenData = resetTokens.get(token);
+    const found = await findCustomerByResetToken(token);
 
-    if (!tokenData) {
+    if (!found.customer) {
       return res.json({
         valid: false,
         message: 'Invalid or expired token'
       });
     }
 
-    if (Date.now() > tokenData.expiry) {
-      resetTokens.delete(token);
+    if (found.expired) {
+      await clearResetToken(found.customer);
       return res.json({
         valid: false,
         message: 'Token has expired'
@@ -335,7 +347,7 @@ router.get('/verify-reset-token', async (req, res) => {
     res.json({
       valid: true,
       message: 'Token is valid',
-      slug: tokenData.slug || null
+      slug: found.customer.reset_token_slug || null
     });
   } catch (error) {
     console.error('Verify reset token error:', error);
@@ -457,16 +469,12 @@ router.post('/forgot-password', async (req, res) => {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiry = Date.now() + 3600000;
 
-    resetTokens.set(resetToken, {
-      customerId: customer.id,
-      email: customer.email,
-      expiry: tokenExpiry,
-      slug: slug || null
+    // 새로 요청하면 덮어쓴다 — 그 전에 보낸 링크는 무효.
+    await customer.update({
+      reset_token_hash: hashResetToken(resetToken),
+      reset_token_expires: new Date(tokenExpiry),
+      reset_token_slug: slug ? String(slug).slice(0, 255) : null
     });
-
-    setTimeout(() => {
-      resetTokens.delete(resetToken);
-    }, 3600000);
 
     let resetSlug = slug;
     if (!resetSlug) {
@@ -576,36 +584,27 @@ router.post('/reset-password', async (req, res) => {
       });
     }
 
-    const tokenData = resetTokens.get(token);
+    const found = await findCustomerByResetToken(token);
 
-    if (!tokenData) {
+    if (!found.customer) {
       return res.status(400).json({
         success: false,
         message: 'Invalid or expired token'
       });
     }
 
-    if (Date.now() > tokenData.expiry) {
-      resetTokens.delete(token);
+    if (found.expired) {
+      await clearResetToken(found.customer);
       return res.status(400).json({
         success: false,
         message: 'Token has expired'
       });
     }
 
-    const customer = await Customer.findByPk(tokenData.customerId);
-    if (!customer) {
-      resetTokens.delete(token);
-      return res.status(404).json({
-        success: false,
-        message: 'Customer not found'
-      });
-    }
-
+    const customer = found.customer;
     const newPasswordHash = await bcrypt.hash(password, 10);
-    await customer.update({ password_hash: newPasswordHash });
-
-    resetTokens.delete(token);
+    // 비밀번호와 링크 지우기를 한 번에 — 같은 링크 재사용 불가
+    await customer.update({ password_hash: newPasswordHash, reset_token_hash: null, reset_token_expires: null, reset_token_slug: null });
 
     console.log(`✓ Password reset successful for customer ${customer.id}`);
 

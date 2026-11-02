@@ -1,7 +1,14 @@
 const { DataTypes, Model } = require('sequelize');
 const database = require('../config/database');
 
-class Customer extends Model {}
+class Customer extends Model {
+  // 재설정 링크 칸은 어떤 응답에도 싣지 않는다(2026-11-02). 기존 칸은 그대로.
+  toJSON() {
+    const v = { ...this.get() };
+    delete v.reset_token_hash; delete v.reset_token_expires; delete v.reset_token_slug;
+    return v;
+  }
+}
 
 Customer.init({
   id: {
@@ -31,6 +38,11 @@ Customer.init({
     allowNull: true,
     comment: '비밀번호 해시 (회원만, 게스트는 NULL)'
   },
+  // 비밀번호 찾기 링크(2026-11-02) — 예전엔 서버 메모리에만 있어 재시작(배포)마다 보낸 링크가 깨졌다.
+  //   원문 토큰은 저장하지 않는다(sha256). 새로 요청하면 덮어써 옛 링크는 무효. 마이그 migrate-customer-reset-token.js
+  reset_token_hash: { type: DataTypes.CHAR(64), allowNull: true },
+  reset_token_expires: { type: DataTypes.DATE, allowNull: true },
+  reset_token_slug: { type: DataTypes.STRING(255), allowNull: true },
   type: {
     type: DataTypes.ENUM('guest', 'member'),
     defaultValue: 'guest',

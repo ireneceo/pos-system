@@ -1313,8 +1313,9 @@ const AdminStaffManagementPage: React.FC = () => {
           setPasswordCopied(false);
           setShowSuccessModal(true);
         } else {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Password reset failed');
+          const errorData = await response.json().catch(() => ({}));
+          const msg = errorData?.message || errorData?.error?.message || (typeof errorData?.error === 'string' ? errorData.error : '');
+          throw new Error(msg || 'Password reset failed');
         }
       }
     } catch (error) {
