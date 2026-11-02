@@ -790,6 +790,52 @@ function defineSecurityTests({ customerToken, member, restId }) {
       await sequelize.query(`DELETE FROM users WHERE id IN (?, ?)`, { replacements: [allId, partId] });
     }
   });
+  // 2026-11-01 Fable 설계 fable-design-20261101-brand-performance.md §2-5 — 브랜드 사람의 «내 매장» 은 한 규칙.
+  //   임시 BM(홈=데모 소유자 첫 브랜드·그 브랜드만) · 임시 배정 BG(같은 브랜드 배정·소유 0) 를 만들어 finally 로 지운다.
+  //   ① 목록 2경로(GET /restaurants · /restaurants/manager/:id) = 그 브랜드 매장 ② 목록 ⊆ 상세(메뉴 200)
+  //   ③ 남의 브랜드 매장 메뉴 403 ④ 주문 목록 매장 ⊆ 매장 목록
+  test('security', '브랜드 매장 범위 — 목록 2경로 = 브랜드 매장 · 목록 ⊆ 상세 · 남의 브랜드 403 · 주문 ⊆ 목록', async () => {
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const tag = 'zzhcbps' + Date.now().toString(36);
+    const [[owner]] = await sequelize.query(`SELECT u.id FROM users u JOIN brands b ON b.owner_id = u.id
+      WHERE u.role = 'Brand General' AND u.username = 'demo-brand' GROUP BY u.id LIMIT 1`);
+    if (!owner) return false;
+    const [brands] = await sequelize.query(`SELECT b.id FROM brands b WHERE b.owner_id = ? AND EXISTS (SELECT 1 FROM restaurants r WHERE r.brand_id = b.id) ORDER BY b.id`, { replacements: [owner.id] });
+    if (!brands.length) return false;
+    const home = brands[0].id;
+    const [homeRests] = await sequelize.query(`SELECT id FROM restaurants WHERE brand_id = ? ORDER BY id`, { replacements: [home] });
+    const expected = JSON.stringify(homeRests.map(r => Number(r.id)));
+    const [[foreign]] = await sequelize.query(`SELECT r.id FROM restaurants r WHERE r.brand_id IS NOT NULL AND r.brand_id <> ? AND r.is_demo = 1 ORDER BY r.id LIMIT 1`, { replacements: [home] });
+    if (!foreign) return false;
+    const mk = async (suffix, role) => (await sequelize.query(`INSERT INTO users (username, email, password, role, brand_id, permissions, is_active, email_verified, createdAt, updatedAt)
+      VALUES (?, ?, 'x', ?, ?, '["dashboard","operations","reports"]', 1, 1, NOW(), NOW())`, { replacements: [tag + suffix, `${tag}${suffix}@example.com`, role, home] }))[0];
+    const bmId = await mk('m', 'Brand Manager');
+    const bgId = await mk('g', 'Brand General');
+    try {
+      await sequelize.query(`INSERT INTO brand_manager_brands (user_id, brand_id) VALUES (?, ?)`, { replacements: [bmId, home] });
+      const auth = id => ({ Authorization: `Bearer ${jwt.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+      const idsOf = r => JSON.stringify((Array.isArray(r.body) ? r.body : (r.body && r.body.data) || []).map(x => Number(x.id)).sort((a, b) => a - b));
+      for (const uid of [bmId, bgId]) {
+        const list = await request('GET', '/restaurants', null, auth(uid));
+        const mgr = await request('GET', `/restaurants/manager/${uid}`, null, auth(uid));
+        if (list.status !== 200 || idsOf(list) !== expected || idsOf(mgr) !== expected) return false;
+        for (const r of homeRests) {
+          const menu = await request('GET', `/menu?restaurantId=${r.id}&excludeImage=true`, null, auth(uid));
+          if (menu.status !== 200) return false;
+        }
+        const other = await request('GET', `/menu?restaurantId=${foreign.id}&excludeImage=true`, null, auth(uid));
+        if (other.status !== 403) return false;
+        const orders = await request('GET', '/orders?limit=200', null, auth(uid));
+        const allowed = new Set(JSON.parse(expected));
+        if (!((orders.body && orders.body.data) || []).every(o => allowed.has(Number(o.restaurant_id)))) return false;
+      }
+      return true;
+    } finally {
+      await sequelize.query(`DELETE FROM brand_manager_brands WHERE user_id IN (?, ?)`, { replacements: [bmId, bgId] });
+      await sequelize.query(`DELETE FROM users WHERE id IN (?, ?)`, { replacements: [bmId, bgId] });
+    }
+  });
   // 2026-09-24 Fable «오너=슈퍼바이저» §2-A: 오너는 소유 매장 발주를 «보기만». ownership 확인 · GET 만 · 남의 매장 403.
   //   데모 매장 38 에 임시 오너를 붙여 재고 finally 로 지운다(실매장 무접촉).
   //   (2026-10-04 Fable owner-po-on-behalf ①: 소유 매장 «으로» 작성은 열렸다 — 여기선 남의 매장 쓰기·열지 않은 라우트만 403 확인)
@@ -13211,6 +13257,7 @@ function defineDirectDeductUnitTests() {
     } finally { await teardown(r); }
   });
 }
+
 // ============================================
 // 직영(결제조건 INTERNAL) — 납품 청구서는 내되 «결제 필요 없음» (2026-11-02 Fable 설계
 //   .claude/fable-design-20261102-direct-store-billing.md §4)

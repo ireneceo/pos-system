@@ -700,6 +700,11 @@ Phase A/B 의 저장만 되어있던 `branch_id`/`brand_id` 를 실제 필터로
 4. ⛔ **`userCanAccessRestaurant` 를 직접 느슨하게 만들지 말 것** — 소켓 room 인증이 딸려 온다.
 5. 🔴 **권한판정에 `isNaN(parseInt(x))` 금지.** `parseInt('1.16e2')===1` 인데 MySQL 은 `'1.16e2'`→**116** 이라 게이트가 검사한 매장과 핸들러가 조회한 매장이 달라진다(2026-07-25 실증, 앱 전역이 뚫려 있었음). 반드시 `/^\d+$/` + 판정값으로 param 고정.
 
+**2026-11-01 갱신 (Fable 설계+게이트 PASS 2e4b62582ef7 · `.claude/fable-design-20261101-brand-performance.md`)** — 브랜드 사람(BG·BM)에 한해 목록·게이트 두 개를 한 규칙으로 맞췄다:
+- 목록(`restaurants-crud.js` GET / · GET /manager/:id) = `utils/managerBrandScope.restaurantIdsForBrandUser` = 브랜드 매장(소유 ∪ 배정 · BM 은 회사/고른 브랜드) ∪ `restaurant_managers` 행 — 🔒 `orders-crud.js` GET / 의 주문 범위와 같은 답.
+- `checkRestaurantAccess` · `userCanAccessRestaurant` 둘 다 같은 브랜드 폴백(`auth.js brandScopeIncludes`)을 갖는다 → 위 표의 «BG-owns-brand 폴백 없음»·«BM 감독 스코프 없음» 은 **브랜드 쪽만 해소**(푸드코트 폴백은 그대로). 소켓 room 인증도 같이 넓어진 것은 Fable 판정에서 수용(매니저 = 회사 직원, 2026-10-11).
+- 돈 경계(결제설정·은행·구독·브랜드 수정·매니저 관리)는 이 두 게이트를 쓰지 않아 그대로. health-check security «브랜드 매장 범위» 가 목록 2경로 = 브랜드 매장 · 목록 ⊆ 상세 · 남의 브랜드 403 을 상시 검사.
+
 통합(resolver 1개 + 투영 2개)이 정석이나 **순서 엄수**: shadow 1주 → 목록+게이트 → `userCanAccessRestaurant` 도메인별(소켓 최후) → `checkRestaurantAccess` 103라우트 최후. 5번을 먼저 하면 앱 전역 권한 확대.
 
 ### 크로스테넌트 과다노출 일괄 차단 (2026-07-25, dev 미배포)

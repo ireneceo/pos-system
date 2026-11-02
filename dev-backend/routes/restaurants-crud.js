@@ -125,8 +125,12 @@ router.get('/', authenticateToken, async (req, res) => {
 
     // Filter restaurants based on user role
     if (req.user && (req.user.role === 'Brand General' || req.user.role === 'Brand Manager')) {
-      managersInclude.where = { id: req.user.id };
-      managersInclude.required = true;
+      // 2026-11-01 Fable 설계 §2-1-2: «내 매장» = 브랜드 매장(소유 ∪ 배정 · BM 은 회사/고른 브랜드) ∪ 매니저 행.
+      //   예전엔 매니저 행만 봐서 brand_id 로만 붙은 새 매장·브랜드 매니저(행 0)가 빈 목록이었다.
+      //   주문 목록(🔒 orders-crud GET /)과 같은 답. search 가 Op.or 를 쓰므로 id 키로 둔다.
+      const { restaurantIdsForBrandUser } = require('../utils/managerBrandScope');
+      const scopeIds = await restaurantIdsForBrandUser(req.user);
+      whereClause.id = { [Op.in]: scopeIds.length ? scopeIds : [0] };
     } else if (req.user && (req.user.role === 'Foodcourt General' || req.user.role === 'Foodcourt Manager') && req.user.foodcourt_id) {
       // Scope to restaurants assigned to this foodcourt
       whereClause.foodcourt_id = req.user.foodcourt_id;
@@ -309,6 +313,8 @@ router.get('/', authenticateToken, async (req, res) => {
         id: restaurantData.id.toString(),
         name: restaurantData.name,
         branch_name: restaurantData.branch_name || null,
+        // 매장 시간대 — 화면이 주문 날짜를 매장 기준으로 가르는 데 쓴다(2026-11-01 · 비밀 아님)
+        timeZone: (() => { try { const os = typeof restaurantData.operation_settings === 'string' ? JSON.parse(restaurantData.operation_settings) : restaurantData.operation_settings; return (os && os.timeZone) || null; } catch (e) { return null; } })(),
         // Admin (Owner) 정보
         admin: adminData ? {
           id: adminData.id.toString(),
@@ -422,11 +428,14 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
       });
     } else if (targetUser.role === 'Brand General' || targetUser.role === 'Brand Manager') {
       // Brand-scoped: all restaurants under brands owned by this user (multi-brand support)
-      const { Brand } = require('../models');
-      const brands = await Brand.findAll({ where: { owner_id: managerId }, attributes: ['id'] });
-      const brandIds = brands.map(b => b.id);
-      restaurants = brandIds.length === 0 ? [] : await Restaurant.findAll({
-        where: { brand_id: brandIds },
+      // 2026-11-01 Fable 설계 §2-1-2: GET / 와 같은 규칙(브랜드 매장 ∪ 매니저 행). 예전엔 owner_id 만 봐서
+      //   브랜드 매니저·배정만 된 BG 는 늘 0개였다. 판정 대상은 DB 에서 다시 읽은 targetUser(brand_id 포함).
+      const { restaurantIdsForBrandUser } = require('../utils/managerBrandScope');
+      //   본인 요청이면 토큰의 사용자(모자 투영 brand_scope_fixed·managed_brand_ids 포함)로 판정 — GET / 와 같은 입력.
+      const scopeUser = (String(managerId) === String(req.user.id) && ['Brand General', 'Brand Manager'].includes(req.user.role)) ? req.user : targetUser;
+      const scopeIds = await restaurantIdsForBrandUser(scopeUser);
+      restaurants = scopeIds.length === 0 ? [] : await Restaurant.findAll({
+        where: { id: scopeIds },
         order: [['createdAt', 'DESC']]
       });
     } else {

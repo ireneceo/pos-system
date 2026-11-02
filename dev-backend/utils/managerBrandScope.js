@@ -152,6 +152,22 @@ async function brandRestaurantIdsForUser(user) {
 }
 
 /**
+ * BG/BM 이 «내 매장» 으로 보는 매장 id — 브랜드 매장(소유 ∪ 배정, BM 은 managerBrandIds) ∪ restaurant_managers 행.
+ * 🔒 routes/orders-crud.js GET / 의 BG/BM 범위와 **같은 답**이어야 한다(그 파일은 인쇄 보호라 거기서 이 함수를 못 부른다).
+ * 매장 목록 두 경로(GET /api/restaurants · GET /api/restaurants/manager/:id)가 이것 하나를 쓴다
+ * (2026-11-01 Fable 설계 .claude/fable-design-20261101-brand-performance.md §2-1). 형제 브랜드는 넣지 않는다.
+ * @returns {Promise<number[]>}
+ */
+async function restaurantIdsForBrandUser(user) {
+  if (!user || !['Brand General', 'Brand Manager'].includes(user.role)) return [];
+  const ids = new Set((await brandRestaurantIdsForUser(user)).map(Number));
+  const RestaurantManager = require('../models/RestaurantManager');
+  const rows = await RestaurantManager.findAll({ where: { manager_id: user.id }, attributes: ['restaurant_id'] });
+  rows.forEach((r) => ids.add(Number(r.restaurant_id)));
+  return [...ids];
+}
+
+/**
  * 위 판정의 **역방향** — 이 브랜드를 «내 브랜드» 로 가진 사람들의 user id (소유자 ∪ 배정된 BG/BM).
  *
  * 브랜드 상품의 «All franchises»(distribution_mode='all') 는 «내 모든 브랜드의 가맹점» 이다.
@@ -179,4 +195,4 @@ async function brandOwnerUserIds(brandId) {
   return [...ids];
 }
 
-module.exports = { brandIdsForUser, managerBrandIds, companyOwnerIdFor, saveManagerBrandScope, managerScopesFor, brandRestaurantIdsForUser, brandOwnerUserIds };
+module.exports = { brandIdsForUser, managerBrandIds, companyOwnerIdFor, saveManagerBrandScope, managerScopesFor, brandRestaurantIdsForUser, restaurantIdsForBrandUser, brandOwnerUserIds };

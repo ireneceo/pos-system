@@ -937,5 +937,14 @@
   "brandInvoicesPage.toConfirmTitle": "需要确认付款",
   "brandInvoicesPage.toConfirmDesc": "客户已为这些发票提交付款。请核对款项后确认。",
   "brandInvoicesPage.toConfirmEmpty": "没有待确认的发票",
-  "brandInvoicesPage.toConfirmEmptyDesc": "没有等待付款确认的发票。"
+  "brandInvoicesPage.toConfirmEmptyDesc": "没有等待付款确认的发票。",
+  "brandPerformance.periodToday": "今天",
+  "brandPerformance.periodYesterday": "昨天",
+  "brandPerformance.periodLast7Days": "最近7天",
+  "brandPerformance.periodLast30Days": "最近30天",
+  "brandPerformance.periodLast365Days": "最近365天",
+  "brandPerformance.periodAllTime": "全部时间",
+  "brandPerformance.vsPreviousPeriod": "与上一期相比",
+  "brandPerformance.noPreviousData": "上一期无销售",
+  "brandReportsPage.truncatedNotice": "仅显示最近 {{count}} 笔订单（自 {{from}} 起）。请缩小时间范围以获得完整数据。"
 }

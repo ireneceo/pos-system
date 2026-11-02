@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { isRevenueOrder } from '../../utils/orderRevenue';
+import { computeRestaurantMetrics, summarize, RestaurantPerformanceData } from '../../utils/brandPerformanceMath';
+import { fetchWindow, previousPeriod, restaurantTimeZone, DEFAULT_TZ } from '../../utils/orderLocalTime';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import {
@@ -318,10 +319,12 @@ interface Brand {
 interface Restaurant {
   id: number;
   name: string;
+  branch_name?: string | null;
   brandId: number;
   brandName: string;
   brandCode: string;
   currency: string;
+  timeZone: string;
 }
 
 interface Order {
@@ -337,23 +340,6 @@ interface Order {
   served_at?: string;
 }
 
-interface RestaurantPerformanceData {
-  id: number;
-  name: string;
-  brandId: number;
-  brandName: string;
-  brandCode: string;
-  currency: string;
-  totalOrders: number;
-  completedOrders: number;
-  sales: number;
-  previousSales: number;
-  growth: number;
-  avgOrder: number;
-  maxOrder: number;
-  uniqueCustomers: number;
-  avgServiceTime: number;
-}
 
 
 const BrandPerformance: React.FC = () => {
@@ -362,7 +348,7 @@ const BrandPerformance: React.FC = () => {
   const storeTimeZone = operationSettings?.timeZone;
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
   // '오늘'/'어제' 는 브라우저 로컬이 아니라 매장 설정 타임존 기준이어야 한다 (CLAUDE.md 타임존 규칙).
-  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month', operationSettings?.timeZone));
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month', operationSettings?.timeZone || DEFAULT_TZ));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
   const [selectedBrandId, setSelectedBrandId] = useState<string>('all');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string>('all');
@@ -386,6 +372,15 @@ const BrandPerformance: React.FC = () => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // «오늘» 의 기준 = 목록 첫 매장의 시간대(브랜드 사람은 자기 매장이 없다). 주문별 경계는 각자 매장 시간대.
+  const reportTz = restaurants[0]?.timeZone || storeTimeZone || DEFAULT_TZ;
+  useEffect(() => {
+    if (isCustomDateRange) return;
+    const next = calculatePeriodDateRange(activePeriod, reportTz);
+    setDateRange(prev => (prev.start === next.start && prev.end === next.end ? prev : next));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportTz]);
 
   // Fetch brands and restaurants data
   useEffect(() => {
@@ -434,8 +429,10 @@ const BrandPerformance: React.FC = () => {
         const allRestaurants: Restaurant[] = restaurantsData.map((r: any) => {
           const brand = r.brand_id ? brandMap.get(r.brand_id) : null;
           return {
-            id: r.id,
+            id: Number(r.id),
             name: r.name,
+            branch_name: r.branch_name || null,
+            timeZone: restaurantTimeZone(r),
             brandId: r.brand_id || 0,
             brandName: brand?.name || 'No Brand',
             brandCode: brand?.code || '-',
@@ -469,11 +466,12 @@ const BrandPerformance: React.FC = () => {
 
       // Fetch orders spanning the PREVIOUS period start → current end so growth can
       // be computed, and limit=0 (no cap) so revenue isn't truncated at 50 rows.
-      const fetchStart = getPreviousPeriodRange.start || dateRange.start;
+      //   서버는 날짜를 UTC 자정으로 자르므로(🔒 orders-crud) 앞뒤 하루 넓혀 받고, 매장 시간대로 화면에서 자른다.
+      const win = fetchWindow(getPreviousPeriodRange.start, dateRange.end);
       const ordersPromises = restaurants.map(async (restaurant) => {
         try {
           const response = await fetch(
-            `/api/orders?restaurant_id=${restaurant.id}&start_date=${fetchStart}&end_date=${dateRange.end}&limit=0`,
+            `/api/orders?restaurant_id=${restaurant.id}&start_date=${win.start_date}&end_date=${win.end_date}&limit=0`,
             {
               headers: {
                 'Authorization': `Bearer ${token}`
@@ -482,7 +480,6 @@ const BrandPerformance: React.FC = () => {
           );
           if (response.ok) {
             const data = await response.json();
-            console.log(`[Performance] Restaurant ${restaurant.id} (${restaurant.name}) orders response:`, data);
             // Handle different API response formats
             let ordersArray: Order[] = [];
             if (Array.isArray(data)) {
@@ -492,7 +489,6 @@ const BrandPerformance: React.FC = () => {
             } else if (data.orders && Array.isArray(data.orders)) {
               ordersArray = data.orders;
             }
-            console.log(`[Performance] Restaurant ${restaurant.id} parsed orders:`, ordersArray.length, 'orders');
             return ordersArray;
           }
           return [];
@@ -504,8 +500,6 @@ const BrandPerformance: React.FC = () => {
 
       const allOrdersArrays = await Promise.all(ordersPromises);
       const allOrders = allOrdersArrays.flat();
-      console.log('[Performance] Total orders fetched:', allOrders.length);
-      console.log('[Performance] Sample orders:', allOrders.slice(0, 3));
       setOrders(allOrders);
     } catch (error) {
       console.error('Error fetching orders:', error);
@@ -518,7 +512,7 @@ const BrandPerformance: React.FC = () => {
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
-    setDateRange(calculatePeriodDateRange(period, storeTimeZone));
+    setDateRange(calculatePeriodDateRange(period, reportTz));
   };
 
   const handleCalendarRangeSelect = (start: string, end: string) => {
@@ -578,137 +572,14 @@ const BrandPerformance: React.FC = () => {
     setRestaurantSearchQuery('');
   };
 
-  // Calculate previous period date range for growth comparison
-  const getPreviousPeriodRange = useMemo(() => {
-    const startDate = new Date(dateRange.start);
-    const endDate = new Date(dateRange.end);
-    const periodDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+  // 이전 기간(같은 길이 바로 앞) — 날짜 키 산술만, 브라우저 시간대 무관
+  const getPreviousPeriodRange = useMemo(() => previousPeriod(dateRange.start, dateRange.end), [dateRange.start, dateRange.end]);
 
-    const prevEnd = new Date(startDate);
-    prevEnd.setDate(prevEnd.getDate() - 1);
-    const prevStart = new Date(prevEnd);
-    prevStart.setDate(prevStart.getDate() - periodDays);
-
-    const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    return {
-      start: fmt(prevStart),
-      end: fmt(prevEnd)
-    };
-  }, [dateRange.start, dateRange.end]);
-
-  // Calculate performance data per restaurant
-  const performanceData: RestaurantPerformanceData[] = useMemo(() => {
-    if (restaurants.length === 0) return [];
-
-    const startDate = new Date(dateRange.start);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(dateRange.end);
-    endDate.setHours(23, 59, 59, 999);
-
-    const prevStartDate = new Date(getPreviousPeriodRange.start);
-    prevStartDate.setHours(0, 0, 0, 0);
-    const prevEndDate = new Date(getPreviousPeriodRange.end);
-    prevEndDate.setHours(23, 59, 59, 999);
-
-    return restaurants.map(restaurant => {
-      // Filter orders for this restaurant (compare as numbers to handle type mismatch)
-      const restaurantOrders = orders.filter(order => Number(order.restaurant_id) === Number(restaurant.id));
-
-      console.log(`[Performance] Restaurant ${restaurant.id} (${restaurant.name}):`, {
-        totalOrdersInState: orders.length,
-        restaurantOrders: restaurantOrders.length,
-        sampleOrder: restaurantOrders[0]
-      });
-
-      // Current period orders
-      const currentPeriodOrders = restaurantOrders.filter(order => {
-        const orderDate = new Date(order.order_date || order.createdAt);
-        return orderDate >= startDate && orderDate <= endDate;
-      });
-
-      console.log(`[Performance] Restaurant ${restaurant.id} date filter:`, {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        currentPeriodOrders: currentPeriodOrders.length
-      });
-
-      // Previous period orders (for growth calculation)
-      const previousPeriodOrders = restaurantOrders.filter(order => {
-        const orderDate = new Date(order.order_date || order.createdAt);
-        return orderDate >= prevStartDate && orderDate <= prevEndDate;
-      });
-
-      // 매출 정의는 utils/orderRevenue 하나뿐이다 (2026-09-17) — 서버 utils/revenueOrders 와 같은 값이고,
-      //   프랜차이즈 지도(brands-core)·리포트·구독 화면이 전부 이것을 본다.
-      const isRevenue = (o: Order) => isRevenueOrder(o as any);
-      const completedOrders = currentPeriodOrders.filter(isRevenue);
-      const prevCompletedOrders = previousPeriodOrders.filter(isRevenue);
-
-      console.log(`[Performance] Restaurant ${restaurant.id} completed:`, {
-        completedOrders: completedOrders.length,
-        statuses: currentPeriodOrders.map(o => o.status).filter((v, i, a) => a.indexOf(v) === i)
-      });
-
-      const totalSales = completedOrders.reduce((sum, order) => {
-        return sum + parseFloat(order.total_amount || '0');
-      }, 0);
-
-      const previousSales = prevCompletedOrders.reduce((sum, order) => {
-        return sum + parseFloat(order.total_amount || '0');
-      }, 0);
-
-      const growth = previousSales > 0
-        ? ((totalSales - previousSales) / previousSales) * 100
-        : (totalSales > 0 ? 100 : 0);
-
-      const avgOrder = completedOrders.length > 0
-        ? totalSales / completedOrders.length
-        : 0;
-
-      // Max order value
-      const maxOrder = completedOrders.reduce((max, order) => {
-        const price = parseFloat(order.total_amount || '0');
-        return price > max ? price : max;
-      }, 0);
-
-      // Unique customers count
-      const customerIds = new Set(
-        currentPeriodOrders
-          .filter(o => o.customer_id)
-          .map(o => o.customer_id)
-      );
-      const uniqueCustomers = customerIds.size;
-
-      // Average fulfillment time (createdAt → served_at, in minutes)
-      const ordersWithServedTime = completedOrders.filter(o => o.served_at && o.createdAt);
-      const avgServiceTime = ordersWithServedTime.length > 0
-        ? ordersWithServedTime.reduce((sum, o) => {
-            const created = new Date(o.createdAt).getTime();
-            const served = new Date(o.served_at!).getTime();
-            const diffMin = (served - created) / (1000 * 60);
-            return sum + (diffMin > 0 ? diffMin : 0);
-          }, 0) / ordersWithServedTime.length
-        : 0;
-
-      return {
-        id: restaurant.id,
-        name: restaurant.name,
-        brandId: restaurant.brandId,
-        brandName: restaurant.brandName,
-        brandCode: restaurant.brandCode,
-        currency: restaurant.currency,
-        totalOrders: currentPeriodOrders.length,
-        completedOrders: completedOrders.length,
-        sales: Math.round(totalSales * 100) / 100,
-        previousSales: Math.round(previousSales * 100) / 100,
-        growth: Math.round(growth * 10) / 10,
-        avgOrder: Math.round(avgOrder * 100) / 100,
-        maxOrder: Math.round(maxOrder * 100) / 100,
-        uniqueCustomers,
-        avgServiceTime: Math.round(avgServiceTime)
-      };
-    });
-  }, [restaurants, orders, dateRange.start, dateRange.end, getPreviousPeriodRange]);
+  // 매장별 지표 — 계산은 utils/brandPerformanceMath 하나(주문 매장 시간대 · createdAt · isRevenueOrder)
+  const performanceData: RestaurantPerformanceData[] = useMemo(
+    () => (restaurants.length === 0 ? [] : computeRestaurantMetrics(restaurants, orders as any, dateRange)),
+    [restaurants, orders, dateRange]
+  );
 
   // Filter by selected brand and restaurant
   const filteredRestaurants = useMemo(() => {
@@ -727,7 +598,7 @@ const BrandPerformance: React.FC = () => {
     return [...filteredRestaurants].sort((a, b) => {
       switch (selectedMetric) {
         case 'sales': return b.sales - a.sales;
-        case 'growth': return b.growth - a.growth;
+        case 'growth': return (b.growth ?? -Infinity) - (a.growth ?? -Infinity);
         case 'orders': return b.completedOrders - a.completedOrders;
         case 'customers': return b.uniqueCustomers - a.uniqueCustomers;
         default: return b.sales - a.sales;
@@ -735,39 +606,8 @@ const BrandPerformance: React.FC = () => {
     });
   }, [filteredRestaurants, selectedMetric]);
 
-  // Calculate summary stats
-  const stats = useMemo(() => {
-    const totalSales = filteredRestaurants.reduce((sum, r) => sum + r.sales, 0);
-    const totalRestaurants = filteredRestaurants.length;
-    const totalOrders = filteredRestaurants.reduce((sum, r) => sum + r.completedOrders, 0);
-    const previousTotalSales = filteredRestaurants.reduce((sum, r) => sum + r.previousSales, 0);
-    const totalCustomers = filteredRestaurants.reduce((sum, r) => sum + r.uniqueCustomers, 0);
-    const maxOrderValue = Math.max(...filteredRestaurants.map(r => r.maxOrder), 0);
-
-    // Calculate overall average order
-    const overallAvgOrder = totalOrders > 0 ? totalSales / totalOrders : 0;
-
-    // Calculate overall average service time
-    const restaurantsWithServiceTime = filteredRestaurants.filter(r => r.avgServiceTime > 0);
-    const overallAvgServiceTime = restaurantsWithServiceTime.length > 0
-      ? restaurantsWithServiceTime.reduce((sum, r) => sum + r.avgServiceTime, 0) / restaurantsWithServiceTime.length
-      : 0;
-
-    const overallGrowth = previousTotalSales > 0
-      ? ((totalSales - previousTotalSales) / previousTotalSales) * 100
-      : (totalSales > 0 ? 100 : 0);
-
-    return {
-      totalSales,
-      totalRestaurants,
-      totalOrders,
-      totalCustomers,
-      maxOrderValue,
-      overallAvgOrder: Math.round(overallAvgOrder * 100) / 100,
-      overallAvgServiceTime: Math.round(overallAvgServiceTime),
-      overallGrowth: Math.round(overallGrowth * 10) / 10
-    };
-  }, [filteredRestaurants]);
+  // 총계 — Customers 는 합집합 · 이행시간은 주문 가중 · Growth 는 이전 0 이면 null
+  const stats = useMemo(() => summarize(filteredRestaurants), [filteredRestaurants]);
 
   const formatCurrency = (amount: number, currency?: string) => {
     const currencyCode = currency || selectedCurrency;
@@ -776,12 +616,19 @@ const BrandPerformance: React.FC = () => {
 
   const periodLabel = isCustomDateRange
     ? `${dateRange.start} ~ ${dateRange.end}`
-    : { today: 'Today', yesterday: 'Yesterday', week: 'This Week', month: 'This Month', year: 'This Year', all: 'All Time' }[activePeriod] || activePeriod;
+    : ({
+        today: t('brand:brandPerformance.periodToday', 'Today'),
+        yesterday: t('brand:brandPerformance.periodYesterday', 'Yesterday'),
+        week: t('brand:brandPerformance.periodLast7Days', 'Last 7 days'),
+        month: t('brand:brandPerformance.periodLast30Days', 'Last 30 days'),
+        year: t('brand:brandPerformance.periodLast365Days', 'Last 365 days'),
+        all: t('brand:brandPerformance.periodAllTime', 'All time')
+      } as Record<string, string>)[activePeriod] || activePeriod;
 
   const handleExportReport = () => {
     const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const header = ['Restaurant', 'Brand', 'Total Orders', 'Completed/Served', 'Sales', 'Growth %', 'Avg Order', 'Max Order', 'Unique Customers', 'Avg Service (min)'];
-    const rows = sortedRestaurants.map(r => [r.name, r.brandName, r.totalOrders, r.completedOrders, r.sales, r.growth, r.avgOrder, r.maxOrder, r.uniqueCustomers, r.avgServiceTime].map(esc).join(','));
+    const rows = sortedRestaurants.map(r => [r.branch_name ? `${r.name} (${r.branch_name})` : r.name, r.brandName, r.totalOrders, r.completedOrders, r.sales, r.growth ?? '', r.avgOrder, r.maxOrder, r.uniqueCustomers, r.avgServiceTime].map(esc).join(','));
     const csv = [header.map(esc).join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -933,9 +780,9 @@ const BrandPerformance: React.FC = () => {
               <StatDescription>{t('brand:brandPerformance.orderToServed')}</StatDescription>
             </StatCard>
             <StatCard color="#F97316">
-              <StatValue>{stats.overallGrowth > 0 ? '+' : ''}{stats.overallGrowth}%</StatValue>
+              <StatValue>{stats.overallGrowth === null ? '—' : `${stats.overallGrowth > 0 ? '+' : ''}${stats.overallGrowth}%`}</StatValue>
               <StatLabel>{t('brand:brandPerformance.growth')}</StatLabel>
-              <StatDescription>vs previous period</StatDescription>
+              <StatDescription>{stats.overallGrowth === null ? t('brand:brandPerformance.noPreviousData', 'No previous-period sales') : t('brand:brandPerformance.vsPreviousPeriod', 'vs previous period')}</StatDescription>
             </StatCard>
             <StatCard color="#14B8A6">
               <StatValue>{stats.totalRestaurants}</StatValue>
@@ -966,7 +813,7 @@ const BrandPerformance: React.FC = () => {
                       <MetricLabel>{t('brand:brandPerformance.revenue')}</MetricLabel>
                       <MetricValue>
                         {formatCurrency(restaurant.sales, restaurant.currency)}
-                        {restaurant.growth !== 0 && (
+                        {restaurant.growth !== null && restaurant.growth !== 0 && (
                           <GrowthBadge positive={restaurant.growth > 0}>
                             {restaurant.growth > 0 ? '+' : ''}{restaurant.growth}%
                           </GrowthBadge>
@@ -1014,7 +861,7 @@ const BrandPerformance: React.FC = () => {
                         <RankStat>Revenue: {formatCurrency(restaurant.sales, restaurant.currency)}</RankStat>
                         <RankStat>Orders: {restaurant.completedOrders}</RankStat>
                         <RankStat>Customers: {restaurant.uniqueCustomers}</RankStat>
-                        <RankStat>Growth: {restaurant.growth > 0 ? '+' : ''}{restaurant.growth}%</RankStat>
+                        <RankStat>Growth: {restaurant.growth === null ? '—' : `${restaurant.growth > 0 ? '+' : ''}${restaurant.growth}%`}</RankStat>
                       </RankStats>
                     </RankInfo>
                   </RankingItem>

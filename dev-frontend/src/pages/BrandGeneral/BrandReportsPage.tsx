@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { formatCurrency } from '../../utils/currency';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
+import { localDateKey, localHour, inDateRange, shiftDateKey, fetchWindow, daysBetween, restaurantTimeZone, DEFAULT_TZ } from '../../utils/orderLocalTime';
 import { useTranslation } from 'react-i18next';
 import { isRevenueOrder, isDeletedOrder } from '../../utils/orderRevenue';
 import { getAuthToken } from '../../utils/auth';
@@ -342,6 +343,7 @@ interface Restaurant {
   branch_name?: string | null;
   brand_id?: number;
   brand_name?: string;
+  timeZone: string;
 }
 
 // Chart colors
@@ -365,7 +367,7 @@ const BrandReportsPage: React.FC = () => {
 
   // Date range state
   const [activePeriod, setActivePeriod] = useState<PeriodType>('month');
-  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month'));
+  const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('month', DEFAULT_TZ));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
 
   // Brand/Restaurant filter state
@@ -382,6 +384,8 @@ const BrandReportsPage: React.FC = () => {
 
   // Data state
   const [orders, setOrders] = useState<any[]>([]);
+  // 긴 기간(366일 초과)에서 5,000건 상한에 걸렸을 때 — 숨기지 않고 안내한다(2026-11-01 Fable 설계 §2-4-11)
+  const [truncatedFrom, setTruncatedFrom] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [customers] = useState<any[]>([]);
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -390,14 +394,6 @@ const BrandReportsPage: React.FC = () => {
   // Drilldown state
   const [expandedYears, setExpandedYears] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
-
-  // Helper functions
-  function formatDateString(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
 
   // Read restaurantId from URL on initial load
   const [initialRestaurantId] = useState(() => searchParams.get('restaurantId'));
@@ -428,11 +424,8 @@ const BrandReportsPage: React.FC = () => {
           setFilteredBrands(brandsData.slice(0, 10));
         }
 
-        // Fetch restaurants - use manager-specific endpoint for Brand General/Manager
-        let restaurantsUrl = '/api/restaurants';
-        if (user?.id && (user.role === 'Brand General' || user.role === 'Brand Manager')) {
-          restaurantsUrl = `/api/restaurants/manager/${user.id}`;
-        }
+        // 매장 목록 = Overview 와 같은 GET /api/restaurants (BG/BM = 브랜드 매장 ∪ 매니저 행 · 2026-11-01)
+        const restaurantsUrl = '/api/restaurants';
 
         const restaurantsResponse = await fetch(restaurantsUrl, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -444,7 +437,8 @@ const BrandReportsPage: React.FC = () => {
             name: r.name,
             branch_name: r.branch_name || null,
             brand_id: r.brand_id,
-            brand_name: r.brand_name || r.brand?.name
+            brand_name: r.brand_name || r.brand?.name,
+            timeZone: restaurantTimeZone(r)
           }));
           setRestaurants(formattedRestaurants);
           setFilteredRestaurants(formattedRestaurants.slice(0, 10));
@@ -492,7 +486,12 @@ const BrandReportsPage: React.FC = () => {
         const allowedRestaurantIds = restaurants.map(r => r.id);
 
         // Build query params based on filters
-        let ordersUrl = '/api/orders?limit=5000';
+        // 기간에 맞춰 받는다(예전엔 기간 없이 최근 5,000건 → 운영 Year 가 정답의 28%).
+        //   서버는 UTC 자정으로 자르므로 앞뒤 하루 넓혀 받고 화면에서 매장 시간대로 자른다.
+        //   366일 이하는 상한 없음 · 그보다 길면 5,000건 + 잘림 안내.
+        const win = fetchWindow(dateRange.start, dateRange.end);
+        const cap = daysBetween(dateRange.start, dateRange.end) <= 366 ? 0 : 5000;
+        let ordersUrl = `/api/orders?start_date=${win.start_date}&end_date=${win.end_date}&limit=${cap}`;
         if (selectedRestaurant !== 'all') {
           ordersUrl += `&restaurant_id=${selectedRestaurant}`;
         }
@@ -504,6 +503,12 @@ const BrandReportsPage: React.FC = () => {
         if (ordersResponse.ok) {
           const ordersData = await ordersResponse.json();
           let allOrders = (Array.isArray(ordersData?.data) ? ordersData.data : Array.isArray(ordersData) ? ordersData : []);
+          if (cap > 0 && allOrders.length >= cap) {
+            const oldest = allOrders.reduce((m: string, o: any) => (o.createdAt && o.createdAt < m ? o.createdAt : m), allOrders[0]?.createdAt || '');
+            setTruncatedFrom(oldest ? localDateKey(oldest, restaurants[0]?.timeZone || DEFAULT_TZ) : null);
+          } else {
+            setTruncatedFrom(null);
+          }
 
           // Filter orders to only include those from allowed restaurants
           allOrders = allOrders.filter((order: any) =>
@@ -559,7 +564,7 @@ const BrandReportsPage: React.FC = () => {
     };
 
     fetchData();
-  }, [selectedBrand, selectedRestaurant, restaurants]);
+  }, [selectedBrand, selectedRestaurant, restaurants, dateRange.start, dateRange.end]);
 
   // Brand search handler
   const handleBrandSearch = (query: string) => {
@@ -624,26 +629,37 @@ const BrandReportsPage: React.FC = () => {
     setShowRestaurantDropdown(false);
   };
 
+  // 주문 날짜·시각은 «그 주문 매장의 시간대» · 근거 createdAt 하나(utils/orderLocalTime · 2026-11-01)
+  const reportTz = restaurants[0]?.timeZone || DEFAULT_TZ;
+  const tzByRestaurant = useMemo(() => {
+    const m: Record<string, string> = {};
+    restaurants.forEach(r => { m[String(r.id)] = r.timeZone; });
+    return m;
+  }, [restaurants]);
+  const { orderKey, orderHour } = useMemo(() => {
+    const tzOf = (o: any) => tzByRestaurant[String(o.restaurant_id)] || reportTz;
+    return {
+      orderKey: (o: any) => localDateKey(o.createdAt, tzOf(o)),
+      orderHour: (o: any) => localHour(o.createdAt, tzOf(o))
+    };
+  }, [tzByRestaurant, reportTz]);
+
+  useEffect(() => {
+    if (isCustomDateRange) return;
+    const next = calculatePeriodDateRange(activePeriod, reportTz);
+    setDateRange(prev => (prev.start === next.start && prev.end === next.end ? prev : next));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportTz]);
+
   // Filter orders by date range
   const filteredOrders = useMemo(() => {
     if (!orders || orders.length === 0) return [];
-
-    const startDate = new Date(dateRange.start);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(dateRange.end);
-    endDate.setHours(23, 59, 59, 999);
-
     // 기간 안의 «살아 있는 주문 전체» — 주문 수·이행률·시간대 같은 **활동** 지표용.
     //   ⛔ 여기에 「결제상태가 completed 면 포함」을 두면 안 된다 — 결제됐다가 취소된 주문이
     //      실제로 있어서 매출이 샌다(운영 실측 176건 5,196.40, 2026-09-17).
-    return orders.filter(order => {
-      const orderDateValue = order.order_date || order.createdAt;
-      if (!orderDateValue) return false;
-      const orderDate = new Date(orderDateValue);
-      const isInRange = orderDate >= startDate && orderDate <= endDate;
-      return isInRange && !isDeletedOrder(order as any);
-    });
-  }, [orders, dateRange.start, dateRange.end]);
+    return orders.filter(order =>
+      inDateRange(orderKey(order), dateRange.start, dateRange.end) && !isDeletedOrder(order as any));
+  }, [orders, dateRange.start, dateRange.end, orderKey]);
 
   // 돈을 세는 패널은 이것만 본다 — 정의는 utils/orderRevenue 하나뿐이고 서버와 같은 값이다.
   const revenueOrders = useMemo(
@@ -651,47 +667,46 @@ const BrandReportsPage: React.FC = () => {
     [filteredOrders]
   );
 
+  // 총매출 = 매출 주문 금액의 정확한 합(2026-11-01). 예전엔 차트 칸(날·시간)마다 반올림한 값을 더해
+  //   데모 30일 RM 2,761.71 이 RM 2,764.00 으로 보였다. 차트 막대는 그대로 반올림.
+  const revenueTotal = useMemo(
+    () => Math.round(revenueOrders.reduce((sum, o: any) => sum + (parseFloat(o.total_amount || 0) || 0), 0) * 100) / 100,
+    [revenueOrders]
+  );
+
   // Calculate sales data
   const salesData = useMemo(() => {
     if (revenueOrders.length === 0) return [];
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
 
     if (activePeriod === 'today') {
       const hourlyData: Record<string, number> = {};
       revenueOrders.forEach(order => {
-        const hour = getOrderDate(order).getHours();
+        const hour = orderHour(order);
         const hourLabel = hour === 12 ? '12PM' : hour > 12 ? `${hour - 12}PM` : `${hour}AM`;
         hourlyData[hourLabel] = (hourlyData[hourLabel] || 0) + getOrderAmount(order);
       });
       return Object.entries(hourlyData).map(([date, sales]) => ({ date, sales: Math.round(sales) }));
     } else if (activePeriod === 'week') {
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const today = new Date();
-      const dates: Date[] = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        dates.push(date);
-      }
+      const dates: string[] = [];
+      for (let i = 6; i >= 0; i--) dates.push(shiftDateKey(dateRange.end, -i));
 
       const dailyData: Record<string, number> = {};
       revenueOrders.forEach(order => {
-        const orderDate = getOrderDate(order);
-        const dateKey = formatDateString(orderDate);
+        const dateKey = orderKey(order);
         dailyData[dateKey] = (dailyData[dateKey] || 0) + getOrderAmount(order);
       });
 
-      return dates.map(date => {
-        const dateKey = formatDateString(date);
-        const dayName = dayNames[date.getDay()];
+      return dates.map(dateKey => {
+        const dayName = dayNames[new Date(`${dateKey}T00:00:00Z`).getUTCDay()];
         return { date: dayName, sales: Math.round(dailyData[dateKey] || 0) };
       });
     } else if (activePeriod === 'month') {
       const dailyData: Record<string, number> = {};
       revenueOrders.forEach(order => {
-        const day = getOrderDate(order).getDate().toString();
+        const day = String(parseInt(orderKey(order).slice(8, 10), 10));
         dailyData[day] = (dailyData[day] || 0) + getOrderAmount(order);
       });
       return Object.entries(dailyData).map(([date, sales]) => ({ date, sales: Math.round(sales) })).sort((a, b) => parseInt(a.date) - parseInt(b.date));
@@ -699,12 +714,12 @@ const BrandReportsPage: React.FC = () => {
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthlyData: Record<string, number> = {};
       revenueOrders.forEach(order => {
-        const month = monthNames[getOrderDate(order).getMonth()];
+        const month = monthNames[parseInt(orderKey(order).slice(5, 7), 10) - 1];
         monthlyData[month] = (monthlyData[month] || 0) + getOrderAmount(order);
       });
       return monthNames.map(month => ({ date: month, sales: Math.round(monthlyData[month] || 0) }));
     }
-  }, [revenueOrders, activePeriod]);
+  }, [revenueOrders, activePeriod, dateRange.end, orderKey, orderHour]);
 
   // Calculate category data
   const categoryData = useMemo(() => {
@@ -762,7 +777,7 @@ const BrandReportsPage: React.FC = () => {
       : 0;
     const hourCounts: Record<number, number> = {};
     filteredOrders.forEach((o: any) => {
-      const h = new Date(o.order_date || o.createdAt).getHours();
+      const h = orderHour(o);
       hourCounts[h] = (hourCounts[h] || 0) + 1;
     });
     let peak = -1, peakC = -1;
@@ -774,7 +789,7 @@ const BrandReportsPage: React.FC = () => {
       return `${to(h)}-${to(nh)} ${nh < 12 ? 'AM' : 'PM'}`;
     };
     return { fulfillment, avgWait, peakHour: label(peak), totalOrders: total };
-  }, [filteredOrders]);
+  }, [filteredOrders, orderHour]);
 
   // Calculate menu performance
   const allMenuData = useMemo(() => {
@@ -828,11 +843,10 @@ const BrandReportsPage: React.FC = () => {
   const hourlyData = useMemo(() => {
     if (filteredOrders.length === 0) return [];
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const hourlyStats: Record<string, number> = {};
 
     filteredOrders.forEach(order => {
-      const hour = getOrderDate(order).getHours();
+      const hour = orderHour(order);
       const hourLabel = hour === 0 ? '12AM' : hour === 12 ? '12PM' : hour > 12 ? `${hour - 12}PM` : `${hour}AM`;
       hourlyStats[hourLabel] = (hourlyStats[hourLabel] || 0) + 1;
     });
@@ -847,23 +861,21 @@ const BrandReportsPage: React.FC = () => {
         };
         return getHourNum(a.hour) - getHourNum(b.hour);
       });
-  }, [filteredOrders]);
+  }, [filteredOrders, orderHour]);
 
   // Calculate drilldown data
   const drilldownData = useMemo(() => {
     if (revenueOrders.length === 0) return {};
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
 
     const yearData: Record<string, any> = {};
 
     revenueOrders.forEach(order => {
-      const orderDate = getOrderDate(order);
-      const year = orderDate.getFullYear().toString();
-      const monthNum = (orderDate.getMonth() + 1).toString().padStart(2, '0');
-      const month = `${year}-${monthNum}`;
-      const day = orderDate.toISOString().split('T')[0];
+      const day = orderKey(order);
+      if (!day) return;
+      const year = day.slice(0, 4);
+      const month = day.slice(0, 7);
 
       if (!yearData[year]) {
         yearData[year] = { year, revenue: 0, orders: 0, months: {} };
@@ -885,18 +897,17 @@ const BrandReportsPage: React.FC = () => {
     });
 
     return yearData;
-  }, [revenueOrders]);
+  }, [revenueOrders, orderKey]);
 
   // Calculate peak times
   const peakTimesData = useMemo(() => {
     if (filteredOrders.length === 0) return [];
 
-    const getOrderDate = (order: any) => new Date(order.order_date || order.createdAt);
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
     const hourlySlots: Record<string, { orders: number; revenue: number }> = {};
 
     filteredOrders.forEach(order => {
-      const hour = getOrderDate(order).getHours();
+      const hour = orderHour(order);
       const timeSlot = `${hour.toString().padStart(2, '0')}:00-${(hour + 1).toString().padStart(2, '0')}:00`;
 
       if (!hourlySlots[timeSlot]) hourlySlots[timeSlot] = { orders: 0, revenue: 0 };
@@ -911,7 +922,7 @@ const BrandReportsPage: React.FC = () => {
       }))
       .sort((a, b) => b.orders - a.orders)
       .slice(0, 5);
-  }, [filteredOrders]);
+  }, [filteredOrders, orderHour]);
 
   // Calculate brand/restaurant rankings
   const rankingData = useMemo(() => {
@@ -919,18 +930,8 @@ const BrandReportsPage: React.FC = () => {
 
     const getOrderAmount = (order: any) => parseFloat(order.final_price || order.total_amount || order.total_price || 0);
 
-    // Filter by date range
-    const startDate = new Date(dateRange.start);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(dateRange.end);
-    endDate.setHours(23, 59, 59, 999);
-
-    const dateFilteredOrders = orders.filter(order => {
-      const orderDateValue = order.order_date || order.createdAt;
-      if (!orderDateValue) return false;
-      const orderDate = new Date(orderDateValue);
-      return orderDate >= startDate && orderDate <= endDate && order.status === 'completed';
-    });
+    // 기간 안 매출 주문 — 다른 탭과 같은 정의(isRevenueOrder · 매장 시간대 · createdAt). 예전엔 completed 만 셌다.
+    const dateFilteredOrders = revenueOrders;
 
     // Restaurant rankings
     const restaurantStats: Record<string, { name: string; brandName: string; orders: number; revenue: number }> = {};
@@ -995,7 +996,7 @@ const BrandReportsPage: React.FC = () => {
       .sort((a, b) => b.revenue - a.revenue);
 
     return { brands: brandRankings, restaurants: restaurantRankings };
-  }, [orders, restaurants, brands, dateRange]);
+  }, [orders, revenueOrders, restaurants, brands]);
 
   // Date range helpers
   const getDateRangeDays = () => {
@@ -1054,7 +1055,7 @@ const BrandReportsPage: React.FC = () => {
   const handlePeriodChange = (period: PeriodType) => {
     setActivePeriod(period);
     setIsCustomDateRange(false);
-    setDateRange(calculatePeriodDateRange(period));
+    setDateRange(calculatePeriodDateRange(period, reportTz));
   };
 
   // Calendar range select handler
@@ -1140,6 +1141,11 @@ const BrandReportsPage: React.FC = () => {
         onPeriodChange={handlePeriodChange}
         onCalendarRangeSelect={handleCalendarRangeSelect}
       />
+      {truncatedFrom && (
+        <div role="status" style={{ margin: '8px 0 0', padding: '8px 12px', borderRadius: 8, background: '#FEF3C7', color: '#92400E', fontSize: 13 }}>
+          {t('brand:brandReportsPage.truncatedNotice', { count: 5000, from: truncatedFrom, defaultValue: 'Showing the most recent {{count}} orders (from {{from}}). Narrow the period for complete figures.' })}
+        </div>
+      )}
     </>
   );
 
@@ -1172,7 +1178,7 @@ const BrandReportsPage: React.FC = () => {
                 <StatsRow>
                   <StatCard color="#059669">
                     <StatLabel>{t('brand:brandReportsPage.totalRevenue')}</StatLabel>
-                    <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), selectedCurrency)}</StatValue>
+                    <StatValue>{formatCurrency(revenueTotal, selectedCurrency)}</StatValue>
                     <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                   </StatCard>
                   <StatCard color="#2563EB">
@@ -1182,7 +1188,7 @@ const BrandReportsPage: React.FC = () => {
                   </StatCard>
                   <StatCard color="#DC2626">
                     <StatLabel>{t('brand:brandReportsPage.averageOrderValue')}</StatLabel>
-                    <StatValue>{formatCurrency(revenueOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / revenueOrders.length) : 0, selectedCurrency)}</StatValue>
+                    <StatValue>{formatCurrency(revenueOrders.length > 0 ? (revenueTotal / revenueOrders.length) : 0, selectedCurrency)}</StatValue>
                     <StatDescription>{t('brand:brandReportsPage.perOrder')}</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
@@ -1247,7 +1253,7 @@ const BrandReportsPage: React.FC = () => {
                 <StatsRow>
                   <StatCard color="#059669">
                     <StatLabel>{t('brand:brandReportsPage.totalRevenue')}</StatLabel>
-                    <StatValue>{formatCurrency(salesData.reduce((sum, item) => sum + item.sales, 0), selectedCurrency)}</StatValue>
+                    <StatValue>{formatCurrency(revenueTotal, selectedCurrency)}</StatValue>
                     <StatDescription>{filteredOrders.length} orders in selected period</StatDescription>
                   </StatCard>
                   <StatCard color="#2563EB">
@@ -1257,7 +1263,7 @@ const BrandReportsPage: React.FC = () => {
                   </StatCard>
                   <StatCard color="#DC2626">
                     <StatLabel>{t('brand:brandReportsPage.averageOrderValue')}</StatLabel>
-                    <StatValue>{formatCurrency(revenueOrders.length > 0 ? (salesData.reduce((sum, item) => sum + item.sales, 0) / revenueOrders.length) : 0, selectedCurrency)}</StatValue>
+                    <StatValue>{formatCurrency(revenueOrders.length > 0 ? (revenueTotal / revenueOrders.length) : 0, selectedCurrency)}</StatValue>
                     <StatDescription>{t('brand:brandReportsPage.perOrderAverage')}</StatDescription>
                   </StatCard>
                   <StatCard color="#7C3AED">
@@ -1503,6 +1509,11 @@ const BrandReportsPage: React.FC = () => {
               onPeriodChange={handlePeriodChange}
               onCalendarRangeSelect={handleCalendarRangeSelect}
             />
+            {truncatedFrom && (
+              <div role="status" style={{ margin: '8px 0 0', padding: '8px 12px', borderRadius: 8, background: '#FEF3C7', color: '#92400E', fontSize: 13 }}>
+                {t('brand:brandReportsPage.truncatedNotice', { count: 5000, from: truncatedFrom, defaultValue: 'Showing the most recent {{count}} orders (from {{from}}). Narrow the period for complete figures.' })}
+              </div>
+            )}
 
             {/* Brand Rankings */}
             <RankingCard>

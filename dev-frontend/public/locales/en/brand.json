@@ -937,5 +937,14 @@
   "brandInvoicesPage.toConfirmTitle": "Payment confirmation required",
   "brandInvoicesPage.toConfirmDesc": "Customers submitted payment for these invoices. Check the payment and confirm.",
   "brandInvoicesPage.toConfirmEmpty": "Nothing to confirm",
-  "brandInvoicesPage.toConfirmEmptyDesc": "No invoices are waiting for payment confirmation."
+  "brandInvoicesPage.toConfirmEmptyDesc": "No invoices are waiting for payment confirmation.",
+  "brandPerformance.periodToday": "Today",
+  "brandPerformance.periodYesterday": "Yesterday",
+  "brandPerformance.periodLast7Days": "Last 7 days",
+  "brandPerformance.periodLast30Days": "Last 30 days",
+  "brandPerformance.periodLast365Days": "Last 365 days",
+  "brandPerformance.periodAllTime": "All time",
+  "brandPerformance.vsPreviousPeriod": "vs previous period",
+  "brandPerformance.noPreviousData": "No previous-period sales",
+  "brandReportsPage.truncatedNotice": "Showing the most recent {{count}} orders (from {{from}}). Narrow the period for complete figures."
 }

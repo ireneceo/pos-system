@@ -226,6 +226,20 @@ const requireVoidAccess = (req, res, next) => {
 //
 // Without (2) and (3), routes that pass the target id outside of `params` (the
 // menu.js routes were the canonical case) silently bypass tenant isolation.
+/**
+ * 이 BG/BM 의 브랜드 범위(utils/managerBrandScope.brandIdsForUser — BM 은 authenticateToken 이 채운 managed_brand_ids)에
+ * 이 매장의 브랜드가 들어가는가. 다른 역할·브랜드 없는 매장 = false. (2026-11-01)
+ */
+async function brandScopeIncludes(user, restaurantBrandId) {
+  if (!user || !['Brand General', 'Brand Manager'].includes(user.role)) return false;
+  const bid = Number(restaurantBrandId);
+  if (!Number.isFinite(bid) || bid <= 0) return false;
+  const brandIds = Array.isArray(user.managed_brand_ids)
+    ? user.managed_brand_ids
+    : await require('../utils/managerBrandScope').brandIdsForUser(user);
+  return brandIds.map(Number).includes(bid);
+}
+
 const checkRestaurantAccess = async (req, res, next) => {
   try {
     const { restaurantId, id, restaurant_id } = req.params;
@@ -318,7 +332,9 @@ const checkRestaurantAccess = async (req, res, next) => {
       }
 
       const hasAccess = restaurant.managers && restaurant.managers.length > 0;
-      if (!hasAccess && restaurant.admin_id !== req.user.id) {
+      // 브랜드 폴백(2026-11-01 Fable 설계 §2-1-3): BG/BM 은 자기 브랜드(소유 ∪ 배정 · BM 은 회사/고른 브랜드) 매장도 연다.
+      //   매장 목록(restaurantIdsForBrandUser)과 같은 규칙 — «목록엔 보이는데 상세 403» 을 막는다. 푸드코트는 그대로.
+      if (!hasAccess && restaurant.admin_id !== req.user.id && !(await brandScopeIncludes(req.user, restaurant.brand_id))) {
         return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
       }
 
@@ -513,10 +529,8 @@ const userCanAccessRestaurant = async (user, targetRestaurantId) => {
     // (mirrors the restaurant-list scope GET /restaurants/manager/:id). The manager-join
     // table alone misses brand restaurants without an explicit oversight row → write gate
     // (deactivate admin, etc.) wrongly 403'd while the list showed them. Same for Foodcourt.
-    if (user.role === 'Brand General' && restaurant.brand_id) {
-      const owns = await Brand.findOne({ where: { id: restaurant.brand_id, owner_id: user.id }, attributes: ['id'] });
-      if (owns) return true;
-    }
+    // 2026-11-01 Fable 설계 §2-1-3: BG(소유 ∪ 배정)·BM(회사/고른 브랜드) 공통 — 매장 목록과 같은 규칙.
+    if (await brandScopeIncludes(user, restaurant.brand_id)) return true;
     if (user.role === 'Foodcourt General' && restaurant.foodcourt_id) {
       const owns = await Foodcourt.findOne({ where: { id: restaurant.foodcourt_id, owner_id: user.id }, attributes: ['id'] });
       if (owns) return true;

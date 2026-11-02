@@ -937,5 +937,14 @@
   "brandInvoicesPage.toConfirmTitle": "Pengesahan pembayaran diperlukan",
   "brandInvoicesPage.toConfirmDesc": "Pelanggan telah menghantar bayaran untuk invois ini. Semak bayaran dan sahkan.",
   "brandInvoicesPage.toConfirmEmpty": "Tiada untuk disahkan",
-  "brandInvoicesPage.toConfirmEmptyDesc": "Tiada invois menunggu pengesahan pembayaran."
+  "brandInvoicesPage.toConfirmEmptyDesc": "Tiada invois menunggu pengesahan pembayaran.",
+  "brandPerformance.periodToday": "Hari ini",
+  "brandPerformance.periodYesterday": "Semalam",
+  "brandPerformance.periodLast7Days": "7 hari lepas",
+  "brandPerformance.periodLast30Days": "30 hari lepas",
+  "brandPerformance.periodLast365Days": "365 hari lepas",
+  "brandPerformance.periodAllTime": "Sepanjang masa",
+  "brandPerformance.vsPreviousPeriod": "berbanding tempoh sebelumnya",
+  "brandPerformance.noPreviousData": "Tiada jualan tempoh sebelumnya",
+  "brandReportsPage.truncatedNotice": "Menunjukkan {{count}} pesanan terkini (dari {{from}}). Kecilkan tempoh untuk angka lengkap."
 }
