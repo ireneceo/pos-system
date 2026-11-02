@@ -187,6 +187,11 @@ async function reversePayment(po, { userId, reason }, t) {
     // 안 낸 발주는 되돌릴 것이 없다 — 조용히 넘어간다(취소 자체를 막지 않기 위해).
     return { po, movement: null, drawerSkipped: false, noop: true };
   }
+  // 직영 정산(internal)은 돈이 움직이지 않았다 — 환불이 성립하지 않고, 되돌리면 청구서가 다시
+  //   «미지급» 으로 살아난다(2026-11-02 Fable 설계 direct-store-billing §1-3).
+  if (po.payment_method === 'internal') {
+    throw err('Internal settlement cannot be refunded', 'INTERNAL_SETTLEMENT', 400);
+  }
 
   let movement = null;
   let drawerSkipped = false;
@@ -357,11 +362,14 @@ async function reimbursePersonalPayment(po, { method, userId, reason }, t) {
  *
  * @param invoiceIds 결제된 청구서 id 들 (soa 면 자식 전부, trade 면 자기 하나)
  */
-async function mirrorPaidToPurchaseOrders(invoiceIds, paidAt, t) {
+async function mirrorPaidToPurchaseOrders(invoiceIds, paidAt, t, { method } = {}) {
   if (!invoiceIds || invoiceIds.length === 0) return 0;
   const { Op } = require('sequelize');
+  // method — 직영 정산은 'internal' 을 같이 남긴다(발주 목록 «Paid · Internal»). 기존 호출부는 결제수단을 안 바꾼다.
+  const set = { payment_status: 'paid', paid_at: paidAt || new Date() };
+  if (method) set.payment_method = method;
   const [n] = await PurchaseOrder.update(
-    { payment_status: 'paid', paid_at: paidAt || new Date() },
+    set,
     {
       // 이미 낸 것·환불된 것은 건드리지 않는다 — 되돌린 결제를 되살리면 안 된다.
       where: { trade_invoice_id: { [Op.in]: invoiceIds }, payment_status: 'unpaid' },

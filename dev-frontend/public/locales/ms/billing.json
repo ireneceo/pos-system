@@ -15,7 +15,8 @@
     "COD": "Bayar Semasa Hantar",
     "NET_15": "Net 15 hari",
     "NET_30": "Net 30 hari",
-    "NET_60": "Net 60 hari"
+    "NET_60": "Net 60 hari",
+    "INTERNAL": "Dalaman — kedai dikendalikan jenama (tiada bayaran)"
   },
   "cycle": {
     "immediate": "Serta-merta (per-invois)",
@@ -45,5 +46,15 @@
   "trigger": {
     "on_received": "Pesanan dihantar atau diterima (lalai)",
     "on_confirmed": "Pesanan disahkan (sebelum penghantaran)"
+  },
+  "internal": {
+    "title": "Penyelesaian dalaman",
+    "hint": "Invois masih dikeluarkan (jumlah, senarai pesanan dan laporan kekal), tetapi terus ditanda dibayar — tiada tarikh akhir, peringatan atau bayaran.",
+    "openHint": "{{count}} invois yang dikeluarkan sebelum tetapan ini masih terbuka ({{amount}}).",
+    "none": "Tiada invois terbuka.",
+    "settleAction": "Selesaikan {{count}} sebagai dalaman",
+    "confirm": "Tanda {{count}} invois terbuka sebagai dibayar (dalaman)? Ini tidak boleh dibatalkan.",
+    "result": "{{invoices}} invois · {{orders}} pesanan ditanda dibayar (dalaman).",
+    "failed": "Tidak dapat menyelesaikan invois."
   }
 }

@@ -289,3 +289,20 @@ SupplierCustomersPage의 edit modal 패턴 그대로.
 - 검증: dev e2e 14/14 + 수동생성 9/9, 운영 실측(SOA issued_by 채워짐·링크·멱등·보안차단), 데모 데이터 원복.
 
 **End of design.**
+
+---
+
+## 직영 INTERNAL 결제조건 (2026-11-02 · Fable 설계 `.claude/fable-design-20261102-direct-store-billing.md`)
+
+Irene 원문: «with MIN Cafe는 GIT CONSULTING 브랜드제너럴이 운영하는 직영점이라서 납품한 금액들을 결제할 필요가 없거든. 그래도 금액이나 주문리스트업, 통계는 다 되어야 해.»
+
+- **자리 = `Restaurant.brand_billing_terms` / `foodcourt_billing_terms` 의 `terms: 'INTERNAL'`.** 새 플래그·새 청구서 상태·새 목록 없음. 판정 함수는 `utils/paymentTerms.isInternalSettlement` 하나.
+  - 검증기 `validatePaymentTerms(pt, { allowInternal })` — `routes/entity-billing.js` 만 켠다(공급업체 계약은 400).
+  - 저장 시 `invoice_cycle='immediate'` 강제 · `payment_due_day`·`soa_issue_day`·`credit_limit` 비움 · `invoice_trigger`·통화·메모는 유지.
+- **발행** (`purchaseOrderService.createTradeInvoice`): 청구서는 지금처럼 내되 처음부터 `paid` · `payment_method='internal'` · `due_date=NULL` · `paid_at`=발행일. 발주도 `payment_status='paid'`·`payment_method='internal'` 로 거울(`purchase_orders.payment_method` ENUM 에 `internal` — 마이그 `migrate-po-payment-method-internal.js`, deploy). 발주를 이미 현금 등으로 냈으면 그 기록이 우선.
+- **조용해지는 길(상태 목록 무접촉):** 연체 전환·메일 · 사이드바 배지 · 오너/대시보드 미지급 합계 · 결제 버튼 · 정산서 · 신용한도. **남는 것:** 청구서 금액 · 발주 목록 · `brand-revenue`(paid = 받음, outstanding 0) · 판매 리포트.
+- **환불 차단:** `reversePayment` 가 internal 발주에 400 `INTERNAL_SETTLEMENT`(되돌리면 청구서가 다시 미지급이 된다).
+- **저장 전에 쌓인 청구서:** 자동으로 바꾸지 않는다(되돌릴 길 없음). 결제조건 창 «Settle N as internal» → `POST /api/{brand|foodcourt}/restaurants/:id/billing-terms/settle-internal` (조건이 INTERNAL 아니면 409 `NOT_INTERNAL` · 단독 trade + SOA(`syncSoaChildren`) · 발주 거울 · 멱등). `GET …/billing-terms` 가 INTERNAL 일 때 같은 조건으로 센 `open_invoices {count, amount}` 를 준다.
+- **알려진 빈틈:** 직영 매장이 입고 전 «Receive & Pay» 로 현금을 고르면 드로어에서 돈이 나가고 청구서는 cash 로 paid(이번 범위 밖).
+- 회귀 박제: health-check `payment` «직영 INTERNAL ①~④».
+

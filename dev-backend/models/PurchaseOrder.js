@@ -61,7 +61,8 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
   },
   // `personal` = 개인 돈으로 결제 — 공급업체에는 냈고 회사는 아직 안 낸 돈(2026-09-18 Fable ⑨).
   //   결제 시점에 드로어가 움직이지 않고, **개인에게 갚을 때** 회사 돈이 나간다.
-  payment_method: { type: DataTypes.ENUM('cash', 'bank_transfer', 'card', 'personal'), allowNull: true },
+  payment_method: { type: DataTypes.ENUM('cash', 'bank_transfer', 'card', 'personal', 'internal'), allowNull: true },
+  // 'internal' = 직영 정산(결제 필요 없음) — 사람이 고르는 값이 아니다. 브랜드·푸드코트 결제조건 INTERNAL 에서만 생긴다(2026-11-02).
   // 개인금액 정산(= 그 사람에게 갚음). `reimbursed_at IS NULL` 인 personal 발주가 «갚을 목록» 이다.
   reimbursed_at: { type: DataTypes.DATE, allowNull: true },
   reimbursed_by_user_id: { type: DataTypes.INTEGER, allowNull: true },

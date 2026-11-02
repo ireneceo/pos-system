@@ -306,6 +306,8 @@ Brand와 동일 구조. `issuer_type: 'foodcourt'`, 인보이스 번호 `INV-FC{
            cancelled
 ```
 
+> **직영(INTERNAL) 발주 청구서 = 발행 즉시 `paid`** (2026-11-02) — 브랜드·푸드코트 결제조건 `terms='INTERNAL'` 인 매장의 trade 청구서는 `pending_payment` 를 거치지 않고 `paid` · `payment_method='internal'` · `due_date=NULL` 로 생긴다. 상태 목록은 그대로라 연체·배지·결제 버튼·SOA·신용한도에서 자연히 빠지고 매출 통계에는 잡힌다. 상세 `docs/BG_FG_TRADE_BILLING.md` «직영 INTERNAL».
+
 | 상태 | 설명 | 전이 가능 |
 |------|------|----------|
 | `draft` | 생성됨, 미발송 | → pending_payment |

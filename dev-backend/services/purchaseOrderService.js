@@ -11,6 +11,7 @@ const {
 const { finalizeInvoice } = require('../utils/invoiceCalculation');
 // 공급업체 판매품목명 해석 단일 소스 — 화면·인쇄본·공유메시지·인보이스가 같은 이름을 써야 한다.
 const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
+const { isInternalSettlement } = require('../utils/paymentTerms');
 
 /**
  * Compute payer_type, payer_id, restaurant_id from PO buyer side.
@@ -152,6 +153,20 @@ async function isExternalSupplierWithoutTerms(po) {
 }
 
 /**
+ * 그 발주가 배송 완료된 시각 — 추적 기록의 마지막 «delivered», 없으면 받은 시각(received_at), 둘 다 없으면 null.
+ * 미래 시각은 쓰지 않는다(잘못된 기록이 발행일을 앞으로 밀지 않게).
+ */
+function deliveredAtOf(po) {
+  let info = po.tracking_info;
+  if (typeof info === 'string') { try { info = JSON.parse(info); } catch { info = null; } }
+  const events = Array.isArray(info?.events) ? info.events : [];
+  const delivered = events.filter((e) => e && e.status === 'delivered' && e.at).map((e) => new Date(e.at)).filter((d) => !isNaN(d));
+  const at = delivered.length ? delivered[delivered.length - 1] : (po.received_at ? new Date(po.received_at) : null);
+  if (!at || isNaN(at) || at > new Date()) return null;
+  return at;
+}
+
+/**
  * Create Trade Invoice for a received PO.
  * Idempotent: skip if po.trade_invoice_id is already set.
  */
@@ -172,6 +187,11 @@ async function createTradeInvoice(po) {
   const payer = await resolvePayer(fullPo);
   const invoiceNumber = await generateTradeInvoiceNumber(fullPo);
   const invoiceDate = new Date();
+  // 발행일 = **배송 완료일** (2026-10-30 Irene «배송완료일 기준으로 다 발행일 맞춰») — 늦게 만든 청구서
+  //   (구매자가 며칠 뒤 «받았어요» · 정산서 직전 채우기)도 그 물건이 간 날로 찍는다. 배송 기록이 없으면
+  //   받은 날, 그것도 없으면(확정 시점 발행 등) 만드는 날. 마감일은 만드는 날 기준 그대로 — 소급하면
+  //   만들자마자 연체가 된다.
+  const issuedAt = deliveredAtOf(fullPo) || invoiceDate;
   // 외부 공급업체 + 합의된 결제조건 없음 → **마감일 없음(NULL)**. 지어낸 NET_15 를 쓰지 않는다.
   const noAgreedTerms = await isExternalSupplierWithoutTerms(fullPo);
   const dueDate = noAgreedTerms ? null : computeDueDate(paymentTerms, invoiceDate);
@@ -199,6 +219,11 @@ async function createTradeInvoice(po) {
   //   원장 규칙(2026-09-07 Fable): 먼저 기록된 원장을 다른 원장이 거울처럼 따른다.
   //   여기서 1차 기록은 발주(`payment_status`)이고 청구서가 거울이다.
   const alreadyPaid = fullPo.payment_status === 'paid';
+  // 직영(결제조건 INTERNAL — 브랜드·푸드코트가 직접 운영하는 매장): 청구서는 지금처럼 내되(금액·통계는 그대로)
+  //   처음부터 «결제됨(internal)» · 마감일 없음 → 연체·배지·미지급 합계·결제 버튼·정산서·신용한도가 상태 목록을
+  //   건드리지 않고 자연히 빠진다(2026-11-02 Irene «직영점이라서 납품한 금액들을 결제할 필요가 없거든» ·
+  //   Fable 설계 direct-store-billing §1-2). 발주를 이미 현금 등으로 냈으면 그 기록이 우선이다(alreadyPaid).
+  const internal = !alreadyPaid && isInternalSettlement(paymentTerms);
 
   // 수령일은 **매장 타임존** 기준이다. `toISOString()` 은 UTC 라, 말레이시아(+8)에서
   // 아침 8시 전에 받은 물건이 **전날 날짜**로 청구서 비고에 박힌다 — 배송 수령은 대개 오전이다.
@@ -225,28 +250,28 @@ async function createTradeInvoice(po) {
     issuer_type: fullPo.seller_type === 'system_admin' ? 'system_admin' : fullPo.seller_type,
     issuer_id: fullPo.seller_entity_id || 1, // SA defaults to 1
     issued_by: issuedBy,
-    issued_at: new Date(),
+    issued_at: issuedAt,
     payer_type: payer.payer_type,
     payer_id: payer.payer_id,
     restaurant_id: payer.restaurant_id,
     contract_id: fullPo.contract_id || null,
     // 구입 청구서에 «기간» 은 없다 — **발주가 나간 날 → 받은 날** (2026-09-11 §8-3 C-1 ·
     //   Irene 「발주한 날자랑 받은 날짜 등으로 해야지 구입한 건. 왜 구독기간처럼 표시해?」).
-    //   예전엔 두 칸 다 발행 시각이라 구독 청구서처럼 보였다. 발행일(issued_at)은 지금처럼 만든 시각(소급 금지).
+    //   예전엔 두 칸 다 발행 시각이라 구독 청구서처럼 보였다. 발행일(issued_at)은 배송 완료일(위 issuedAt · 2026-10-30).
     billing_period_start: fullPo.submitted_at || fullPo.approved_at || fullPo.created_at || invoiceDate,
     billing_period_end: fullPo.received_at || invoiceDate,
-    due_date: dueDate,
+    due_date: internal ? null : dueDate,
     subtotal: fullPo.subtotal || 0,
     tax_amount: fullPo.tax_amount || 0,
     discount_amount: 0,
     total_amount: fullPo.total_amount || 0,
     currency: fullPo.currency || 'MYR',
-    status: alreadyPaid ? 'paid' : 'pending_payment',
-    paid_amount: alreadyPaid ? (fullPo.total_amount || 0) : 0,
-    paid_at: alreadyPaid ? (fullPo.paid_at || new Date()) : null,
-    payment_method: alreadyPaid ? (fullPo.payment_method || null) : null,
-    // 발행일은 **만드는 날**이다(소급 금지). 언제 받은 물건인지는 비고에 남긴다 —
-    // 뒤늦게 채우는 청구서(백필)도 이 규칙을 그대로 따른다.
+    status: (alreadyPaid || internal) ? 'paid' : 'pending_payment',
+    paid_amount: (alreadyPaid || internal) ? (fullPo.total_amount || 0) : 0,
+    paid_at: alreadyPaid ? (fullPo.paid_at || new Date()) : (internal ? issuedAt : null),
+    payment_method: alreadyPaid ? (fullPo.payment_method || null) : (internal ? 'internal' : null),
+    payment_notes: internal ? 'Internal settlement — brand-operated store, no payment required' : null,
+    // 발행일은 배송 완료일(위 issuedAt). 구매자가 받은 날은 비고에 남긴다.
     notes: receivedOn
       ? `Purchase Order: ${fullPo.po_number} / received ${receivedOn}`
       : `Purchase Order: ${fullPo.po_number}`
@@ -312,7 +337,7 @@ async function createTradeInvoice(po) {
   //   `finalizeInvoice` 가 `total_amount` 를 **품목 합**으로 다시 계산한다. 발주 헤더 금액을
   //   `paid_amount` 에 넣으면 둘이 갈려 "총액 0, 낸 돈 30" 같은 청구서가 나온다
   //   (dev 백필 실측에서 실제로 나왔다). finalize 뒤 값을 읽어 맞춘다.
-  if (alreadyPaid) {
+  if (alreadyPaid || internal) {
     await invoice.reload();
     const finalTotal = Number(invoice.total_amount || 0);
     if (Number(invoice.paid_amount || 0) !== finalTotal) {
@@ -320,8 +345,13 @@ async function createTradeInvoice(po) {
     }
   }
 
-  // Link back to PO
-  await fullPo.update({ trade_invoice_id: invoice.id });
+  // Link back to PO — 직영이면 발주도 «결제됨(internal)» 으로 거울한다(청구서가 1차 · recordPayment 는 돈이
+  //   움직이는 결제 전제라 쓰지 않는다). 이미 낸 발주·환불된 발주는 건드리지 않는다(unpaid 일 때만).
+  const poLink = { trade_invoice_id: invoice.id };
+  if (internal && fullPo.payment_status === 'unpaid') {
+    Object.assign(poLink, { payment_status: 'paid', payment_method: 'internal', paid_at: issuedAt });
+  }
+  await fullPo.update(poLink);
 
   return invoice;
 }
@@ -427,6 +457,7 @@ async function submitDraftInTx(id, t, { canAccess, actor, preApproved } = {}) {
 module.exports = {
   submitDraftInTx,
   createTradeInvoice,
+  deliveredAtOf,
   issueTradeInvoiceAfterCommit,
   invoiceOnConfirm,
   resolvePayer,

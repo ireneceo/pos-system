@@ -15,7 +15,8 @@
     "COD": "Cash on Delivery",
     "NET_15": "Net 15 days",
     "NET_30": "Net 30 days",
-    "NET_60": "Net 60 days"
+    "NET_60": "Net 60 days",
+    "INTERNAL": "Internal — brand-operated store (no payment)"
   },
   "cycle": {
     "immediate": "Immediate (per-invoice)",
@@ -45,5 +46,15 @@
   "trigger": {
     "on_received": "Order is delivered or received (default)",
     "on_confirmed": "Order is confirmed (before delivery)"
+  },
+  "internal": {
+    "title": "Internal settlement",
+    "hint": "Invoices are still issued (amounts, order list and reports stay), but are marked paid at once — no due date, reminders or payment.",
+    "openHint": "{{count}} invoices issued before this setting are still open ({{amount}}).",
+    "none": "No open invoices.",
+    "settleAction": "Settle {{count}} as internal",
+    "confirm": "Mark {{count}} open invoices as paid (internal)? This cannot be undone.",
+    "result": "{{invoices}} invoices · {{orders}} orders marked paid (internal).",
+    "failed": "Could not settle invoices."
   }
 }

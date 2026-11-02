@@ -721,7 +721,8 @@
       "bank": "Pindahan bank",
       "card": "Kad",
       "nonCashNote": "Pembayaran bukan tunai direkodkan pada pesanan sahaja — laci tunai tidak disentuh.",
-      "personal": "Wang peribadi"
+      "personal": "Wang peribadi",
+      "internal": "Dalaman"
     },
     "effects": {
       "title": "Apa yang berlaku",

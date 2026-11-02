@@ -721,7 +721,8 @@
       "bank": "Bank transfer",
       "card": "Card",
       "nonCashNote": "Non-cash payments are recorded on the order only — the cash drawer is not touched.",
-      "personal": "Personal money"
+      "personal": "Personal money",
+      "internal": "Internal"
     },
     "effects": {
       "title": "What this does",

@@ -7,6 +7,11 @@
  * Endpoint:
  *   PUT /api/{brand|foodcourt}/restaurants/:restaurantId/billing-terms
  *   body: { payment_terms: { terms, invoice_cycle, payment_due_day, soa_issue_day, invoice_trigger, credit_limit, currency, notes } | null }
+ *   GET  같은 주소 — 직영(INTERNAL)이면 open_invoices { count, amount } 를 같이 준다
+ *   POST 같은 주소 + /settle-internal — 직영 저장 뒤 열려 있던 청구서를 «결제됨(internal)» 으로 정리
+ *
+ * 직영(terms = 'INTERNAL', 2026-11-02 Fable 설계 direct-store-billing): 브랜드·푸드코트가 직접 운영하는 매장.
+ *   납품 청구서는 그대로 나오지만 처음부터 결제됨 — 주기·마감일·발행일·한도 칸은 의미가 없어 숨긴다.
  */
 import React, { useEffect, useState } from 'react';
 import styled from 'styled-components';
@@ -151,14 +156,59 @@ const BillingTermsModal: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [genResult, setGenResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  // 직영 — 저장된 조건이 INTERNAL 일 때 열려 있는 청구서(서버가 정리와 같은 조건으로 센다)
+  const [openInvoices, setOpenInvoices] = useState<{ count: number; amount: number } | null>(null);
+  const [settling, setSettling] = useState(false);
+  const isInternal = form.terms === 'INTERNAL';
+  const savedInternal = currentTerms?.terms === 'INTERNAL';
 
   useEffect(() => {
     if (open) {
       setForm(termsFromBackend(currentTerms));
       setError(null);
       setGenResult(null);
+      setOpenInvoices(null);
     }
   }, [open, currentTerms]);
+
+  useEffect(() => {
+    if (!open || !savedInternal || !restaurantId) return;
+    let alive = true;
+    fetch(`/api/${entityType}/restaurants/${restaurantId}/billing-terms`, {
+      headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+    })
+      .then((r) => r.json())
+      .then((d) => { if (alive && d?.success) setOpenInvoices(d.data?.open_invoices || { count: 0, amount: 0 }); })
+      .catch(() => { /* 숫자를 못 읽어도 창은 쓸 수 있다 — 버튼만 안 보인다 */ });
+    return () => { alive = false; };
+  }, [open, savedInternal, restaurantId, entityType]);
+
+  // 직영으로 저장하기 전에 쌓인 청구서 정리 — 되돌릴 수 없어서 저장할 때 자동으로 하지 않고 여기서 한 번 누른다.
+  const settleInternal = async () => {
+    if (!restaurantId || settling || !openInvoices || openInvoices.count === 0) return;
+    if (!window.confirm(t('billing:internal.confirm', 'Mark {{count}} open invoices as paid (internal)? This cannot be undone.', { count: openInvoices.count }) as string)) return;
+    setSettling(true); setGenResult(null);
+    try {
+      const res = await fetch(`/api/${entityType}/restaurants/${restaurantId}/billing-terms/settle-internal`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({})
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const n = (data.data?.invoices || 0) + (data.data?.soa || 0);
+        setGenResult({ ok: true, msg: t('billing:internal.result', '{{invoices}} invoices · {{orders}} orders marked paid (internal).', { invoices: n, orders: data.data?.purchase_orders || 0 }) as string });
+        setOpenInvoices({ count: 0, amount: 0 });
+        onSaved(currentTerms || null);
+      } else {
+        setGenResult({ ok: false, msg: data?.message || (t('billing:internal.failed', 'Could not settle invoices.') as string) });
+      }
+    } catch (err) {
+      setGenResult({ ok: false, msg: t('billing:internal.failed', 'Could not settle invoices.') as string });
+    } finally {
+      setSettling(false);
+    }
+  };
 
   // 어느 기간의 거래를 묶을지. 기본은 «지난달» — 서버 기본값과 같은 뜻이라 아무것도 안 보낸다.
   const [periodMode, setPeriodMode] = useState<'lastMonth' | 'thisMonth' | 'custom'>('lastMonth');
@@ -208,6 +258,18 @@ const BillingTermsModal: React.FC<Props> = ({
     if (!restaurantId || submitting) return;
     setError(null);
 
+    if (isInternal) {
+      // 직영 — 주기·마감일·한도는 보내지 않는다(서버도 비운다). 발행 시점·통화·메모만.
+      await save({
+        terms: 'INTERNAL',
+        invoice_cycle: 'immediate',
+        invoice_trigger: entityType === 'brand' ? form.invoice_trigger : 'on_received',
+        currency: form.currency.trim().toUpperCase() || 'MYR',
+        notes: form.notes.trim() || undefined
+      });
+      return;
+    }
+
     let dueDay: number | null = null;
     if (form.invoice_cycle === 'monthly_soa') {
       const d = Number(form.payment_due_day);
@@ -247,7 +309,10 @@ const BillingTermsModal: React.FC<Props> = ({
       currency: form.currency.trim().toUpperCase() || 'MYR',
       notes: form.notes.trim() || undefined
     };
+    await save(payload);
+  };
 
+  const save = async (payload: PaymentTerms) => {
     setSubmitting(true);
     try {
       const res = await fetch(endpoint, {
@@ -349,8 +414,13 @@ const BillingTermsModal: React.FC<Props> = ({
             <option value="NET_15">{t('billing:terms.NET_15', 'Net 15 days')}</option>
             <option value="NET_30">{t('billing:terms.NET_30', 'Net 30 days')}</option>
             <option value="NET_60">{t('billing:terms.NET_60', 'Net 60 days')}</option>
+            <option value="INTERNAL">{t('billing:terms.INTERNAL', 'Internal — brand-operated store (no payment)')}</option>
           </FormSelect>
+          {isInternal && (
+            <GenerateHint>{t('billing:internal.hint', 'Invoices are still issued (amounts, order list and reports stay), but are marked paid at once — no due date, reminders or payment.')}</GenerateHint>
+          )}
         </UIFormGroup>
+        {!isInternal && (
         <UIFormGroup>
           <FormLabel>{t('billing:modal.invoiceCycle', 'Invoice Cycle')} *</FormLabel>
           <FormSelect
@@ -364,7 +434,8 @@ const BillingTermsModal: React.FC<Props> = ({
             <option value="monthly_soa">{t('billing:cycle.monthly_soa', 'Monthly Statement (SOA)')}</option>
           </FormSelect>
         </UIFormGroup>
-        {form.invoice_cycle === 'monthly_soa' && (
+        )}
+        {!isInternal && form.invoice_cycle === 'monthly_soa' && (
           <UIFormGroup>
             <FormLabel>{t('billing:modal.paymentDueDay', 'Payment Due Day (1-31)')} *</FormLabel>
             <FormInput
@@ -375,7 +446,7 @@ const BillingTermsModal: React.FC<Props> = ({
             />
           </UIFormGroup>
         )}
-        {form.invoice_cycle === 'monthly_soa' && (
+        {!isInternal && form.invoice_cycle === 'monthly_soa' && (
           <UIFormGroup>
             <FormLabel>{t('billing:modal.soaIssueDay', 'Statement Issue Day (1-28)')} *</FormLabel>
             <FormInput
@@ -406,6 +477,7 @@ const BillingTermsModal: React.FC<Props> = ({
             onChange={(e) => setForm({ ...form, currency: e.target.value.toUpperCase() })}
           />
         </UIFormGroup>
+        {!isInternal && (
         <UIFormGroup>
           <FormLabel>{t('billing:modal.creditLimit', 'Credit Limit (optional)')}</FormLabel>
           <FormInput
@@ -414,6 +486,7 @@ const BillingTermsModal: React.FC<Props> = ({
             onChange={(e) => setForm({ ...form, credit_limit: e.target.value })}
           />
         </UIFormGroup>
+        )}
         <UIFormGroup>
           <FormLabel>{t('billing:modal.notes', 'Notes (optional)')}</FormLabel>
           <FormTextArea
@@ -464,6 +537,24 @@ const BillingTermsModal: React.FC<Props> = ({
           </div>
         </GenerateSection>
       )}
+      {/* 직영 — 저장 전에 쌓인 청구서 정리 (자동으로 하지 않는다 · 되돌릴 수 없음) */}
+      {savedInternal && openInvoices && (
+        <GenerateSection>
+          <div>
+            <strong>{t('billing:internal.title', 'Internal settlement')}</strong>
+            <GenerateHint>
+              {openInvoices.count > 0
+                ? t('billing:internal.openHint', '{{count}} invoices issued before this setting are still open ({{amount}}).', { count: openInvoices.count, amount: `${getCurrencySymbol(currentTerms?.currency || 'MYR')} ${Number(openInvoices.amount).toFixed(2)}` })
+                : t('billing:internal.none', 'No open invoices.')}
+            </GenerateHint>
+          </div>
+          {openInvoices.count > 0 && (
+            <ModalButton type="button" onClick={settleInternal} disabled={settling}>
+              {settling ? t('common:saving', 'Saving...') : t('billing:internal.settleAction', 'Settle {{count}} as internal', { count: openInvoices.count })}
+            </ModalButton>
+          )}
+        </GenerateSection>
+      )}
       {genResult && (
         <GenResultBox $ok={genResult.ok}>{genResult.msg}</GenResultBox>
       )}
@@ -473,6 +564,9 @@ const BillingTermsModal: React.FC<Props> = ({
 
 export function formatTermsSummary(t: PaymentTerms | null | undefined): string {
   if (!t || !t.terms) return '-';
+  if (t.terms === 'INTERNAL') {
+    return t.invoice_trigger === 'on_confirmed' ? 'Internal · no payment · invoice on confirm' : 'Internal · no payment';
+  }
   const parts: string[] = [t.terms];
   if (t.invoice_cycle === 'monthly_soa') {
     parts.push(t.payment_due_day ? `SOA · day ${t.payment_due_day}` : 'SOA');

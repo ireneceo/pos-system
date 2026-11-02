@@ -721,7 +721,8 @@
       "bank": "계좌이체",
       "card": "카드",
       "nonCashNote": "현금이 아닌 결제는 발주에만 기록되고 현금서랍은 건드리지 않습니다.",
-      "personal": "개인금액"
+      "personal": "개인금액",
+      "internal": "직영"
     },
     "effects": {
       "title": "무엇이 일어나나요",

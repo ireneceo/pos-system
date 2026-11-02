@@ -721,7 +721,8 @@
       "bank": "银行转账",
       "card": "刷卡",
       "nonCashNote": "非现金付款仅记录在采购单上，不会动用钱箱。",
-      "personal": "个人垫付"
+      "personal": "个人垫付",
+      "internal": "内部"
     },
     "effects": {
       "title": "将会发生什么",

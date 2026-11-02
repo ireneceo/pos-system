@@ -12969,6 +12969,7 @@ async function runTests(allTests, category) {
   defineProfitabilityTests();
   defineProductFormCostStockTests();
   defineDirectDeductUnitTests();
+  defineInternalSettlementTests();
 
   // 🔴 잔재 감시 — 검사 자체가 데모 매장에 **돈·재고 흔적을 남기는지** 실행 전후로 잰다.
   //   2026-09-18: 이 지문 함수는 **정의만 있고 호출이 0곳**이었다. 그래서 직접구매 계약이
@@ -13208,5 +13209,159 @@ function defineDirectDeductUnitTests() {
       }
       return true;
     } finally { await teardown(r); }
+  });
+}
+// ============================================
+// 직영(결제조건 INTERNAL) — 납품 청구서는 내되 «결제 필요 없음» (2026-11-02 Fable 설계
+//   .claude/fable-design-20261102-direct-store-billing.md §4)
+// ============================================
+//   ① 조건 저장 정규화(주기 immediate · 한도/마감일 비움 · 발행 시점 보존) · 공급업체 검증 400 · 익명 401 · 남의 매장 404
+//   ② 발행 = paid/internal · 마감일 없음 · paid_amount=총액 · 발주 paid/internal · 멱등 · 미지급 길 조용 · 통계 잡힘 · 환불 400
+//   ③ 먼저 현금으로 낸 발주는 cash 그대로
+//   ④ 저장 전 열린 청구서 → GET open_invoices → settle-internal → 멱등 0 · 조건 아니면 409
+//   데모 브랜드(소유자 계정)·데모 매장만 · 원래 조건은 처음에 읽어 두고 끝에 되돌린다 · 만든 행은 지운다.
+function defineInternalSettlementTests() {
+  const { Op } = require('sequelize');
+  const fixture = async () => {
+    const { User, Brand, Restaurant } = require('../models');
+    const bg = await User.findOne({ where: { email: 'demo-brand@purplehere.com' } });
+    if (!bg) return null;
+    let brand = null, rest = null, ra = null;
+    for (const b of await Brand.findAll({ where: { owner_id: bg.id }, order: [['id', 'ASC']] })) {
+      for (const r of await Restaurant.findAll({ where: { brand_id: b.id, is_demo: true } })) {
+        const a = await User.findOne({ where: { restaurant_id: r.id, role: 'Restaurant Admin', is_active: true } });
+        if (a) { brand = b; rest = r; ra = a; break; }
+      }
+      if (rest) break;
+    }
+    if (!brand) return null;
+    const tok = (u) => ({ Authorization: `Bearer ${jwt.sign({ userId: u.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` });
+    return { bg, brand, rest, ra, bgAuth: tok(bg), raAuth: tok(ra), original: rest.brand_billing_terms || null };
+  };
+  const mkPo = async (fx, total, extra = {}) => {
+    const { PurchaseOrder, PurchaseOrderItem } = require('../models');
+    const po = await PurchaseOrder.create({
+      po_number: `ZZ-HC-INTERNAL-${Date.now() % 100000000}${Math.floor(Math.random() * 100)}`, entity_type: 'restaurant', entity_id: fx.rest.id,
+      seller_type: 'brand', seller_entity_id: fx.brand.id, status: 'received', currency: 'MYR',
+      subtotal: total, total_amount: total, created_by_user_id: fx.ra.id, received_at: new Date(), ...extra
+    });
+    await PurchaseOrderItem.create({ purchase_order_id: po.id, description: 'ZZ-HC-INTERNAL item', quantity_ordered: 1, quantity_received: 1, unit_price: total, line_total: total });
+    return po;
+  };
+  const restore = async (fx) => { await require('../models').Restaurant.update({ brand_billing_terms: fx.original }, { where: { id: fx.rest.id } }); };
+  const termsUrl = (fx) => `/brand/restaurants/${fx.rest.id}/billing-terms`;
+  const say = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+
+  test('payment', '직영 INTERNAL ① 저장 정규화 · 공급업체 계약 검증 400 · 익명 401 · 남의 매장 404', async () => {
+    const fx = await fixture(); if (!fx) { console.log(c.gray('      (건너뜀: 데모 브랜드/매장 픽스처 없음)')); return false; }
+    try {
+      const put = await request('PUT', termsUrl(fx), { payment_terms: { terms: 'INTERNAL', invoice_cycle: 'monthly_soa', payment_due_day: 10, credit_limit: 500, soa_issue_day: 3, invoice_trigger: 'on_confirmed' } }, fx.bgAuth);
+      const st = put.body?.data?.payment_terms || {};
+      if (put.status !== 200 || st.terms !== 'INTERNAL' || st.invoice_cycle !== 'immediate' || st.credit_limit !== null
+        || st.payment_due_day !== null || st.soa_issue_day !== null || st.invoice_trigger !== 'on_confirmed') return say(`PUT ${put.status} ${JSON.stringify(st)}`);
+      const { validatePaymentTerms } = require('../utils/paymentTerms');
+      if (!validatePaymentTerms({ terms: 'INTERNAL', invoice_cycle: 'immediate' })) return say('공급업체 경로(allowInternal 없음)가 INTERNAL 을 통과시킴');
+      const anon = await request('PUT', termsUrl(fx), { payment_terms: { terms: 'INTERNAL' } });
+      if (anon.status !== 401) return say(`익명 ${anon.status}`);
+      const { Restaurant } = require('../models');
+      const other = await Restaurant.findOne({ where: { brand_id: { [Op.notIn]: (await require('../models').Brand.findAll({ where: { owner_id: fx.bg.id }, attributes: ['id'] })).map((b) => b.id) }, is_demo: true } })
+        || await Restaurant.findOne({ where: { brand_id: { [Op.ne]: fx.brand.id } } });
+      if (other) {
+        const x = await request('POST', `/brand/restaurants/${other.id}/billing-terms/settle-internal`, {}, fx.bgAuth);
+        if (x.status !== 404) return say(`남의 매장 settle ${x.status}`);
+      }
+      const anonSettle = await request('POST', `${termsUrl(fx)}/settle-internal`, {});
+      if (anonSettle.status !== 401) return say(`익명 settle ${anonSettle.status}`);
+      return true;
+    } finally { await restore(fx); }
+  });
+
+  test('payment', '직영 INTERNAL ② 발행 paid/internal · 발주 거울 · 멱등 · 배지·연체·결제 조용 · 매출 통계 잡힘 · 환불 400', async () => {
+    const fx = await fixture(); if (!fx) { console.log(c.gray('      (건너뜀: 데모 브랜드/매장 픽스처 없음)')); return false; }
+    const { Invoice } = require('../models');
+    const { createTradeInvoice } = require('../services/purchaseOrderService');
+    let po = null;
+    try {
+      const put = await request('PUT', termsUrl(fx), { payment_terms: { terms: 'INTERNAL' } }, fx.bgAuth);
+      if (put.status !== 200) return say(`PUT ${put.status}`);
+      const badge0 = await request('GET', '/badge-counts', null, fx.raAuth);
+      po = await mkPo(fx, 37.5);
+      const inv = await createTradeInvoice(po);
+      const again = await createTradeInvoice(po);
+      await inv.reload(); await po.reload();
+      if (inv.status !== 'paid' || inv.payment_method !== 'internal' || inv.due_date !== null
+        || Number(inv.paid_amount) !== Number(inv.total_amount) || Number(inv.total_amount) !== 37.5
+        || new Date(inv.paid_at).getTime() !== new Date(inv.issued_at).getTime()) {
+        return say(`청구서 ${inv.status}/${inv.payment_method}/due ${inv.due_date}/${inv.paid_amount} of ${inv.total_amount}/paid_at ${inv.paid_at} issued ${inv.issued_at}`);
+      }
+      if (again.id !== inv.id) return say(`멱등 아님 ${again.id} ≠ ${inv.id}`);
+      if (po.payment_status !== 'paid' || po.payment_method !== 'internal') return say(`발주 ${po.payment_status}/${po.payment_method}`);
+      const badge1 = await request('GET', '/badge-counts', null, fx.raAuth);
+      const b0 = badge0.body?.data?.invoices ?? badge0.body?.invoices; const b1 = badge1.body?.data?.invoices ?? badge1.body?.invoices;
+      if (badge1.status !== 200 || b0 !== b1) return say(`배지 ${b0} → ${b1}`);
+      const overdue = await Invoice.count({ where: { id: inv.id, status: 'pending_payment' } });
+      if (overdue !== 0) return say('연체 후보에 잡힘');
+      const { gatewayPayableError } = require('../utils/invoicePayable');
+      const g = await gatewayPayableError(inv, { id: fx.ra.id, role: 'Restaurant Admin', restaurant_id: fx.rest.id });
+      if (!g || g.status !== 409) return say(`결제 판정 ${g && g.status}`);
+      const day = new Date().toISOString().slice(0, 10);
+      const rev = await request('GET', `/brand/revenue-report?brand_id=${fx.brand.id}&restaurant_ids=${fx.rest.id}`, null, fx.bgAuth);
+      const row = (rev.body?.data?.invoices || []).find((r) => r.id === inv.id);
+      if (rev.status !== 200 || !row || row.amount !== 37.5 || row.paid !== 37.5 || row.outstanding !== 0) return say(`매출 리포트 ${rev.status} ${JSON.stringify(row)}`);
+      const sales = await request('GET', `/brand/sales-report?start=${day}&end=${day}&brand_ids=${fx.brand.id}&restaurant_ids=${fx.rest.id}`, null, fx.bgAuth);
+      if (sales.status !== 200) return say(`판매 리포트 ${sales.status}`);
+      const refund = await request('POST', `/purchase-orders/${po.id}/refund-payment`, {}, fx.raAuth);
+      if (refund.status !== 400 || refund.body?.code !== 'INTERNAL_SETTLEMENT') return say(`환불 ${refund.status} ${refund.body?.code}`);
+      return true;
+    } finally { if (po) await hcCleanupPurchaseOrders(po.id, { waitMs: 0 }); await restore(fx); }
+  });
+
+  test('payment', '직영 INTERNAL ③ 먼저 현금으로 낸 발주는 청구서도 cash (internal 아님)', async () => {
+    const fx = await fixture(); if (!fx) { console.log(c.gray('      (건너뜀: 데모 브랜드/매장 픽스처 없음)')); return false; }
+    const { createTradeInvoice } = require('../services/purchaseOrderService');
+    let po = null;
+    try {
+      await request('PUT', termsUrl(fx), { payment_terms: { terms: 'INTERNAL' } }, fx.bgAuth);
+      po = await mkPo(fx, 12, { payment_status: 'paid', payment_method: 'cash', paid_at: new Date() });
+      const inv = await createTradeInvoice(po);
+      await po.reload();
+      if (inv.status !== 'paid' || inv.payment_method !== 'cash' || po.payment_method !== 'cash') return say(`청구서 ${inv.status}/${inv.payment_method} 발주 ${po.payment_method}`);
+      return true;
+    } finally { if (po) await hcCleanupPurchaseOrders(po.id, { waitMs: 0 }); await restore(fx); }
+  });
+
+  test('payment', '직영 INTERNAL ④ 저장 전 열린 청구서 → open_invoices → 정리 → 다시 0 · 조건 아니면 409', async () => {
+    const fx = await fixture(); if (!fx) { console.log(c.gray('      (건너뜀: 데모 브랜드/매장 픽스처 없음)')); return false; }
+    const { createTradeInvoice } = require('../services/purchaseOrderService');
+    let po = null;
+    try {
+      await request('PUT', termsUrl(fx), { payment_terms: { terms: 'NET_15', invoice_cycle: 'immediate' } }, fx.bgAuth);
+      const no = await request('POST', `${termsUrl(fx)}/settle-internal`, {}, fx.bgAuth);
+      if (no.status !== 409 || no.body?.code !== 'NOT_INTERNAL') return say(`NET_15 에서 settle ${no.status} ${no.body?.code}`);
+      // 정리는 이 쌍의 열린 청구서 **전부**를 바꾼다 — 데모 매장에 원래 열린 브랜드 청구서가 있으면 그것까지 바꾸므로 멈춘다.
+      const base = await require('../models').Invoice.count({ where: { issuer_type: 'brand', issuer_id: fx.brand.id, payer_type: 'restaurant',
+        payer_id: fx.rest.id, status: { [Op.in]: ['pending_payment', 'overdue', 'payment_submitted'] } } });
+      if (base > 0) return say(`데모 매장 ${fx.rest.id} 에 열린 브랜드 청구서 ${base}건 — 정리 시험이 그것까지 바꾸므로 멈춤`);
+      po = await mkPo(fx, 20);
+      const inv = await createTradeInvoice(po);
+      if (inv.status !== 'pending_payment') return say(`NET_15 청구서 ${inv.status}`);
+      await request('PUT', termsUrl(fx), { payment_terms: { terms: 'INTERNAL' } }, fx.bgAuth);
+      const g1 = await request('GET', termsUrl(fx), null, fx.bgAuth);
+      const open1 = g1.body?.data?.open_invoices;
+      if (!open1 || open1.count < 1) return say(`open_invoices ${JSON.stringify(open1)}`);
+      const s1 = await request('POST', `${termsUrl(fx)}/settle-internal`, {}, fx.bgAuth);
+      await inv.reload(); await po.reload();
+      if (s1.status !== 200 || s1.body?.data?.invoices + s1.body?.data?.soa !== open1.count || s1.body?.data?.purchase_orders < 1
+        || inv.status !== 'paid' || inv.payment_method !== 'internal' || Number(inv.paid_amount) !== 20
+        || po.payment_status !== 'paid' || po.payment_method !== 'internal') {
+        return say(`정리 ${s1.status} ${JSON.stringify(s1.body?.data)} · 청구서 ${inv.status}/${inv.payment_method}/${inv.paid_amount} · 발주 ${po.payment_status}/${po.payment_method}`);
+      }
+      const s2 = await request('POST', `${termsUrl(fx)}/settle-internal`, {}, fx.bgAuth);
+      const g2 = await request('GET', termsUrl(fx), null, fx.bgAuth);
+      if (s2.status !== 200 || s2.body?.data?.invoices !== 0 || s2.body?.data?.purchase_orders !== 0 || g2.body?.data?.open_invoices?.count !== 0) {
+        return say(`두 번째 ${s2.status} ${JSON.stringify(s2.body?.data)} · open ${JSON.stringify(g2.body?.data?.open_invoices)}`);
+      }
+      return true;
+    } finally { if (po) await hcCleanupPurchaseOrders(po.id, { waitMs: 0 }); await restore(fx); }
   });
 }
