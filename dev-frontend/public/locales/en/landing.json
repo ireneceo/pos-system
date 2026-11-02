@@ -1794,5 +1794,9 @@
   "privacyPolicyPage.menuPhotosYouUpload": "Photos you upload, such as menu and product images",
   "privacyPolicyPage.inAppMessages": "Messages and support requests you send inside the app",
   "privacyPolicyPage.printDiagnosticDeviceId": "A random identifier created by the app for each device, used only to diagnose printing (for example, which tablet failed to print)",
-  "privacyPolicyPage.deletionRequestRetention": "If you request deletion, we delete or anonymise your personal profile within 30 days and keep only the records the law requires, for the periods above"
+  "privacyPolicyPage.deletionRequestRetention": "If you request deletion, we delete or anonymise your personal profile within 30 days and keep only the records the law requires, for the periods above",
+  "forgotPasswordPage.emailOrUsername": "Email or username",
+  "forgotPasswordPage.noEmailHint": "The link is sent to the email on your account. Staff without an email: ask your manager to reset your password.",
+  "forgotPasswordPage.useLatestEmail": "If you requested more than one email, only the link in the most recent email works. Links expire after 1 hour and can be used once.",
+  "resetPasswordPage.cannotReachServer": "Could not reach the server. Check your internet connection and try again."
 }

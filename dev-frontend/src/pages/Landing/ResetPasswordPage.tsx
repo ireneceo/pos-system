@@ -15,6 +15,7 @@ const ResetPasswordPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [linkProblem, setLinkProblem] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -73,14 +74,18 @@ const ResetPasswordPage: React.FC = () => {
         body: JSON.stringify({ email, token, password })
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(data.message || 'Failed to reset password');
+        // 서버가 이유를 준다: 이미 쓴 링크 / 더 새 메일로 바뀜 / 1시간 지남 / 비밀번호 규칙 / 시도 너무 많음.
+        //   예전엔 data.message 만 읽어(이유는 error.message 에 있었다) «Failed to reset password» 만 떴다(2026-11-02).
+        const code = data?.error?.code || data?.code;
+        setLinkProblem(['RESET_LINK_USED', 'RESET_LINK_REPLACED', 'RESET_LINK_EXPIRED'].includes(code));
+        throw new Error(data?.message || data?.error?.message || `Request failed (${res.status}). Please try again.`);
       }
 
       setIsSuccess(true);
     } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError(err instanceof TypeError ? t('landing:resetPasswordPage.cannotReachServer') : (err.message || t('landing:resetPasswordPage.cannotReachServer')));
     } finally {
       setIsSubmitting(false);
     }
@@ -125,6 +130,7 @@ const ResetPasswordPage: React.FC = () => {
               </CardDescription>
 
               {error && <ErrorMessage>{error}</ErrorMessage>}
+              {error && linkProblem && <CenterLink to="/forgot-password">{t('landing:resetPasswordPage.requestNewResetLink')}</CenterLink>}
 
               <Form onSubmit={handleSubmit}>
                 <FormGroup>

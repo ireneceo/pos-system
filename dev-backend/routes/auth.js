@@ -18,7 +18,16 @@ const signupLimiter = rateLimit({
 const forgotPasswordLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15min
   max: 5,
-  message: { success: false, message: 'Too many password reset requests. Try again later.' },
+  message: { success: false, code: 'TOO_MANY_REQUESTS', message: 'Too many reset emails requested from this network. Please wait 15 minutes, then use the most recent email.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+// 새 비밀번호 저장은 따로 센다 — 예전엔 찾기 메일 요청과 한 통에 묶여, 메일을 몇 번 다시 받은 사람이
+//   링크를 눌러 저장할 때 «너무 많음» 으로 막혔다(2026-11-02).
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, code: 'TOO_MANY_REQUESTS', message: 'Too many attempts. Please wait 15 minutes and try again.' },
   standardHeaders: true,
   legacyHeaders: false
 });
@@ -414,8 +423,12 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res, next) =>
     const { sendPlatformEmail } = require('../utils/emailService');
     const { passwordResetEmail } = require('../utils/emailTemplates');
 
+    // 메일 또는 아이디 — 로그인은 둘 다 받는데 찾기는 메일만 받아, 아이디를 넣으면 조용히 아무것도 안 갔다(2026-11-02).
+    //   메일은 항상 계정에 등록된 주소로만 간다. 응답은 어느 경우든 같은 문구(계정 존재를 드러내지 않음).
+    const ident = String(email).toLowerCase().trim();
+    const { Op: OpF } = require('sequelize');
     const user = await User.findOne({
-      where: { email: email.toLowerCase().trim() }
+      where: { [OpF.or]: [{ email: ident }, { username: ident }] }
     });
 
     // Always return success (don't reveal if email exists)
@@ -424,7 +437,7 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res, next) =>
     }
 
     // Don't allow reset for demo accounts
-    if (user.is_demo) {
+    if (user.is_demo || !user.email) {
       return successResponse(res, null, 'If an account with that email exists, a password reset link has been sent.');
     }
 
@@ -471,7 +484,7 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res, next) =>
 });
 
 // Reset password with token
-router.post('/reset-password', forgotPasswordLimiter, async (req, res, next) => {
+router.post('/reset-password', resetPasswordLimiter, async (req, res, next) => {
   try {
     const { email, token, password } = req.body;
     if (!email || !token || !password) {
@@ -488,22 +501,22 @@ router.post('/reset-password', forgotPasswordLimiter, async (req, res, next) => 
     const { Op } = require('sequelize');
     const User = require('../models/User');
 
-    const user = await User.findOne({
-      where: {
-        email: email.toLowerCase().trim(),
-        reset_token: { [Op.ne]: null },
-        reset_token_expires: { [Op.gt]: new Date() }
-      }
-    });
+    // 실패는 이유를 알려 준다(2026-11-02 Irene «비번 잘못 넣거나 그러면 무조건 실패이유를 안내해야지»):
+    //   이미 썼거나 없음 / 1시간 지남 / 더 새 메일로 바뀜. (계정이 없을 때와 이미 쓴 링크는 같은 문구)
+    void Op;
+    const user = await User.findOne({ where: { email: String(email).toLowerCase().trim() } });
 
-    if (!user) {
-      return errorResponse(res, 'Invalid or expired reset link. Please request a new one.', 400, 'INVALID_TOKEN');
+    if (!user || !user.reset_token) {
+      return errorResponse(res, 'This reset link has already been used or is no longer valid. Please request a new link.', 400, 'RESET_LINK_USED');
     }
 
     // Verify token against hash
-    const isValid = await bcrypt.compare(token, user.reset_token);
+    const isValid = await bcrypt.compare(String(token), user.reset_token);
     if (!isValid) {
-      return errorResponse(res, 'Invalid or expired reset link. Please request a new one.', 400, 'INVALID_TOKEN');
+      return errorResponse(res, 'This reset link was replaced by a newer one. Open the most recent password reset email, or request a new link.', 400, 'RESET_LINK_REPLACED');
+    }
+    if (!user.reset_token_expires || new Date(user.reset_token_expires).getTime() <= Date.now()) {
+      return errorResponse(res, 'This reset link has expired (links work for 1 hour). Please request a new link.', 400, 'RESET_LINK_EXPIRED');
     }
 
     // Update password and clear token

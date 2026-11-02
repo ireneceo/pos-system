@@ -107,6 +107,9 @@ const successResponse = (res, data, message = null, statusCode = 200) => {
 const errorResponse = (res, message, statusCode = 500, code = 'GENERAL_ERROR', extra = {}) => {
   const response = {
     success: false,
+    // 맨 위 message 도 같이 싣는다(덧붙임) — 화면 다수가 data.message 를 읽어서, error.message 에만 있으면
+    //   «Failed to reset password» 같은 이유 없는 실패만 떴다(2026-11-02 Irene «그냥 실패가 뭐야»).
+    message,
     error: {
       message,
       code,

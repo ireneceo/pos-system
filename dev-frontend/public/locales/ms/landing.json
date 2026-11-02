@@ -1805,5 +1805,9 @@
   "privacyPolicyPage.menuPhotosYouUpload": "Foto yang anda muat naik, seperti imej menu dan produk",
   "privacyPolicyPage.inAppMessages": "Mesej dan permintaan sokongan yang anda hantar dalam aplikasi",
   "privacyPolicyPage.printDiagnosticDeviceId": "Pengecam rawak yang dicipta oleh aplikasi bagi setiap peranti, digunakan hanya untuk mendiagnosis masalah cetakan (contohnya, tablet mana yang gagal mencetak)",
-  "privacyPolicyPage.deletionRequestRetention": "Jika anda meminta pemadaman, kami memadam atau menjadikan tanpa nama profil peribadi anda dalam masa 30 hari dan hanya menyimpan rekod yang dikehendaki oleh undang-undang, untuk tempoh di atas"
+  "privacyPolicyPage.deletionRequestRetention": "Jika anda meminta pemadaman, kami memadam atau menjadikan tanpa nama profil peribadi anda dalam masa 30 hari dan hanya menyimpan rekod yang dikehendaki oleh undang-undang, untuk tempoh di atas",
+  "forgotPasswordPage.emailOrUsername": "E-mel atau nama pengguna",
+  "forgotPasswordPage.noEmailHint": "Pautan dihantar ke e-mel akaun anda. Kakitangan tanpa e-mel: minta pengurus anda menetapkan semula kata laluan.",
+  "forgotPasswordPage.useLatestEmail": "Jika anda meminta lebih daripada satu e-mel, hanya pautan dalam e-mel terkini yang berfungsi. Pautan sah selama 1 jam dan boleh digunakan sekali.",
+  "resetPasswordPage.cannotReachServer": "Tidak dapat menghubungi pelayan. Semak sambungan internet anda dan cuba lagi."
 }

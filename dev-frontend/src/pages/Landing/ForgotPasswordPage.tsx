@@ -17,7 +17,7 @@ const ForgotPasswordPage: React.FC = () => {
     setError('');
 
     if (!email.trim()) {
-      setError('Please enter your email address');
+      setError('Please enter your email address or username');
       return;
     }
 
@@ -29,14 +29,15 @@ const ForgotPasswordPage: React.FC = () => {
         body: JSON.stringify({ email: email.trim() })
       });
 
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (!res.ok) {
-        throw new Error(data.message || 'Something went wrong');
+        // 이유를 항상 보여 준다(서버 message → error.message) — «Something went wrong» 만 뜨지 않게(2026-11-02)
+        throw new Error(data?.message || data?.error?.message || `Request failed (${res.status}). Please try again.`);
       }
 
       setIsSent(true);
     } catch (err: any) {
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError(err instanceof TypeError ? t('landing:resetPasswordPage.cannotReachServer') : (err.message || t('landing:resetPasswordPage.cannotReachServer')));
     } finally {
       setIsSubmitting(false);
     }
@@ -70,6 +71,7 @@ const ForgotPasswordPage: React.FC = () => {
               <SuccessHint>
                 {t('landing:forgotPasswordPage.didntReceiveTheEmailCheckYourSpamFolderO')}
               </SuccessHint>
+              <SuccessHint>{t('landing:forgotPasswordPage.useLatestEmail')}</SuccessHint>
               <ButtonRow>
                 <SecondaryButton onClick={() => { setIsSent(false); setEmail(''); }}>
                   {t('landing:forgotPasswordPage.tryAnotherEmail')}
@@ -89,14 +91,15 @@ const ForgotPasswordPage: React.FC = () => {
               <CardDescription>
                 {t('landing:forgotPasswordPage.enterTheEmailAddressAssociatedWithYourAc')}
               </CardDescription>
+              <CardDescription>{t('landing:forgotPasswordPage.noEmailHint')}</CardDescription>
 
               {error && <ErrorMessage>{error}</ErrorMessage>}
 
               <Form onSubmit={handleSubmit}>
                 <FormGroup>
-                  <FormLabel>{t('landing:forgotPasswordPage.emailAddress')}</FormLabel>
+                  <FormLabel>{t('landing:forgotPasswordPage.emailOrUsername')}</FormLabel>
                   <FormInput
-                    type="email"
+                    type="text"
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="you@example.com"

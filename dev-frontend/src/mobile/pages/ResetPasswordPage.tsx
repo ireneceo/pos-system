@@ -195,6 +195,7 @@ const ResetPasswordPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
+  const [invalidReason, setInvalidReason] = useState('');
   const [tokenSlug, setTokenSlug] = useState<string | null>(null); // 토큰에서 받은 slug
 
   const [alertModal, setAlertModal] = useState<{
@@ -244,12 +245,15 @@ const ResetPasswordPage: React.FC = () => {
         const response = await fetch(`/api/customers/verify-reset-token?token=${token}`);
         const result = await response.json();
         setIsValidToken(response.ok && result.valid);
+        // 왜 안 되는지(이미 씀·새 메일로 바뀜 / 1시간 지남) 서버 문구를 그대로 보여 준다(2026-11-02)
+        if (!(response.ok && result.valid) && result?.message) setInvalidReason(result.message);
         // 토큰에서 slug 가져오기 (URL slug보다 우선)
         if (result.slug) {
           setTokenSlug(result.slug);
         }
       } catch (error) {
         setIsValidToken(false);
+        setInvalidReason('Could not reach the server. Check your internet connection and try again.');
       }
     };
 
@@ -293,7 +297,7 @@ const ResetPasswordPage: React.FC = () => {
         showAlert('error', 'Error', result.message || 'Failed to reset password. The link may have expired.');
       }
     } catch (error) {
-      showAlert('error', 'Error', 'Failed to reset password. Please try again.');
+      showAlert('error', 'Error', 'Could not reach the server. Check your internet connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -332,8 +336,7 @@ const ResetPasswordPage: React.FC = () => {
 
           <ErrorTitle>Invalid or Expired Link</ErrorTitle>
           <ErrorMessage>
-            This password reset link is invalid or has expired.
-            Please request a new one.
+            {invalidReason || 'This password reset link is invalid or has expired. Please request a new one.'}
           </ErrorMessage>
 
           <SubmitButton onClick={() => navigate(`/mobile/${tokenSlug || slug}/forgot-password`)}>

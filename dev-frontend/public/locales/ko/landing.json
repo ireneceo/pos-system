@@ -1805,5 +1805,9 @@
   "privacyPolicyPage.menuPhotosYouUpload": "올리신 사진(메뉴·상품 이미지 등)",
   "privacyPolicyPage.inAppMessages": "앱 안에서 보내신 메시지와 문의",
   "privacyPolicyPage.printDiagnosticDeviceId": "앱이 기기마다 만드는 무작위 식별값 — 인쇄 문제 진단(예: 어느 태블릿이 인쇄에 실패했는지)에만 사용",
-  "privacyPolicyPage.deletionRequestRetention": "삭제를 요청하시면 30일 안에 개인 프로필을 삭제하거나 알아볼 수 없게 처리하고, 법이 요구하는 기록만 위 기간 동안 보관합니다"
+  "privacyPolicyPage.deletionRequestRetention": "삭제를 요청하시면 30일 안에 개인 프로필을 삭제하거나 알아볼 수 없게 처리하고, 법이 요구하는 기록만 위 기간 동안 보관합니다",
+  "forgotPasswordPage.emailOrUsername": "이메일 또는 아이디",
+  "forgotPasswordPage.noEmailHint": "링크는 계정에 등록된 이메일로 갑니다. 이메일이 없는 직원은 매니저에게 비밀번호 재설정을 요청하세요.",
+  "forgotPasswordPage.useLatestEmail": "메일을 여러 번 요청했다면 가장 최근 메일의 링크만 작동합니다. 링크는 1시간 동안 한 번만 쓸 수 있습니다.",
+  "resetPasswordPage.cannotReachServer": "서버에 연결할 수 없습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요."
 }

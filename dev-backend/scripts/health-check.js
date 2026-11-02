@@ -432,11 +432,29 @@ function defineAuthTests({ adminToken, customerToken, member, restId }) {
       const login = await request('POST', '/auth/login', { email: `${tag}a@example.com`, password: 'Next1234B' });
       if (self.status !== 200 || login.status !== 200) return fail(`본인 변경 ${self.status} → 로그인 ${login.status}`);
       const raw = cryptoLib.randomBytes(16).toString('hex');
-      await sequelize.query('UPDATE users SET reset_token = ?, reset_token_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE id = ?', { replacements: [await bcryptLib.hash(raw, 10), b] });
-      const rs = await request('POST', '/auth/reset-password', { email: `${tag}b@example.com`, token: raw, password: 'Reset1234C' });
+      // 찾기·재설정 한도(IP 당 15분)에 검사가 걸리지 않게 호출마다 다른 주소(trust proxy 1 — 2026-11-02 Fable 권고 2)
+      const ipH = () => ({ 'X-Forwarded-For': `10.250.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}` });
+      const setTok = async (t, mins) => sequelize.query(`UPDATE users SET reset_token = ?, reset_token_expires = DATE_ADD(NOW(), INTERVAL ${Number(mins)} MINUTE) WHERE id = ?`, { replacements: [await bcryptLib.hash(t, 10), b] });
+      await setTok(raw, 60);
+      const rs = await request('POST', '/auth/reset-password', { email: `${tag}b@example.com`, token: raw, password: 'Reset1234C' }, ipH());
       const login2 = await request('POST', '/auth/login', { email: `${tag}b@example.com`, password: 'Reset1234C' });
-      const reuse = await request('POST', '/auth/reset-password', { email: `${tag}b@example.com`, token: raw, password: 'Again1234D' });
+      const reuse = await request('POST', '/auth/reset-password', { email: `${tag}b@example.com`, token: raw, password: 'Again1234D' }, ipH());
       if (rs.status !== 200 || login2.status !== 200 || reuse.status !== 400) return fail(`재설정 ${rs.status} → 로그인 ${login2.status} · 재사용 ${reuse.status}`);
+      // 실패는 이유를 맨 위 message 로 준다(화면이 data.message 를 읽음) — 이미 씀 / 새 메일로 바뀜 / 만료 (2026-11-02 Irene «그냥 실패가 뭐야»)
+      const why = (r) => `${r.body?.error?.code}:${typeof r.body?.message === 'string' ? 'msg' : 'NOMSG'}`;
+      if (why(reuse) !== 'RESET_LINK_USED:msg') return fail(`재사용 이유 ${why(reuse)}`);
+      await setTok(cryptoLib.randomBytes(16).toString('hex'), 60);
+      const replaced = await request('POST', '/auth/reset-password', { email: `${tag}b@example.com`, token: raw, password: 'Again1234D' }, ipH());
+      if (why(replaced) !== 'RESET_LINK_REPLACED:msg') return fail(`옛 메일 링크 이유 ${why(replaced)}`);
+      const raw3 = cryptoLib.randomBytes(16).toString('hex');
+      await setTok(raw3, -1);
+      const expired = await request('POST', '/auth/reset-password', { email: `${tag}b@example.com`, token: raw3, password: 'Again1234D' }, ipH());
+      if (why(expired) !== 'RESET_LINK_EXPIRED:msg') return fail(`만료 이유 ${why(expired)}`);
+      // 찾기는 아이디로도 — 등록된 메일로 토큰이 생긴다
+      await sequelize.query('UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE id = ?', { replacements: [a] });
+      const byName = await request('POST', '/auth/forgot-password', { email: `${tag}a` }, ipH());
+      const [[ta]] = await sequelize.query('SELECT reset_token FROM users WHERE id = ?', { replacements: [a] });
+      if (byName.status !== 200 || !ta?.reset_token) return fail(`아이디로 찾기 ${byName.status} token=${!!ta?.reset_token}`);
       const admin404 = await request('POST', '/users/999999999/reset-password', null, { Authorization: `Bearer ${adminToken}` });
       if (admin404.status !== 404 || typeof admin404.body?.message !== 'string') return fail(`관리자 리셋 없는 id ${admin404.status} ${JSON.stringify(admin404.body)}`);
       // 찾기 메일 판정 — is_test 표시여도 본인요청이면 보냄, 기본(알림)은 버림. 주소는 실제처럼 보이는 도메인(placeholder 차단에 안 걸리게).

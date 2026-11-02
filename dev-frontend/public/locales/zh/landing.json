@@ -1805,5 +1805,9 @@
   "privacyPolicyPage.menuPhotosYouUpload": "您上传的照片，例如菜单和商品图片",
   "privacyPolicyPage.inAppMessages": "您在应用内发送的消息和支持请求",
   "privacyPolicyPage.printDiagnosticDeviceId": "应用为每台设备生成的随机标识符，仅用于诊断打印问题（例如哪台平板打印失败）",
-  "privacyPolicyPage.deletionRequestRetention": "如您申请删除，我们会在 30 天内删除或匿名化您的个人资料，仅按上述期限保留法律要求的记录"
+  "privacyPolicyPage.deletionRequestRetention": "如您申请删除，我们会在 30 天内删除或匿名化您的个人资料，仅按上述期限保留法律要求的记录",
+  "forgotPasswordPage.emailOrUsername": "邮箱或用户名",
+  "forgotPasswordPage.noEmailHint": "链接会发送到您账户登记的邮箱。没有邮箱的员工请联系经理重置密码。",
+  "forgotPasswordPage.useLatestEmail": "如果多次申请，只有最新一封邮件中的链接有效。链接1小时内有效，且只能使用一次。",
+  "resetPasswordPage.cannotReachServer": "无法连接服务器。请检查网络连接后重试。"
 }

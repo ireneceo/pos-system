@@ -287,13 +287,15 @@ const ForgotPasswordPage: React.FC = () => {
 
       const result = await response.json();
 
-      if (result.emailExists === false) {
+      if (!response.ok) {
+        setErrorMessage(result?.message || `Request failed (${response.status}). Please try again.`);
+      } else if (result.emailExists === false) {
         setErrorMessage('No account found with this email address.');
       } else {
         setIsEmailSent(true);
       }
     } catch (error) {
-      setErrorMessage('Failed to send reset email. Please try again.');
+      setErrorMessage('Could not reach the server. Check your internet connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -327,7 +329,7 @@ const ForgotPasswordPage: React.FC = () => {
         setFoundEmail(result.maskedEmail);
       }
     } catch (error) {
-      setErrorMessage('Failed to find account. Please try again.');
+      setErrorMessage('Could not reach the server. Check your internet connection and try again.');
     } finally {
       setIsLoading(false);
     }
@@ -354,7 +356,7 @@ const ForgotPasswordPage: React.FC = () => {
         setErrorMessage(result.message || 'Failed to send reset email.');
       }
     } catch (error) {
-      setErrorMessage('Failed to send reset email. Please try again.');
+      setErrorMessage('Could not reach the server. Check your internet connection and try again.');
     } finally {
       setIsLoading(false);
     }

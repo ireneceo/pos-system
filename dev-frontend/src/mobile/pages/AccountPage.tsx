@@ -493,7 +493,7 @@ const AccountPage: React.FC = () => {
         showAlertModal('error', 'Error', result.message || 'Failed to change password');
       }
     } catch (error) {
-      showAlertModal('error', 'Error', 'Failed to change password. Please try again.');
+      showAlertModal('error', 'Error', 'Could not reach the server. Check your internet connection and try again.');
     } finally {
       setIsChangingPassword(false);
     }

@@ -332,7 +332,7 @@ router.get('/verify-reset-token', async (req, res) => {
     if (!found.customer) {
       return res.json({
         valid: false,
-        message: 'Invalid or expired token'
+        message: 'This link has already been used, was replaced by a newer email, or is not valid. Please request a new link.'
       });
     }
 
@@ -340,7 +340,7 @@ router.get('/verify-reset-token', async (req, res) => {
       await clearResetToken(found.customer);
       return res.json({
         valid: false,
-        message: 'Token has expired'
+        message: 'This link has expired (links work for 1 hour). Please request a new link.'
       });
     }
 
@@ -589,7 +589,7 @@ router.post('/reset-password', async (req, res) => {
     if (!found.customer) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid or expired token'
+        message: 'This link has already been used, was replaced by a newer email, or is not valid. Please request a new link.'
       });
     }
 
@@ -597,7 +597,7 @@ router.post('/reset-password', async (req, res) => {
       await clearResetToken(found.customer);
       return res.status(400).json({
         success: false,
-        message: 'Token has expired'
+        message: 'This link has expired (links work for 1 hour). Please request a new link.'
       });
     }
 
