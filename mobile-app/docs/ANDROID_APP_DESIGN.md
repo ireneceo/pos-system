@@ -5,6 +5,8 @@
 
 ## 🔴 실태 (2026-07-27 Fable 검증 — "완료" 주장보다 이게 우선한다)
 
+> **2026-11-02 갱신(작업방 45252426, Fable 설계+게이트 PASS):** V4 «claim 되는데 0바이트» = 시험 도구 2건(픽스처 order_number 없음 · CDP 안 이동) — 앱 무결, 고친 뒤 **V4 6/6**. 대신 드러난 진짜 결함 = 그림(한글·로고) 티켓 **백지인데 ok:true** → **0.4.1**(§7-2 정정)로 수정, V3 17/17 ×3(API 34·36). 와이파이 프린터 자동 찾기 = 웹이 이미 깔린 앱의 `__NATIVE_ECR.discover` 를 9100·DLE EOT 1 로 사용(V3-8). 실기기 종이 확인은 아직 0회(Irene 할 일). 아래 7월 실태 중 «V4 미통과» 는 해소, «실사용 0·실기기 0» 은 그대로.
+
 **이 앱은 아직 매장에 줄 수 있는 상태가 증명된 적이 없다.**
 
 - **실사용 매장 0개** — 운영 `print_device_status` 17행 중 `android-app` **0행**
@@ -97,10 +99,10 @@ billPrint는 비-IP 주소를 `{kind:'os', printerName}` / `printHtml({printerNa
 - 매장 설정은 그대로: `printer_settings.address` = BT 프린터 이름/MAC **또는** 앱에 등록한 네트워크 프린터 이름 **또는** raw IP(이 경우 기존 LAN raw 경로 — Windows LAN과 동일 동작·한글 제약도 동일).
 
 ### 7-2. printHtml = WebView 오프스크린 → 비트맵 → ESC/POS 래스터 (한글 보존 경로)
-1. 메인스레드 오프스크린 WebView에 티켓 HTML 로드(loadDataWithBaseURL, UTF-8) → body 높이 측정.
-2. 폭 = 576px(80mm@203dpi; 58mm이면 384px), 측정 높이로 Bitmap draw.
+1. 메인스레드에서 새 WebView에 티켓 HTML 로드(loadDataWithBaseURL, UTF-8) → body 높이 측정.
+2. ⤷ **2026-11-02 정정(Fable `/var/www/.claude/fable-design-20261102-android-raster.md`)**: 창에 붙이지 않은 WebView 는 **흰 종이**를 그린다(Chromium 이 안 붙은 뷰에 타일 예산을 안 줌 — logcat «tile memory limits exceeded»; 높이는 맞는데 잉크 0%, 그런데 `{ok:true}`). → 측정 뒤 **액티비티 `android.R.id.content` 에 index 0 으로 붙이고(화면 안·메인 WebView 뒤 — 화면 바깥 translationX 는 한 장 걸러 백지였음(11-02 실측, Fable A-2); INVISIBLE/alpha 0 금지)** → `postVisualStateCallback` 을 기다려(5초 안 오면 `VISUAL_STATE_TIMEOUT`) → 폭 576px(58mm 384px) 비트맵에 draw → 떼고 destroy. 어두운 픽셀 < 0.2% 면 **`BLANK_RENDER` 실패**(백지를 «성공» 으로 내지 않는다 — 폴러가 재시도). 앱 0.4.1 부터.
 3. DantSu `EscPosPrinterCommands.bitmapToBytes` 로 **≤256px 스트립 분할** 래스터 변환 → 대상 전송(BT 또는 LAN) → 컷.
-4. 타임아웃 20초 → `{ok:false,error:'TIMEOUT'}`. WebView 인스턴스는 재사용(생성비용).
+4. 타임아웃 20초 → `{ok:false,error:'TIMEOUT'}`. WebView 는 **매 렌더 새로 만든다**(생성 수십 ms — 상태 잔존 위험 제거, 2026-11-02 정정).
 
 ### 7-3. 전송·직렬화 (Windows serialQueue 대칭 — QZ 단일큐 교훈 유지)
 - 레인: `html` 단일 레인(스테이션→통합 발송순서 보존) / `lan:<host>` / `bt:<mac>` — 프린터끼리 병렬, 프린터 안에서는 직렬.
@@ -315,4 +317,5 @@ Irene 요청: «상황판 링크가 앱이 설치돼 있으면 앱으로 열리�
 
 | 버전 | code | 커밋 | 날짜 | 트랙 | 심사 | 비고 |
 |---|---|---|---|---|---|---|
-| 0.4.0 | 8 | 9fe342be4 + 미커밋 작업(Play 등록 묶음, 커밋 전 빌드) | 2026-10-15 | 내부 테스트 → 프로덕션 | 대기 | Capacitor 8 · targetSdk 36 · minSdk 24 · 자가 업데이트 제거 · allowBackup=false · AAB sha256 2b55a5a9…7b95 |
+| 0.4.0 | 8 | 9fe342be4 + 미커밋 작업(Play 등록 묶음, 커밋 전 빌드) | 2026-10-15 | 내부 테스트 → 프로덕션 | **제출 보류 → 0.4.1 로 대체** | Capacitor 8 · targetSdk 36 · minSdk 24 · 자가 업데이트 제거 · allowBackup=false · AAB sha256 2b55a5a9…7b95 |
+| 0.4.1 | 9 | bbbf3c838 + 미커밋(이 묶음 — /개발완료 커밋) | 2026-11-02 | 내부 테스트 → 프로덕션 | 빌드 완료 · 제출 전 — AAB sha256 61411e48…6be3 · 서명 b55813cf… (A-2+A-3 판 · A-2 만의 첫 빌드 f193331b… 는 제출 전에 지우고 다시 만듦) | 그림(한글·로고) 티켓 백지 수정 — 렌더 WebView 를 창에 붙이고 visual state 뒤 그림 + `BLANK_RENDER` 가드(Fable 설계 fable-design-20261102-android-raster.md). 0.4.0 은 같은 결함이라 제출하지 않는다 |

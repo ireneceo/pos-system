@@ -106,8 +106,9 @@ class NativePrintPlugin : Plugin() {
         // Render on the shared html lane (one offscreen WebView at a time)…
         submit(LANE_HTML) {
             val payload = try {
-                val bmp = OffscreenHtmlRenderer.render(context, html, widthPx, RENDER_TIMEOUT_MS)
-                    ?: return@submit ok(call, false, "TIMEOUT")
+                // 창에 붙여 그린다(activity) — 백지·창 없음·시간 초과는 오류 문자열 그대로 돌려준다(2026-11-02 Fable 설계).
+                val rr = OffscreenHtmlRenderer.render(activity, html, widthPx, RENDER_TIMEOUT_MS)
+                val bmp = rr.bitmap ?: return@submit ok(call, false, rr.error ?: "RENDER_ERROR")
                 val bytes = rasterize(bmp, copies)
                 bmp.recycle()
                 bytes

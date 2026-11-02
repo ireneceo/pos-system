@@ -39,6 +39,9 @@ const CAP = '/tmp/fake-printer-v4.jsonl';       // 'KITCHEN' — the master kitc
 const CAP_ST = '/tmp/fake-printer-v4-station.jsonl'; // 'KQ1' — a station printer
 const API = 'http://localhost:3001/api';
 const MARKER = '__V4_ANDROID_PRINT__';
+// 실주문과 같은 «접두-번호» 모양(티켓의 픽업번호 = '-' 뒤). 실행마다 달라 겹치지 않는다.
+let _v4Seq = 0;
+const v4OrderNo = () => `V4-${String(Date.now() % 100000).padStart(5, '0')}${++_v4Seq}`;
 // The demo-login key the app logs in with, and the account it maps to
 // (services/authService.js). Its restaurant is the one the poller watches.
 // 2026-08-20: 예전엔 `test_restaurant_admin`(= admin@kdine.com → dev rid 5 "Test3") 이었다.
@@ -433,7 +436,9 @@ async function main() {
     Object.entries(stations || {}).map(([id, s]) => [id, s.address]).sort()]);
   const reloadAndWaitForPrinter = async (cfg) => {
     const want = wantSig(cfg);
-    evalInApp("(async () => { location.href = '/pos'; return true; })()");
+    // 이동은 답을 돌려준 «뒤에» 한다(2026-11-02). 바로 옮기면 이동이 실행 문맥을 지워 CDP 답이 영영 안 오고
+    // 60초 뒤 «cdp eval failed: (빈 문자열)» 로 죽었다 — 07-27 부터 남아 있던 두 번째 도구 오류.
+    evalInApp("(async () => { setTimeout(() => { location.href = '/pos'; }, 100); return true; })()");
     await sleep(10000); // app reloads, authenticates, StoreContext syncs settings, poller arms
     await waitFor('bridge after reload', () => { try { return evalInApp("(async () => typeof window.__NATIVE_PRINT === 'object')()") === true; } catch { return false; } }, 60000, 3000);
     await waitFor(`app to receive printer config ${want}`, () => appPrinterSig() === want, 60000, 3000);
@@ -484,8 +489,12 @@ async function main() {
   console.log('\n판정:\n');
 
   // ── V4-1: a real order must print exactly once, and be stamped printed ────
+  // 2026-11-02: 실제 주문처럼 주문번호를 넣는다. 예전 픽스처는 order_number 가 없어 티켓 글자(ESC/POS)
+  // 만들기가 null.length 로 멈췄다 — 7월부터 «주문은 집는데 0바이트» 로 보이던 V4 실패의 정체(앱 무결,
+  // 실주문은 언제나 번호가 있다). 재현: 같은 billPrint 를 번호 없음/있음으로 돌려 없음만 실패.
   const order = await Order.create({
     restaurant_id: rid,
+    order_number: v4OrderNo(),
     customer_name: MARKER,
     total_amount: 30,
     status: 'pending',
@@ -515,9 +524,16 @@ async function main() {
 
     const raster = printedJobs[0] && printedJobs[0].hex.startsWith('1b40');
     const hasCut = printedJobs[0] && printedJobs[0].hex.includes('1d564200');
-    assert('V4-2 인쇄된 것이 진짜 티켓 (ESC @ 시작 · 컷 포함 · 빈 잡 아님)',
-      !!raster && !!hasCut && printedJobs[0].len > 500,
-      printedJobs[0] ? `${printedJobs[0].len}바이트 raster=${raster} cut=${hasCut}` : '없음');
+    // 2026-11-02: 한글 티켓은 그림(GS v 0)으로 나간다 — 그림이 백지인지(잉크 비율)도 본다(V3-2b 와 같은 기준 2%).
+    let ink = null;
+    if (printedJobs[0]) {
+      const buf = Buffer.from(printedJobs[0].hex, 'hex');
+      const gsv = buf.indexOf(Buffer.from([0x1d, 0x76, 0x30]));
+      if (gsv >= 0) ink = buf.subarray(gsv + 8).reduce((n, b) => n + (b ? 1 : 0), 0) / Math.max(1, buf.length - gsv - 8);
+    }
+    assert('V4-2 인쇄된 것이 진짜 티켓 (ESC @ 시작 · 컷 포함 · 빈 잡 아님 · 그림이면 백지 아님)',
+      !!raster && !!hasCut && printedJobs[0].len > 500 && (ink === null || (ink > 0.02 && ink < 0.6)),
+      printedJobs[0] ? `${printedJobs[0].len}바이트 raster=${raster} cut=${hasCut} ink=${ink === null ? '글자' : (ink * 100).toFixed(1) + '%'}` : '없음');
 
     // Judge on the printed_at STAMP, not on needs_print: print-claim clears needs_print
     // before the paper exists, so only the stamp says "the app declared this printed".
@@ -540,6 +556,7 @@ async function main() {
   clearJobs();
   const stationOrder = await Order.create({
     restaurant_id: rid,
+    order_number: v4OrderNo(),
     customer_name: MARKER,
     total_amount: 18,
     status: 'pending',
@@ -553,9 +570,16 @@ async function main() {
     await sleep(8000);
     const stJobs = jobs(CAP_ST);
     const masterJobs = jobs(CAP);
-    assert('V4-6 스테이션 매장 → 티켓이 스테이션 프린터(KQ1)로 정확히 1장, 마스터로는 0장',
-      stJobs.length === 1 && masterJobs.length === 0,
-      `KQ1 ${stJobs.length}장 / KITCHEN ${masterJobs.length}장 (1/0 이어야 함)`);
+    // 2026-11-02: 스테이션 티켓(김치찌개)도 그림 경로 — 백지 아님(잉크 2~60%)까지 본다.
+    let stInk = null;
+    if (stJobs[0]) {
+      const b = Buffer.from(stJobs[0].hex, 'hex');
+      const g = b.indexOf(Buffer.from([0x1d, 0x76, 0x30]));
+      if (g >= 0) stInk = b.subarray(g + 8).reduce((n, x) => n + (x ? 1 : 0), 0) / Math.max(1, b.length - g - 8);
+    }
+    assert('V4-6 스테이션 매장 → 티켓이 스테이션 프린터(KQ1)로 정확히 1장, 마스터로는 0장 · 백지 아님',
+      stJobs.length === 1 && masterJobs.length === 0 && (stInk === null || (stInk > 0.02 && stInk < 0.6)),
+      `KQ1 ${stJobs.length}장 / KITCHEN ${masterJobs.length}장 (1/0 이어야 함) ink=${stInk === null ? '글자' : (stInk * 100).toFixed(1) + '%'}`);
   } finally {
     await Order.destroy({ where: { id: stationOrder.id }, force: true });
   }
@@ -569,6 +593,7 @@ async function main() {
   clearJobs();
   const ghostOrder = await Order.create({
     restaurant_id: rid,
+    order_number: v4OrderNo(),
     customer_name: MARKER,
     total_amount: 10,
     status: 'pending',

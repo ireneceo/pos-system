@@ -310,7 +310,10 @@ async function main() {
 
   // V3-2b: the Korean ticket must be a real raster — ESC @ + GS v 0, 576px wide, and INK on the page
   const html = byLabel('V3-2b') || {};
-  const raster = K.filter((j) => j.hex.startsWith('1b40')).sort((a, b) => b.len - a.len)[0];
+  // 2026-11-02: KITCHEN 래스터 = V3-2b 1장 + V3-2c 3장(도착 순). V3-2b = 첫 래스터(예전엔 «가장 긴 것»).
+  const rasters = K.filter((j) => j.hex.startsWith('1b40') && j.hex.includes('1d7630'));
+  const inkOf = (job) => { const b = Buffer.from(job.hex, 'hex'); const g = b.indexOf(Buffer.from([0x1d, 0x76, 0x30])); return g < 0 ? 0 : b.subarray(g + 8).reduce((n, x) => n + (x ? 1 : 0), 0) / Math.max(1, b.length - g - 8); };
+  const raster = rasters[0];
   let rasterOk = false, inkRatio = 0, widthOk = false, cutOk = false;
   if (raster) {
     const buf = Buffer.from(raster.hex, 'hex');
@@ -319,11 +322,45 @@ async function main() {
     cutOk = raster.hex.includes('1d564200');                              // GS V B 0
     const ink = buf.subarray(gsv + 8).reduce((n, b) => n + (b ? 1 : 0), 0);
     inkRatio = ink / Math.max(1, buf.length - gsv - 8);
-    rasterOk = gsv >= 0 && widthOk && cutOk && inkRatio > 0.02;           // not a blank page
+    rasterOk = gsv >= 0 && widthOk && cutOk && inkRatio > 0.02 && inkRatio < 0.6; // not blank, not a black slab
   }
   assert('V3-2b printHtml 한글 래스터 (ESC @ · GS v 0 · 576px · 컷 · 백지 아님)',
     html.r && html.r.ok === true && rasterOk,
     raster ? `${raster.len}바이트 width576=${widthOk} cut=${cutOk} ink=${(inkRatio * 100).toFixed(1)}%` : '래스터 캡처 없음');
+
+  // V3-2c (2026-11-02 Fable 설계 §5-1): 같은 앱에서 한글 티켓 3장 연속 — 각각 잉크 2~60% · 셋 다 다른 그림
+  // («첫 장만 나온다» 증상을 직접 겨눈다). 수정 전 같은 판정식으로 0.0~0.1% 였다(반증 기록).
+  const seq = byLabel('V3-2c') || [];
+  const three = rasters.slice(1, 4);
+  const inks = three.map(inkOf);
+  assert('V3-2c 한글 티켓 3장 연속 — 각각 백지 아님 · 서로 다른 그림',
+    Array.isArray(seq) && seq.length === 3 && seq.every((r) => r && r.ok === true) && three.length === 3
+      && inks.every((x) => x > 0.02 && x < 0.6) && new Set(three.map((j) => j.hex)).size === 3,
+    `응답=${JSON.stringify(seq)} 래스터=${three.length}장 ink=${inks.map((x) => (x * 100).toFixed(1) + '%').join('/')}`);
+
+  // V3-2d: 그릴 게 없는 HTML → «성공 백지» 가 아니라 BLANK_RENDER 실패 + 프린터 0바이트(래스터 4장 그대로)
+  const blank = byLabel('V3-2d') || {};
+  assert('V3-2d 빈 화면 → BLANK_RENDER 실패 · 종이 0장',
+    blank.ok === false && blank.error === 'BLANK_RENDER' && rasters.length === 4,
+    `${JSON.stringify(blank)} KITCHEN 래스터=${rasters.length}장(4 여야 함)`);
+
+  // V3-2e (2026-11-02 Fable 게이트 조건 1): 태블릿 화면보다 긴 티켓(≥3200px) — 전체 잉크 2~60% + 래스터 끝 25% 구간 잉크 ≥1%
+  // («윗부분만 찍히고 아래가 흰 티켓» 을 겨눈다). BAR 로 보내 KITCHEN 래스터 수(V3-2d)와 섞지 않는다.
+  const longRes = byLabel('V3-2e') || {};
+  const longJob = B.filter((j) => j.hex.startsWith('1b40') && j.hex.includes('1d7630')).sort((a, b) => b.len - a.len)[0];
+  let longH = 0, longInk = 0, tailInk = 0;
+  if (longJob) {
+    const b = Buffer.from(longJob.hex, 'hex');
+    const g = b.indexOf(Buffer.from([0x1d, 0x76, 0x30]));
+    for (let k = b.indexOf(Buffer.from([0x1d, 0x76, 0x30])); k >= 0; k = b.indexOf(Buffer.from([0x1d, 0x76, 0x30]), k + 1)) longH += b[k + 6] + b[k + 7] * 256; // yL yH per strip
+    const body = b.subarray(g + 8);
+    longInk = body.reduce((n, x) => n + (x ? 1 : 0), 0) / Math.max(1, body.length);
+    const tail = body.subarray(Math.floor(body.length * 0.75));
+    tailInk = tail.reduce((n, x) => n + (x ? 1 : 0), 0) / Math.max(1, tail.length);
+  }
+  assert('V3-2e 긴 한글 티켓(≥3200px) — 전체 백지 아님 · 끝 25% 에도 글자',
+    longRes.ok === true && !!longJob && longH >= 3200 && longInk > 0.02 && longInk < 0.6 && tailInk >= 0.01,
+    longJob ? `${JSON.stringify(longRes)} 높이=${longH}px ink=${(longInk * 100).toFixed(1)}% 끝25%ink=${(tailInk * 100).toFixed(1)}%` : `${JSON.stringify(longRes)} 래스터 없음`);
 
   // V3-6: THE regression this P0 fixes — a dead printer must not stall a healthy lane
   const iso = byLabel('V3-6') || {};
@@ -337,6 +374,20 @@ async function main() {
   assert('V3-7b 레지스트리 왕복 (BAR 삭제 → 목록에서 사라짐 → PRINTER_NOT_FOUND)',
     rt.rm && rt.rm.ok === true && !(rt.after || []).includes('BAR') && rt.p && rt.p.error === 'PRINTER_NOT_FOUND',
     `after=${JSON.stringify(rt.after)} print=${JSON.stringify(rt.p)}`);
+
+  // V3-8 (2026-11-02): 설정 화면 «와이파이 프린터 자동으로 찾기» = 이미 깔린 앱의 찾기(__NATIVE_ECR.discover)를 9100 으로.
+  // 에뮬레이터에선 호스트(10.0.2.2:9100 가짜 KITCHEN)가 같은 대역의 프린터다. 프린터가 받은 것은 상태 질의 3바이트(10 04 01)뿐이어야
+  // 한다 — 종이에 찍히는 바이트(ESC @ 등) 0.
+  const af = byLabel('V3-8') || {};
+  // 에뮬레이터는 10.0.2.2 와 10.0.2.3(가상 DNS)이 둘 다 이 컴퓨터로 이어질 수 있어 질의가 1~2건 온다(API 34 실측).
+  // 판정 = 질의가 왔고, 찾기 구간에 도착한 바이트가 전부 상태 질의(10 04 01)이거나 빈 연결 — 종이 바이트 0.
+  const afStart = K.findIndex((j) => j.hex === '100401');
+  const afJobs = afStart >= 0 ? K.slice(afStart) : [];
+  const probeJobs = afJobs.filter((j) => j.hex === '100401');
+  const paperJobs = afJobs.filter((j) => j.hex !== '100401' && j.len > 0);
+  assert('V3-8 와이파이 프린터 자동 찾기 — 같은 대역 9100 프린터를 찾고, 프린터엔 상태 질의(10 04 01)만',
+    af.supported === true && af.ok === true && (af.hosts || []).includes('10.0.2.2') && probeJobs.length >= 1 && paperJobs.length === 0,
+    `${JSON.stringify(af)} 프린터가 받은 질의=${probeJobs.length}건 · 종이 바이트 잡=${paperJobs.length}`);
 
   console.log(`\n캡처: KITCHEN ${K.length}잡 / BAR ${B.length}잡`);
   console.log(failed === 0

@@ -44,11 +44,27 @@
     "expression": "(async () => { const html = '<html><body style=\"font-family:sans-serif\"><h2>주방 티켓 KITCHEN</h2><p>불고기 덮밥 x2</p><p>김치찌개 x1</p></body></html>'; const t0 = Date.now(); const r = await window.__NATIVE_PRINT.printHtml({ html, printerName: 'KITCHEN', widthMm: 80, copies: 1 }); return { r, ms: Date.now() - t0 }; })()"
   },
   {
+    "label": "V3-2c three Korean tickets in a row (each non-blank, all different)",
+    "expression": "(async () => { const np = window.__NATIVE_PRINT; const out = []; for (const [n, item] of [[1,'불고기 덮밥 x2'],[2,'김치찌개 x1 · 공기밥 x2'],[3,'떡볶이 x3 — 맵게']]) { const html = '<html><body style=\"font-family:sans-serif\"><h2>주방 티켓 #' + n + '</h2><p>' + item + '</p><p>테이블 ' + (n * 7) + '</p></body></html>'; out.push(await np.printHtml({ html, printerName: 'KITCHEN', widthMm: 80, copies: 1 })); } return out; })()"
+  },
+  {
+    "label": "V3-2d blank HTML -> BLANK_RENDER, zero bytes",
+    "expression": "(async () => await window.__NATIVE_PRINT.printHtml({ html: '<html><body></body></html>', printerName: 'KITCHEN', widthMm: 80, copies: 1 }))()"
+  },
+  {
+    "label": "V3-2e long Korean ticket (>=3200px) to BAR — bottom must have ink",
+    "expression": "(async () => { let rows = ''; for (let n = 1; n <= 100; n++) rows += '<p style=\"margin:4px 0;font-size:22px\">' + n + '. 불고기 덮밥 x' + n + ' — 맵게 · 밥 많이</p>'; const html = '<html><body style=\"font-family:sans-serif\"><h2>긴 주방 티켓 LONG</h2>' + rows + '<h2>끝 END</h2></body></html>'; return await window.__NATIVE_PRINT.printHtml({ html, printerName: 'BAR', widthMm: 80, copies: 1 }); })()"
+  },
+  {
     "label": "V3-6 dead printer must NOT block a healthy one (lane isolation)",
     "expression": "(async () => { const np = window.__NATIVE_PRINT; const html = '<html><body><h3>LANE_ISOLATION</h3></body></html>'; const t0 = Date.now(); const dead = np.printHtml({ html, printerName: 'DEAD', widthMm: 80, copies: 1 }).then(r => ({ r, ms: Date.now() - t0 })); await new Promise(r => setTimeout(r, 100)); const t1 = Date.now(); const live = await np.printHtml({ html: '<html><body><h3>BAR_AFTER_DEAD</h3></body></html>', printerName: 'BAR', widthMm: 80, copies: 1 }); const liveMs = Date.now() - t1; const deadRes = await dead; return { live, liveMs, dead: deadRes }; })()"
   },
   {
     "label": "V3-7b registry round-trip: remove BAR -> PRINTER_NOT_FOUND",
     "expression": "(async () => { const s = window.__NATIVE_PRINT_SETUP; const rm = await s.removeNetPrinter('BAR'); const after = await window.__NATIVE_PRINT.listPrinters(); const p = await window.__NATIVE_PRINT.printRaw({ data: btoa('BAR_REMOVED'), target: { kind: 'os', printerName: 'BAR' } }); return { rm, after, p }; })()"
+  },
+  {
+    "label": "V3-8 Wi-Fi printer auto-find (ECR discover on 9100, DLE EOT probe)",
+    "expression": "(async () => { const e = window.__NATIVE_ECR; if (!e || !e.discover) return { supported: false }; const t0 = Date.now(); const r = await e.discover({ port: 9100, transport: 'tcp-bin', probeHex: '100401' }); return { supported: true, ok: r && r.ok, scanned: r && r.scanned, hosts: (r && r.probed || []).map(p => p.host), ms: Date.now() - t0 }; })()"
   }
 ]

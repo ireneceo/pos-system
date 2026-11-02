@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { NativeAppVersionRow } from '../../components/Common/NativeAppUpdateBanner';
 import styled from 'styled-components';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { TabContainer, Tab, OrderControls } from '../../components/UI';
@@ -31,6 +30,7 @@ import { getAuthToken } from '../../utils/auth';
 import PrintSelfDiagnosePanel from '../../components/Settings/PrintSelfDiagnosePanel';
 import MallSalesIntegrationSettings from './MallSalesIntegrationSettings';
 import CardTerminalSettings from './CardTerminalSettings';
+import { AndroidPrinterSetupCard, AndroidPrintGuide, AndroidPrintReadiness, NativeSetupBridge } from './AndroidPrinterSetup';
 import KioskDevicesCard from './KioskDevicesCard';
 import { Button as UIButton } from '../../components/UI/Button';
 import { methodOpenIn, splitKioskFromMobile, KIOSK_HIDDEN_METHODS } from '../../utils/paymentChannel';
@@ -746,185 +746,8 @@ const NativePrinterSelect: React.FC<NativePrinterSelectProps> = ({ address, prin
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────
-// Android tablet: this device's printers (2026-07-13, design §8-2).
-// Windows resolves a printer NAME through the OS spooler; Android has no spooler,
-// so the name→host mapping has to be registered on the tablet itself. That setup
-// lives HERE, in the web Settings page, and never in a native screen: the
-// restaurant-admin gate and the printer-settings wipe locks are web-side, and a
-// native screen would be an unauthenticated back door around both.
-//
-// The app injects window.__NATIVE_PRINT_SETUP (Android only — Windows never sees
-// this object, so Windows behaviour is unchanged). billPrint never reads it.
-interface NativeSetupBridge {
-  platform: string;
-  getState: () => Promise<any>;
-  addNetPrinter: (p: { name: string; host: string; port: number }) => Promise<{ ok: boolean; error?: string }>;
-  removeNetPrinter: (name: string) => Promise<{ ok: boolean; error?: string }>;
-  requestBtPermission: () => Promise<{ state: string }>;
-  openSystemBluetoothSettings: () => Promise<{ ok: boolean }>;
-  openAppSettings: () => Promise<{ ok: boolean }>;
-}
-
-interface AndroidPrinterSetupCardProps {
-  bridge: NativeSetupBridge;
-  onRegistryChange: () => void; // reload the printer NAME list feeding the dropdowns
-  t: (k: string, o?: any) => string;
-}
-
-const AndroidPrinterSetupCard: React.FC<AndroidPrinterSetupCardProps> = ({ bridge, onRegistryChange, t }) => {
-  const [state, setState] = useState<any>(null);
-  const [name, setName] = useState('');
-  const [host, setHost] = useState('');
-  const [port, setPort] = useState('9100');
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = useCallback(async () => {
-    const s = await bridge.getState();
-    setState(s);
-  }, [bridge]);
-
-  useEffect(() => { refresh(); }, [refresh]);
-
-  const add = async () => {
-    setError(null);
-    const r = await bridge.addNetPrinter({ name: name.trim(), host: host.trim(), port: parseInt(port, 10) || 9100 });
-    if (!r.ok) { setError(r.error || 'ADD_FAILED'); return; }
-    setName(''); setHost(''); setPort('9100');
-    await refresh();
-    onRegistryChange(); // the new name must appear in the printer dropdowns
-  };
-
-  const remove = async (n: string) => {
-    setError(null);
-    const r = await bridge.removeNetPrinter(n);
-    if (!r.ok) { setError(r.error || 'REMOVE_FAILED'); return; }
-    await refresh();
-    onRegistryChange();
-  };
-
-  const requestBt = async () => {
-    await bridge.requestBtPermission();
-    await refresh();
-    onRegistryChange(); // a granted permission reveals the bonded BT printers
-  };
-
-  if (!state) return null;
-  if (state.error) {
-    return (
-      <div style={{ marginBottom: '16px', padding: '14px 16px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '10px', fontSize: '13px', color: '#991B1B', lineHeight: 1.6 }}>
-        {t('settings:printer.android.bridgeError', { defaultValue: 'The app’s printing bridge did not respond. Restart the app; if this persists the app needs to be reinstalled.' })}
-      </div>
-    );
-  }
-
-  const bt: string = state.btPermission;
-  const net: Array<{ name: string; host: string; port: number }> = state.net || [];
-  const bonded: Array<{ name: string; mac: string; likelyPrinter: boolean }> = state.bonded || [];
-  const inputStyle: React.CSSProperties = { padding: '8px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', background: '#fff', boxSizing: 'border-box' };
-
-  return (
-    <div style={{ marginBottom: '16px', padding: '16px', background: '#FAFBFF', border: '1px solid #E2E8F0', borderRadius: '10px' }}>
-      <div style={{ fontSize: '14px', fontWeight: 700, color: '#312E81', marginBottom: '4px' }}>
-        {t('settings:printer.android.title', { defaultValue: 'Printers on this tablet' })}
-      </div>
-      <div style={{ fontSize: '12px', color: '#6B7280', lineHeight: 1.6, marginBottom: '12px' }}>
-        {t('settings:printer.android.desc', { defaultValue: 'Register each printer on this tablet, then pick it by name for the bill and kitchen printers above. The name you enter here is the name you select above.' })}
-      </div>
-      {/* 앱 버전·업데이트 상시 줄 (2026-10-04 Irene 「업데이트 뜨게 해」 — Fable 설계 §4-4) */}
-      <NativeAppVersionRow />
-
-      {/* Network printers registered on this device */}
-      <div style={{ fontSize: '13px', fontWeight: 600, color: '#1F2937', marginBottom: '6px' }}>
-        {t('settings:printer.android.network', { defaultValue: 'Network printers (Wi-Fi)' })}
-      </div>
-      {net.length === 0 && (
-        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
-          {t('settings:printer.android.noneYet', { defaultValue: 'None registered yet.' })}
-        </div>
-      )}
-      {net.map((p) => (
-        <div key={p.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', padding: '8px 10px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: '6px', marginBottom: '6px' }}>
-          <div style={{ fontSize: '13px', color: '#1F2937' }}>
-            <strong>{p.name}</strong>
-            <span style={{ color: '#6B7280', fontFamily: 'monospace', marginLeft: '8px' }}>{p.host}:{p.port}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => remove(p.name)}
-            style={{ padding: '5px 10px', fontSize: '12px', border: '1px solid #EF4444', borderRadius: '6px', background: '#FEF2F2', color: '#B91C1C', cursor: 'pointer' }}
-          >{t('common:delete', { defaultValue: 'Delete' })}</button>
-        </div>
-      ))}
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 90px auto', gap: '6px', marginTop: '8px' }}>
-        <input style={inputStyle} value={name} onChange={(e) => setName(e.target.value)}
-          placeholder={t('settings:printer.android.namePlaceholder', { defaultValue: 'Name (e.g. KITCHEN)' })} />
-        <input style={{ ...inputStyle, fontFamily: 'monospace' }} value={host} onChange={(e) => setHost(e.target.value)} placeholder="192.168.1.101" />
-        <input style={{ ...inputStyle, fontFamily: 'monospace' }} value={port} onChange={(e) => setPort(e.target.value)} placeholder="9100" />
-        <button
-          type="button"
-          onClick={add}
-          disabled={!name.trim() || !host.trim()}
-          style={{ padding: '8px 14px', fontSize: '13px', fontWeight: 600, border: '1px solid #635BFF', borderRadius: '6px', background: name.trim() && host.trim() ? '#635BFF' : '#C7D2FE', color: '#fff', cursor: name.trim() && host.trim() ? 'pointer' : 'not-allowed', whiteSpace: 'nowrap' }}
-        >{t('settings:printer.android.add', { defaultValue: 'Register' })}</button>
-      </div>
-      {error && (
-        <div style={{ marginTop: '6px', fontSize: '12px', color: '#B91C1C' }}>
-          {t(`settings:printer.android.err.${error}`, { defaultValue: error })}
-        </div>
-      )}
-
-      {/* Bluetooth: pairing belongs to the OS — we only read the paired list */}
-      <div style={{ fontSize: '13px', fontWeight: 600, color: '#1F2937', margin: '14px 0 6px' }}>
-        {t('settings:printer.android.bluetooth', { defaultValue: 'Bluetooth printers' })}
-      </div>
-
-      {bt === 'granted' && bonded.length === 0 && (
-        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
-          {t('settings:printer.android.btNonePaired', { defaultValue: 'No paired devices. Pair the printer in the Android Bluetooth settings first.' })}
-        </div>
-      )}
-      {bt === 'granted' && bonded.map((d) => (
-        <div key={d.mac} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: '6px', marginBottom: '6px', fontSize: '13px', color: '#1F2937' }}>
-          <strong>{d.name}</strong>
-          <span style={{ color: '#6B7280', fontFamily: 'monospace', fontSize: '12px' }}>{d.mac}</span>
-          {d.likelyPrinter && (
-            <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#065F46', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '4px', padding: '2px 6px' }}>
-              {t('settings:printer.android.likelyPrinter', { defaultValue: 'printer' })}
-            </span>
-          )}
-        </div>
-      ))}
-      {(bt === 'denied' || bt === 'denied_forever') && (
-        <div style={{ fontSize: '12px', color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', padding: '10px', marginBottom: '8px', lineHeight: 1.6 }}>
-          {bt === 'denied'
-            ? t('settings:printer.android.btDenied', { defaultValue: 'Bluetooth permission is needed to see paired printers.' })
-            : t('settings:printer.android.btDeniedForever', { defaultValue: 'Bluetooth permission was permanently denied. Enable it in the Android app settings.' })}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-        {bt === 'denied' && (
-          <button type="button" onClick={requestBt}
-            style={{ padding: '7px 14px', fontSize: '13px', border: '1px solid #6B7280', borderRadius: '6px', background: '#fff', color: '#1F2937', cursor: 'pointer' }}
-          >{t('settings:printer.android.btAllow', { defaultValue: 'Allow Bluetooth' })}</button>
-        )}
-        {bt === 'denied_forever' && (
-          <button type="button" onClick={() => bridge.openAppSettings()}
-            style={{ padding: '7px 14px', fontSize: '13px', border: '1px solid #6B7280', borderRadius: '6px', background: '#fff', color: '#1F2937', cursor: 'pointer' }}
-          >{t('settings:printer.android.openAppSettings', { defaultValue: 'Open app settings' })}</button>
-        )}
-        <button type="button" onClick={() => bridge.openSystemBluetoothSettings()}
-          style={{ padding: '7px 14px', fontSize: '13px', border: '1px solid #6B7280', borderRadius: '6px', background: '#fff', color: '#1F2937', cursor: 'pointer' }}
-        >{t('settings:printer.android.openBtSettings', { defaultValue: 'Open Bluetooth settings' })}</button>
-        <button type="button" onClick={() => { refresh(); onRegistryChange(); }}
-          style={{ padding: '7px 14px', fontSize: '13px', border: '1px solid #6B7280', borderRadius: '6px', background: '#fff', color: '#1F2937', cursor: 'pointer' }}
-        >{t('settings:printer.android.refresh', { defaultValue: 'Refresh' })}</button>
-      </div>
-    </div>
-  );
-};
+// Android tablet: this device's printers (2026-07-13, design §8-2) — card + 5-step guide +
+// auto-find + «ready to auto-print» check live in ./AndroidPrinterSetup (2026-11-02).
 
 const SettingsPage: React.FC = () => {
   const { t } = useTranslation('settings');
@@ -1157,6 +980,8 @@ const SettingsPage: React.FC = () => {
   // Windows app and the browser render exactly as before.
   const nativeSetup: NativeSetupBridge | null =
     typeof window !== 'undefined' ? ((window as any).__NATIVE_PRINT_SETUP || null) : null;
+  // In the app there is only one way to print (the app itself) → always show that panel.
+  const guideTab = isNativePrint ? 'qztray' : printerGuideTab;
   // Native desktop: auto-load the OS printer list on mount (listPrinters() via the
   // bridge — no QZ Tray, no "Find Printers" click). Populates the per-printer
   // dropdowns below so a shop just picks each USB printer by name.
@@ -6188,6 +6013,34 @@ const SettingsPage: React.FC = () => {
               {!printerSettingsLoading && (
                 <PrintSelfDiagnosePanel restaurantId={user?.restaurantId} />
               )}
+              {/* Android 앱: 따라 하기 5단계 + «자동 인쇄 준비» 점검을 탭 맨 위에(2026-11-02 — 아래쪽 카드 안에 있으면 못 찾는다).
+                  프린터 등록·자동 찾기 카드는 아래 «프린터 연결» 카드 안에 그대로. */}
+              {!printerSettingsLoading && nativeSetup && (
+                <SettingsCard style={{ marginBottom: '24px' }}>
+                  <AndroidPrintGuide t={t} />
+                  <AndroidPrintReadiness
+                    t={t}
+                    printerNames={qzTrayPrinters}
+                    kitchenAutoPrint={printerSettings.kitchenPrinter.enabled !== false && !!printerSettings.kitchenPrinter.autoPrint}
+                    kitchenTargets={kitchenStations.length > 0
+                      ? kitchenStations.map((st: any) => ({ label: st.name, address: (printerSettings.kitchenStationPrinters?.[st.id]?.address || printerSettings.kitchenPrinter.address || '') /* 스테이션 칸이 비면 인쇄는 주방 기본 프린터로 간다(billPrint sendToRawBTPrinter 폴백) */ }))
+                      : (printerSettings.kitchenPrinter.enabled ? [{ label: t('settings:printer.androidReady.kitchen', { defaultValue: 'Kitchen' }), address: printerSettings.kitchenPrinter.address || '' }] : [])}
+                    billTarget={(() => {
+                      const wsList = printerSettings.workstations || [];
+                      const ws = wsList.find((w: any) => w.id === activeWorkstationId) || (wsList.length <= 1 ? wsList[0] : null);
+                      const bp: any = ws ? ws.billPrinter : printerSettings.billPrinter;
+                      if (!bp || bp.enabled === false || (!ws && !printerSettings.billPrinter?.enabled)) return null;
+                      return { label: t('settings:printer.androidReady.counter', { defaultValue: 'Counter (bill)' }), address: bp.address || '' };
+                    })()}
+                    workstationCount={(printerSettings.workstations || []).length}
+                    appVersion={(window as any).__NATIVE_PRINT?.version || null}
+                    thisDeviceIsPrintStation={(() => {
+                      const ws = (printerSettings.workstations || []).find((w: any) => w.id === activeWorkstationId);
+                      return !!ws && ws.billPrinter?.autoPrint !== false;
+                    })()}
+                  />
+                </SettingsCard>
+              )}
               {/* ★ Print Format — store-level. How tickets/receipts render on the
                   printer. 'auto' works for most; 'text' rescues text-only / cheap USB
                   printers that print blank with graphic mode. Additive setting saved
@@ -6642,6 +6495,7 @@ const SettingsPage: React.FC = () => {
                   select sits on every Workstation / Kitchen card below. */}
               <SettingsCard style={{ marginBottom: '24px' }}>
                 <CardTitle>{t('settings:printer.methodGuide.title')}</CardTitle>
+                {!isNativePrint && (<>
                 <p style={{ color: '#4B5563', marginBottom: '12px', fontSize: '14px' }}>
                   {t('settings:printer.methodGuide.desc')}
                 </p>
@@ -6703,8 +6557,11 @@ const SettingsPage: React.FC = () => {
                   </div>
                   )}
                 </div>
+                </>)}
 
-                {/* Method tabs */}
+                {/* Method tabs — not in the app: the app prints directly, so Browser/RawBT/QZ choices
+                    only confuse (2026-11-02: the Android printer setup was hidden behind the «QZ Tray» tab). */}
+                {!isNativePrint && (
                 <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '1px solid #E5E7EB' }}>
                   {([
                     { key: 'browser', label: t('settings:printer.methodGuide.browserLabel'), sub: t('settings:printer.methodGuide.browserSub') },
@@ -6731,9 +6588,10 @@ const SettingsPage: React.FC = () => {
                     );
                   })}
                 </div>
+                )}
 
                 {/* Browser Print panel */}
-                {printerGuideTab === 'browser' && (
+                {guideTab === 'browser' && (
                   <div>
                     <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, marginBottom: '12px' }}>
                       {t('settings:printer.methodGuide.browserDesc')}
@@ -6750,7 +6608,7 @@ const SettingsPage: React.FC = () => {
                 )}
 
                 {/* QZ Tray panel — clean 3-step setup: 1) Install  2) Check  3) Find printers */}
-                {printerGuideTab === 'qztray' && (
+                {guideTab === 'qztray' && (
                   <div>
                     {isNativePrint && (
                       <div style={{ marginBottom: '16px', padding: '14px 16px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: '10px', fontSize: '13px', color: '#065F46', lineHeight: 1.6 }}>
@@ -6955,7 +6813,7 @@ const SettingsPage: React.FC = () => {
                 )}
 
                 {/* RawBT panel */}
-                {printerGuideTab === 'rawbt' && (
+                {guideTab === 'rawbt' && (
                   <div>
                     <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, marginBottom: '12px' }}>
                       {t('settings:printer.methodGuide.rawbtDesc')}
