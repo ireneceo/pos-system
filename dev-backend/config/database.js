@@ -1,7 +1,12 @@
 const { Sequelize } = require('sequelize');
 // 이 프로세스가 «상시 떠 있는 서버»인가 — pm2 가 띄우는 server.js 만 해당한다.
 //   스크립트(마이그·검사·일회성 도구)는 여기서 false 가 되어 작은 풀을 쓴다.
-const IS_LONG_RUNNING_SERVER = /(^|[\\/])server\.js$/.test(process.argv[1] || '');
+//   ⚠ pm2 로 띄우면 process.argv[1] 은 server.js 가 아니라 pm2 의 ProcessContainerFork.js 다
+//   (pm2 는 process.title 만 «node …/server.js» 로 바꾼다). 그래서 2026-09-17 부터 운영·개발 서버가
+//   **풀 5개**로 돌았다 — 발주 7건 «전체 확정»(동시 7요청) 한 번에 연결이 바닥나 서버 전체가 1분 멈춤
+//   (운영 2026-11-02 15:41:30~15:42:30 UTC · 개발 재현 ConnectionAcquireTimeoutError). 진입 모듈(require.main)도 본다.
+const IS_LONG_RUNNING_SERVER = [process.argv[1], require.main && require.main.filename]
+  .some(f => /(^|[\\/])server\.js$/.test(f || ''));
 
 
 // 간단한 .env 파일 로드 (Codespace에서는 env-loader 사용)
@@ -34,6 +39,7 @@ console.log(`   Host: ${dbConfig.host}`);
 console.log(`   Port: ${dbConfig.port}`);
 console.log(`   Database: ${dbConfig.database}`);
 console.log(`   User: ${dbConfig.username}`);
+console.log(`   Pool max: ${IS_LONG_RUNNING_SERVER ? 20 : 5} (${IS_LONG_RUNNING_SERVER ? "server" : "script"})`);
 
 // 연결 상태 추적
 let isConnected = false;

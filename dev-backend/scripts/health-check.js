@@ -13399,14 +13399,21 @@ function defineInternalSettlementTests() {
     const fx = await fixture(); if (!fx) { console.log(c.gray('      (건너뜀: 데모 브랜드/매장 픽스처 없음)')); return false; }
     const { createTradeInvoice } = require('../services/purchaseOrderService');
     let po = null;
+    let preSnap = null;
     try {
       await request('PUT', termsUrl(fx), { payment_terms: { terms: 'NET_15', invoice_cycle: 'immediate' } }, fx.bgAuth);
       const no = await request('POST', `${termsUrl(fx)}/settle-internal`, {}, fx.bgAuth);
       if (no.status !== 409 || no.body?.code !== 'NOT_INTERNAL') return say(`NET_15 에서 settle ${no.status} ${no.body?.code}`);
-      // 정리는 이 쌍의 열린 청구서 **전부**를 바꾼다 — 데모 매장에 원래 열린 브랜드 청구서가 있으면 그것까지 바꾸므로 멈춘다.
-      const base = await require('../models').Invoice.count({ where: { issuer_type: 'brand', issuer_id: fx.brand.id, payer_type: 'restaurant',
-        payer_id: fx.rest.id, status: { [Op.in]: ['pending_payment', 'overdue', 'payment_submitted'] } } });
-      if (base > 0) return say(`데모 매장 ${fx.rest.id} 에 열린 브랜드 청구서 ${base}건 — 정리 시험이 그것까지 바꾸므로 멈춤`);
+      // 정리는 이 쌍의 열린 청구서 **전부**를 바꾼다 — 데모 매장에 원래 열린 브랜드 청구서([확인용] 시험 데이터 등)가 있으면
+      //   그것까지 바뀐다. 원래 값을 먼저 읽어 두고 끝에 그대로 되돌린다(메모리 «설정 바꾸는 검사는 원본 먼저»).
+      //   정산서(SOA)·그 자식이 섞여 있으면 되돌릴 칸이 많아 멈춘다(2026-11-02 배포 준비 — 10-30 [확인용] 발주 53054 청구서 때문에 멈추던 것).
+      const { Invoice: InvM, PurchaseOrder: PoM } = require('../models');
+      const pre = await InvM.findAll({ where: { issuer_type: 'brand', issuer_id: fx.brand.id, payer_type: 'restaurant',
+        payer_id: fx.rest.id, status: { [Op.in]: ['pending_payment', 'overdue', 'payment_submitted'] } }, raw: true });
+      if (pre.some((r) => r.invoice_category === 'soa' || r.parent_soa_invoice_id)) return say(`데모 매장 ${fx.rest.id} 에 열린 브랜드 정산서(SOA) — 되돌리기 범위 밖이라 멈춤`);
+      const INV_KEYS = ['status', 'paid_amount', 'paid_at', 'payment_method', 'payment_notes', 'confirmed_by', 'confirmed_at'];
+      preSnap = { inv: pre.map((r) => ({ id: r.id, ...Object.fromEntries(INV_KEYS.map((k) => [k, r[k]])) })),
+        po: pre.length ? (await PoM.findAll({ where: { trade_invoice_id: { [Op.in]: pre.map((r) => r.id) } }, attributes: ['id', 'payment_status', 'paid_at', 'payment_method', 'updated_at'], raw: true })) : [] };
       po = await mkPo(fx, 20);
       const inv = await createTradeInvoice(po);
       if (inv.status !== 'pending_payment') return say(`NET_15 청구서 ${inv.status}`);
@@ -13427,6 +13434,14 @@ function defineInternalSettlementTests() {
         return say(`두 번째 ${s2.status} ${JSON.stringify(s2.body?.data)} · open ${JSON.stringify(g2.body?.data?.open_invoices)}`);
       }
       return true;
-    } finally { if (po) await hcCleanupPurchaseOrders(po.id, { waitMs: 0 }); await restore(fx); }
+    } finally {
+      if (po) await hcCleanupPurchaseOrders(po.id, { waitMs: 0 });
+      if (preSnap) {
+        const { Invoice: InvM, PurchaseOrder: PoM } = require('../models');
+        for (const { id, ...v } of preSnap.inv) await InvM.update(v, { where: { id }, hooks: false, silent: true });
+        for (const { id, ...v } of preSnap.po) await PoM.update(v, { where: { id }, hooks: false, silent: true });
+      }
+      await restore(fx);
+    }
   });
 }

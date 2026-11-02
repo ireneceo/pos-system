@@ -15,13 +15,15 @@ const { QueryTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
 /** 이 유저가 ownership 관계로 소유한 restaurant_id 배열. */
-async function resolveOwnerRestaurantIds(user) {
+//   t(선택) — 발주 트랜잭션 안에서 부를 때는 **반드시 넘긴다.** 안 넘기면 트랜잭션 연결을 쥔 채 풀에서
+//   연결을 하나 더 달라고 해, 동시 제출이 풀 크기 이상이면 서로 기다리다 1분 뒤 전부 실패한다(2026-11-02 운영 멈춤).
+async function resolveOwnerRestaurantIds(user, t) {
   if (!user) return [];
   const ids = new Set();
   const rows = await sequelize.query(
     `SELECT restaurant_id FROM restaurant_managers
      WHERE manager_id = :uid AND relationship_type = 'ownership'`,
-    { replacements: { uid: user.id }, type: QueryTypes.SELECT });
+    { replacements: { uid: user.id }, type: QueryTypes.SELECT, transaction: t });
   rows.forEach(r => ids.add(parseInt(r.restaurant_id, 10)));
   // 레거시 단일 할당
   if (user.role === 'Restaurant Owner' && user.restaurant_id) {
@@ -31,11 +33,11 @@ async function resolveOwnerRestaurantIds(user) {
 }
 
 /** 이 레스토랑에 연결된 오너(ownership)가 있는가. */
-async function restaurantHasOwner(restaurantId) {
+async function restaurantHasOwner(restaurantId, t) {
   const rows = await sequelize.query(
     `SELECT 1 AS x FROM restaurant_managers
      WHERE restaurant_id = :rid AND relationship_type = 'ownership' LIMIT 1`,
-    { replacements: { rid: restaurantId }, type: QueryTypes.SELECT });
+    { replacements: { rid: restaurantId }, type: QueryTypes.SELECT, transaction: t });
   return rows.length > 0;
 }
 
@@ -88,7 +90,7 @@ async function evaluateApproval({ restaurant, seller_type, seller_entity_id, lin
     blocking_lines: blocking
   });
   if (!restaurant || !restaurant.id) return out(false, 'not_restaurant');
-  if (!(await restaurantHasOwner(restaurant.id))) return out(false, 'no_owner');
+  if (!(await restaurantHasOwner(restaurant.id, t))) return out(false, 'no_owner');
   const master = restaurant.operation_settings && restaurant.operation_settings.requirePoOwnerApproval;
   if (master === false) return out(false, 'master_off');
 
@@ -188,7 +190,7 @@ async function applySubmitGate(po, t, appendTrackingEvent, actor, opts = {}) {
     if (verdict.reason === 'exempt_seller') exemptKind = 'seller';
     else if (verdict.reason === 'exempt_lines') exemptKind = 'lines';
     if (needsApproval && actor) {
-      const owned = await resolveOwnerRestaurantIds(actor);
+      const owned = await resolveOwnerRestaurantIds(actor, t);
       byOwner = owned.includes(parseInt(po.entity_id, 10));
       if (byOwner) needsApproval = false;
     }
@@ -280,7 +282,7 @@ async function applyAmendRaiseGate(po, t, appendTrackingEvent, { totalBefore, to
 async function applyBuyerAmendGate(po, t, appendTrackingEvent, { actor, totalBefore, totalAfter } = {}) {
   if (!(await isApprovalRequiredForPo(po, t))) return false;
   if (actor) {
-    const owned = await resolveOwnerRestaurantIds(actor);
+    const owned = await resolveOwnerRestaurantIds(actor, t);
     if (owned.includes(parseInt(po.entity_id, 10))) return false;
   }
   const tracking = appendTrackingEvent(

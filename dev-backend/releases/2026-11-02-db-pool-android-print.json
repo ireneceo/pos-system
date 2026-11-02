@@ -1,0 +1,71 @@
+{
+  "tag": "db-pool-android-print",
+  "sw_version": "6.06-android-print-guide-20261102",
+  "date": "2026-11-02",
+  "in_progress": "none",
+  "completed": [
+    "운영 «전부 느림·데이터 안 나옴» — 서버 DB 연결 줄 5개 → 20 · 발주 제출 중 연결 추가 요청 고침(97e48743)",
+    "안드로이드 앱 자동인쇄 점검 — 앱 안 프린터 5단계 안내·«자동 인쇄 준비» 점검·와이파이 프린터 자동 찾기(5cde0734c · 앱 0.4.1 피드는 종이 확인 뒤 따로)",
+    "비밀번호 재설정 «이유 없는 실패» 고침 — 이유 3가지 안내(bbbf3c838)",
+    "브랜드 Performance 통계 점검·고침(15d1230e1)",
+    "직영점 납품 «결제 필요 없음»(결제조건 Internal)(3047fd7bf)",
+    "비밀번호 찾기·변경 전 역할 점검(5424b2a02)",
+    "브랜드 상품 «재고아이템도 같이 만들기» 재고 카테고리 칸(edc11b71e)",
+    "오너 발주 승인 예외(공급업체·카테고리·품목) + 승인 스위치는 오너만(84e1e2f8c)",
+    "aidan 관리자 메뉴·비밀번호 리셋 메일 링크(09c037091)",
+    "운영 «Offline» 잠금 재발 원인 기록(3dc0ac5e5)",
+    "아이폰 설치 안내 · 배송 완료 → 청구서·72시간 자동 완료 · 월 정산서 이번 달 · 오너 다매장 공급업체(fab45e5f2)",
+    "발주 인보이스·영수증 다시 올리기·삭제(eda2c38ec)",
+    "발주 «카톡·다른 앱으로 보내기»(7b5e75000)",
+    "브랜드 수익성 분석 1단계(da1aad815)",
+    "새 매장 추가 «기존 사용자 검색»·구독 할인 SA 전용 + 다른 매장 관리자를 이 매장 관리자로(a47c388f9)",
+    "발주 내역·대조 화면 결제 동선(7ac61f1d3)",
+    "출퇴근 설정 링크 로그인 뒤 원래 화면으로(cc346e73f)"
+  ],
+  "issues": [
+    "운영 화면이 전부 느리고 데이터가 안 나오던 문제(발주 «전체 확정» 여러 건 동시 → 서버 전체 1분 멈춤)",
+    "안드로이드 앱 프린터 설정이 숨어 있고 주소 찾기가 어렵던 문제",
+    "비밀번호 재설정 링크가 이유 없이 «Failed» 로 끝나던 문제 · 손님 재설정 링크가 배포마다 깨지던 문제",
+    "브랜드 Performance 가 최근 5,000건만 보고 매니저에게 매장이 안 보이던 문제",
+    "직영점(with MIN Cafe) 납품이 계속 «미지급» 알림으로 오던 문제",
+    "운영 리셋 메일 링크가 개발서버로 가던 문제"
+  ],
+  "upcoming": [
+    "발주 «전체 확정» 동시 요청 줄이기 + 남은 트랜잭션 밖 조회 정리(Fable 권고 다음 묶음)",
+    "안드로이드 앱 0.4.1 사이드로드 피드 — 태블릿 종이 9가지 확인(todomvzdy6cs) 뒤"
+  ],
+  "behavior_changes": [
+    "서버 DB 연결 한도 20(운영 MySQL 한도 151 · 최고 사용 34) — 배포 뒤 운영 pm2 시작 기록에 «Pool max: 20 (server)»",
+    "브랜드·푸드코트 결제조건에 «Internal(직영)» — 납품 청구서는 처음부터 결제됨(마감일·연체 메일 없음) · 창의 «Settle N as internal» 로 쌓인 것 정리",
+    "오너가 «승인 없이 바로 보낼» 공급업체·카테고리·품목 지정 · «발주 오너 승인» 스위치는 오너만",
+    "매장 «Profitability» 화면(메뉴 공헌이익·성과판·주문 구성·손익 시뮬레이터) + 오너·브랜드 매장 비교",
+    "새 매장 추가 구독 할인은 시스템 관리자만 · 다른 매장 관리자를 초대 → 수락으로 이 매장 관리자로",
+    "발주 인보이스 다시 올리면 옛 파일 삭제 · 발주 «카톡·다른 앱으로 보내기» 버튼",
+    "배송 완료 표시 → 청구서 · 배송 뒤 72시간 지나면 자동 완료",
+    "연결 확인(/api/health)은 요청 한도에서 빠짐 · 기기가 오프라인 원인을 System Logs 로 보냄",
+    "안드로이드 앱 안에서는 Browser/RawBT/QZ 탭 숨김 · 프린터 안내·자동 찾기"
+  ],
+  "check_areas": [
+    "발주 대기 «Submit All» 여러 건 · 화면 전반 속도",
+    "브랜드 결제조건 창 Internal 선택·Settle · 오너 발주 승인 예외 설정·승인 창",
+    "매장 Profitability 4탭 · 브랜드 Performance 6탭",
+    "비밀번호 찾기·재설정 링크(이미 씀/새 메일/1시간) · 내 프로필 비밀번호 변경",
+    "새 매장 추가 기존 사용자 검색 · 발주 인보이스 다시 올리기·삭제 · 카톡 보내기",
+    "안드로이드 앱 설정 › 프린터 안내(웹 쪽) · 아이폰 설치 안내"
+  ],
+  "verification": {
+    "api": "각 방 실호출 — DB 풀 7건 0.26초·25건 0.6초 전부 200(고치기 전 60초 실패) · 직영 INTERNAL ①~④ · 비밀번호 경로 · Performance 기간 조회 · 승인 예외 · 수익성 1단계",
+    "fault_injection": "DB 풀 5 로 되돌리면 다시 멈춤(반증) · 직영 2/2 · 앱 백지 반증(수정 전 잉크 0.0~0.1%) · 각 방 고장주입 잡힘·원복",
+    "browser": "각 방 실브라우저 오류 0 · 안드로이드 V3 17/17×3 · V4 6/6 · mount sweep 크래시 0 은 배포 게이트에서 다시",
+    "printer": "웹 인쇄 동작 무변경 · print-guard 8/8 · 안드로이드 앱 0.4.1 실기기 종이는 Irene 할 일(이번 배포는 웹 안내·찾기만, 앱 파일은 안 나감)",
+    "migrations": "배포 마이그 5 — migrate-po-payment-method-internal(ENUM 확장) · migrate-create-profitability · migrate-po-payment-mirror-backfill(옛 발주 결제 표시 맞춤) · migrate-po-approval-exemptions · migrate-customer-reset-token · 전부 멱등·deploy 등록",
+    "sw_version": "6.06-android-print-guide-20261102",
+    "fable_note": "DB 풀 PASS 64486d274df5 · 안드로이드 인쇄 PASS 111e413739b5 · 비밀번호 재설정 PASS b098bcae0532 · Performance PASS 2e4b62582ef7 · 직영 INTERNAL PASS fd4202bb3622 · 비밀번호 역할 PASS 8f14bf5949e3 · 승인 예외 PASS 14e90201e5ea · Offline 원인 PASS 47e732240545 · 인보이스 다시 올리기 PASS 1bada3c3961f · 수익성 PASS 1a66796cc50e · 새 매장 조건부 PASS bb9db3960f74 · 결제 동선 조건부 PASS 4aa5a1267000 · 나머지 Fable 안 씀(작은 화면·문구)"
+  },
+  "notes": "배포 준비 11/02(버전·릴리즈노트·공지 없음) · 범위 25145aa38..HEAD · wip 커밋 0 · 미커밋 보류(GTM 4파일 + index.html·tracking.ts · playwright.config · K-DINE 일회 스크립트)는 깨끗한 사본에서 저절로 빠짐 · SW 6.06 은 마지막 프론트 방이 올림",
+  "irene_actions_after_deploy": [
+    "GIT Consulting 브랜드 계정으로 with MIN Cafe 결제조건 Internal 저장 → Settle(todomvyq8kpp)",
+    "aidan 계정으로 메뉴·비밀번호 찾기 확인(todomvxczem9)"
+  ],
+  "fable_note": "Fable 미검증 건 없음"
+}
