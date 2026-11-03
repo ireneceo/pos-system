@@ -357,6 +357,62 @@ CREATE TABLE ingredient_categories (
 > 함께 조회해 브랜드 레시피를 목록 앞에 합치고, 그 응답은 `recipe.toJSON()` 이라 조리법 컬럼이
 > 그대로 실려 온다(실호출 확인 2026-09-02). 즉 **브랜드가 만든 레시피를 매장에서 그대로 내려받는다.**
 
+#### CSV 업로드 + 표 보기 (2026-11-03 Fable 설계 · Irene «레시피 관리가 힘들어»)
+
+> 범위: **RecipesTab 하나**(BG `/pos/recipes` · RA `/restaurant/:id/recipe-management` 공용). ProductRecipe(제품 BOM)는 대상 아님 — `recipe_id` 가 메뉴 연결·재고 차감의 단일 진실이고 `product_recipe_id` 는 레거시다.
+
+##### 1. 화면
+- 툴바 `Download CSV` 옆 **`Upload CSV`**. 보이는 조건 = `New Recipe` 와 같음. RA 가 올릴 수 있는 것은 **매장 레시피만**.
+- `pages/RecipeManagement/RecipeImportModal.tsx`(공용 `Modal`) 3단계: ① 파일 고르기(.csv 1개 · 2MB · 500줄 · «내려받은 CSV 와 같은 칸이면 그대로» · «빈 칸은 바꾸지 않습니다» · 머리글만 있는 템플릿 · 최근 기록 10건 + Undo) ② 미리보기(DataTable: 줄 | 동작 | Recipe Name | Category | 재료 | 사유 · 동작 Create/Update/Unchanged/Skip/Error · 요약 · 못 찾은/겹친 재료 이름은 그 자리에서 선택 → `matching` 으로 preview 다시 · 버튼 «Import N recipes») ③ 결과(들어간 수 · 건너뛴 줄 · Undo).
+
+##### 2. CSV 형식 = 내려받기 13열(왕복)
+머리글 정규화(소문자·영숫자만). 모르는 열 무시. BOM 제거.
+
+| 칸 | 올릴 때 |
+|---|---|
+| Recipe Name | 필수 · trim |
+| Category | 같은 범위 `recipe_categories` 이름 매칭(대소문자 무시). 없으면 같은 트랜잭션에서 만든다(요약 «새 분류 N») |
+| Source | 무시. RA 에서 `Brand` 줄·브랜드 레시피 코드 → Skip |
+| Yield | `2 portion` → 2 / portion. 단위는 `utils/recipeCost.js` UNITS 만. 수량만이면 portion. 모르는 단위 Error |
+| Ingredients | `이름 수량 단위 (메모); …` — 끝 `(…)` 메모, 오른쪽에서 수량·단위를 뗀다. 단위가 UNITS 밖이면 재료 단위. 수량 없음·0·음수·같은 재료 두 번 → Error |
+| Summary · Instructions | ` \| ` → 줄바꿈 복원 |
+| Prep/Cook | 정수 분 |
+| Recipe Cost | 무시(서버 `resolveLineCost`) |
+| Suggested Price | 숫자(기호·쉼표 제거) |
+| Recipe Code | 판정 키 |
+| Active | Y/N·true/false·1/0. 빈 칸 = 새로 Y · 수정 유지 |
+
+**빈 칸 = 유지**(재료 포함). CSV 에 없는 필드(이미지·이모지·옵션·준비재료·description)는 바꾸지 않는다.
+
+##### 3. 새로/수정 판정 (범위 안 `owner_type` 레시피만)
+코드가 범위 안에 있음 → Update · 코드가 있는데 없음 → Create(코드 그대로, 20자 초과 Error) · 코드 없음 + 이름 1건 → Update(«이름으로 매칭») · 이름 2건+ → Error · 없음 → Create(`generateRecipeCode`) · 파일 안 같은 레시피 두 줄 → 둘 다 Error · 바뀐 것 없음 → Unchanged. 재료 비교는 (ingredient_id · `formatQuantity` 표기 · unit · notes) 집합 — 표기가 같으면 기존 원값 수량 유지.
+
+##### 4. 재료 이름 → 재료 (`services/recipeImport.js` `buildIngredientNameIndex`)
+선택기와 같은 후보만. BG: 브랜드 `ingredients` → GIT Stock Items(`shareToBrand`) → 브랜드 상품(`shareProductToBrand`). RA: 매장 `ingredients` → 부모 브랜드 `ingredients`. 2건 이상 = ambiguous · 0건 = not_found → 미리보기에서 고름. 안 고르면 그 줄 Error. ⛔ 재료 자동 생성 없음. 저장 전 `findDisallowedIngredientIds` 통과.
+
+##### 5. API (`routes/recipes.js`, `:recipeId` 라우트보다 위)
+`POST …/recipes/import/preview` · `POST …/recipes/import/execute` · `POST …/recipes/import/:batchId/undo` · `GET …/recipes/import/history` — 브랜드(`/api/brands/:brandId`, isBrandManager) · 매장(`/api/restaurants/:restaurantId`, checkRestaurantAccess + recipeGate).
+- execute 는 preview 와 같은 함수로 다시 평가 → Create/Update 만 **트랜잭션 하나**(분류·거울 생성 포함, prep 동기화 포함, PrepError → 전체 롤백). Update 전 스냅샷 → `import_history.undo_snapshot`.
+- undo: 이 범위 · completed 만 · 트랜잭션 하나. 만든 레시피 삭제(DELETE 라우트 순서) · 수정한 것 스냅샷 복원 · 배치 뒤에 또 고친 레시피는 건너뛰고 알림 · 만든 분류는 쓰는 레시피 없을 때만 삭제 · 거울 재료는 안 지움 · `status=undone`.
+- 기존 POST/PUT 은 안 건드림. 헬퍼 5개(`resolveStockItemsToMirrors`·`loadIngredientMap`·`loadRestaurantCostOverrides`·`withOverrideCost`·`findDisallowedIngredientIds`)는 `services/recipeIngredientResolve.js` 로 순수 이동.
+
+##### 6. DB — `import_history` (`scripts/migrate-import-history-recipes.js`, deploy 등록, 멱등)
+`import_type` 에 `'recipes'`(expandEnum) · `owner_type ENUM('restaurant','brand') DEFAULT 'restaurant'` · `brand_id INT NULL` · `restaurant_id NULL 허용` · `undo_snapshot LONGTEXT NULL`. 백필 없음.
+
+##### 7. 권한·검증
+Update 대상은 범위 일치 행만(IDOR). 이름 ≤255 · 코드 ≤20 · 가격 ≥0 · 시간 정수 ≥0. health-check: 왕복=전부 Unchanged · 섞인 파일 → 2건만 · undo 복원 · 트랜잭션 반증 · 다른 브랜드 코드 못 건드림 · 재료 자동 생성 0 · 익명 401.
+
+##### 8. 표 보기 — `viewMode: 'compact' | 'image' | 'table'`
+토글 `Compact | Image | Table`(localStorage `recipesViewMode`). 공용 DataTable 만. 데이터 = `filteredRecipes`. 머리글 정렬 Name·Category·Cost·Price(표 안 로컬 상태, 3번째 클릭 해제).
+칸: Recipe(썸네일·이름·코드, 클릭 = 상세) · Category · Source(RA 만) · Yield · Ingredients(`n items` + 앞 3개, title 에 전부) · Prep / Cook · Cost(`recipeTotalCost`) · Price · Active · Actions(카드와 같은 버튼 · 같은 조건).
+
+##### 9. 구현 메모 (2026-11-03 · Fable 게이트 PASS 93673cd1595b)
+- 파일: `services/recipeImport.js`(판정·저장·되돌리기 한 곳) · `services/recipeIngredientResolve.js`(routes/recipes.js 헬퍼 5개 순수 이동) · `pages/RecipeManagement/RecipeImportModal.tsx` · `RecipesTab.tsx`(머리글 = `RECIPE_CSV_HEADERS` 공용 상수 — 내려받기·올리기 같은 줄).
+- 설계와 다르게 한 것(Fable 수용): ① 표 칸 — 1366 화면에서 «관리» 칸이 밀려 «Yield · Time» 한 칸(시간은 둘째 줄) · Status 칸 대신 꺼진 레시피만 이름 아래 «Inactive» ② 재료 줄 단위 = `recipe_ingredients.unit` ENUM 8개(kg g L ml piece pack can bottle)만 — portion·tbsp 등은 오류 ③ 이미 거울이 있는 Stock Item·브랜드 상품을 골라도 그 거울로 받음 ④ 매장 분류 = 자기 → 부모 브랜드 활성, 없으면 자기 것 생성 ⑤ 새 코드는 트랜잭션 안에서 발급.
+- 옛 메뉴·주문 CSV(`routes/import.js`)의 기록·되돌리기는 레시피 묶음을 다루지 않는다(기록에서 뺌 · 되돌리기 400) — 그 경로는 id 배열만 알아 «되돌림» 표시만 찍고 진짜 되돌리기를 막았다(게이트 적발).
+- 모든 칸이 빈 줄은 버린다(엑셀 끝 빈 줄).
+- 회귀 안전망: health-check «레시피 CSV» 2건 · 고장주입 4/4(롤백→커밋 · 범위 조건 제거 · 수량 원값 비교 · 옛 되돌리기 방어 제거).
+
 #### 기타 기능
 
 #### 리스트 카드 표시 정보
@@ -501,6 +557,7 @@ Recipe: 토마토 수프 (Restaurant My Cost 적용)
 | 2026-02-24 | 4.0 | 레스토랑별 코스트 오버라이드 시스템 추가 - restaurant_ingredient_costs 테이블, effective_cost 로직, My Cost UI | Claude |
 | 2026-04-05 | 5.0 | 상품-재료 직접 연결 + 사이드바 재구성 + 역할별 확장 설계 | Claude |
 | 2026-04-05 | 5.1 | Phase 1~2 구현 완료 반영 — auto recipe 패턴, UI 통일, Brand General 적용 | Claude |
+| 2026-11-03 | 6.0 | 레시피 CSV 업로드(미리보기·되돌리기) + 표 보기 설계 | Fable |
 
 ---
 

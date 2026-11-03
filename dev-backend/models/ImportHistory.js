@@ -13,16 +13,26 @@ const ImportHistory = sequelize.define('ImportHistory', {
     unique: true,
     comment: 'Unique batch identifier for grouping imported records'
   },
+  // 브랜드 배치(레시피 CSV, 2026-11-03)도 담는다 — 옛 행은 owner_type 기본값 restaurant.
+  owner_type: {
+    type: DataTypes.ENUM('restaurant', 'brand'),
+    allowNull: false,
+    defaultValue: 'restaurant'
+  },
+  brand_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
   restaurant_id: {
     type: DataTypes.INTEGER,
-    allowNull: false
+    allowNull: true
   },
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: true
   },
   import_type: {
-    type: DataTypes.ENUM('categories', 'menu', 'options', 'orders'),
+    type: DataTypes.ENUM('categories', 'menu', 'options', 'orders', 'recipes'),
     allowNull: false
   },
   file_name: {
@@ -49,6 +59,11 @@ const ImportHistory = sequelize.define('ImportHistory', {
     type: DataTypes.TEXT,
     allowNull: true,
     comment: 'JSON array of imported record IDs for undo'
+  },
+  undo_snapshot: {
+    type: DataTypes.TEXT('long'),
+    allowNull: true,
+    comment: 'JSON — 수정한 레시피의 이전 모습 (레시피 CSV 되돌리기)'
   },
   status: {
     type: DataTypes.ENUM('completed', 'undone'),

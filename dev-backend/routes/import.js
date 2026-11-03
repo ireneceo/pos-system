@@ -629,7 +629,8 @@ router.get('/history', authenticateToken, checkRestaurantAccess, async (req, res
     if (!restaurantId) return res.status(400).json({ success: false, message: 'restaurant_id is required' });
 
     const history = await ImportHistory.findAll({
-      where: { restaurant_id: restaurantId },
+      // 레시피 CSV 배치(2026-11-03)는 레시피 화면이 따로 보여 주고 되돌린다 — 여기 섞지 않는다(undo_snapshot 도 안 내보냄)
+      where: { restaurant_id: restaurantId, import_type: { [Op.ne]: 'recipes' } },
       order: [['createdAt', 'DESC']],
       limit: 50
     });
@@ -654,6 +655,11 @@ router.delete('/undo/:batchId', authenticateToken, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Access denied to this import batch' });
     }
     if (history.status === 'undone') return res.status(400).json({ success: false, message: 'Already undone' });
+    // 레시피 CSV 배치는 여기서 되돌리지 않는다 — 이 경로는 id 배열만 알아서, 레시피 배치를 «되돌림» 표시만 하고
+    //   실제로는 아무것도 안 되돌려 진짜 되돌리기(레시피 화면)를 영영 막았다(2026-11-03 Fable 게이트 적발).
+    if (history.import_type === 'recipes') {
+      return res.status(400).json({ success: false, message: 'Recipe imports are undone from the recipe page' });
+    }
 
     const ids = JSON.parse(history.imported_ids || '[]');
     let deletedCount = 0;

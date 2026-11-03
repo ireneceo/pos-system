@@ -8772,6 +8772,159 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     finally { await cleanupBrandProbe(probeName); }
   });
 
+  // ── 레시피 CSV 업로드 (2026-11-03 Fable 설계 · docs/RECIPE_MANAGEMENT_SYSTEM.md «CSV 업로드 + 표 보기» §7) ─────
+  //   쓰기는 **데모 브랜드·데모 매장만** · 이름 접두어 ZZ-HC-RCPCSV- 로 멱등(앞뒤 정리).
+  //   계약: ① 내려받기 형식 그대로 올리면 전부 «변동 없음»(쓰기 0) ② 새로1+수정1+오류1 → 2건만 들어감
+  //         ③ 되돌리기 = 만든 것 삭제·고친 것 복원·status=undone·두 번 안 됨 ④ 중간 줄 실패 → 앞 줄도 안 들어감
+  //         ⑤ 다른 브랜드 레시피 코드로 못 건드림 ⑥ 재료 자동 생성 0 · 익명 401
+  const RCPCSV = 'ZZ-HC-RCPCSV-';
+  const RCPCSV_H = 'Recipe Name,Category,Source,Yield,Ingredients,Recipe Summary,Instructions,Prep Time (min),Cook Time (min),Recipe Cost,Suggested Price,Recipe Code,Active\n';
+  const rcpCsvQ = async (sql, rep = {}) => {
+    const { sequelize } = require('../config/database');
+    return sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+  };
+  async function rcpCsvCleanup() {
+    const { sequelize } = require('../config/database');
+    const recs = await rcpCsvQ(`SELECT id FROM recipes WHERE name LIKE '${RCPCSV}%'`);
+    const ids = recs.map(r => Number(r.id)).filter(Number.isInteger);
+    if (ids.length) {
+      try { await sequelize.query(`UPDATE ingredients SET source_recipe_id = NULL WHERE source_recipe_id IN (${ids.join(',')})`); } catch { /* 무참조 */ }
+      try { await sequelize.query(`DELETE FROM recipe_ingredients WHERE recipe_id IN (${ids.join(',')})`); } catch { /* 무참조 */ }
+      try { await sequelize.query(`DELETE FROM recipes WHERE id IN (${ids.join(',')})`); } catch { /* FK */ }
+    }
+    try { await sequelize.query(`DELETE FROM recipe_ingredients WHERE ingredient_id IN (SELECT id FROM (SELECT id FROM ingredients WHERE name LIKE '${RCPCSV}%') x)`); } catch { /* 무참조 */ }
+    try { await sequelize.query(`DELETE FROM ingredients WHERE name LIKE '${RCPCSV}%'`); } catch { /* FK */ }
+    try { await sequelize.query(`DELETE FROM recipe_categories WHERE name LIKE '${RCPCSV}%'`); } catch { /* FK */ }
+  }
+  async function rcpCsvUp(path, token, csv, matching) {
+    const fd = new FormData();
+    fd.append('file', new Blob(['﻿' + csv], { type: 'text/csv' }), 'hc.csv');
+    if (matching) fd.append('matching', JSON.stringify(matching));
+    const r = await fetch(BASE + path, { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: fd });
+    let body = null; try { body = await r.json(); } catch { /* 본문 없음 */ }
+    return { status: r.status, body };
+  }
+  /** 데모 브랜드(BG 소유 · is_demo) 하나 + 다른 owner 의 데모 브랜드 하나 */
+  async function rcpCsvBrands() {
+    if (!demoBgUserId) return null;
+    const own = (await rcpCsvQ('SELECT id FROM brands WHERE owner_id = :u AND is_demo = 1 ORDER BY id LIMIT 1', { u: demoBgUserId }))[0];
+    const other = (await rcpCsvQ('SELECT id FROM brands WHERE owner_id <> :u AND is_demo = 1 ORDER BY id LIMIT 1', { u: demoBgUserId }))[0];
+    return own ? { brandId: own.id, otherBrandId: other?.id || null } : null;
+  }
+  async function rcpCsvBrandIngredient(brandId, suffix, unit = 'g', cost = 10) {
+    const { Ingredient } = require('../models');
+    return Ingredient.create({ owner_type: 'brand', brand_id: brandId, restaurant_id: null, name: `${RCPCSV}${suffix}`, unit, base_quantity: 1, unit_cost: cost, category: 'other', min_stock: 0, current_stock: 0, is_active: true });
+  }
+
+  test('inventory', '레시피 CSV ①왕복=변동 없음 ②새로1+수정1+오류1→2건만 ③되돌리기 복원·두 번 안 됨 ⑥재료 자동 생성 0 · 익명 401', async () => {
+    const b = await rcpCsvBrands();
+    if (!b || !demoBgToken) { console.log(c.gray('      (건너뜀: 데모 브랜드 BG 없음)')); return false; }
+    const base = `/brands/${b.brandId}/recipes/import`;
+    await rcpCsvCleanup();
+    try {
+      const salt = await rcpCsvBrandIngredient(b.brandId, 'Salt', 'g', 5);
+      const sugar = await rcpCsvBrandIngredient(b.brandId, 'Sugar', 'g', 8);
+      // 기존 레시피를 화면 저장 API 로 만든다 — 그 뒤 «내려받기» 형식으로 다시 올린다
+      const c1 = await request('POST', `/brands/${b.brandId}/recipes`, {
+        name: `${RCPCSV}Base`, yield_amount: 2, yield_unit: 'portion', prep_time: 5, suggested_price: 9.5,
+        instructions_summary: 'line one\nline two', ingredients: [{ ingredient_id: salt.id, quantity: 12.3456, unit: 'g' }]
+      }, { Authorization: `Bearer ${demoBgToken}` });
+      const baseId = c1.body?.data?.id;
+      const baseCode = c1.body?.data?.code;
+      if (!baseId) { console.log(c.red(`      ↳ 기준 레시피 생성 ${c1.status}`)); return false; }
+      // ① 왕복 — 내려받기와 같은 표기(수량 소수 2자리 · 줄바꿈 « | »)
+      const roundTrip = RCPCSV_H + `"${RCPCSV}Base",,Brand,2 portion,${RCPCSV}Salt 12.35 g,line one | line two,,5,,0.06,9.5,${baseCode},Y\n`;
+      const p1 = await rcpCsvUp(`${base}/preview`, demoBgToken, roundTrip);
+      const s1 = p1.body?.data?.summary;
+      if (p1.status !== 200 || s1?.unchanged !== 1 || s1.create + s1.update + s1.error !== 0) { console.log(c.red(`      ↳ ① 왕복 ${p1.status} ${JSON.stringify(s1 || p1.body)}`)); return false; }
+
+      // ② 새로1 + 수정1 + 오류1(모르는 재료)
+      const before = (await rcpCsvQ(`SELECT (SELECT COUNT(*) FROM ingredients) i, (SELECT COUNT(*) FROM product_ingredients) p`))[0];
+      const mixed = RCPCSV_H + [
+        `"${RCPCSV}New",${RCPCSV}Cat,,1 portion,"${RCPCSV}Sugar 3 g (fine)",,step a | step b,,,,4,,Y`,
+        `"${RCPCSV}Base",,,,,,,,,,11,${baseCode},`,
+        `"${RCPCSV}Bad",,,,${RCPCSV}NoSuchThing 1 g,,,,,,,,`
+      ].join('\n') + '\n';
+      const ex = await rcpCsvUp(`${base}/execute`, demoBgToken, mixed);
+      const d = ex.body?.data;
+      if (ex.status !== 200 || d?.created !== 1 || d?.updated !== 1 || d?.not_imported?.length !== 1) { console.log(c.red(`      ↳ ② 실행 ${ex.status} ${JSON.stringify(ex.body)}`)); return false; }
+      const after = (await rcpCsvQ(`SELECT (SELECT COUNT(*) FROM ingredients) i, (SELECT COUNT(*) FROM product_ingredients) p`))[0];
+      if (Number(after.i) !== Number(before.i) || Number(after.p) !== Number(before.p)) { console.log(c.red(`      ↳ ⑥ 재료 생성됨 ${JSON.stringify(before)} → ${JSON.stringify(after)}`)); return false; }
+      const rows = await rcpCsvQ(`SELECT r.id, r.name, r.suggested_price, r.instructions_detail, c.name cat FROM recipes r LEFT JOIN recipe_categories c ON c.id = r.recipe_category_id WHERE r.name LIKE '${RCPCSV}%' ORDER BY r.id`);
+      const newRow = rows.find(r => r.name === `${RCPCSV}New`);
+      const baseRow = rows.find(r => r.id === baseId);
+      const lines = newRow ? await rcpCsvQ('SELECT ingredient_id, quantity, unit, notes FROM recipe_ingredients WHERE recipe_id = :r', { r: newRow.id }) : [];
+      const baseLines = await rcpCsvQ('SELECT quantity FROM recipe_ingredients WHERE recipe_id = :r', { r: baseId });
+      if (!newRow || newRow.cat !== `${RCPCSV}Cat` || newRow.instructions_detail !== 'step a\nstep b' || lines.length !== 1
+        || lines[0].ingredient_id !== sugar.id || lines[0].notes !== 'fine' || Number(baseRow?.suggested_price) !== 11
+        || Number(baseLines[0]?.quantity) !== 12.3456 || rows.some(r => r.name === `${RCPCSV}Bad`)) {
+        console.log(c.red(`      ↳ ② 저장 값 ${JSON.stringify({ rows, lines, baseLines })}`)); return false;
+      }
+
+      // ③ 되돌리기 — 옛 메뉴·주문 CSV 의 되돌리기로는 레시피 배치를 못 건드린다(«되돌림» 표시만 찍혀 진짜 되돌리기를 막던 구멍)
+      const legacy = await request('DELETE', `/import/undo/${d.batch_id}`, null, { Authorization: `Bearer ${demoBgToken}` });
+      const stillCompleted = (await rcpCsvQ('SELECT status FROM import_history WHERE batch_id = :b', { b: d.batch_id }))[0];
+      if (legacy.status === 200 || stillCompleted?.status !== 'completed') { console.log(c.red(`      ↳ ③ 옛 되돌리기 ${legacy.status} · ${stillCompleted?.status}`)); return false; }
+      const u1 = await request('POST', `${base}/${d.batch_id}/undo`, null, { Authorization: `Bearer ${demoBgToken}` });
+      const u2 = await request('POST', `${base}/${d.batch_id}/undo`, null, { Authorization: `Bearer ${demoBgToken}` });
+      const rest = await rcpCsvQ(`SELECT id, suggested_price FROM recipes WHERE name LIKE '${RCPCSV}%'`);
+      const cats = await rcpCsvQ(`SELECT id FROM recipe_categories WHERE name LIKE '${RCPCSV}%'`);
+      const hist = (await rcpCsvQ('SELECT status FROM import_history WHERE batch_id = :b', { b: d.batch_id }))[0];
+      if (u1.status !== 200 || u1.body?.data?.deleted !== 1 || u1.body?.data?.restored !== 1 || u2.status !== 400
+        || rest.length !== 1 || Number(rest[0].suggested_price) !== 9.5 || cats.length !== 0 || hist?.status !== 'undone') {
+        console.log(c.red(`      ↳ ③ 되돌리기 ${u1.status}/${u2.status} ${JSON.stringify({ u1: u1.body, rest, cats, hist })}`)); return false;
+      }
+      // 매장 묶음도 옛 메뉴·주문 CSV 되돌리기로는 못 건드린다(브랜드 묶음은 매장이 없어 원래 403 — 매장 묶음이 진짜 시험)
+      if (demoRaToken && demoRestId) {
+        const raBase = `/restaurants/${demoRestId}/recipes/import`;
+        const raEx = await rcpCsvUp(`${raBase}/execute`, demoRaToken, RCPCSV_H + `"${RCPCSV}RA",,,,,,,,,,2,,\n`);
+        const raBatch = raEx.body?.data?.batch_id;
+        const raLegacy = await request('DELETE', `/import/undo/${raBatch}`, null, { Authorization: `Bearer ${demoRaToken}` });
+        const raReal = await request('POST', `${raBase}/${raBatch}/undo`, null, { Authorization: `Bearer ${demoRaToken}` });
+        if (raEx.status !== 200 || raLegacy.status !== 400 || raReal.status !== 200 || raReal.body?.data?.deleted !== 1) {
+          console.log(c.red(`      ↳ ③ 매장 묶음 옛 되돌리기 ${raEx.status}/${raLegacy.status}/${raReal.status} ${JSON.stringify(raReal.body)}`)); return false;
+        }
+      }
+      // 익명 401
+      const anon = await rcpCsvUp(`${base}/preview`, null, roundTrip);
+      if (anon.status !== 401) { console.log(c.red(`      ↳ 익명 ${anon.status}`)); return false; }
+      return true;
+    } catch (e) { console.log(c.red(`      ↳ ${e.message}`)); return false; }
+    finally { await rcpCsvCleanup(); }
+  });
+
+  test('inventory', '레시피 CSV ⑤다른 브랜드 레시피 코드로 못 건드림 ④중간 줄 실패(준비 레시피 portion) → 앞 줄도 안 들어감', async () => {
+    const b = await rcpCsvBrands();
+    if (!b || !demoBgToken || !b.otherBrandId) { console.log(c.gray('      (건너뜀: 데모 브랜드 둘이 필요)')); return false; }
+    const { Recipe, RecipeIngredient } = require('../models');
+    const { syncPrepIngredientForRecipe } = require('../services/prepIngredientSync');
+    const base = `/brands/${b.brandId}/recipes/import`;
+    await rcpCsvCleanup();
+    try {
+      // ⑤ 다른 브랜드 레시피 — 같은 코드로 올려도 그쪽은 그대로, 이 브랜드에 새로 생긴다
+      const foreign = await Recipe.create({ owner_type: 'brand', brand_id: b.otherBrandId, restaurant_id: null, code: 'ZZHCX1', name: `${RCPCSV}Foreign`, suggested_price: 1, yield_amount: 1, yield_unit: 'portion', total_ingredient_cost: 0 });
+      const p = await rcpCsvUp(`${base}/preview`, demoBgToken, RCPCSV_H + `"${RCPCSV}Hijack",,,,,,,,,,99,ZZHCX1,\n`);
+      const r0 = p.body?.data?.rows?.[0];
+      const still = (await rcpCsvQ('SELECT name, suggested_price FROM recipes WHERE id = :i', { i: foreign.id }))[0];
+      if (p.status !== 200 || r0?.action !== 'Create' || still?.name !== `${RCPCSV}Foreign`) { console.log(c.red(`      ↳ ⑤ ${p.status} ${JSON.stringify(r0)}`)); return false; }
+
+      // ④ 준비 레시피(단위 g)를 portion 으로 바꾸는 줄이 실패하면, 앞의 새 레시피 줄도 들어가지 않는다
+      const ing = await rcpCsvBrandIngredient(b.brandId, 'Flour', 'g', 2);
+      const prep = await Recipe.create({ owner_type: 'brand', brand_id: b.brandId, restaurant_id: null, code: 'ZZHCP1', name: `${RCPCSV}Prep`, suggested_price: 0, yield_amount: 500, yield_unit: 'g', total_ingredient_cost: 0 });
+      await RecipeIngredient.create({ recipe_id: prep.id, ingredient_id: ing.id, quantity: 500, unit: 'g', cost: 1 });
+      await syncPrepIngredientForRecipe(prep, true);
+      const csv = RCPCSV_H + [`"${RCPCSV}TxFirst",,,,,,,,,,1,,`, `"${RCPCSV}Prep",,,1 portion,,,,,,,,ZZHCP1,`].join('\n') + '\n';
+      const pv = await rcpCsvUp(`${base}/preview`, demoBgToken, csv);
+      const ex = await rcpCsvUp(`${base}/execute`, demoBgToken, csv);
+      const first = await rcpCsvQ(`SELECT id FROM recipes WHERE name = '${RCPCSV}TxFirst'`);
+      const prepNow = (await rcpCsvQ('SELECT yield_unit FROM recipes WHERE id = :i', { i: prep.id }))[0];
+      if (pv.body?.data?.summary?.create !== 1 || pv.body?.data?.summary?.update !== 1 || ex.status !== 400 || first.length !== 0 || prepNow?.yield_unit !== 'g') {
+        console.log(c.red(`      ↳ ④ ${ex.status} ${JSON.stringify({ ex: ex.body, first, prepNow })}`)); return false;
+      }
+      return true;
+    } catch (e) { console.log(c.red(`      ↳ ${e.message}`)); return false; }
+    finally { await rcpCsvCleanup(); }
+  });
 }
 
 

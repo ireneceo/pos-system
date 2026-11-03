@@ -7,6 +7,7 @@ import { SearchInput, FilterSelect } from '../../components/Common/FilterCompone
 import ListControlsBar from '../../components/Common/ListControlsBar';
 import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
 import { useAuth } from '../../contexts/AuthContext';
+import { useStore } from '../../contexts/StoreContext';
 import { Modal as CommonModal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect, FormTextArea } from '../../components/UI';
 import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import SearchableSelect from '../../components/Common/SearchableSelect';
@@ -18,6 +19,11 @@ import { STANDARD_UNITS, calculateIngredientCost, calculateCostPerUnit, formatQu
 import { downloadCSV, toCSVRow, formatDateForFilename } from '../../utils/csvDownload';
 
 import { getAuthToken } from '../../utils/auth';
+import RecipeImportModal, { RECIPE_CSV_HEADERS, ImportPickerOption } from './RecipeImportModal';
+import {
+  DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell, DataTableHeaderCell,
+  DataTableStatus, DataTableActions, DataTableAmount, IconButton
+} from '../../components/UI';
 import { getErrorMessage } from '../../utils/apiError';
 interface RecipesTabProps {
   brandId: number | null;
@@ -949,10 +955,22 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const [searchTerm, setSearchTerm] = useState(getInitialSearchTerm);
   const [sortKey, setSortKey] = useState<SortKey>('newest');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [viewMode, setViewMode] = useState<'compact' | 'image'>(() => {
-    const saved = localStorage.getItem('recipesViewMode');
-    return saved === 'image' ? 'image' : 'compact';
+  // 보기 방식 — 카드 두 가지 + 표(가로 한 줄) (2026-11-03 Irene «레시피리스트가 가로형도 볼 수 있게»)
+  const [viewMode, setViewMode] = useState<'compact' | 'image' | 'table'>(() => {
+    try {
+      const saved = localStorage.getItem('recipesViewMode');
+      return saved === 'image' || saved === 'table' ? saved : 'compact';
+    } catch { return 'compact'; }
   });
+  const chooseView = (mode: 'compact' | 'image' | 'table') => {
+    setViewMode(mode);
+    try { localStorage.setItem('recipesViewMode', mode); } catch { /* 저장 안 돼도 보기는 바뀐다 */ }
+  };
+  // 표 보기 머리글 정렬 — 표 안에서만 쓰는 값(위 정렬 상자와 따로). 같은 칸 두 번 = 반대, 세 번 = 해제.
+  const [tableSort, setTableSort] = useState<{ key: 'name' | 'category' | 'cost' | 'price'; dir: 'asc' | 'desc' } | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  // 올리기 기록 날짜는 매장 시간대로(타임존 규칙). 브랜드 화면처럼 매장 설정이 없으면 공용 기본(KL)으로.
+  const { operationSettings } = useStore();
   const [linkedMenus, setLinkedMenus] = useState<Record<number, string[]>>({});
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -1668,13 +1686,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   // - 매장에서 받으면 브랜드 레시피와 매장 레시피가 한 파일에 섞이므로 «Source» 칸으로 구분한다.
   // - 셀 안 줄바꿈은 ` | ` 로 바꾼다 — 엑셀에서 칸이 밀리는 것을 막는다.
   const handleDownloadCSV = () => {
-    const headers = [
-      'Recipe Name', 'Category', 'Source', 'Yield',
-      'Ingredients', 'Recipe Summary', 'Instructions',
-      'Prep Time (min)', 'Cook Time (min)',
-      'Recipe Cost', 'Suggested Price',
-      'Recipe Code', 'Active'
-    ];
+    // 머리글은 올리기 창과 **같은 상수** — 내려받아 고쳐 올리는 왕복이 이 한 줄에 걸려 있다.
+    const headers = RECIPE_CSV_HEADERS;
     // 숫자는 통화기호 없이 숫자만 — 엑셀에서 바로 계산되게.
     const num = (v: any) => (v === null || v === undefined || v === '' ? '' : Number(v));
     // 줄바꿈이 셀을 깨뜨리지 않게 한 줄로 편다.
@@ -1721,6 +1734,152 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     downloadCSV(lines.join('\n'), `recipes_${scope}_${formatDateForFilename(new Date())}.csv`);
   };
 
+  // ── CSV 올리기 (2026-11-03 Fable 설계 — docs/RECIPE_MANAGEMENT_SYSTEM.md «CSV 업로드 + 표 보기») ──
+  //   보이는 조건 = 이 화면이 레시피를 읽어 오는 조건과 같다(브랜드 역할+브랜드 / 매장 관리자+매장).
+  //   매장은 **매장 레시피만** 올린다 — 브랜드 레시피 줄은 서버가 건너뛴다.
+  const isBrandRoleUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
+  const importApiBase = isBrandRoleUser && brandId
+    ? `/api/brands/${brandId}/recipes/import`
+    : (isRestaurantAdmin && effectiveRestaurantId ? `/api/restaurants/${effectiveRestaurantId}/recipes/import` : null);
+  // 미리보기에서 못 찾은 재료를 고를 목록 = 레시피 폼의 재료 선택기와 **같은 목록**(pickerIngredients)
+  const importPickerOptions: ImportPickerOption[] = React.useMemo(() => (pickerIngredients || []).map((x: any) => {
+    if (x.__source === 'stockItem') return { kind: 'stock_item' as const, id: Number(x.product_ingredient_id), name: x.name, unit: x.unit, source: t('recipes:recipesTab.srcStockItem') as string };
+    if (x.__source === 'product') return { kind: 'brand_product' as const, id: Number(x.brand_product_id), name: x.name, unit: x.unit, source: t('recipes:recipesTab.srcProduct') as string };
+    return {
+      kind: 'ingredient' as const, id: Number(x.id), name: x.name, unit: x.unit,
+      source: (x.owner_type === 'brand' ? t('recipes:recipesTab.srcBrandIngredient') : t('recipes:recipeTable.restaurantIngredient', 'Restaurant ingredient')) as string
+    };
+  }).filter((o: ImportPickerOption) => Number.isFinite(o.id) && o.name), [pickerIngredients, t]);
+
+  // ── 표(가로) 보기 — 데이터·순서는 카드와 같은 filteredRecipes(검색·분류·정렬 그대로 = CSV 와 같은 집합) ──
+  const toggleTableSort = (key: 'name' | 'category' | 'cost' | 'price') => {
+    setTableSort(prev => (!prev || prev.key !== key) ? { key, dir: 'asc' } : prev.dir === 'asc' ? { key, dir: 'desc' } : null);
+  };
+  const tableRows = (() => {
+    if (!tableSort) return filteredRecipes;
+    const val = (r: any) => tableSort.key === 'name' ? String(r.name || '').toLowerCase()
+      : tableSort.key === 'category' ? String(r.recipeCategory?.name || r.category || '').toLowerCase()
+      : tableSort.key === 'cost' ? recipeTotalCost(r)
+      : Number(r.suggested_price || 0);
+    const sorted = [...filteredRecipes].sort((a: any, b: any) => {
+      const x = val(a), y = val(b);
+      return x < y ? -1 : x > y ? 1 : 0;
+    });
+    return tableSort.dir === 'desc' ? sorted.reverse() : sorted;
+  })();
+  const sortMark = (key: string) => tableSort?.key === key ? (tableSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
+  const ingredientText = (ri: any) => {
+    const ing: any = resolveIng(ri);
+    const name = ing?.name || `Ingredient #${ri.ingredient_id}`;
+    const hasQty = ri.quantity !== null && ri.quantity !== undefined && ri.quantity !== '';
+    return [name, hasQty ? formatQuantity(ri.quantity) : '', ri.unit || ing?.unit || ''].filter(Boolean).join(' ');
+  };
+  const svg = (path: React.ReactNode) => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{path}</svg>
+  );
+  // 칸 여백 — 공용 기본(16px)보다 좁게. 칸이 많은 표라 1366 화면에서 «관리» 칸이 밀려나지 않게(2026-11-03 실측).
+  const pad: React.CSSProperties = { paddingLeft: 10, paddingRight: 10 };
+  const renderRecipeTable = () => (
+    <DataTableContainer>
+      <DataTable>
+        <DataTableHead>
+          <tr>
+            <DataTableHeaderCell align="left" style={{ ...pad, cursor: 'pointer' }} onClick={() => toggleTableSort('name')}>{t('recipes:recipeTable.recipe', 'Recipe')}{sortMark('name')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="left" style={{ ...pad, cursor: 'pointer' }} onClick={() => toggleTableSort('category')}>{t('recipes:recipeTable.category', 'Category')}{sortMark('category')}</DataTableHeaderCell>
+            {isRestaurantAdmin && <DataTableHeaderCell style={pad}>{t('recipes:recipeTable.source', 'Source')}</DataTableHeaderCell>}
+            <DataTableHeaderCell style={pad}>{t('recipes:recipeTable.yieldTime', 'Yield · Time')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="left" style={pad}>{t('recipes:recipeTable.ingredients', 'Ingredients')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="right" style={{ ...pad, cursor: 'pointer' }} onClick={() => toggleTableSort('cost')}>{t('recipes:recipeTable.cost', 'Cost')}{sortMark('cost')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="right" style={{ ...pad, cursor: 'pointer' }} onClick={() => toggleTableSort('price')}>{t('recipes:recipeTable.price', 'Price')}{sortMark('price')}</DataTableHeaderCell>
+            <DataTableHeaderCell isActions style={pad}>{t('recipes:recipeTable.actions', 'Actions')}</DataTableHeaderCell>
+          </tr>
+        </DataTableHead>
+        <tbody>
+          {tableRows.map((recipe: any) => {
+            const lines = recipe.recipeIngredients || [];
+            const allText = lines.map(ingredientText).join('; ');
+            const firstNames = lines.slice(0, 3).map((ri: any) => resolveIng(ri)?.name || `Ingredient #${ri.ingredient_id}`).join(', ');
+            const yieldText = [recipe.yield_amount != null && recipe.yield_amount !== '' ? formatQuantity(recipe.yield_amount) : '', recipe.yield_unit || ''].filter(Boolean).join(' ');
+            const readOnly = isItemReadOnly(recipe);
+            return (
+              <DataTableRow key={`${recipe.owner_type}-${recipe.id}`} style={{ opacity: recipe.is_active ? 1 : 0.6 }}>
+                <DataTableCell align="left" style={{ ...pad, minWidth: 150 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => handleOpenModal(recipe, true)}>
+                    <div style={{ width: 28, height: 28, borderRadius: 6, background: '#F1F4F8', overflow: 'hidden', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+                      {recipe.image ? <img src={recipe.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (recipe.emoji || '')}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600 }}>{recipe.name}</div>
+                      <div style={{ fontSize: 12, color: '#6B7280' }}>
+                        {[recipe.code, recipe.is_prep_ingredient ? t('recipes:prep.title', '준비 재료') : ''].filter(Boolean).join(' · ')}
+                      </div>
+                      {/* 상태는 꺼진 레시피만 표시한다(켜짐이 기본) — 칸 하나를 아껴 «관리» 버튼이 1366 화면 안에 들어오게 */}
+                      {!recipe.is_active && (
+                        <DataTableStatus variant="default" style={{ marginTop: 4, padding: '2px 8px', fontSize: 11 }}>{t('recipes:recipeTable.inactive', 'Inactive')}</DataTableStatus>
+                      )}
+                    </div>
+                  </div>
+                </DataTableCell>
+                <DataTableCell align="left" style={{ ...pad, maxWidth: 110, overflowWrap: 'anywhere' }}>{recipe.recipeCategory?.name || recipe.category || '—'}</DataTableCell>
+                {isRestaurantAdmin && (
+                  <DataTableCell style={pad}>
+                    <DataTableStatus variant={recipe.owner_type === 'brand' ? 'info' : 'default'}>
+                      {recipe.owner_type === 'brand' ? t('recipes:recipeTable.brand', 'Brand') : t('recipes:recipeTable.restaurant', 'Restaurant')}
+                    </DataTableStatus>
+                  </DataTableCell>
+                )}
+                <DataTableCell style={{ ...pad, whiteSpace: 'nowrap' }}>
+                  <div>{yieldText || '—'}</div>
+                  {(recipe.prep_time || recipe.cook_time) ? (
+                    <div style={{ fontSize: 12, color: '#6B7280' }} title={t('recipes:recipeTable.prepCook', 'Prep / Cook') as string}>
+                      {`${recipe.prep_time || 0} / ${recipe.cook_time || 0} min`}
+                    </div>
+                  ) : null}
+                </DataTableCell>
+                <DataTableCell align="left" title={allText} style={pad}>
+                  {lines.length === 0 ? (
+                    <span style={{ color: '#B45309', fontSize: 13 }}>{t('recipes:recipeTable.noIngredients', 'No ingredients')}</span>
+                  ) : (
+                    <div style={{ maxWidth: 150 }}>
+                      <div style={{ fontSize: 12, color: '#6B7280' }}>{t('recipes:recipeTable.items', '{{count}} items', { count: lines.length })}</div>
+                      <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{firstNames}{lines.length > 3 ? ', …' : ''}</div>
+                    </div>
+                  )}
+                </DataTableCell>
+                <DataTableCell align="right" style={{ ...pad, whiteSpace: 'nowrap' }}><DataTableAmount>{formatCurrency(recipeTotalCost(recipe), selectedCurrency)}</DataTableAmount></DataTableCell>
+                <DataTableCell align="right" style={{ ...pad, whiteSpace: 'nowrap' }}>
+                  {recipe.is_prep_ingredient ? '—' : <DataTableAmount>{formatCurrency(Number(recipe.suggested_price || 0), selectedCurrency)}</DataTableAmount>}
+                </DataTableCell>
+                <DataTableCell style={pad}>
+                  <DataTableActions style={{ flexWrap: 'nowrap' }}>
+                    <IconButton type="button" title={t('recipes:recipeTable.viewRecipe', 'Recipe') as string} aria-label={t('recipes:recipeTable.viewRecipe', 'Recipe') as string} onClick={() => handleOpenRecipeModal(recipe)}>
+                      {svg(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="14" y2="17" /></>)}
+                    </IconButton>
+                    {!readOnly && (
+                      <>
+                        <IconButton type="button" title={t('recipes:recipeTable.edit', 'Edit') as string} aria-label={t('recipes:recipeTable.edit', 'Edit') as string} onClick={() => handleOpenModal(recipe, false)}>
+                          {svg(<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />)}
+                        </IconButton>
+                        {recipe.owner_type === 'brand' && (
+                          <IconButton type="button" title={t('recipes:recipesTab.copyToBrand', 'Copy to another brand') as string} aria-label={t('recipes:recipesTab.copyToBrand', 'Copy to another brand') as string} onClick={() => setCopyTarget({ recipeId: recipe.id, recipeName: recipe.name })}>
+                            {svg(<><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>)}
+                          </IconButton>
+                        )}
+                        <IconButton type="button" title={t('recipes:recipeTable.delete', 'Delete') as string} aria-label={t('recipes:recipeTable.delete', 'Delete') as string} onClick={() => handleDeleteClick(recipe)}>
+                          {svg(<><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>)}
+                        </IconButton>
+                      </>
+                    )}
+                  </DataTableActions>
+                </DataTableCell>
+              </DataTableRow>
+            );
+          })}
+        </tbody>
+      </DataTable>
+    </DataTableContainer>
+  );
+
   // Get unique categories from recipeCategories list
   const filterCategories = [
     { id: 'all', name: 'All Categories' },
@@ -1752,18 +1911,27 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           ))}
         </FilterSelect>
         <SortDropdown value={sortKey} onChange={setSortKey} options={['newest','oldest','name_asc','name_desc','category']} />
-        <div data-controls-trailing>
+        {/* 좁은 화면에서 버튼이 오른쪽 밖으로 밀리지 않게 이 묶음만 줄바꿈(공용 툴바는 그대로) */}
+        <div data-controls-trailing style={{ flexWrap: 'wrap', flexShrink: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', background: '#F1F4F8', borderRadius: '6px', padding: '2px' }}>
-            <button onClick={() => { setViewMode('compact'); localStorage.setItem('recipesViewMode', 'compact'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+            <button onClick={() => chooseView('compact')} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Compact
             </button>
-            <button onClick={() => { setViewMode('image'); localStorage.setItem('recipesViewMode', 'image'); }} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+            <button onClick={() => chooseView('image')} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Image
+            </button>
+            <button onClick={() => chooseView('table')} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'table' ? 'white' : 'transparent', color: viewMode === 'table' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+              {t('recipes:recipeTable.viewTable', 'Table')}
             </button>
           </div>
           <ThemedButton variant="outline" onClick={handleDownloadCSV}>
             Download CSV
           </ThemedButton>
+          {importApiBase && (
+            <ThemedButton variant="outline" onClick={() => setShowImport(true)}>
+              {t('recipes:recipeImport.uploadBtn', 'Upload CSV')}
+            </ThemedButton>
+          )}
           <ThemedButton variant="primary" onClick={() => handleOpenModal(null)}>
             New Recipe
           </ThemedButton>
@@ -1791,7 +1959,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </ThemedButton>
           )}
         </EmptyState>
-      ) : (
+      ) : viewMode === 'table' ? renderRecipeTable() : (
         <RecipesGrid>
           {filteredRecipes.map(recipe => (
             <RecipeCard
@@ -1984,6 +2152,17 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </RecipeCard>
           ))}
         </RecipesGrid>
+      )}
+
+      {importApiBase && (
+        <RecipeImportModal
+          isOpen={showImport}
+          onClose={() => setShowImport(false)}
+          apiBase={importApiBase}
+          pickerOptions={importPickerOptions}
+          onChanged={() => setDataReloadKey(k => k + 1)}
+          timeZone={operationSettings?.timeZone}
+        />
       )}
 
       {/* Modal for create/edit/view */}
