@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getAuthToken } from '../../../utils/auth';
+import type { OrderWindows } from '../../../utils/orderCutoff';
 
 export interface SuggestionRow {
   ingredient_id: number;
@@ -15,7 +16,30 @@ export interface SuggestionRow {
   unit_price: number;
   /** 브랜드(BG) 본사 재고아이템 줄이면 그 id — 이때 ingredient_id 자리도 같은 id(목록 키)라 보내는 칸만 다르다 (2026-10-09 Fable C-1 #5) */
   product_ingredient_id?: number | null;
+  // ── 재고 전망 (2026-11-03 Fable 설계 .claude/fable-design-20261103-stock-foresight-oneclick-po.md §4-1) ──
+  /** out = 품절(약속한 양을 빼면 없음) · order_now = 지금 발주 · soon = 7일 안에 발주점 */
+  status?: ForesightStatus;
+  days_of_cover?: number | null;
+  daily_usage?: number;
+  usage_source?: 'ledger' | 'manual' | 'none';
+  /** BG: 매장이 이미 주문해 둔 미출고 양(재고 단위) */
+  committed?: number;
+  available?: number;
+  on_order?: number;
+  /** 재고 단위 제안 — suggested_qty(주문 단위)와 다름 */
+  suggested_stock_qty?: number;
+  /** 주문 단위 수량(올림 + 판매자 최소주문) — 연결 없으면 null */
+  order_qty?: number | null;
+  order_unit?: string | null;
+  unit_conversion?: number | null;
+  min_order_qty?: number | null;
+  delivery_terms?: DeliveryTerms | null;
+  order_windows?: OrderWindows | null;
 }
+
+export type ForesightStatus = 'out' | 'order_now' | 'soon';
+export interface DeliveryTerms { min_order_amount: number | null; delivery_fee: number | null; currency: string | null }
+export interface ForesightSummary { out: number; order_now: number; soon: number; ok: number; no_basis: number; unlinked: number; total: number }
 
 export interface BulkOrderItem extends SuggestionRow {
   quantity: number;
@@ -40,7 +64,14 @@ export function useBulkOrder() {
   const [bulkItems, setBulkItems] = useState<BulkOrderItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resultPos, setResultPos] = useState<Array<{ id: number; po_number: string; seller_name: string | null; status: string }> | null>(null);
+  const [resultPos, setResultPos] = useState<Array<{ id: number; po_number: string; seller_name: string | null; status: string; merged?: boolean }> | null>(null);
+  const [summary, setSummary] = useState<ForesightSummary | null>(null);
+  const [noBasisIds, setNoBasisIds] = useState<Set<number>>(new Set());
+  const [computedAt, setComputedAt] = useState<string | null>(null);
+  /** 모달 맨 아래 «연결 필요» 묶음 — 보내지 않는다(소리 없이 빼지 않고 보여 준다 §5-3) */
+  const [unlinkedItems, setUnlinkedItems] = useState<SuggestionRow[]>([]);
+  /** 서버 400 BELOW_MIN_ORDER 의 줄 목록 — 모달이 minOrderViolationText 로 푼다 */
+  const [errorViolations, setErrorViolations] = useState<any[] | null>(null);
 
   const loadSuggestions = useCallback(async () => {
     setLoadingSuggestions(true);
@@ -52,9 +83,14 @@ export function useBulkOrder() {
       const data = await res.json();
       if (!res.ok || !data.success) {
         setSuggestionsById(new Map());
+        setSummary(null);
         return;
       }
       const groups = data.data?.groups || [];
+      setSummary(data.data?.summary || null);
+      setNoBasisIds(new Set<number>((data.data?.no_basis_ids || []).map((x: any) => Number(x))));
+      setComputedAt(data.data?.computed_at || null);
+      const num = (v: any) => (v === null || v === undefined || v === '' ? null : Number(v));
       const map = new Map<number, SuggestionRow>();
       for (const g of groups) {
         for (const it of g.items || []) {
@@ -70,7 +106,21 @@ export function useBulkOrder() {
             seller_name: g.seller_name,
             ingredient_seller_product_id: it.seller_source?.id || null,
             unit_price: parseFloat(it.seller_source?.unit_price) || 0,
-            product_ingredient_id: it.product_ingredient_id ?? null
+            product_ingredient_id: it.product_ingredient_id ?? null,
+            status: it.status,
+            days_of_cover: num(it.days_of_cover),
+            daily_usage: Number(it.daily_usage) || 0,
+            usage_source: it.usage_source,
+            committed: Number(it.committed) || 0,
+            available: Number(it.available) || 0,
+            on_order: Number(it.on_order) || 0,
+            suggested_stock_qty: Number(it.suggested_stock_qty) || 0,
+            order_qty: num(it.order_qty),
+            order_unit: it.order_unit ?? null,
+            unit_conversion: num(it.unit_conversion),
+            min_order_qty: num(it.min_order_qty),
+            delivery_terms: g.delivery_terms || null,
+            order_windows: g.order_windows || null
           });
         }
       }
@@ -102,20 +152,41 @@ export function useBulkOrder() {
     setSelectedIds(new Set(Array.from(suggestionsById.keys())));
   }, [suggestionsById]);
 
-  const openBulk = useCallback(() => {
-    const ids = Array.from(selectedIds);
+  // 수량 = 주문 단위 order_qty(올림 + 판매자 최소주문). 옛 응답이면 suggested_qty.
+  const qtyOf = (s: SuggestionRow) => (s.order_qty != null && s.order_qty > 0 ? s.order_qty : (s.suggested_qty || 1));
+
+  const openWith = useCallback((ids: number[], unlinked: SuggestionRow[]) => {
     const items: BulkOrderItem[] = [];
     for (const id of ids) {
       const sugg = suggestionsById.get(id);
-      if (sugg && sugg.seller_type) {
-        items.push({ ...sugg, quantity: sugg.suggested_qty || 1 });
-      }
+      if (sugg && sugg.seller_type) items.push({ ...sugg, quantity: qtyOf(sugg) });
     }
     setBulkItems(items);
+    setUnlinkedItems(unlinked);
     setError(null);
+    setErrorViolations(null);
     setResultPos(null);
     setShowBulkModal(true);
-  }, [selectedIds, suggestionsById]);
+  }, [suggestionsById]);
+
+  const openBulk = useCallback(() => {
+    const ids = Array.from(selectedIds);
+    // 체크는 연결 있는 줄만 가능하다 — 체크한 것 중 연결 없는 것이 있으면(옛 선택) 빼지 말고 보여 준다
+    const unlinked = ids.map(id => suggestionsById.get(id)).filter((s): s is SuggestionRow => !!s && !s.seller_type);
+    openWith(ids, unlinked);
+  }, [selectedIds, suggestionsById, openWith]);
+
+  /**
+   * «필요한 것 담기» — 품절·지금 발주(+ 켜면 곧 부족) 중 판매처 연결 있는 것을 전부 골라 모달을 연다.
+   *   연결 없는 것은 모달 맨 아래 «연결 필요» 로 보여 주고 보내지 않는다. 확인 없이 보내지는 않는다(모달 Send).
+   */
+  const openNeeded = useCallback((includeSoon: boolean) => {
+    const want = (s: SuggestionRow) => s.status === 'out' || s.status === 'order_now' || (includeSoon && s.status === 'soon');
+    const rows = Array.from(suggestionsById.values()).filter(want);
+    const linked = rows.filter(s => s.seller_type && qtyOf(s) > 0).map(s => s.ingredient_id);
+    setSelectedIds(new Set(linked));
+    openWith(linked, rows.filter(s => !s.seller_type));
+  }, [suggestionsById, openWith]);
 
   const updateBulkItem = useCallback((id: number, patch: Partial<BulkOrderItem>) => {
     setBulkItems(prev => prev.map(it => it.ingredient_id === id ? { ...it, ...patch } : it));
@@ -174,6 +245,7 @@ export function useBulkOrder() {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
+        setErrorViolations(data?.code === 'BELOW_MIN_ORDER' ? (data?.data?.violations || []) : null);
         setError(data?.message || 'Failed to send bulk order');
         return;
       }
@@ -181,7 +253,7 @@ export function useBulkOrder() {
         const sellerKey = `${o.seller_type}:${o.seller_entity_id || 0}`;
         const groupItems = groupsMap.get(sellerKey) || [];
         const sellerName = groupItems[0]?.seller_name || null;
-        return { id: o.id, po_number: o.po_number, status: o.status, seller_name: sellerName };
+        return { id: o.id, po_number: o.po_number, status: o.status, seller_name: sellerName, merged: !!o.merged };
       });
       setResultPos(orders);
       // Selection is cleared so user can immediately do another batch
@@ -199,6 +271,12 @@ export function useBulkOrder() {
   return {
     // Suggestions data
     suggestionsById,
+    summary,
+    noBasisIds,
+    computedAt,
+    unlinkedItems,
+    errorViolations,
+    openNeeded,
     loadingSuggestions,
     loadSuggestions,
     // Selection

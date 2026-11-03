@@ -102,6 +102,8 @@ interface Props {
 
   // Sprint 5: bulk selection + suggestions
   suggestionsById?: Map<number, SuggestionRow>;
+  /** 발주 전망 «기준 없음» 품목 id (서버 summary 와 같은 판정) */
+  noBasisIds?: Set<number>;
   selectedIds?: Set<number>;
   onToggleSelect?: (id: number) => void;
 }
@@ -136,6 +138,7 @@ const StockListSection: React.FC<Props> = ({
   showUntracked,
   setShowUntracked,
   suggestionsById,
+  noBasisIds,
   selectedIds,
   onToggleSelect,
 }) => {
@@ -154,11 +157,21 @@ const StockListSection: React.FC<Props> = ({
   const matchesStatusFilter = (item: { stock_status: string; current_stock: number }) =>
     statusFilter === 'all' ? true
       : statusFilter === 'zero' ? (item.current_stock <= 0)
+      : statusFilter.startsWith('fs_') ? false   // 발주 전망 단계 — 재료 목록에서만(아래 matchesForesight)
       : item.stock_status === statusFilter;
+
+  // 발주 전망 단계 필터(띠의 네 칸) — 서버 제안 행의 status / 기준 없음 id 로 가른다
+  const matchesForesight = (id: number): boolean | null => {
+    if (!statusFilter.startsWith('fs_')) return null;
+    if (statusFilter === 'fs_no_basis') return !!noBasisIds?.has(id);
+    const sg = suggestionsById?.get(id);
+    return !!sg && `fs_${sg.status}` === statusFilter;
+  };
 
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = matchesStatusFilter(item);
+    const fs = matchesForesight(item.id);
+    const matchesStatus = fs !== null ? fs : matchesStatusFilter(item);
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory;
   });
@@ -200,6 +213,10 @@ const StockListSection: React.FC<Props> = ({
           <option value="normal">Normal</option>
           <option value="low_stock">Low Stock</option>
           <option value="out_of_stock">Out of Stock</option>
+          <option value="fs_out">{t('inventory:foresight.out', "Out — can't cover orders")}</option>
+          <option value="fs_order_now">{t('inventory:foresight.orderNow', 'Order now')}</option>
+          <option value="fs_soon">{t('inventory:foresight.soon', 'Running low within 7 days')}</option>
+          <option value="fs_no_basis">{t('inventory:foresight.noBasis', 'No basis to judge')}</option>
         </FilterSelect>
         <Button
           variant="primary"
@@ -509,16 +526,33 @@ const StockListSection: React.FC<Props> = ({
                           )}
                           {item.code && <StockItemCode>{item.code}</StockItemCode>}
                           <IngredientMeta>
-                            {item.category} • {(parseFloat(String(item.avg_daily_usage)) || 0).toFixed(2)} {item.unit}/day
+                            {item.category} • {(sugg && sugg.daily_usage !== undefined ? sugg.daily_usage : (parseFloat(String(item.avg_daily_usage)) || 0)).toFixed(2)} {item.unit}/day
+                            {sugg && sugg.usage_source === 'ledger' && <> ({t('inventory:foresight.last28d', '28d')})</>}
                           </IngredientMeta>
+                          {sugg && !!sugg.committed && (
+                            <IngredientMeta>
+                              {t('inventory:foresight.committedLine', { defaultValue: 'Store orders waiting: {{qty}} {{unit}}', qty: sugg.committed, unit: item.unit })}
+                            </IngredientMeta>
+                          )}
                         </StockItemDetails>
                       </StockItemInfo>
                     </MobileValue>
                     <MobileValue>
                       <MobileLabel>Status</MobileLabel>
-                      <StatusBadge status={item.stock_status}>
-                        {getStatusLabel(item.stock_status)}
-                      </StatusBadge>
+                      {sugg && sugg.status ? (
+                        // 발주 전망 단계로 덮어쓴다 — 제안 없는 행은 종전 stock_status (§5-2)
+                        <StatusBadge status={sugg.status === 'soon' ? 'low_stock' : 'out_of_stock'}>
+                          {sugg.status === 'out' ? t('inventory:foresight.badgeOut', 'Out')
+                            : sugg.status === 'order_now' ? t('inventory:foresight.badgeOrderNow', 'Order now')
+                            : sugg.days_of_cover != null
+                              ? t('inventory:foresight.badgeSoonDays', { defaultValue: 'Soon ({{n}}d)', n: sugg.days_of_cover })
+                              : t('inventory:foresight.badgeSoon', 'Soon')}
+                        </StatusBadge>
+                      ) : (
+                        <StatusBadge status={item.stock_status}>
+                          {getStatusLabel(item.stock_status)}
+                        </StatusBadge>
+                      )}
                     </MobileValue>
                     <MobileValue>
                       <MobileLabel>Current Stock</MobileLabel>
@@ -575,7 +609,7 @@ const StockListSection: React.FC<Props> = ({
                           </div>
                           <div style={{ display: 'inline-block', marginTop: 2, fontSize: 10, padding: '1px 6px',
                             background: '#FEF3C7', color: '#92400E', borderRadius: 999, fontWeight: 600 }}>
-                            ↓ {sugg.suggested_qty} {sugg.unit}
+                            ↓ {sugg.suggested_qty} {sugg.order_unit || sugg.unit}
                           </div>
                         </div>
                       ) : (item.seller_source_name || item.supplier_name) ? (

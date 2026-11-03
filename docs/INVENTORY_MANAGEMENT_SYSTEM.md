@@ -354,6 +354,8 @@ CREATE TABLE stock_alerts (
 **발주 제안(suggestions)은 "재고가 부족한가"만 답한다.** `min_stock > 0 && 현재고 < min_stock`
 인 것만 담기 때문에, **최소치를 정하지 않은 품목은 공급처가 멀쩡히 연결돼 있어도 여기에 안 나온다.**
 
+> 2026-11-03 갱신: 발주 제안(`GET /api/purchase-orders/suggestions`)은 이제 `min_stock` 필터 없이 **발주점 단일 공식**(`utils/reorderMath`)으로 판단한다 — 아래 «발주 전망» 절. 그래도 «기준 없음»(최소치·사용량 둘 다 없음) 품목은 제안에 안 나온다. 연결 여부와 부족 여부를 나누는 원칙은 그대로다.
+
 재고 화면이 이걸 "공급처가 연결됐는가"의 근거로 쓴 적이 있었고(2026-08-24~25),
 그 결과 **운영 브랜드 285건·매장 77건이 "No supplier linked" 로 표시되며 주문 버튼이 사라졌다.**
 게다가 이 라우트는 `ingredients`/`ingredient_id` 만 보므로 BG 재고아이템
@@ -371,6 +373,15 @@ CREATE TABLE stock_alerts (
 - **일괄발주 체크박스**(부족분 담기) = 발주 제안 유무 (`canBulkSelect`)
 로 분리돼 있다. 이 둘을 다시 한 값으로 합치지 말 것.
 회귀 스펙: `dev-frontend/e2e/inventory-seller-link.spec.js`
+
+### 발주 전망 · 누르면 끝나는 발주 (2026-11-03 · Fable 설계 `.claude/fable-design-20261103-stock-foresight-oneclick-po.md`)
+
+- **한 공식:** `GET /api/purchase-orders/suggestions`(재고 화면 일괄 발주·발주 목록 제안 패널) = `utils/reorderMath` (`compute` — 대시보드 `reorder-suggestions` 와 같은 식). 매장·브랜드 두 분기가 `buildSuggestionRows` 하나를 쓴다.
+- **입력:** 하루 사용량(장부 28일 · 7일 미만이면 수동 `manual_daily_usage`) · 리드타임 `max(품목, 우선 연결)` · 오는 중 발주 · **브랜드(BG)는 «약속한 양»** = 매장이 브랜드에 주문해 아직 안 보낸 줄(`OPEN_OUTBOUND_STATUSES`, `shipped_at IS NULL`)을 재고아이템 단위로 환산(출고 차감과 같은 갈래)해 가용 재고에서 뺀다.
+- **단계:** `out`(가용 ≤ 0 · 약속 초과면 기준 없어도) · `order_now`(발주점 이하) · `soon`(7일 안에 발주점) · `ok` · `no_basis`. 목록에는 out·order_now·soon 만, ok·no_basis 는 `summary` 수(+ `no_basis_ids`)만.
+- **주문 수량:** `orderQtyFor` = 재고 단위 제안 → 주문 단위 **올림** → 판매자 **최소주문수량**(`minOrderRulesByMapping`, 값 1 = 미정) 올려 맞춤. `suggested_qty` = 주문 단위 수량(이전엔 재고 단위라 conv≠1 이면 단위가 틀렸다). 무료배송 기준금액은 창에서 **안내만**(자동으로 채우지 않는다).
+- **화면:** 재고 화면 위 «Reorder outlook» 띠(4칸 · 누르면 목록 필터) · «Add what's needed» = out+order_now(토글로 soon) 중 연결 있는 것 → 판매자별 창 → Send(확인 없이 보내지 않음) · 연결 없는 품목은 창 아래 «Needs a supplier link — not sent».
+- **검사:** jest `tests/reorder-math.test.js` · health-check «재고 전망» ①~⑥.
 
 ---
 
@@ -704,6 +715,7 @@ async function updateAvgDailyUsage(ingredientId) {
 | 2025-12-19 | 1.0 | 초안 작성 | Claude |
 | 2026-02-24 | 1.1 | 레스토랑 코스트 오버라이드(effective_cost) 반영 - 입고/실사/발주제안에 적용 | Claude |
 | 2026-04-05 | 2.0 | 구조 재정리 — 레시피 없는 상품 재고 차감, 역할별 확장 (RECIPE_MANAGEMENT_SYSTEM.md v5.0 참조) | Claude |
+| 2026-11-03 | 2.1 | 발주 전망(단계·약속한 양·최소주문 자동 맞춤) · 발주 제안 공식 단일화 | Claude Code |
 
 ---
 

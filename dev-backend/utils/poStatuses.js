@@ -10,4 +10,10 @@
 //   (pending_approval 을 넣으면 오너 승인을 입고로 우회할 수 있다 — 2026-07-13 Fable)
 const RECEIVABLE_STATUSES = ['submitted', 'confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received'];
 
-module.exports = { RECEIVABLE_STATUSES };
+// 판매자(BG)가 받아서 아직 다 보내지 않은 주문 — «이미 약속한 양»(미출고 줄)을 세는 상태.
+//   ⛔ RECEIVABLE_STATUSES 와 섞지 않는다 — 그건 구매자가 받을 수 있는 상태다.
+//   shipped = 부분 출고의 남은 줄(shipped_at NULL)이 있을 수 있다.
+//   (2026-11-03 Fable 설계 .claude/fable-design-20261103-stock-foresight-oneclick-po.md §3-2)
+const OPEN_OUTBOUND_STATUSES = ['submitted', 'confirmed', 'shipped'];
+
+module.exports = { RECEIVABLE_STATUSES, OPEN_OUTBOUND_STATUSES };

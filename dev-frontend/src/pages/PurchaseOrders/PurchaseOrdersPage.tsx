@@ -304,6 +304,9 @@ interface SuggestionItem {
   current_stock: number | string;
   par_level?: number | string | null;
   suggested_quantity: number | string;
+  /** 발주 전망 단계 · 주문 단위 (2026-11-03 §5-4) — suggested_quantity 는 주문 단위 수량 */
+  status?: 'out' | 'order_now' | 'soon' | null;
+  order_unit?: string | null;
   preferred_seller_id?: number | null;
   preferred_seller_type?: string | null;
   preferred_seller_name?: string | null;
@@ -597,6 +600,8 @@ const PurchaseOrdersPage: React.FC = () => {
             ingredient_name: it.ingredient.name,
             current_stock: it.ingredient.current_stock,
             suggested_quantity: it.suggested_qty,
+            status: it.status ?? null,
+            order_unit: it.order_unit ?? null,
           } : it),
         }));
       } else if (Array.isArray(payload.items)) {
@@ -943,10 +948,20 @@ const PurchaseOrdersPage: React.FC = () => {
                 <SuggestionList>
                   {g.items.map((item) => (
                     <li key={item.product_ingredient_id ? `pi-${item.product_ingredient_id}` : item.ingredient_id}>
-                      <span>{item.ingredient_name}</span>
+                      <span>
+                        {item.status && (
+                          <span
+                            title={item.status}
+                            aria-label={item.status}
+                            style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', marginRight: 6, verticalAlign: 'middle',
+                              background: item.status === 'out' ? '#EF4444' : item.status === 'order_now' ? '#F59E0B' : '#EAB308' }}
+                          />
+                        )}
+                        {item.ingredient_name}
+                      </span>
                       <span>
                         {t('list.suggestions.currentStock')}: {Number(item.current_stock).toFixed(2)} ·{' '}
-                        {t('list.suggestions.suggested')}: <strong>{formatQuantity(item.suggested_quantity)}</strong>
+                        {t('list.suggestions.suggested')}: <strong>{formatQuantity(item.suggested_quantity)}{item.order_unit ? ` ${item.order_unit}` : ''}</strong>
                       </span>
                     </li>
                   ))}

@@ -452,57 +452,181 @@ router.get('/purchase-orders', async (req, res) => {
 });
 
 /**
- * 브랜드 구매자의 발주 제안 — 본사 재고아이템(ProductIngredient) 중 현재 재고 < 최소 재고 (2026-10-09 Fable 판정 C-1 #5).
- *   재고아이템 주인 = 그 브랜드의 owner(BG). 제안 수량·묶음 규칙은 매장 분기와 같다(min×1.5 − 현재, 우선 판매처별 묶음).
- *   행 모양도 매장 분기와 같고, `product_ingredient_id` 를 더 싣는다 — 화면이 재고아이템 줄로 담는다.
+ * 발주 제안 공용 빌더 — 매장·브랜드 두 분기가 같은 함수를 부른다
+ *   (2026-11-03 Fable 설계 .claude/fable-design-20261103-stock-foresight-oneclick-po.md §3·§4).
+ *   공식 = utils/reorderMath 단일 공식(대시보드 reorder-suggestions 와 같은 입력·같은 답) +
+ *   BG 는 «이미 약속한 양»(미출고 매장 주문)을 가용 재고에서 뺀다 + 단계(out·order_now·soon) +
+ *   주문 단위 올림 환산 + 판매자 MOQ(400 검사와 같은 함수 minOrderRulesByMapping).
+ *   ⛔ ok·no_basis 는 목록에 넣지 않는다(과발주 방지) — 수만 센다.
+ *
+ * subjects: [{ id, name, unit, on_hand, min_stock, manual_daily_usage, lead_time_days, safety_stock_percent,
+ *              min_order, owner_type, is_brand_shared, product_ingredient_id? }]
+ */
+async function buildSuggestionRows({ subjects, usage, onOrder, committed, links, req }) {
+  const reorderMath = require('../utils/reorderMath');
+  const { minOrderRulesByMapping } = require('../utils/poMinOrder');
+  const { sellerOrderLine } = require('../utils/poLineSpec');
+  const summary = { out: 0, order_now: 0, soon: 0, ok: 0, no_basis: 0, unlinked: 0, total: subjects.length };
+  const noBasisIds = [];   // 재고 화면 «기준 없음» 필터용(id 만 — 목록 행은 싣지 않는다)
+
+  // 1) 계산 + 단계
+  const rows = [];
+  for (const sub of subjects) {
+    const link = links.get(sub.id) || null;
+    const picked = reorderMath.pickDailyUsage(usage.get(Number(sub.id)), sub.manual_daily_usage);
+    const comm = committed.get(Number(sub.id)) || 0;
+    const available = Math.round((sub.on_hand - comm) * 100) / 100;
+    const oo = onOrder.get(Number(sub.id)) || 0;
+    const lead = reorderMath.leadTimeFor(sub, link);
+    const r = reorderMath.compute({
+      dailyUsage: picked.daily, leadTimeDays: lead, minStock: sub.min_stock,
+      safetyStockPercent: sub.safety_stock_percent, onHand: available, onOrder: oo,
+    });
+    const k = reorderMath.classify({
+      available, on_order: oo, daily: picked.daily, min_stock: sub.min_stock, reorder_point: r.reorder_point, committed: comm,
+    });
+    summary[k.status] = (summary[k.status] || 0) + 1;
+    if (k.status === 'no_basis') noBasisIds.push(Number(sub.id));
+    if (!['out', 'order_now', 'soon'].includes(k.status)) continue;
+    if (!link) summary.unlinked += 1;
+    rows.push({ sub, link, picked, comm, available, oo, r, k });
+  }
+
+  // 2) 판매자 MOQ · 주문 단위 · 판매자 정보 — 묶음 조회(N+1 금지)
+  const linkIds = rows.filter(x => x.link).map(x => x.link.id);
+  const moqRules = linkIds.length ? await minOrderRulesByMapping(linkIds) : {};
+  const unitByLink = {};
+  if (linkIds.length) {
+    const [urows] = await database.sequelize.query(`
+      SELECT isp.id map_id, isp.seller_type,
+             COALESCE(sp.unit, bp.unit, fp.unit) u, COALESCE(sp.base_quantity, bp.base_quantity, fp.base_quantity) bq,
+             COALESCE(sp.package_unit, bp.package_unit, fp.package_unit) pkg, COALESCE(sp.order_mode, bp.order_mode) om
+        FROM ingredient_seller_products isp
+        LEFT JOIN supplier_products sp ON sp.id = isp.seller_product_id AND isp.seller_type = 'supplier'
+        LEFT JOIN brand_products bp ON bp.id = isp.seller_product_id AND isp.seller_type = 'brand'
+        LEFT JOIN foodcourt_products fp ON fp.id = isp.seller_product_id AND isp.seller_type = 'foodcourt'
+       WHERE isp.id IN (:ids)`, { replacements: { ids: linkIds } });
+    for (const u of urows) {
+      if (!u.u && !u.pkg) continue;
+      unitByLink[u.map_id] = sellerOrderLine({ unit: u.u, base_quantity: u.bq, package_unit: u.pkg, order_mode: u.om || 'pack' }, null).unit;
+    }
+  }
+  const sellerMap = await resolveSellers(rows.filter(x => x.link).map(x => x.link));
+
+  // 3) 판매자별 묶음
+  const order = { out: 0, order_now: 1, soon: 2 };
+  rows.sort((a, b) => order[a.k.status] - order[b.k.status]);
+  const groups = {};
+  for (const x of rows) {
+    const { sub, link, picked, comm, available, oo, r, k } = x;
+    const key = link ? `${link.seller_type}:${link.seller_entity_id || 0}` : 'unassigned:0';
+    if (!groups[key]) {
+      const seller = link ? getSeller(sellerMap, link.seller_type, link.seller_entity_id) : null;
+      groups[key] = {
+        seller_type: link ? link.seller_type : null,
+        seller_entity_id: link ? link.seller_entity_id : null,
+        seller_name: link ? getSellerName(sellerMap, link.seller_type, link.seller_entity_id) : null,
+        delivery_terms: seller && (seller.min_order_amount != null || seller.delivery_fee != null)
+          ? { min_order_amount: seller.min_order_amount, delivery_fee: seller.delivery_fee, currency: seller.currency || null }
+          : null,
+        order_windows: seller ? (seller.order_windows || null) : null,
+        items: []
+      };
+    }
+    const conv = link ? (parseFloat(link.unit_conversion) || 1) : 1;
+    const rule = link ? moqRules[link.id] : null;
+    const oq = link
+      ? reorderMath.orderQtyFor({ suggest_stock: r.suggested_qty, item_min_order: sub.min_order, unit_conversion: conv, moq: rule ? rule.min : null })
+      : null;
+    groups[key].items.push({
+      ingredient: {
+        id: sub.id, name: sub.name, unit: sub.unit,
+        current_stock: sub.on_hand,      // 브랜드 공유 재료면 이 매장의 오버레이 재고
+        min_stock: sub.min_stock,
+        owner_type: sub.owner_type
+      },
+      ...(sub.product_ingredient_id ? { product_ingredient_id: sub.product_ingredient_id } : {}),
+      is_brand_shared: !!sub.is_brand_shared,
+      status: k.status,
+      days_of_cover: k.days_of_cover,
+      daily_usage: r.daily_usage,
+      usage_source: picked.source,
+      lead_time_days: r.lead_time_days,
+      reorder_point: r.reorder_point,
+      on_order: Math.round(oo * 100) / 100,
+      committed: comm,
+      available,
+      suggested_stock_qty: r.suggested_qty,                 // 재고 취급단위
+      order_qty: oq ? oq.order_qty : null,                  // 주문 단위(올림 + MOQ)
+      order_unit: link ? (unitByLink[link.id] || (rule && rule.unit) || sub.unit) : null,
+      unit_conversion: link ? conv : null,
+      min_order_qty: rule ? rule.min : null,
+      min_order_source: rule ? 'seller' : null,
+      // 호환 칸 — 화면(useBulkOrder·PurchaseOrdersPage)이 이 값을 quantity_ordered(주문 단위)로 보낸다.
+      //   예전엔 취급단위 값이라 unit_conversion ≠ 1 이면 1,500 g 제안이 1,500 pack 발주가 됐다.
+      suggested_qty: oq ? oq.order_qty : r.suggested_qty,
+      seller_source: link ? {
+        id: link.id,
+        unit_price: parseFloat(link.unit_price) || 0,
+        unit_conversion: conv,
+        min_order_quantity: link.min_order_quantity,
+        lead_time_days: link.lead_time_days
+      } : null
+    });
+  }
+  return { groups: Object.values(groups), summary, no_basis_ids: noBasisIds, computed_at: new Date().toISOString() };
+}
+
+/** 품목별 우선 판매처 하나(우선 → 싼 것 · 보이는 연결만 · 매장 연결 먼저) */
+function preferredLinkMap(links, keyOf, visible) {
+  const ordered = links
+    .filter(visible)
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => ((a.s.buyer_restaurant_id == null) - (b.s.buyer_restaurant_id == null)) || (a.i - b.i))
+    .map(x => x.s);
+  const out = new Map();
+  for (const s of ordered) { const k = keyOf(s); if (!out.has(k)) out.set(k, s); }
+  return out;
+}
+
+/**
+ * 브랜드 구매자의 발주 제안 — 본사 재고아이템(ProductIngredient) (2026-10-09 Fable 판정 C-1 #5 · 2026-11-03 공용 빌더).
+ *   대상 = 그 브랜드 owner 의 활성 재고아이템 전부(min 필터 없음 — 사용량·약속한 양으로도 판단한다).
+ *   약속한 양 = 그 owner 가 가진 모든 브랜드의 미출고 판매 주문(같은 재고를 깎는다).
  */
 async function brandStockItemSuggestions(req) {
   const { ProductIngredient } = require('../models');
   const Brand = require('../models/Brand');
+  const reorderMath = require('../utils/reorderMath');
   const b = await Brand.findByPk(req.buyerEntity.id, { attributes: ['owner_id'] });
   const ownerUserId = b && b.owner_id ? b.owner_id : null;
-  if (!ownerUserId) return [];
-  const items = await ProductIngredient.findAll({
-    where: { owner_user_id: ownerUserId, is_active: true, min_stock: { [Op.gt]: 0 } }
-  });
-  const low = items.filter(pi => (parseFloat(pi.current_stock) || 0) < (parseFloat(pi.min_stock) || 0));
-  if (!low.length) return [];
-  const links = await IngredientSellerProduct.findAll({
-    where: { product_ingredient_id: { [Op.in]: low.map(pi => pi.id) }, is_active: true },
-    order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
-  });
-  const preferred = {};
-  for (const l of links) if (!preferred[l.product_ingredient_id]) preferred[l.product_ingredient_id] = l;
-  const sellerMap = await resolveSellers(Object.values(preferred));
-  const groups = {};
-  for (const pi of low) {
-    const cur = parseFloat(pi.current_stock) || 0;
-    const min = parseFloat(pi.min_stock) || 0;
-    const seller = preferred[pi.id] || null;
-    const key = seller ? `${seller.seller_type}:${seller.seller_entity_id || 0}` : 'unassigned:0';
-    if (!groups[key]) {
-      groups[key] = {
-        seller_type: seller ? seller.seller_type : null,
-        seller_entity_id: seller ? seller.seller_entity_id : null,
-        seller_name: seller ? getSellerName(sellerMap, seller.seller_type, seller.seller_entity_id) : null,
-        items: []
-      };
-    }
-    groups[key].items.push({
-      ingredient: { id: pi.id, name: pi.name, unit: pi.unit, current_stock: cur, min_stock: min, owner_type: 'bg_stock_item' },
-      product_ingredient_id: pi.id,
-      is_brand_shared: false,
-      suggested_qty: Math.max(0, Math.round(((min * 1.5) - cur) * 100) / 100),
-      seller_source: seller ? {
-        id: seller.id,
-        unit_price: parseFloat(seller.unit_price) || 0,
-        unit_conversion: parseFloat(seller.unit_conversion) || 1,
-        min_order_quantity: seller.min_order_quantity,
-        lead_time_days: seller.lead_time_days
-      } : null
-    });
-  }
-  return Object.values(groups);
+  if (!ownerUserId) return { groups: [], summary: null, computed_at: new Date().toISOString() };
+  const items = await ProductIngredient.findAll({ where: { owner_user_id: ownerUserId, is_active: true } });
+  const ids = items.map(pi => Number(pi.id));
+  const brandIds = (await Brand.findAll({ where: { owner_id: ownerUserId }, attributes: ['id'] })).map(x => Number(x.id));
+  const [usage, onOrder, committed, linkRows] = await Promise.all([
+    reorderMath.ledgerUsageBrand(ids),
+    reorderMath.onOrderQtyBrand(ids),
+    reorderMath.committedOutboundBrand(brandIds, ids),
+    ids.length ? IngredientSellerProduct.findAll({
+      where: { product_ingredient_id: { [Op.in]: ids }, is_active: true },
+      order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
+    }) : []
+  ]);
+  const links = preferredLinkMap(linkRows, s => Number(s.product_ingredient_id), () => true);
+  const subjects = items.map(pi => ({
+    id: Number(pi.id), name: pi.name, unit: pi.unit,
+    on_hand: parseFloat(pi.current_stock) || 0,
+    min_stock: parseFloat(pi.min_stock) || 0,
+    manual_daily_usage: pi.manual_daily_usage,
+    lead_time_days: pi.lead_time_days,
+    safety_stock_percent: pi.safety_stock_percent,
+    min_order: parseFloat(pi.min_order) || 0,
+    owner_type: 'bg_stock_item',
+    is_brand_shared: false,
+    product_ingredient_id: Number(pi.id)
+  }));
+  return buildSuggestionRows({ subjects, usage, onOrder, committed, links, req });
 }
 
 // ============================================
@@ -516,29 +640,24 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
     // 대상 = 내 재료 ∪ 부모 브랜드 표준 재료 (재고관리의 Bulk Order 체크박스와 발주 페이지
     // 제안 패널이 이 라우트를 쓴다 — 대시보드 제안만 고치면 "부족하다고 뜨는데 담을 수가 없는"
     // 반쪽이 된다. Fable 2026-07-13)
-    //
-    // ⚠ 브랜드 분기에 `min_stock > 0` SQL 필터를 걸면 안 된다 — 브랜드 행의 min_stock 은 0 이고
-    //   실제 임계치는 **매장 오버레이**에 있다. 브랜드 쪽은 전부 뽑아 effective 로 거른다.
-    let ownershipOr;
-    if (req.buyerEntity.type === 'restaurant') {
-      const brandId = await parentBrandIdOf(req.buyerEntity.id);
-      ownershipOr = [
-        { restaurant_id: req.buyerEntity.id, min_stock: { [Op.gt]: 0 } },
-        ...(brandId ? [{ owner_type: 'brand', brand_id: brandId }] : [])
-      ];
-    } else if (req.buyerEntity.type === 'brand') {
+    // 2026-11-03: min_stock>0 필터 제거 — 사용량(장부·수동)으로도 판단한다. 기준 없는 품목은 summary.no_basis 로만 센다.
+    if (req.buyerEntity.type === 'brand') {
       // 브랜드가 실제로 사는 것은 본사 재고아이템(ProductIngredient)이다 (2026-10-09 Fable 판정 C-1 #5).
-      //   예전엔 브랜드 공유 표준 재료(ingredients.brand_id)를 읽어 창고 부족품이 하나도 안 떴고,
-      //   떠도 ingredient_id 라 BG 장바구니(재고아이템 줄)와 맞지 않았다.
-      return res.json({ success: true, data: { groups: await brandStockItemSuggestions(req) } });
-    } else {
+      return res.json({ success: true, data: await brandStockItemSuggestions(req) });
+    }
+    if (req.buyerEntity.type !== 'restaurant') {
       // foodcourt: no foodcourt_id on Ingredient — return empty
-      return res.json({ success: true, data: { groups: [] } });
+      return res.json({ success: true, data: { groups: [], summary: null, computed_at: new Date().toISOString() } });
     }
 
+    const rid = parseInt(req.buyerEntity.id, 10);
+    const brandId = await parentBrandIdOf(rid);
     const ingredients = await Ingredient.findAll({
       where: {
-        [Op.or]: ownershipOr,
+        [Op.or]: [
+          { restaurant_id: rid },
+          ...(brandId ? [{ owner_type: 'brand', brand_id: brandId }] : [])
+        ],
         is_active: true,
         // 2026-09-01(Q5): track_stock 조건 제거 — 스위치가 꺼졌다고 발주 화면에서 사라지면 안 된다
         // 준비 재료(출처 = 레시피)는 **사는 물건이 아니라 만드는 물건**이라 발주 대상이 아니다
@@ -548,99 +667,41 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
     });
 
     // 브랜드 재료의 재고·임계치는 이 매장의 오버레이가 진실 (지점마다 발주점이 다르다)
-    const sugOverlay = req.buyerEntity.type === 'restaurant'
-      ? await overlayMapFor(req.buyerEntity.id, ingredients.filter(i => i.owner_type === 'brand').map(i => i.id))
-      : {};
-    const effOf = (ing) => {
-      const isBrandShared = req.buyerEntity.type === 'restaurant' && ing.owner_type === 'brand';
+    const sugOverlay = await overlayMapFor(rid, ingredients.filter(i => i.owner_type === 'brand').map(i => i.id));
+    const reorderMath = require('../utils/reorderMath');
+    const ids = ingredients.map(i => Number(i.id));
+    const [usage, onOrder, linkRows] = await Promise.all([
+      reorderMath.ledgerUsage(rid, ids),
+      reorderMath.onOrderQty(rid, ids),
+      ids.length ? IngredientSellerProduct.findAll({
+        where: { ingredient_id: { [Op.in]: ids }, is_active: true },
+        order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
+      }) : []
+    ]);
+    // 이 구매자 눈에 보이는 연결만(2026-10-04 — 형제 매장 연결 제외). 같은 순서면
+    // 매장이 직접 붙인 연결을 공용 연결보다 먼저 고른다 — 매장이 정한 거래처가 그 매장의 답이다.
+    const ingById = new Map(ingredients.map(i => [Number(i.id), i]));
+    const links = preferredLinkMap(linkRows, s => Number(s.ingredient_id),
+      s => sellerLinkVisible(s, ingById.get(Number(s.ingredient_id)), req.buyerEntity));
+
+    const subjects = ingredients.map(ing => {
+      const isBrandShared = ing.owner_type === 'brand';
       const overlay = isBrandShared ? sugOverlay[ing.id] : null;
       const eff = effectiveSettings(ing, overlay);
       return {
-        isBrandShared,
-        cur: isBrandShared
-          ? (overlay ? parseFloat(overlay.current_stock) || 0 : 0)
-          : (parseFloat(ing.current_stock) || 0),
-        min: parseFloat(eff.min_stock) || 0
+        id: Number(ing.id), name: ing.name, unit: ing.unit,
+        on_hand: isBrandShared ? (overlay ? parseFloat(overlay.current_stock) || 0 : 0) : (parseFloat(ing.current_stock) || 0),
+        min_stock: parseFloat(eff.min_stock) || 0,
+        manual_daily_usage: eff.manual_daily_usage,
+        lead_time_days: eff.lead_time_days,
+        safety_stock_percent: eff.safety_stock_percent,
+        min_order: parseFloat(ing.min_order) || 0,
+        owner_type: ing.owner_type,
+        is_brand_shared: isBrandShared
       };
-    };
-
-    const lowIngredients = ingredients.filter(ing => {
-      const { cur, min } = effOf(ing);
-      return min > 0 && cur < min;
     });
-
-    if (lowIngredients.length === 0) {
-      return res.json({ success: true, data: { groups: [] } });
-    }
-
-    const ingIds = lowIngredients.map(i => i.id);
-
-    // Preferred sellers per ingredient
-    const sellerSources = await IngredientSellerProduct.findAll({
-      where: {
-        ingredient_id: { [Op.in]: ingIds },
-        is_active: true
-      },
-      order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
-    });
-
-    // 이 구매자 눈에 보이는 연결만(2026-10-04 — 형제 매장 연결 제외). 같은 순서면
-    // 매장이 직접 붙인 연결을 공용 연결보다 먼저 고른다 — 매장이 정한 거래처가 그 매장의 답이다.
-    const ingByIdSug = new Map(lowIngredients.map(i => [i.id, i]));
-    const visibleSources = sellerSources
-      .filter(s => sellerLinkVisible(s, ingByIdSug.get(s.ingredient_id), req.buyerEntity))
-      .map((s, i) => ({ s, i }))
-      .sort((a, b) => ((a.s.buyer_restaurant_id == null) - (b.s.buyer_restaurant_id == null)) || (a.i - b.i))
-      .map(x => x.s);   // 안정 정렬 — 매장 연결 먼저, 그 안에서는 원래 순서(우선 → 싼 것)
-    const preferredByIng = {};
-    for (const s of visibleSources) {
-      if (!preferredByIng[s.ingredient_id]) preferredByIng[s.ingredient_id] = s;
-    }
-
-    // 판매자 이름 (supplier/brand/foodcourt/system_admin) — 목록·상세와 동일 해석기
-    const sellerMap = await resolveSellers(Object.values(preferredByIng));
-
-    // Build suggestion entries grouped by seller
-    const groups = {};
-    for (const ing of lowIngredients) {
-      const { cur, min, isBrandShared } = effOf(ing);
-      const suggested = Math.max(0, Math.round(((min * 1.5) - cur) * 100) / 100);
-      const seller = preferredByIng[ing.id] || null;
-
-      const groupKey = seller
-        ? `${seller.seller_type}:${seller.seller_entity_id || 0}`
-        : 'unassigned:0';
-
-      if (!groups[groupKey]) {
-        groups[groupKey] = {
-          seller_type: seller ? seller.seller_type : null,
-          seller_entity_id: seller ? seller.seller_entity_id : null,
-          seller_name: seller ? getSellerName(sellerMap, seller.seller_type, seller.seller_entity_id) : null,
-          items: []
-        };
-      }
-      groups[groupKey].items.push({
-        ingredient: {
-          id: ing.id,
-          name: ing.name,
-          unit: ing.unit,
-          current_stock: cur,   // 브랜드 재료면 이 매장의 오버레이 재고
-          min_stock: min,       // 브랜드 재료면 이 매장의 임계치
-          owner_type: ing.owner_type
-        },
-        is_brand_shared: isBrandShared,
-        suggested_qty: suggested,
-        seller_source: seller ? {
-          id: seller.id,
-          unit_price: parseFloat(seller.unit_price) || 0,
-          unit_conversion: parseFloat(seller.unit_conversion) || 1,
-          min_order_quantity: seller.min_order_quantity,
-          lead_time_days: seller.lead_time_days
-        } : null
-      });
-    }
-
-    res.json({ success: true, data: { groups: Object.values(groups) } });
+    const data = await buildSuggestionRows({ subjects, usage, onOrder, committed: new Map(), links, req });
+    res.json({ success: true, data });
   } catch (err) {
     console.error('GET /api/purchase-orders/suggestions error:', err);
     res.status(500).json({ success: false, message: 'Failed to compute suggestions' });
@@ -1382,6 +1443,7 @@ router.post('/purchase-orders/bulk', async (req, res) => {
     }
 
     const created = [];
+    const mergedIds = new Set();
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i];
       const result = await createPurchaseOrderCore({
@@ -1392,6 +1454,7 @@ router.post('/purchase-orders/bulk', async (req, res) => {
         return res.status(result.status).json({ ...result.body, group_index: i });
       }
       created.push(result.po);
+      if (result.merged) mergedIds.add(result.po.id);   // 같은 판매자 초안에 합쳐짐 — 화면이 알려 준다(2026-11-03 §5-3)
     }
 
     await t.commit();
@@ -1423,7 +1486,7 @@ router.post('/purchase-orders/bulk', async (req, res) => {
         }
       }
       const full = await PurchaseOrder.findByPk(po.id, { include: [{ model: PurchaseOrderItem, as: 'items' }] });
-      orders.push(full);
+      orders.push(full ? { ...full.toJSON(), merged: mergedIds.has(po.id) } : full);
     }
 
     res.status(201).json({ success: true, data: { orders } });

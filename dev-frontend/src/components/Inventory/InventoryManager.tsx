@@ -33,6 +33,8 @@ import InitialStockModal from './modals/InitialStockModal';
 import GeneralStockReceiveModal from './modals/GeneralStockReceiveModal';
 import OrderModal from './modals/OrderModal';
 import BulkOrderModal from './modals/BulkOrderModal';
+import ForesightPanel from './sections/ForesightPanel';
+import { useStore } from '../../contexts/StoreContext';
 import SettingsModal from './modals/SettingsModal';
 import GeneralStockFormModal from './modals/GeneralStockFormModal';
 import DeleteConfirmModal from './modals/DeleteConfirmModal';
@@ -78,7 +80,11 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       const existing = cart.find((r) => r.cart_key === cartKey);
       // 부족분 = 최소 재고 - 현재 재고. 0 이하면 최소 주문량(없으면 1)으로 시작한다.
       const shortfall = Math.max(0, (ingredient.min_stock || 0) - (ingredient.current_stock || 0));
-      const qty = Math.max(shortfall || 0, ingredient.min_order || 0) || 1;
+      // 발주 전망 제안이 있으면 그 주문 단위 수량(올림 + 판매자 최소주문)을 쓴다 — 같은 공식 한 벌(2026-11-03 §6-10)
+      const sugg = bulk.suggestionsById.get(Number(ingredient.id));
+      const qty = (sugg && sugg.order_qty != null && sugg.order_qty > 0)
+        ? sugg.order_qty
+        : (Math.max(shortfall || 0, ingredient.min_order || 0) || 1);
       if (existing) {
         existing.quantity = (existing.quantity || 0) + qty;
       } else {
@@ -172,6 +178,27 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
 
   const order = useOrderModal({ mode });
   const bulk = useBulkOrder();
+  const { operationSettings } = useStore();
+  const storeTz = (operationSettings as any)?.timeZone || 'Asia/Kuala_Lumpur';
+  // «필요한 것 담기» 에 «곧 부족» 도 넣을지 — 기본 끔(과발주가 미발주보다 되돌리기 어렵다 · Fable §9 Q3)
+  const [includeSoon, setIncludeSoon] = useState(false);
+  const suggList = Array.from(bulk.suggestionsById.values());
+  const linkedPositive = (x: any) => !!x.seller_type && ((x.order_qty ?? x.suggested_qty) || 0) > 0;
+  const neededCount = suggList.filter(x => (x.status === 'out' || x.status === 'order_now') && linkedPositive(x)).length;
+  const soonLinkedCount = suggList.filter(x => x.status === 'soon' && linkedPositive(x)).length;
+  const foresightPanel = (
+    <ForesightPanel
+      summary={bulk.summary}
+      computedAt={bulk.computedAt}
+      neededCount={neededCount}
+      soonLinkedCount={soonLinkedCount}
+      includeSoon={includeSoon}
+      setIncludeSoon={setIncludeSoon}
+      activeFilter={statusFilter}
+      onFilter={(f) => { setStatusFilter(f); if (f !== 'all') setActiveTab('list'); }}
+      onAddNeeded={() => bulk.openNeeded(includeSoon)}
+    />
+  );
 
   const deleteConfirm = useDeleteConfirm({
     mode,
@@ -243,6 +270,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           <EmptyState>Loading...</EmptyState>
         ) : activeTab === 'dashboard' ? (
           <>
+          {foresightPanel}
           <CostReadinessPanel mode={mode} restaurantId={restaurantId} selectedCurrency={data.selectedCurrency} authFetch={authFetch} />
           <DashboardSection
             summary={data.summary}
@@ -265,6 +293,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           />
           </>
         ) : activeTab === 'list' ? (
+          <>
+          {foresightPanel}
           <StockListSection
             showUntracked={showUntracked}
             setShowUntracked={setShowUntracked}
@@ -307,9 +337,11 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             onSettings={settings.open}
             onDelete={deleteConfirm.open}
             suggestionsById={bulk.suggestionsById}
+            noBasisIds={bulk.noBasisIds}
             selectedIds={bulk.selectedIds}
             onToggleSelect={bulk.toggleSelect}
           />
+          </>
         ) : activeTab === 'categories' ? (
           <GeneralStockCategoriesTab
             isBrandGeneralMode={isBrandGeneralMode}
@@ -431,6 +463,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         onUpdateItem={bulk.updateBulkItem}
         onRemoveItem={bulk.removeBulkItem}
         onSend={bulk.sendBulk}
+        unlinkedItems={bulk.unlinkedItems}
+        errorViolations={bulk.errorViolations}
+        storeTz={storeTz}
       />
 
       {/* Sticky bottom bar — shown when items selected on the list tab */}

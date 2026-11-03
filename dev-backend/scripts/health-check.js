@@ -4076,6 +4076,135 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
 
   // ── 공급업체 상품 다섯 칸 · SKU · 재고 포장단위 (2026-10-15 Fable 설계 D2·D3·D4 · /var/www/.claude/fable-design-20261015-supplier-catalog.md) ──
   //   Irene: «SKU도 안나오고 수량/단위/팩킹단위가 제대로 … 재고아이템으로 저장해도 … 안가져오네 · Package Unit 카톤도»
+  // ── 재고 «미리 안내» + 누르면 끝나는 발주 (2026-11-03 Fable 설계 .claude/fable-design-20261103-stock-foresight-oneclick-po.md §7-2) ──
+  //   ① BG 지금 발주·MOQ·환산 ② 약속한 양(미출고 매장 주문) ③ 매장 분기 = 대시보드 공식 ④ 연결 없는 품목 ⑤ 기준 없음은 조용
+  //   ⑥ 제안 수량 그대로 = 201 · 하나 줄이면 400 BELOW_MIN_ORDER. 시험 데이터 이름 ZZ-HC-FORESIGHT-* · 끝나면 전부 지움.
+  test('inventory', '재고 전망 ①②⑤⑥ — BG: 지금 발주 10 pack(올림+MOQ) · 매장 미출고 주문 1,500 g 차감 · 기준 없음 조용 · 그대로 보내면 201 / −1 이면 400', async () => {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const X = (s, r) => sequelize.query(s, { replacements: r });
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const bgUser = (await Q("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1"))[0];
+    const brand = bgUser && (await Q('SELECT id FROM brands WHERE owner_id = :o AND id = 10', { o: bgUser.id }))[0];
+    const ra = (await Q("SELECT id FROM users WHERE email = 'demo-restaurant@purplehere.com' LIMIT 1"))[0];
+    if (!bgUser || !brand || !ra) return fail('데모 BG·브랜드 10·RA 없음 — 검사 불가');
+    // 브랜드 10 과 계약(active)된 공급업체 — 없으면 ⑥(발주 생성)을 검사할 수 없다
+    const sup = (await Q(`SELECT supplier_company_id s FROM supplier_contracts WHERE entity_type='brand' AND entity_id=10 AND status='active' AND deleted_at IS NULL ORDER BY id LIMIT 1`))[0];
+    if (!sup) return fail('브랜드 10 계약 공급업체 없음 — 검사 불가');
+    const SUP = Number(sup.s);
+    const auth = { Authorization: `Bearer ${jwt.sign({ userId: bgUser.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const tag = `ZZ-HC-FORESIGHT-${Date.now()}`;
+    const made = { pi: [], sp: [], bp: [], map: [], po: [] };
+    try {
+      // 재고아이템: g · 하루 400(수동) · 리드 3 · 재고 2,000
+      const pi = await M.ProductIngredient.create({ owner_user_id: bgUser.id, name: tag + ' Flour', unit: 'g', base_quantity: 1, unit_cost: 0.01,
+        current_stock: 2000, min_stock: 0, manual_daily_usage: 400, lead_time_days: 3, safety_stock_percent: 20, is_active: true });
+      made.pi.push(pi.id);
+      const none = await M.ProductIngredient.create({ owner_user_id: bgUser.id, name: tag + ' NoBasis', unit: 'g', unit_cost: 0, current_stock: 0, min_stock: 0, is_active: true });
+      made.pi.push(none.id);
+      // 브랜드 10 과 계약된 데모 공급업체 상품: 500 g/pack · MOQ 10 → 연결(500 g = 1 pack)
+      const sp = await M.SupplierProduct.create({ supplier_company_id: SUP, name: tag + ' Flour 500g', unit: 'g', base_quantity: 500, package_unit: 'pack',
+        unit_price: 5, min_order_quantity: 10, is_active: true });
+      made.sp.push(sp.id);
+      const link = await M.IngredientSellerProduct.create({ product_ingredient_id: pi.id, seller_type: 'supplier', seller_entity_id: SUP, seller_product_id: sp.id,
+        unit_price: 5, unit_conversion: 500, min_order_quantity: 10, lead_time_days: 3, is_preferred: true, is_active: true });
+      made.map.push(link.id);
+
+      const get = async () => {
+        const r = await request('GET', '/purchase-orders/suggestions?entity_type=brand&entity_id=10', null, auth);
+        const rows = (r.body?.data?.groups || []).flatMap(g => g.items.map(it => ({ ...it, _g: g })));
+        return { r, row: rows.find(x => Number(x.product_ingredient_id) === Number(pi.id)), rows };
+      };
+      // ① committed 0: rp 1,440 · 2,000 ≤ 1,440+2,800 → soon? 2,000 > 1,440 → soon · suggest = 1,440+2,800−2,000 = 2,240 → 5 pack → MOQ 10
+      let { r, row, rows } = await get();
+      if (r.status !== 200 || !row) return fail(`① 응답 ${r.status} 행 없음 ${JSON.stringify(r.body).slice(0, 200)}`);
+      if (row.status !== 'soon' || row.order_qty !== 10 || row.order_unit !== 'pack' || Math.abs(row.suggested_stock_qty - 2240) > 0.01
+        || row.min_order_source !== 'seller' || row.suggested_qty !== 10 || row.reorder_point !== 1440)
+        return fail(`① ${JSON.stringify({ s: row.status, oq: row.order_qty, u: row.order_unit, ss: row.suggested_stock_qty, src: row.min_order_source, rp: row.reorder_point })}`);
+      // ⑤ 기준 없음 → 목록에 없음 · summary.no_basis 에 셈
+      if (rows.some(x => Number(x.product_ingredient_id) === Number(none.id))) return fail('⑤ 기준 없음 품목이 목록에 뜸');
+      if (!(r.body.data.summary && r.body.data.summary.no_basis >= 1)) return fail(`⑤ summary ${JSON.stringify(r.body.data.summary)}`);
+
+      // ② 매장 38 이 브랜드 10 의 다이렉트 프로덕트(500 g/pack) 3 pack 을 submitted 로 → committed 1,500
+      const bp = await M.BrandProduct.create({ owner_user_id: bgUser.id, name: tag + ' Flour Pack', unit: 'g', base_quantity: 500, package_unit: 'pack',
+        unit_price: 9, is_active: true, distribution_mode: 'all', product_kind: 'stock', product_ingredient_id: pi.id, sku: 'ZZF-' + Math.random().toString(36).slice(2, 9) });
+      made.bp.push(bp.id);
+      const bmap = await M.IngredientSellerProduct.create({ seller_type: 'brand', seller_entity_id: 10, seller_product_id: bp.id, buyer_restaurant_id: 38,
+        unit_price: 9, unit_conversion: 1, is_active: true });
+      made.map.push(bmap.id);
+      const [poId] = await X(`INSERT INTO purchase_orders (po_number, entity_type, entity_id, seller_type, seller_entity_id, status, created_by_user_id, created_at, updated_at)
+        VALUES (:n, 'restaurant', 38, 'brand', 10, 'submitted', :u, NOW(), NOW())`, { n: tag.slice(-20), u: ra.id });
+      made.po.push(poId);
+      await X(`INSERT INTO purchase_order_items (purchase_order_id, ingredient_seller_product_id, description, quantity_ordered, unit, unit_price, line_total, created_at, updated_at)
+        VALUES (:p, :m, :d, 3, 'pack', 9, 27, NOW(), NOW())`, { p: poId, m: bmap.id, d: tag });
+      ({ r, row } = await get());
+      if (!row || row.committed !== 1500 || row.available !== 500 || row.status !== 'order_now' || Math.abs(row.suggested_stock_qty - 3740) > 0.01 || row.order_qty !== 10)
+        return fail(`② ${JSON.stringify(row && { c: row.committed, a: row.available, s: row.status, ss: row.suggested_stock_qty, oq: row.order_qty })}`);
+      // 그 발주를 취소하면 약속한 양 0
+      await X("UPDATE purchase_orders SET status = 'cancelled' WHERE id = :p", { p: poId });
+      ({ row } = await get());
+      if (!row || row.committed !== 0) return fail(`② 취소 뒤 committed ${row && row.committed}`);
+
+      // ⑥ 제안 수량 그대로 보내면 201 · 하나 줄이면 400 BELOW_MIN_ORDER (POST 단건 = bulk 와 같은 core · 기존 초안과 합치지 않음)
+      const body = (q) => ({ seller_type: 'supplier', seller_entity_id: SUP, items: [{ product_ingredient_id: pi.id, ingredient_seller_product_id: link.id, quantity_ordered: q, unit_price: 5 }] });
+      const ok = await request('POST', '/purchase-orders?entity_type=brand&entity_id=10', body(row.order_qty), auth);
+      if (ok.body?.data?.id) made.po.push(ok.body.data.id);
+      if (ok.status !== 201) return fail(`⑥ 그대로 ${ok.status} ${JSON.stringify(ok.body).slice(0, 200)}`);
+      const low = await request('POST', '/purchase-orders?entity_type=brand&entity_id=10', body(row.order_qty - 1), auth);
+      if (low.body?.data?.id) made.po.push(low.body.data.id);
+      if (low.status !== 400 || low.body?.code !== 'BELOW_MIN_ORDER') return fail(`⑥ −1 ${low.status} ${JSON.stringify(low.body).slice(0, 200)}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try {
+        if (made.po.length) await hcCleanupPurchaseOrders(made.po, { waitMs: 0 });
+        if (made.map.length) await X('DELETE FROM ingredient_seller_products WHERE id IN (:i)', { i: made.map });
+        if (made.bp.length) await X('DELETE FROM brand_products WHERE id IN (:i)', { i: made.bp });
+        if (made.sp.length) await X('DELETE FROM supplier_products WHERE id IN (:i)', { i: made.sp });
+        if (made.pi.length) {
+          await X('DELETE FROM inventory_transactions WHERE product_ingredient_id IN (:i)', { i: made.pi });
+          await X('DELETE FROM product_ingredients WHERE id IN (:i)', { i: made.pi });
+        }
+      } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    }
+  });
+
+  test('inventory', '재고 전망 ③④ — 매장: 발주 제안 = 대시보드 공식(같은 수량·발주점) · 연결 없는 품목은 «연결 필요» 묶음(order_qty null)', async () => {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const X = (s, r) => sequelize.query(s, { replacements: r });
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const ra = (await Q("SELECT id FROM users WHERE email = 'demo-restaurant@purplehere.com' LIMIT 1"))[0];
+    if (!ra) return fail('데모 RA 없음 — 검사 불가');
+    const auth = { Authorization: `Bearer ${jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const tag = `ZZ-HC-FORESIGHT-RA-${Date.now()}`;
+    let ing = null;
+    try {
+      ing = await M.Ingredient.create({ restaurant_id: 38, name: tag, unit: 'kg', unit_cost: 1, base_quantity: 1, current_stock: 1, min_stock: 5, lead_time_days: 2, is_active: true });
+      const [s, d] = await Promise.all([
+        request('GET', '/purchase-orders/suggestions?entity_type=restaurant&entity_id=38', null, auth),
+        request('GET', '/restaurants/38/inventory/reorder-suggestions', null, auth)
+      ]);
+      const groups = s.body?.data?.groups || [];
+      const g = groups.find(x => x.items.some(it => Number(it.ingredient.id) === Number(ing.id)));
+      const row = g && g.items.find(it => Number(it.ingredient.id) === Number(ing.id));
+      const dash = (d.body?.data || []).find(x => Number(x.ingredient.id) === Number(ing.id));
+      if (s.status !== 200 || d.status !== 200 || !row || !dash) return fail(`응답 ${s.status}/${d.status} 행 ${!!row}/${!!dash}`);
+      // ③ 같은 공식: 취급단위 제안 = 대시보드 제안 · 발주점 같음
+      if (row.suggested_stock_qty !== dash.suggested_qty || row.reorder_point !== dash.reorder_point)
+        return fail(`③ 제안 ${row.suggested_stock_qty}/${dash.suggested_qty} 발주점 ${row.reorder_point}/${dash.reorder_point}`);
+      // ④ 연결 없음 → seller_type null 묶음 · order_qty null · summary.unlinked ≥ 1
+      if (g.seller_type !== null || row.order_qty !== null || !(s.body.data.summary.unlinked >= 1))
+        return fail(`④ ${JSON.stringify({ st: g.seller_type, oq: row.order_qty, sum: s.body.data.summary })}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { if (ing) await X('DELETE FROM ingredients WHERE id = :i', { i: ing.id }); } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    }
+  });
+
   test('inventory', '재고 포장단위 ENUM — ingredients·product_ingredients 가 utils/stockUnits 어휘를 전부 담는다', async () => {
     const { sequelize } = require('../config/database');
     const { STOCK_PACKAGE_UNIT_ENUM } = require('../utils/stockUnits');
@@ -10297,7 +10426,7 @@ function definePaymentTests() {
     }
   });
 
-  test('invoice-actions', 'C5 브랜드 발주 제안 = 본사 재고아이템(최소 재고 > 현재) · product_ingredient_id 로 뜬다', async () => {
+  test('invoice-actions', 'C5 브랜드 발주 제안 = 본사 재고아이템(최소 재고 > 현재 → 지금 발주 · 발주점 공식) · product_ingredient_id 로 뜬다', async () => {
     const { sequelize } = require('../config/database');
     const M = require('../models');
     const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
@@ -10311,7 +10440,9 @@ function definePaymentTests() {
       const items = ((r.body && r.body.data && r.body.data.groups) || []).flatMap((g) => g.items || []);
       const hit = items.find((x) => Number(x.product_ingredient_id) === Number(pi.id));
       const sharedLeak = items.some((x) => !x.product_ingredient_id);
-      const ok = r.status === 200 && !!hit && Math.abs(Number(hit.suggested_qty) - 13) < 0.001 && !sharedLeak;
+      // 2026-11-03 제안 공식 단일화(Fable 설계 .claude/fable-design-20261103-stock-foresight-oneclick-po.md §3-5 C — 의도된 변경):
+      //   옛 식 min×1.5−현재 = 13 → reorderMath: 발주점 10(사용량 0 · 안전재고=최소 10) + 0 − 현재 2 = 8 · 단계 order_now · 연결 없음이라 주문 단위 환산 없음
+      const ok = r.status === 200 && !!hit && Math.abs(Number(hit.suggested_qty) - 8) < 0.001 && hit.status === 'order_now' && !sharedLeak;
       if (!ok) console.log(c.gray(`      (${r.status} 제안 ${items.length}건 · 내 줄 ${hit ? JSON.stringify({ q: hit.suggested_qty }) : '없음'} · 공유재료 섞임 ${sharedLeak})`));
       return ok;
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
