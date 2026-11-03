@@ -73,6 +73,7 @@
   "recipeCategoriesTab.description": "Keterangan",
   "recipeManagementPage.recipes": "Resipi",
   "recipesTab.loading": "Memuatkan...",
+  "recipesTab.loadingIngredients": "Memuatkan senarai bahan… Anda boleh simpan setelah senarai sedia.",
   "recipesTab.noRecipesFound": "Tidak Resipi found",
   "recipesTab.brand": "Jenama",
   "recipesTab.brandCost": "Jenama Cost",

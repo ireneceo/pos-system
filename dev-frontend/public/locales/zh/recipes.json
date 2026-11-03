@@ -73,6 +73,7 @@
   "recipeCategoriesTab.description": "描述",
   "recipeManagementPage.recipes": "食谱",
   "recipesTab.loading": "加载中...",
+  "recipesTab.loadingIngredients": "正在加载原料列表… 列表准备好后即可保存。",
   "recipesTab.noRecipesFound": "No recipes found",
   "recipesTab.brand": "品牌",
   "recipesTab.brandCost": "品牌成本",

@@ -24,6 +24,19 @@ const { processImage, deleteOldImages } = require('../utils/imageProcessor');
 // brand/foodcourt plan). Scoped to the restaurant's own recipe paths only.
 // NOT applied to /restaurants/:id/brand-recipes (read of HQ-pushed recipes) so a
 // franchise branch can always see the brand's recipes regardless of its own tier.
+// ── 레시피 «목록» GET 이 줄마다 싣는 재료 칸 (2026-11-03 Fable 판정 · docs/RECIPE_MANAGEMENT_SYSTEM.md «레시피 목록 속도») ──
+//   예전엔 줄마다 재료 행 35칸을 통째로 실어(줄당 ~1.1KB) 운영 브랜드 목록이 무거웠다. 화면이 쓰는 칸만 내려준다.
+//   칸 근거(사용 칸 합집합 — 칸을 빼기 전 다시 grep 할 것):
+//     RecipesTab lineCost/resolveIng/상세 표/선택기 = id·name·unit·unit_cost·base_quantity (+ 서버가 붙이는 effective_cost·restaurant_cost)
+//     services/storeCost.effectiveStoreCost = owner_type·restaurant_id·unit_cost · brand-recipes 줄 계산 = unit_cost·base_quantity·unit
+//     선택기 거울 판정·꺼진 재료 = source_product_ingredient_id·source_brand_product_id·source_recipe_id·is_active
+//     BrandMenusPage·MenuManagementPage 는 재료 칸을 읽지 않는다(레시피 이름·id 만).
+//   ⚠ health-check [recipes] «목록 재료 칸 = 이 상수» 계약이 덜 와도·더 와도 막는다.
+const RECIPE_LIST_INGREDIENT_ATTRS = ['id', 'name', 'unit', 'unit_cost', 'base_quantity', 'owner_type', 'restaurant_id', 'is_active',
+  'source_product_ingredient_id', 'source_brand_product_id', 'source_recipe_id'];
+// 카드·상세·표·CSV 가 쓰는 분류 칸 = name·emoji (+ id·is_active).
+const RECIPE_LIST_CATEGORY_ATTRS = ['id', 'name', 'emoji', 'is_active'];
+
 const recipeGate = requireRestaurantModule('recipe_management', 'restaurantId');
 router.use('/restaurants/:restaurantId/recipes', authenticateToken, recipeGate);
 router.use('/restaurants/:restaurantId/products/create-from-recipe', authenticateToken, recipeGate);
@@ -99,11 +112,12 @@ router.get('/brands/:brandId/recipes', authenticateToken, isBrandManager, async 
         {
           model: RecipeIngredient,
           as: 'recipeIngredients',
-          include: [{ model: Ingredient, as: 'ingredient' }]
+          include: [{ model: Ingredient, as: 'ingredient', attributes: RECIPE_LIST_INGREDIENT_ATTRS }]
         },
         {
           model: RecipeCategory,
-          as: 'recipeCategory'
+          as: 'recipeCategory',
+          attributes: RECIPE_LIST_CATEGORY_ATTRS
         }
       ],
       // 재료 줄은 **입력한 순서**로 고정한다 — 정렬이 없으면 DB 반환 순서라 화면과 다운로드가 달라질 수 있다
@@ -479,11 +493,12 @@ router.get('/restaurants/:restaurantId/recipes', authenticateToken, checkRestaur
         {
           model: RecipeIngredient,
           as: 'recipeIngredients',
-          include: [{ model: Ingredient, as: 'ingredient' }]
+          include: [{ model: Ingredient, as: 'ingredient', attributes: RECIPE_LIST_INGREDIENT_ATTRS }]
         },
         {
           model: RecipeCategory,
-          as: 'recipeCategory'
+          as: 'recipeCategory',
+          attributes: RECIPE_LIST_CATEGORY_ATTRS
         }
       ],
       // 재료 줄은 입력한 순서로 고정 (브랜드 레시피 GET 과 같은 규칙 — 한 화면·한 파일에 섞여 나온다)
@@ -540,11 +555,12 @@ router.get('/restaurants/:restaurantId/brand-recipes', authenticateToken, checkR
         {
           model: RecipeIngredient,
           as: 'recipeIngredients',
-          include: [{ model: Ingredient, as: 'ingredient' }]
+          include: [{ model: Ingredient, as: 'ingredient', attributes: RECIPE_LIST_INGREDIENT_ATTRS }]
         },
         {
           model: RecipeCategory,
-          as: 'recipeCategory'
+          as: 'recipeCategory',
+          attributes: RECIPE_LIST_CATEGORY_ATTRS
         }
       ],
       // 재료 줄은 입력한 순서로 고정 (브랜드 쪽 GET 과 같은 규칙)

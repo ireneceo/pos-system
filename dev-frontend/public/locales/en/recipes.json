@@ -73,6 +73,7 @@
   "recipeCategoriesTab.description": "Description",
   "recipeManagementPage.recipes": "Recipes",
   "recipesTab.loading": "Loading...",
+  "recipesTab.loadingIngredients": "Loading ingredients… You can save once the list is ready.",
   "recipesTab.noRecipesFound": "No recipes found",
   "recipesTab.brand": "Brand",
   "recipesTab.brandCost": "Brand Cost",

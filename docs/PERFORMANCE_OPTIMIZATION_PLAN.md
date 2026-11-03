@@ -196,3 +196,14 @@ Irene 의 명시 지시 시 시작. 우선순위 권장:
 3. Priority B (composite endpoints) — A 와 같이 진행 시 자연
 4. Priority C (응답 size) — A/B 효과 측정 후 필요시
 5. Priority E (서버 캐싱) — A/B/C 후 추가 절감 필요시
+
+## 7. 목록 화면 속도 표준 (2026-11-03 Fable 판정 — PurpleHere 공통)
+
+> 출처: Irene «레시피 목록 로딩이 너무 느려 … 모든 개발 방식 통합해서 구조화된 상태에서 속도 개선». 첫 적용 = 레시피 목록(`RecipesTab.tsx` · `routes/recipes.js`, 상세 `RECIPE_MANAGEMENT_SYSTEM.md` «레시피 목록 속도»). 다른 목록(재료 목록 등)도 이 셋으로 맞춘다.
+
+1. **첫 화면 요청과 나중 요청을 나눈다.** 목록을 그리는 데 필요한 요청만 `loading` 을 붙잡는다(`critical`). 선택기·보조 이름표(연결 메뉴 등)는 같이 출발시키되 기다리지 않는다(`deferred`). 그것이 필요한 창을 그 전에 열면 창 안에 «불러오는 중» + 저장 버튼 잠금. 화면 코드에 두 묶음 이름을 명시한다.
+2. **목록 GET 은 화면이 쓰는 칸만 내려준다.** 특히 **중첩 include 에 `attributes` 화이트리스트 필수.** 화이트리스트는 라우트 파일 상단 상수 하나로 두고 같은 모양의 GET 들이 공유한다. 칸을 뺄 때는 소비 화면을 전부 grep 해 사용 칸 합집합을 주석에 적고, health-check 에 «칸 집합 = 상수(덜 와도·더 와도 실패)» 계약을 둔다.
+3. **화면은 받은 배열을 공용 `usePagination`(`components/UI/Pagination.tsx`)으로 잘라 그린다.** 검색·분류·정렬은 전체 집합에, 그리기만 쪽 단위. CSV 내려받기는 **필터·정렬이 적용된 전체 집합**(현재 쪽이 아님).
+
+- **서버 page/limit 는 조건부로만:** 1·2 적용 뒤에도 목록 응답 > 300KB(압축 전) 또는 행 > 500 일 때. 모양은 기존 라우트(supplier-directory·owner·contents·activityLogs)가 쓰는 `{ success, data: rows, pagination: { total, page, limit, totalPages } }` 그대로, `page/limit` 가 없으면 옛 배열 응답 유지(호환). 두 번째 방식을 만들지 않는다.
+- React Query(§2 Priority A)는 이 표준과 별개다.

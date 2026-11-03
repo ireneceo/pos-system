@@ -67,6 +67,8 @@ interface Props {
   apiBase: string;
   /** 레시피 폼의 재료 선택기와 같은 목록 */
   pickerOptions: ImportPickerOption[];
+  /** 선택기 목록이 도착했는가 — false 면 파일 고르기·가져오기를 잠근다(레시피 목록 속도 2026-11-03: 목록은 뒤에 받는다) */
+  pickerReady?: boolean;
   /** 저장·되돌리기 뒤 목록 다시 읽기 */
   onChanged: () => void;
   /** 날짜·시간 표시 타임존(매장 설정) */
@@ -78,7 +80,7 @@ const ACTION_VARIANT: Record<PreviewRow['action'], 'success' | 'info' | 'default
   Create: 'success', Update: 'info', Unchanged: 'default', Skip: 'warning', Error: 'error'
 };
 
-const RecipeImportModal: React.FC<Props> = ({ isOpen, onClose, apiBase, pickerOptions, onChanged, timeZone }) => {
+const RecipeImportModal: React.FC<Props> = ({ isOpen, onClose, apiBase, pickerOptions, pickerReady = true, onChanged, timeZone }) => {
   const { t } = useTranslation(['recipes']);
   const [step, setStep] = useState<'pick' | 'preview' | 'done'>('pick');
   const [file, setFile] = useState<File | null>(null);
@@ -296,7 +298,7 @@ const RecipeImportModal: React.FC<Props> = ({ isOpen, onClose, apiBase, pickerOp
       <ModalButton type="button" variant="secondary" disabled={busy} onClick={() => { setStep('pick'); setPreview(null); setFile(null); setMatching({}); }}>
         {t('recipes:recipeImport.back', 'Choose another file')}
       </ModalButton>
-      <ModalButton type="button" variant="primary" disabled={busy || !importCount} onClick={runExecute}>
+      <ModalButton type="button" variant="primary" disabled={busy || !importCount || !pickerReady} onClick={runExecute}>
         {t('recipes:recipeImport.importBtn', 'Import {{count}} recipes', { count: importCount })}
       </ModalButton>
     </>
@@ -328,12 +330,14 @@ const RecipeImportModal: React.FC<Props> = ({ isOpen, onClose, apiBase, pickerOp
           </ul>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{ display: 'inline-flex' }}>
-              <input type="file" accept=".csv,text/csv" onChange={onFile} disabled={busy} style={{ display: 'none' }} data-testid="recipe-import-file" />
+              <input type="file" accept=".csv,text/csv" onChange={onFile} disabled={busy || !pickerReady} style={{ display: 'none' }} data-testid="recipe-import-file" />
               <span style={{
-                display: 'inline-flex', alignItems: 'center', padding: '10px 18px', borderRadius: 8, background: busy ? '#A5A0FF' : '#635BFF',
-                color: '#fff', fontSize: 14, fontWeight: 600, cursor: busy ? 'wait' : 'pointer'
+                display: 'inline-flex', alignItems: 'center', padding: '10px 18px', borderRadius: 8, background: (busy || !pickerReady) ? '#A5A0FF' : '#635BFF',
+                color: '#fff', fontSize: 14, fontWeight: 600, cursor: (busy || !pickerReady) ? 'wait' : 'pointer'
               }}>
-                {busy ? t('recipes:recipeImport.checking', 'Checking…') : t('recipes:recipeImport.chooseFile', 'Choose CSV file')}
+                {busy ? t('recipes:recipeImport.checking', 'Checking…')
+                  : !pickerReady ? t('recipes:recipesTab.loadingIngredients', 'Loading ingredients… You can save once the list is ready.')
+                  : t('recipes:recipeImport.chooseFile', 'Choose CSV file')}
               </span>
             </label>
             <ModalButton type="button" variant="secondary" onClick={downloadTemplate}>

@@ -5420,6 +5420,27 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+  // 레시피 «목록» GET 은 줄마다 화면이 쓰는 재료 칸만 싣는다 (2026-11-03 Fable 판정 · 레시피 목록 속도).
+  //   기준 = routes/recipes.js RECIPE_LIST_INGREDIENT_ATTRS. **덜 와도**(원가 0 재발) **더 와도**(무거운 목록 재발) 실패.
+  //   상수를 바꾸면 여기도 같이 바꾼다 — 그게 이 계약의 목적(바꿀 때 사용 칸을 다시 확인하게).
+  test('inventory', '레시피 목록 응답의 재료 칸 = 정해진 11칸 (원가 칸 포함)', async () => {
+    const ctx2 = await demoBrandCtx();
+    if (!ctx2) { console.log('      (준비물 없음 — 데모 브랜드 BG 가 없어 건너뜀)'); return true; }
+    const EXPECT = ['base_quantity', 'id', 'is_active', 'name', 'owner_type', 'restaurant_id', 'source_brand_product_id',
+      'source_product_ingredient_id', 'source_recipe_id', 'unit', 'unit_cost'];
+    const r = await request('GET', `/brands/${ctx2.brandId}/recipes`, null, { Authorization: `Bearer ${ctx2.token}` });
+    if (r.status !== 200 || !Array.isArray(r.body?.data)) return false;
+    const lines = r.body.data.flatMap((x) => x.recipeIngredients || []).filter((ri) => ri.ingredient);
+    if (!lines.length) { console.log('      (데모 브랜드 레시피에 재료 줄이 없어 건너뜀)'); return true; }
+    const bad = lines.find((ri) => JSON.stringify(Object.keys(ri.ingredient).sort()) !== JSON.stringify(EXPECT));
+    if (bad) { console.log('      재료 칸 불일치:', Object.keys(bad.ingredient).sort().join(',')); return false; }
+    const cat = r.body.data.find((x) => x.recipeCategory);
+    if (cat && JSON.stringify(Object.keys(cat.recipeCategory).sort()) !== JSON.stringify(['emoji', 'id', 'is_active', 'name'])) {
+      console.log('      분류 칸 불일치:', Object.keys(cat.recipeCategory).sort().join(',')); return false;
+    }
+    return lines.every((ri) => ri.ingredient.unit_cost !== undefined && ri.ingredient.base_quantity !== undefined);
+  });
+
   // 레시피 쓰기 프로브가 만든 것만 지운다. 실패해도 지운다(잔재 0 · 재실행 멱등).
   const PROBE = 'ZZ-HC-RECIPEWRITE-';
   // 정리는 **그 케이스가 만든 이름만** 지운다. 접두어 전체를 지우면 두 health-check 가

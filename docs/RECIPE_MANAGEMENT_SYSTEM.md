@@ -960,3 +960,21 @@ Phase 1: Restaurant Admin → Phase 2: Brand General → Phase 3: System Admin �
 - 상속 규칙 확인: `brandMenuSyncService.js:225` 는 **매장 `recipe_id` 가 비어 있을 때만** 브랜드 값을 넣는다. 운영에서 비어 있는 채 안 채워진 건 1건(매장 상품 373).
 
 **문서 끝**
+
+## 레시피 목록 속도 (2026-11-03 · Fable 설계 — 목록 화면 속도 표준 `PERFORMANCE_OPTIMIZATION_PLAN.md` §7 첫 적용)
+
+**Irene:** «purplehere.com/pos/recipes?tab=recipes&brandId=13 로딩이 너무 느려. 전체 가져오기 말고 첫 페이지나 일부 나오게 … fable 체크해. 모든 개발 방식 통합해서 구조화된 상태에서 속도 개선» · 운영 크기 실측 없이 개발서버 기준으로 바로 고침(Irene «권고대로»), 운영 효과는 배포 뒤 확인.
+
+**원인 셋(코드로 확정):**
+1. 첫 화면이 5개(매장 6개) 목록을 `Promise.all` 로 전부 기다렸다. 재료·재고아이템(회사 전체)·브랜드 상품 / 브랜드 재료·메뉴는 **편집·CSV 선택기와 연결 메뉴 이름 전용**이라 목록 표시엔 안 쓰인다(카드 원가는 서버가 줄마다 붙인 `ri.ingredient` 로 계산 — `resolveIng`).
+2. 목록 GET 3개(`/brands/:id/recipes` · `/restaurants/:id/recipes` · `/restaurants/:id/brand-recipes`)가 줄마다 재료 행 35칸을 통째로 실었다(줄당 ~1.1KB).
+3. 카드·표를 전부 한 번에 그렸다. 운영 nginx 의 JSON 미압축(별도 Irene 할 일)이 1·2를 키운다. 이미지는 POST/PUT 가드로 base64 가 아니어서 원인 아님.
+
+**고친 것:**
+- 서버 `routes/recipes.js` 상단 `RECIPE_LIST_INGREDIENT_ATTRS` 11칸(`id·name·unit·unit_cost·base_quantity·owner_type·restaurant_id·is_active·source_product_ingredient_id·source_brand_product_id·source_recipe_id`) · `RECIPE_LIST_CATEGORY_ATTRS`(`id·name·emoji·is_active`) — 세 목록 GET 이 공유. 칸 근거는 상수 주석(화면 lineCost/resolveIng/상세 표/선택기 · storeCost.effectiveStoreCost · brand-recipes 줄 계산 · 거울 판정). BrandMenusPage·MenuManagementPage 는 재료 칸을 읽지 않는다. Recipe 자체 칸(조리법·set_items·option_groups)은 **유지** — 상세·편집 창과 CSV 가 목록 객체에서 바로 읽고, 상세 GET 이 따로 없다.
+- health-check [inventory] «레시피 목록 응답의 재료 칸 = 정해진 11칸» — 덜 와도·더 와도 실패(고장 주입 2건 반증).
+- 화면 `RecipesTab.tsx` `fetchAllData` = `critical`(레시피·분류·(매장) 브랜드 레시피 → 받자마자 loading 끔) + `deferred`(재료·(브랜드) 재고아이템·브랜드 상품 / (매장) 브랜드 재료·메뉴 → 같이 출발, 기다리지 않음). 거울 제외·중복 제외·판매 재고아이템 제외 처리는 옛 결과 자리(`results[1]·[3]·[4]`)를 그대로 읽어 **로직 무변경**. 재읽기(`dataReloadKey`)도 같은 두 묶음 + 앞선 요청은 `cancelled` 로 버림.
+- `pickerReady` — deferred 도착 전엔 편집 창 «Loading ingredients…» + 저장 버튼 잠금(엔터 제출도 막음), CSV 올리기 창 파일 고르기·가져오기 잠금. 이유: 선택기 없이 저장하면 2026-09-09 «원가 0 덮어쓰기» 길이 열린다. 보기 창은 `ri.ingredient` 로 그려 잠그지 않는다.
+- 카드·표 = 공용 `usePagination(…, 30)` 으로 한 쪽만 그림. 검색·분류·정렬·보기 모드·표 정렬이 바뀌면 1쪽으로. CSV 내려받기는 필터·정렬된 **전체**.
+
+**서버 page/limit 를 안 한 이유:** 검색·분류·정렬·CSV·표 보기가 전부 «받은 집합» 위에서 돌고, 같은 GET 을 메뉴 화면 두 곳도 전체 목록으로 쓴다 — 서버 쪽 나누기는 이 다섯을 서버로 옮기는 재설계다. 응답 줄이기 뒤에도 운영 응답이 300KB/500행을 넘으면 그때 §7 의 정해진 모양으로 더한다.

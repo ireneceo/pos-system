@@ -73,6 +73,7 @@
   "recipeCategoriesTab.description": "설명",
   "recipeManagementPage.recipes": "레시피",
   "recipesTab.loading": "불러오는 중...",
+  "recipesTab.loadingIngredients": "재료 목록을 불러오는 중… 목록이 준비되면 저장할 수 있어요.",
   "recipesTab.noRecipesFound": "레시피가 없습니다",
   "recipesTab.brand": "브랜드",
   "recipesTab.brandCost": "브랜드 비용",

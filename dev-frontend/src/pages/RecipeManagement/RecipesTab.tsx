@@ -20,6 +20,7 @@ import { downloadCSV, toCSVRow, formatDateForFilename } from '../../utils/csvDow
 
 import { getAuthToken } from '../../utils/auth';
 import RecipeImportModal, { RECIPE_CSV_HEADERS, ImportPickerOption } from './RecipeImportModal';
+import Pagination, { usePagination } from '../../components/UI/Pagination';
 import {
   DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell, DataTableHeaderCell,
   DataTableStatus, DataTableActions, DataTableAmount, IconButton
@@ -940,6 +941,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const [dataReloadKey, setDataReloadKey] = useState(0);
   const [recipeCategories, setRecipeCategories] = useState<RecipeCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  // 편집·CSV 선택기 목록(deferred)이 도착했는가 — false 면 그 창들의 저장을 잠근다(아래 fetchAllData 주석).
+  const [pickerReady, setPickerReady] = useState(false);
 
   useEffect(() => {
     if (defaultCurrency) {
@@ -1067,73 +1070,111 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   // Helper to get auth token
   const getToken = useCallback(() => getAuthToken(), []);
 
-  // Parallel fetch all data for performance
+  // ── 첫 화면 요청(critical)과 나중 요청(deferred)을 나눈다 (2026-11-03 Fable 판정 · 목록 화면 속도 표준 1) ──
+  //   예전엔 5개(매장 6개) 목록을 Promise.all 로 **전부** 받은 뒤에야 목록을 그려, 가장 느린 목록
+  //   (회사 전체 재고아이템·브랜드 상품 등)이 첫 화면을 붙잡았다(Irene 2026-11-03 «로딩이 너무 느려»).
+  //   critical = 목록을 그리는 데 필요한 것: 레시피 · 분류 · (매장) 브랜드 레시피 → 받자마자 loading 을 끈다.
+  //   deferred = 편집·CSV 선택기와 연결 메뉴 이름: 재료 · (브랜드) 재고아이템·브랜드 상품 · (매장) 브랜드 재료·메뉴
+  //              → 같이 출발하되 첫 그림을 기다리게 하지 않는다. 카드 원가는 서버가 줄마다 붙인 `ri.ingredient`
+  //              로 계산되므로(resolveIng) deferred 없이도 같다.
+  //   deferred 가 오기 전엔 pickerReady=false → 편집·CSV 창은 «Loading ingredients…» + 저장 잠금
+  //   (선택기 없이 저장하면 2026-09-09 «원가 0 덮어쓰기» 길이 열린다).
   useEffect(() => {
+    let cancelled = false;
     const fetchAllData = async () => {
       if (!brandId && !effectiveRestaurantId) return;
 
-      setLoading(true);
       const token = getToken();
       const isBrandRole = user?.role === 'Brand General' || user?.role === 'Brand Manager';
 
+      // Build URLs based on role
+      let recipesUrl = '', ingredientsUrl = '', categoriesUrl = '';
+
+      if (isBrandRole && brandId) {
+        recipesUrl = `/api/brands/${brandId}/recipes`;
+        // F4 (docs/INGREDIENT_UNIFICATION_DESIGN.md): 재료의 유일한 목록은 Stock Items 다.
+        //   기존 레시피 줄은 거울(ingredients)을 가리키므로 **표시용으로 거울도 함께** 받고,
+        //   선택기에는 Stock Items 를 얹는다. 저장 시 Stock Item 은 `product_ingredient_id` 로
+        //   보내고 서버가 이 브랜드의 거울로 해석한다(없으면 공유를 켜고 만든다).
+        ingredientsUrl = `/api/brands/${brandId}/ingredients`;
+        categoriesUrl = `/api/brands/${brandId}/recipe-categories`;
+      } else if (isRestaurantAdmin && effectiveRestaurantId) {
+        recipesUrl = `/api/restaurants/${effectiveRestaurantId}/recipes`;
+        ingredientsUrl = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
+        categoriesUrl = `/api/restaurants/${effectiveRestaurantId}/recipe-categories`;
+      }
+      if (!recipesUrl) { setLoading(false); return; }
+
+      setLoading(true);
+      setPickerReady(false);
+      const getJson = (url: string) =>
+        fetch(url, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json());
+      const none = Promise.resolve(null);
+      const isRA = isRestaurantAdmin && !!effectiveRestaurantId;
+      // 레스토랑 관리자일 경우 브랜드 데이터도 함께 조회
+      const criticalP = Promise.all([
+        getJson(recipesUrl),
+        getJson(categoriesUrl),
+        isRA ? getJson(`/api/restaurants/${effectiveRestaurantId}/brand-recipes`) : none
+      ]);
+      // F4: 브랜드는 **Stock Items + GIT 프로덕트**를 선택기 목록으로 함께 받는다.
+      //   재료의 출처는 둘이다 — GIT 이 **사는 것**은 Stock Item, **파는 것**(K-소스·포장재·굿즈)은 프로덕트.
+      //   프로덕트를 빼면 레시피에서 K-소스를 고를 수 없다.
+      const deferredP = Promise.all([
+        getJson(ingredientsUrl),
+        isBrandRole && brandId ? getJson('/api/product-ingredients')
+          : (isRA ? getJson(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`) : none),
+        isBrandRole && brandId ? getJson(`/api/brands/${brandId}/products`) : none
+      ]);
+      deferredP.catch(() => { /* 아래 try 에서 처리 — 처리 전 거부 경고만 막는다 */ });
+      // 연결 메뉴 이름(매장)도 deferred — 같이 출발시키고 맨 뒤에서 읽는다.
+      const menuP = isRA
+        ? fetch(`/api/menu?restaurant_id=${effectiveRestaurantId}`, { headers: { 'Authorization': `Bearer ${token}` } })
+        : null;
+      menuP?.catch(() => { /* 아래에서 무시 */ });
+
+      // ── critical: 목록 ──
       try {
-        const promises: Promise<any>[] = [];
-
-        // Build URLs based on role
-        let recipesUrl = '', ingredientsUrl = '', categoriesUrl = '';
-
-        if (isBrandRole && brandId) {
-          recipesUrl = `/api/brands/${brandId}/recipes`;
-          // F4 (docs/INGREDIENT_UNIFICATION_DESIGN.md): 재료의 유일한 목록은 Stock Items 다.
-          //   기존 레시피 줄은 거울(ingredients)을 가리키므로 **표시용으로 거울도 함께** 받고,
-          //   선택기에는 Stock Items 를 얹는다. 저장 시 Stock Item 은 `product_ingredient_id` 로
-          //   보내고 서버가 이 브랜드의 거울로 해석한다(없으면 공유를 켜고 만든다).
-          ingredientsUrl = `/api/brands/${brandId}/ingredients`;
-          categoriesUrl = `/api/brands/${brandId}/recipe-categories`;
-        } else if (isRestaurantAdmin && effectiveRestaurantId) {
-          recipesUrl = `/api/restaurants/${effectiveRestaurantId}/recipes`;
-          ingredientsUrl = `/api/restaurants/${effectiveRestaurantId}/ingredients`;
-          categoriesUrl = `/api/restaurants/${effectiveRestaurantId}/recipe-categories`;
-        }
-
-        // Fetch all in parallel
-        if (recipesUrl) {
-          promises.push(
-            fetch(recipesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
-            fetch(ingredientsUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
-            fetch(categoriesUrl, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
-          );
-          // F4: 브랜드는 **Stock Items + GIT 프로덕트**를 선택기 목록으로 함께 받는다(results[3], results[4]).
-          //   재료의 출처는 둘이다 — GIT 이 **사는 것**은 Stock Item, **파는 것**(K-소스·포장재·굿즈)은 프로덕트.
-          //   프로덕트를 빼면 레시피에서 K-소스를 고를 수 없다.
-          if (isBrandRole && brandId) {
-            promises.push(
-              fetch('/api/product-ingredients', { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
-              fetch(`/api/brands/${brandId}/products`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
-            );
-          }
-          // 레스토랑 관리자일 경우 브랜드 데이터도 함께 조회
-          if (isRestaurantAdmin && effectiveRestaurantId) {
-            promises.push(
-              fetch(`/api/restaurants/${effectiveRestaurantId}/brand-recipes`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json()),
-              fetch(`/api/restaurants/${effectiveRestaurantId}/brand-ingredients`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.json())
-            );
-          }
-        }
-
-        const results = await Promise.all(promises);
+        const [recipesRes, categoriesRes, brandRecipesRes] = await criticalP;
+        if (cancelled) return;
 
         // Process recipes
-        if (results[0]?.success) {
-          let allRecipes = Array.isArray(results[0].data) ? results[0].data : [];
+        if (recipesRes?.success) {
+          let allRecipes = Array.isArray(recipesRes.data) ? recipesRes.data : [];
 
           // 레스토랑 관리자일 경우 브랜드 레시피 추가
-          if (isRestaurantAdmin && results[3]?.success && Array.isArray(results[3].data)) {
-            allRecipes = [...results[3].data, ...allRecipes]; // 브랜드 레시피를 먼저 표시
+          if (isRestaurantAdmin && brandRecipesRes?.success && Array.isArray(brandRecipesRes.data)) {
+            allRecipes = [...brandRecipesRes.data, ...allRecipes]; // 브랜드 레시피를 먼저 표시
           }
 
           setRecipes(allRecipes);
         }
+
+        // Process categories
+        if (categoriesRes?.success) {
+          if (Array.isArray(categoriesRes.data)) {
+            setRecipeCategories(categoriesRes.data.filter((c: RecipeCategory) => c.is_active));
+          } else {
+            const allCategories = [
+              ...(categoriesRes.data.own_categories || []),
+              ...(categoriesRes.data.brand_categories || [])
+            ].filter((c: RecipeCategory) => c.is_active);
+            setRecipeCategories(allCategories);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch recipes:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+
+      // ── deferred: 선택기 목록 ──
+      try {
+        const [ingredientsRes, extraA, extraB] = await deferredP;
+        if (cancelled) return;
+        // 아래 처리 코드는 예전 Promise.all 결과 자리를 **그대로** 읽는다(로직 무변경 — Fable 판정).
+        //   [1]=재료 · 브랜드: [3]=재고아이템·[4]=브랜드 상품 / 매장: [4]=브랜드 재료
+        const results: any[] = [null, ingredientsRes, null, isBrandRole ? extraA : null, isBrandRole ? extraB : extraA];
 
         // Process ingredients
         if (results[1]?.success) {
@@ -1211,48 +1252,35 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           setIngredients(allIngredients);
         }
 
-        // Process categories
-        if (results[2]?.success) {
-          if (Array.isArray(results[2].data)) {
-            setRecipeCategories(results[2].data.filter((c: RecipeCategory) => c.is_active));
-          } else {
-            const allCategories = [
-              ...(results[2].data.own_categories || []),
-              ...(results[2].data.brand_categories || [])
-            ].filter((c: RecipeCategory) => c.is_active);
-            setRecipeCategories(allCategories);
-          }
-        }
-
-        // Fetch linked menus (Restaurant Admin only)
-        if (isRestaurantAdmin && effectiveRestaurantId) {
-          try {
-            const menuRes = await fetch(`/api/menu?restaurant_id=${effectiveRestaurantId}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (menuRes.ok) {
-              const menuData = await menuRes.json();
-              const items = (Array.isArray(menuData?.data) ? menuData.data : Array.isArray(menuData) ? menuData : []);
-              const map: Record<number, string[]> = {};
-              (Array.isArray(items) ? items : []).forEach((m: any) => {
-                if (m.recipe_id) {
-                  if (!map[m.recipe_id]) map[m.recipe_id] = [];
-                  map[m.recipe_id].push(m.name);
-                }
-              });
-              setLinkedMenus(map);
-            }
-          } catch (e) { /* ignore */ }
-        }
-
       } catch (error) {
-        console.error('Failed to fetch data:', error);
+        console.error('Failed to fetch ingredient lists:', error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setPickerReady(true);
+      }
+      if (cancelled) return;
+
+      // Fetch linked menus (Restaurant Admin only)
+      if (menuP) {
+        try {
+          const menuRes = await menuP;
+          if (!cancelled && menuRes.ok) {
+            const menuData = await menuRes.json();
+            const items = (Array.isArray(menuData?.data) ? menuData.data : Array.isArray(menuData) ? menuData : []);
+            const map: Record<number, string[]> = {};
+            (Array.isArray(items) ? items : []).forEach((m: any) => {
+              if (m.recipe_id) {
+                if (!map[m.recipe_id]) map[m.recipe_id] = [];
+                map[m.recipe_id].push(m.name);
+              }
+            });
+            setLinkedMenus(map);
+          }
+        } catch (e) { /* ignore */ }
       }
     };
 
     fetchAllData();
+    return () => { cancelled = true; };
     // `dataReloadKey` — 저장 뒤 **재료 목록까지** 다시 읽기 위한 열쇠 (2026-09-18 Irene 신고).
     //   준비 재료 스위치를 켜 저장하면 서버에 재료 행이 새로 생기는데, 예전엔 저장 후 `fetchRecipes()`
     //   만 돌아 **레시피만** 갱신됐다. 그래서 「Prepared Beef Brisket」 이 방금 만들었는데도
@@ -1468,6 +1496,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!pickerReady) return; // 선택기 목록 도착 전 저장 금지(저장 버튼 잠금과 같은 조건)
     setFormError(null);
 
     if (!formData.name) {
@@ -1767,6 +1796,15 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     });
     return tableSort.dir === 'desc' ? sorted.reverse() : sorted;
   })();
+  // ── 그리기만 30개씩 (2026-11-03 Fable 판정 · 목록 화면 속도 표준 3) ──
+  //   검색·분류·정렬·CSV 는 지금처럼 **전체 집합**(filteredRecipes/tableRows) 위에서 돈다 — 화면엔 그중 한 쪽만 그린다.
+  //   CSV 내려받기 = 필터·정렬이 적용된 전체(현재 쪽이 아님) — 청구서 화면과 같은 규칙.
+  const RECIPE_PAGE_SIZE = 30;
+  const cardPg = usePagination(filteredRecipes, RECIPE_PAGE_SIZE);
+  const tablePg = usePagination(tableRows, RECIPE_PAGE_SIZE);
+  const { setPage: setCardPage } = cardPg;
+  const { setPage: setTablePage } = tablePg;
+  useEffect(() => { setCardPage(1); setTablePage(1); }, [searchTerm, selectedCategory, sortKey, viewMode, tableSort, setCardPage, setTablePage]);
   const sortMark = (key: string) => tableSort?.key === key ? (tableSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
   const ingredientText = (ri: any) => {
     const ing: any = resolveIng(ri);
@@ -1795,7 +1833,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           </tr>
         </DataTableHead>
         <tbody>
-          {tableRows.map((recipe: any) => {
+          {tablePg.pageItems.map((recipe: any) => {
             const lines = recipe.recipeIngredients || [];
             const allText = lines.map(ingredientText).join('; ');
             const firstNames = lines.slice(0, 3).map((ri: any) => resolveIng(ri)?.name || `Ingredient #${ri.ingredient_id}`).join(', ');
@@ -1877,6 +1915,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           })}
         </tbody>
       </DataTable>
+      <Pagination page={tablePg.page} totalPages={tablePg.totalPages} total={tablePg.total}
+        pageSize={tablePg.pageSize} onChange={tablePg.setPage} label="recipes" />
     </DataTableContainer>
   );
 
@@ -1961,7 +2001,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         </EmptyState>
       ) : viewMode === 'table' ? renderRecipeTable() : (
         <RecipesGrid>
-          {filteredRecipes.map(recipe => (
+          {cardPg.pageItems.map(recipe => (
             <RecipeCard
               key={recipe.id}
               isActive={recipe.is_active}
@@ -2153,6 +2193,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           ))}
         </RecipesGrid>
       )}
+      {!loading && viewMode !== 'table' && (
+        <Pagination page={cardPg.page} totalPages={cardPg.totalPages} total={cardPg.total}
+          pageSize={cardPg.pageSize} onChange={cardPg.setPage} label="recipes" />
+      )}
 
       {importApiBase && (
         <RecipeImportModal
@@ -2160,6 +2204,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           onClose={() => setShowImport(false)}
           apiBase={importApiBase}
           pickerOptions={importPickerOptions}
+          pickerReady={pickerReady}
           onChanged={() => setDataReloadKey(k => k + 1)}
           timeZone={operationSettings?.timeZone}
         />
@@ -2190,7 +2235,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
               Cancel
             </ModalButton>
-            <ModalButton type="submit" form="recipe-edit-form" variant="primary">
+            {/* 선택기 목록(deferred)이 오기 전엔 저장 잠금 — 원가 0 덮어쓰기 길 차단(fetchAllData 주석) */}
+            <ModalButton type="submit" form="recipe-edit-form" variant="primary" disabled={!pickerReady}>
               {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
             </ModalButton>
           </>
@@ -2563,6 +2609,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   <span>{t('recipes:recipesTab.cost')}</span>
                   <span></span>
                 </IngredientHeaderRow>
+              )}
+              {!pickerReady && (
+                <div role="status" style={{ fontSize: '13px', color: '#4B5563', padding: '8px 0' }}>
+                  {t('recipes:recipesTab.loadingIngredients', 'Loading ingredients… You can save once the list is ready.')}
+                </div>
               )}
               <IngredientsList>
                 {recipeIngredients.map((ri, index) => (
