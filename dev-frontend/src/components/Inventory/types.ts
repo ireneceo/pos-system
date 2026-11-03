@@ -43,6 +43,10 @@ export interface IngredientStock {
   // 최소치를 안 정한 품목은 연결이 멀쩡해도 "No supplier linked" 로 뜨고 주문 버튼이 사라졌다.
   has_seller_source?: boolean;
   seller_source_name?: string | null;
+  // 연결된 공급처 이름 전부(대표 먼저) — 목록 «공급업체» 칸·공급업체 필터 (2026-11-03 Irene «어느 공급업체를 쓰는지 리스트에서 바로»)
+  seller_source_names?: string[];
+  // 연결은 있으나 연결된 판매 상품이 전부 삭제·판매중지 → 발주 불가(서버 발주 검사와 같은 판정 seller_product_active)
+  seller_source_all_off?: boolean;
   // 입고예정 — 이미 발주됐으나 미입고된 수량(재고단위 환산) + 가장 빠른 입고예정일.
   on_order_quantity?: number;
   on_order_delivery_date?: string | null;

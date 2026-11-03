@@ -278,6 +278,7 @@ router.get('/:restaurantId/ingredients', authenticateToken, checkRestaurantAcces
 
       // 판매 중지 상품 표시 — 발주 검사와 같은 판정(utils/poSellerProductActive.js)
       try { await attachSellerProductActive(enriched.flatMap(i => i.sellers || [])); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
+      try { await require('../utils/sellerStockPool').attachBrandSellerStock(enriched.flatMap(i => i.sellers || [])); } catch (e) { console.error('[seller-stock] attach failed:', e.message); }   // 브랜드 재고 안내(phase2 §5-1)
       return res.json({ success: true, data: enriched });
     }
 
@@ -476,6 +477,7 @@ router.get('/:restaurantId/stock-products', authenticateToken, checkRestaurantAc
     }));
     try { await attachSellerProductIdentity(data.flatMap((d) => d.sellerSources)); } catch { /* 표시용 — 실패해도 목록은 준다 */ }
     try { await attachSellerProductActive(data.flatMap((d) => d.sellerSources)); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
+    try { await require('../utils/sellerStockPool').attachBrandSellerStock(data.flatMap((d) => d.sellerSources)); } catch (e) { console.error('[seller-stock] attach failed:', e.message); }   // 브랜드 재고 안내(phase2 §5-1)
     res.json({ success: true, data });
   } catch (err) {
     console.error('GET /restaurants/:restaurantId/stock-products error:', err);

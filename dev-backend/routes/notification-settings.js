@@ -48,7 +48,7 @@ const NOTIFICATION_CATEGORIES = [
   { key: 'order_new', label: 'New Order', description: 'When a new order is placed at your restaurant', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
   { key: 'order_status', label: 'Order Status Changes', description: 'When an order is paid, cancelled, or refunded', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
   { key: 'kitchen_alert', label: 'Kitchen Time Alert', description: 'When an order exceeds the kitchen station prep time', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
-  { key: 'inventory_low', label: 'Low Stock Alert', description: 'When inventory drops below the configured threshold', section: 'POS Operations', roles: ['Restaurant Admin', 'Brand General', 'Foodcourt General'], push_only: true },
+  { key: 'inventory_low', label: 'Low Stock Alert', description: 'When inventory drops below the configured threshold — or, for brands, each morning when items are out or at their reorder point', section: 'POS Operations', roles: ['Restaurant Admin', 'Brand General', 'Brand Manager', 'Foodcourt General'], push_only: true },
   { key: 'staff_call', label: 'Staff Call from Customer', description: 'When a customer presses the call-staff button at the table', section: 'POS Operations', roles: ['Restaurant Admin', 'Staff'], push_only: true },
 
   // Reservation system (v3.29+)

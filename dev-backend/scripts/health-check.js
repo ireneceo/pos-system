@@ -4193,8 +4193,8 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       const dash = (d.body?.data || []).find(x => Number(x.ingredient.id) === Number(ing.id));
       if (s.status !== 200 || d.status !== 200 || !row || !dash) return fail(`응답 ${s.status}/${d.status} 행 ${!!row}/${!!dash}`);
       // ③ 같은 공식: 취급단위 제안 = 대시보드 제안 · 발주점 같음
-      if (row.suggested_stock_qty !== dash.suggested_qty || row.reorder_point !== dash.reorder_point)
-        return fail(`③ 제안 ${row.suggested_stock_qty}/${dash.suggested_qty} 발주점 ${row.reorder_point}/${dash.reorder_point}`);
+      if (row.suggested_stock_qty !== dash.suggested_qty || row.reorder_point !== dash.reorder_point || row.lead_time_days !== dash.lead_time_days)
+        return fail(`③ 제안 ${row.suggested_stock_qty}/${dash.suggested_qty} 발주점 ${row.reorder_point}/${dash.reorder_point} 리드 ${row.lead_time_days}/${dash.lead_time_days}`);
       // ④ 연결 없음 → seller_type null 묶음 · order_qty null · summary.unlinked ≥ 1
       if (g.seller_type !== null || row.order_qty !== null || !(s.body.data.summary.unlinked >= 1))
         return fail(`④ ${JSON.stringify({ st: g.seller_type, oq: row.order_qty, sum: s.body.data.summary })}`);
@@ -4202,6 +4202,232 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     } catch (e) { return fail(`예외: ${e.message}`); }
     finally {
       try { if (ing) await X('DELETE FROM ingredients WHERE id = :i', { i: ing.id }); } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    }
+  });
+
+  // ── 재고 «미리 안내» 2단계 (2026-11-03 Fable 설계 .claude/fable-design-20261103-stock-foresight-phase2.md §7-2 ⑦~⑩) ──
+  //   ⑦ 가용량 = 받은 주문 배지 = 매장 안내 = 1단계 약속한 양(같은 수) ⑧ 막기 설정(block 400 · warn 통과 · BM 403 · 남의 브랜드 404)
+  //   ⑨ 아침 알림 하루 1번·꺼짐·이른 시각 ⑩ 설정 저장이 남의 칸을 안 지움. 시험 데이터 ZZ-HC-STOCK2-* · 설정·로그는 원래 값으로 되돌림.
+  async function hcStock2Fixture(tag) {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const bg = (await Q("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' LIMIT 1"))[0];
+    const ra = (await Q("SELECT id FROM users WHERE email = 'demo-restaurant@purplehere.com' LIMIT 1"))[0];
+    const [r38] = await Q('SELECT id, brand_id FROM restaurants WHERE id = 38');
+    if (!bg || !ra || !r38 || !r38.brand_id) return null;
+    const [own] = await Q('SELECT owner_id FROM brands WHERE id = :b', { b: r38.brand_id });
+    if (!own || Number(own.owner_id) !== Number(bg.id)) return null;
+    const made = { pi: [], bp: [], map: [], ing: [], po: [] };
+    const pi = await M.ProductIngredient.create({ owner_user_id: bg.id, name: tag + ' Flour', unit: 'g', base_quantity: 1, unit_cost: 0.01, current_stock: 2000, min_stock: 0, is_active: true });
+    made.pi.push(pi.id);
+    const bp = await M.BrandProduct.create({ owner_user_id: bg.id, name: tag + ' Flour Pack', unit: 'g', base_quantity: 500, package_unit: 'pack',
+      unit_price: 9, is_active: true, distribution_mode: 'all', product_kind: 'stock', product_ingredient_id: pi.id, sku: 'ZZS-' + Math.random().toString(36).slice(2, 9) });
+    made.bp.push(bp.id);
+    const ing = await M.Ingredient.create({ restaurant_id: 38, name: tag + ' Flour (store)', unit: 'pack', unit_cost: 9, base_quantity: 1, current_stock: 0, is_active: true });
+    made.ing.push(ing.id);
+    const map = await M.IngredientSellerProduct.create({ ingredient_id: ing.id, seller_type: 'brand', seller_entity_id: r38.brand_id, seller_product_id: bp.id, buyer_restaurant_id: 38,
+      unit_price: 9, unit_conversion: 1, is_active: true });
+    made.map.push(map.id);
+    const tok = (uid) => ({ Authorization: `Bearer ${jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '10m' })}` });
+    const cleanup = async () => {
+      const X = (s, r) => sequelize.query(s, { replacements: r });
+      try {
+        const pos = (await Q('SELECT DISTINCT purchase_order_id id FROM purchase_order_items WHERE ingredient_seller_product_id IN (:m)', { m: made.map.length ? made.map : [0] })).map(r => r.id);
+        const all = [...new Set([...made.po, ...pos])];
+        if (all.length) await hcCleanupPurchaseOrders(all, { waitMs: 0 });
+        if (made.map.length) await X('DELETE FROM ingredient_seller_products WHERE id IN (:i)', { i: made.map });
+        if (made.ing.length) { await X('DELETE FROM inventory_transactions WHERE ingredient_id IN (:i)', { i: made.ing }); await X('DELETE FROM ingredients WHERE id IN (:i)', { i: made.ing }); }
+        if (made.bp.length) await X('DELETE FROM brand_products WHERE id IN (:i)', { i: made.bp });
+        if (made.pi.length) { await X('DELETE FROM inventory_transactions WHERE product_ingredient_id IN (:i)', { i: made.pi }); await X('DELETE FROM product_ingredients WHERE id IN (:i)', { i: made.pi }); }
+      } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    };
+    // 매장 38 → 브랜드 주문을 submitted 로 바로 넣는다(접수 순 = submitted_at)
+    const addPo = async (qty, minutesAgo) => {
+      const [poId] = await sequelize.query(`INSERT INTO purchase_orders (po_number, entity_type, entity_id, seller_type, seller_entity_id, status, created_by_user_id, submitted_at, created_at, updated_at)
+        VALUES (:n, 'restaurant', 38, 'brand', :b, 'submitted', :u, DATE_SUB(NOW(), INTERVAL :m MINUTE), NOW(), NOW())`,
+        { replacements: { n: ('ZZHC' + Date.now() + Math.random().toString(36).slice(2, 5)).slice(0, 30), b: r38.brand_id, u: ra.id, m: minutesAgo } });
+      made.po.push(poId);
+      const [itemId] = await sequelize.query(`INSERT INTO purchase_order_items (purchase_order_id, ingredient_id, ingredient_seller_product_id, description, quantity_ordered, unit, unit_price, line_total, created_at, updated_at)
+        VALUES (:p, :i, :m, :d, :q, 'pack', 9, :t, NOW(), NOW())`, { replacements: { p: poId, i: ing.id, m: map.id, d: tag, q: qty, t: qty * 9 } });
+      return { poId, itemId };
+    };
+    return { bg, ra, brandId: Number(r38.brand_id), pi, bp, ing, map, made, tok, cleanup, addPo, Q };
+  }
+
+  test('inventory', '재고 전망 2단계 ⑦ — 브랜드 가용량: 받은 주문 배지(둘째 주문 2 pack 부족) · /stats · 매장 카탈로그 «Out at brand −2» · 1단계 약속한 양 3,000 g 같은 수', async () => {
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const tag = `ZZ-HC-STOCK2-A-${Date.now()}`;
+    let fx = null;
+    try {
+      fx = await hcStock2Fixture(tag);
+      if (!fx) return fail('데모 매장 38·브랜드·BG 고정물 없음 — 검사 불가');
+      const bgA = fx.tok(fx.bg.id), raA = fx.tok(fx.ra.id);
+      const s0 = await request('GET', `/seller-orders/stats?entity_type=brand&entity_id=${fx.brandId}`, null, bgA);
+      const A = await fx.addPo(3, 2);   // 먼저 들어온 주문 3 pack = 1,500 g
+      const B = await fx.addPo(3, 1);   // 다음 주문 3 pack → 500 g 남음 → 2 pack 부족
+      const s1 = await request('GET', `/seller-orders/stats?entity_type=brand&entity_id=${fx.brandId}`, null, bgA);
+      const list = await request('GET', `/seller-orders?entity_type=brand&entity_id=${fx.brandId}&status=submitted&limit=100`, null, bgA);
+      const rows = list.body?.data || [];
+      const pa = rows.find(p => Number(p.id) === Number(A.poId)), pb = rows.find(p => Number(p.id) === Number(B.poId));
+      if (!pa || !pb) return fail(`받은 주문 목록에 시험 주문 없음 ${list.status}`);
+      const ib = (pb.items || [])[0];
+      if (pa.stock_short_count !== 0 || pb.stock_short_count !== 1 || !ib || ib.stock_short_units !== 2 || ib.stock_tracked !== true)
+        return fail(`(가) 배지 A=${pa.stock_short_count} B=${pb.stock_short_count} 줄=${JSON.stringify(ib && { s: ib.stock_short_units, t: ib.stock_tracked })}`);
+      if ((s1.body?.data?.stock_short ?? -1) - (s0.body?.data?.stock_short ?? 0) !== 1) return fail(`(가) stats ${s0.body?.data?.stock_short} → ${s1.body?.data?.stock_short}`);
+      const det = await request('GET', `/seller-orders/${B.poId}?entity_type=brand&entity_id=${fx.brandId}`, null, bgA);
+      if (det.body?.data?.stock_short_count !== 1) return fail(`(가) 상세 ${det.status} ${det.body?.data?.stock_short_count}`);
+      const cat = await request('GET', '/supplier-catalog?entity_type=restaurant&entity_id=38&limit=500', null, raA);
+      const crow = (cat.body?.data || []).find(r => Number(r.id) === Number(fx.bp.id) && r.supplier && r.supplier.seller_type === 'brand');
+      if (!crow || !crow.seller_stock || crow.seller_stock.available_units !== -2 || crow.seller_stock.status !== 'out' || crow.seller_stock.policy !== 'warn')
+        return fail(`(나) 카탈로그 ${cat.status} ${crow ? JSON.stringify(crow.seller_stock) : '행 없음'}`);
+      const sug = await request('GET', `/purchase-orders/suggestions?entity_type=brand&entity_id=${fx.brandId}`, null, bgA);
+      const srow = (sug.body?.data?.groups || []).flatMap(g => g.items).find(it => Number(it.product_ingredient_id) === Number(fx.pi.id));
+      // 사용량·최소치가 없어도 약속 초과(가용 −1,000)라 out 으로 뜬다(1단계 §3-5 E)
+      if (!srow || srow.committed !== 3000 || srow.status !== 'out') return fail(`(다) 제안 ${srow ? JSON.stringify({ c: srow.committed, s: srow.status }) : '행 없음'}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { if (fx) await fx.cleanup(); }
+  });
+
+  test('inventory', '재고 전망 2단계 ⑧⑩ — 재고 설정: 기본 warn · BG 저장 = 범위 브랜드 전부 · block 이면 보내기 400 BRAND_STOCK_SHORT · warn 이면 통과 · BM 403 · 남의 브랜드 404 · 다른 칸 그대로', async () => {
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const { sequelize } = require('../config/database');
+    const tag = `ZZ-HC-STOCK2-B-${Date.now()}`;
+    let fx = null, saved = null;
+    try {
+      fx = await hcStock2Fixture(tag);
+      if (!fx) return fail('데모 매장 38·브랜드·BG 고정물 없음 — 검사 불가');
+      const scope = (await fx.Q('SELECT id FROM brands WHERE owner_id = :o ORDER BY id', { o: fx.bg.id })).map(r => Number(r.id));
+      saved = await fx.Q('SELECT id, operation_settings FROM brands WHERE id IN (:i)', { i: scope });   // 원래 값 먼저(되돌리기)
+      const bgA = fx.tok(fx.bg.id), raA = fx.tok(fx.ra.id);
+      const g0 = await request('GET', `/brands/${fx.brandId}/stock-settings`, null, bgA);
+      const appl = (g0.body?.data?.applies_to || []).map(b => Number(b.id)).sort();
+      if (g0.status !== 200 || JSON.stringify(appl) !== JSON.stringify([...scope].sort())) return fail(`GET ${g0.status} 범위 ${JSON.stringify(appl)} / ${JSON.stringify(scope)}`);
+      const before = Object.fromEntries(saved.map(r => { let o = {}; try { o = JSON.parse(r.operation_settings || '{}') || {}; } catch {} return [r.id, { tz: o.timeZone, sa: JSON.stringify(o.sales_access), oh: o.openingTime }]; }));
+
+      await fx.addPo(4, 1);   // 2,000 g 를 다 가져감 → 남은 양 0
+      const mk = await request('POST', '/purchase-orders?entity_type=restaurant&entity_id=38',
+        { seller_type: 'brand', seller_entity_id: fx.brandId, items: [{ ingredient_id: fx.ing.id, ingredient_seller_product_id: fx.map.id, quantity_ordered: 1, unit_price: 9 }] }, raA);
+      const draftId = mk.body?.data?.id;
+      if (draftId) fx.made.po.push(draftId);
+      if (mk.status !== 201 || !draftId) return fail(`초안 ${mk.status} ${JSON.stringify(mk.body).slice(0, 200)}`);
+
+      const put = await request('PUT', `/brands/${fx.brandId}/stock-settings`, { short_order_policy: 'block' }, bgA);
+      if (put.status !== 200) return fail(`PUT block ${put.status} ${JSON.stringify(put.body).slice(0, 200)}`);
+      const after = await fx.Q('SELECT id, operation_settings FROM brands WHERE id IN (:i)', { i: scope });
+      for (const r of after) {
+        const o = JSON.parse(r.operation_settings || '{}');
+        if (!o.stock || o.stock.short_order_policy !== 'block') return fail(`브랜드 ${r.id} 저장 안 됨`);
+        const b = before[r.id];
+        if (o.timeZone !== b.tz || JSON.stringify(o.sales_access) !== b.sa || o.openingTime !== b.oh) return fail(`⑩ 브랜드 ${r.id} 다른 칸 바뀜`);
+      }
+      const sub1 = await request('POST', `/purchase-orders/${draftId}/submit?entity_type=restaurant&entity_id=38`, {}, raA);
+      if (sub1.status !== 400 || sub1.body?.code !== 'BRAND_STOCK_SHORT' || !((sub1.body?.data?.lines || [])[0]) || sub1.body.data.lines[0].available_units > 0)
+        return fail(`block 보내기 ${sub1.status} ${JSON.stringify(sub1.body).slice(0, 200)}`);
+      const put2 = await request('PUT', `/brands/${fx.brandId}/stock-settings`, { short_order_policy: 'warn' }, bgA);
+      const sub2 = await request('POST', `/purchase-orders/${draftId}/submit?entity_type=restaurant&entity_id=38`, {}, raA);
+      if (put2.status !== 200 || sub2.status !== 200) return fail(`warn 보내기 ${put2.status}/${sub2.status} ${JSON.stringify(sub2.body).slice(0, 200)}`);
+
+      const [bm] = await fx.Q("SELECT id FROM users WHERE email = 'test-brand-manager@example.com' LIMIT 1");
+      if (bm) {
+        const p403 = await request('PUT', `/brands/${fx.brandId}/stock-settings`, { short_order_policy: 'block' }, fx.tok(bm.id));
+        if (p403.status !== 403) return fail(`BM PUT ${p403.status}`);
+      }
+      const [other] = await fx.Q("SELECT u.id FROM users u JOIN brands b ON b.owner_id = u.id WHERE u.role = 'Brand General' AND b.owner_id <> :o LIMIT 1", { o: fx.bg.id });
+      if (other) {
+        const g404 = await request('GET', `/brands/${fx.brandId}/stock-settings`, null, fx.tok(other.id));
+        if (g404.status !== 404) return fail(`남의 브랜드 GET ${g404.status}`);
+      }
+      const anon = await request('GET', `/brands/${fx.brandId}/stock-settings`);
+      if (anon.status !== 401) return fail(`익명 GET ${anon.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { if (saved) for (const r of saved) await sequelize.query('UPDATE brands SET operation_settings = :v WHERE id = :id', { replacements: { v: r.operation_settings, id: r.id } }); }
+      catch (e) { console.log(c.gray(`      (설정 되돌리기 실패: ${e.message})`)); }
+      if (fx) await fx.cleanup();
+    }
+  });
+
+  test('inventory', '재고 전망 2단계 ⑨ — 아침 재고 알림: 설정 시각 전 0 · 뒤 1번 · 같은 날 다시 0 · 꺼지면 0 · 알릴 게 없으면 조용 · SchedulerRun 기록', async () => {
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const { sequelize } = require('../config/database');
+    const Q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const X = (s, r) => sequelize.query(s, { replacements: r });
+    // 라우트·서비스를 직접 부르면 늦은 require('../server') 가 PM2 밖 실행을 끝낸다 — 빈 모듈 먼저([[reference_healthcheck_require_route_server_exit]])
+    const srvPath = require.resolve('../server');
+    if (!require.cache[srvPath]) require.cache[srvPath] = { id: srvPath, filename: srvPath, loaded: true, exports: {} };
+    const svc = require('../services/brandStockAlertService');
+    const { getBrandManagerIds } = require('../utils/notificationService');
+    const { brandStockItemSuggestionsFor } = require('../routes/purchase-orders-crud');
+    const tag = `ZZ-HC-STOCK2-C-${Date.now()}`;
+    let fx = null, saved = null, stash = [], newLogIds = [];
+    try {
+      fx = await hcStock2Fixture(tag);
+      if (!fx) return fail('데모 고정물 없음 — 검사 불가');
+      await fx.addPo(5, 1);   // 2,000 g 에 2,500 g 주문 → 시험 품목 out (알릴 것 ≥ 1 보장)
+      const brandId = fx.brandId;
+      const [b] = await Q('SELECT id, operation_settings FROM brands WHERE id = :b', { b: brandId });
+      saved = b.operation_settings;
+      let tz = 'Asia/Kuala_Lumpur'; try { tz = (JSON.parse(saved || '{}') || {}).timeZone || tz; } catch {}
+      const recips = await getBrandManagerIds(brandId);
+      if (!recips.length) return fail('수신자 0');
+      // 오늘(브랜드 시간대) 이미 있는 inventory_low 기록은 잠시 빼 두고 끝에 되돌린다(실제 매 정각 알림과 섞이지 않게)
+      const now0 = new Date();
+      const since = svc.startOfLocalDay(now0, tz);
+      stash = await Q("SELECT * FROM push_logs WHERE user_id IN (:u) AND category = 'inventory_low' AND sent_at >= :s", { u: recips, s: since });
+      if (stash.length) await X('DELETE FROM push_logs WHERE id IN (:i)', { i: stash.map(r => r.id) });
+      const maxId0 = Number((await Q('SELECT COALESCE(MAX(id),0) m FROM push_logs'))[0].m);
+      const count = async () => Number((await Q("SELECT COUNT(*) n FROM push_logs WHERE user_id IN (:u) AND category='inventory_low' AND id > :m", { u: recips, m: maxId0 }))[0].n);
+      // 오늘 날짜의 설정 시각 전·후(브랜드 시간대) — 오늘 0시 + 시간
+      const at = (h, m) => new Date(since.getTime() + (h * 60 + m) * 60000);
+      const setStock = async (stock) => {
+        let os = {}; try { os = JSON.parse(saved || '{}') || {}; } catch {}
+        os.stock = stock;
+        await X('UPDATE brands SET operation_settings = :v WHERE id = :b', { v: JSON.stringify(os), b: brandId });
+      };
+      await setStock({ short_order_policy: 'warn', morning_alert: { enabled: true, hour: 7 }, include_soon_default: false });
+      const r0 = await svc.runDue({ now: at(6, 30), onlyBrandIds: [brandId] });
+      if (r0.skipped_early !== 1 || (await count()) !== 0) return fail(`06:30 ${JSON.stringify(r0)}`);
+      const r1 = await svc.runDue({ now: at(7, 30), onlyBrandIds: [brandId] });
+      const n1 = await count();
+      if (r1.sent < 1 || n1 !== recips.length) return fail(`07:30 ${JSON.stringify(r1)} 기록 ${n1}/${recips.length}`);
+      const r2 = await svc.runDue({ now: at(8, 30), onlyBrandIds: [brandId] });
+      if (r2.skipped_done !== 1 || (await count()) !== n1) return fail(`같은 날 다시 ${JSON.stringify(r2)}`);
+      await X('DELETE FROM push_logs WHERE user_id IN (:u) AND category=\'inventory_low\' AND id > :m', { u: recips, m: maxId0 });
+      await setStock({ short_order_policy: 'warn', morning_alert: { enabled: false, hour: 7 }, include_soon_default: false });
+      const r3 = await svc.runDue({ now: at(7, 30), onlyBrandIds: [brandId] });
+      if (r3.skipped_off !== 1 || (await count()) !== 0) return fail(`꺼짐 ${JSON.stringify(r3)}`);
+      const [run] = await Q("SELECT results FROM scheduler_runs WHERE job_name = 'brand_stock_alert_hourly' ORDER BY id DESC LIMIT 1");
+      if (!run) return fail('SchedulerRun 없음');
+      // 알릴 게 없는 브랜드 — 다른 주인의 브랜드 중 품절+지금 발주 0 인 곳(있으면)
+      const others = await Q('SELECT id FROM brands WHERE owner_id IS NOT NULL AND owner_id <> :o ORDER BY id LIMIT 8', { o: fx.bg.id });
+      for (const o of others) {
+        const sm = (await brandStockItemSuggestionsFor(o.id)).summary;
+        const rc = await getBrandManagerIds(o.id);
+        if (!sm || sm.out + sm.order_now > 0 || !rc.length) continue;
+        const done = await Q("SELECT COUNT(*) n FROM push_logs WHERE user_id IN (:u) AND category='inventory_low' AND sent_at >= :s", { u: rc, s: since });
+        if (Number(done[0].n)) continue;
+        const rq = await svc.runDue({ now: at(7, 30), onlyBrandIds: [o.id] });
+        if (rq.skipped_quiet !== 1 || rq.sent !== 0) return fail(`조용 ${JSON.stringify(rq)}`);
+        break;
+      }
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try {
+        if (fx) {
+          const rc = await getBrandManagerIds(fx.brandId);
+          await X("DELETE FROM push_logs WHERE user_id IN (:u) AND category='inventory_low' AND title LIKE 'Stock outlook%' AND sent_at >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)", { u: rc.length ? rc : [0] });
+        }
+        if (saved !== null || fx) await X('UPDATE brands SET operation_settings = :v WHERE id = :b', { v: saved, b: fx ? fx.brandId : 0 });
+        for (const r of stash) {
+          const cols = Object.keys(r);
+          await X(`INSERT INTO push_logs (${cols.map(k => '`' + k + '`').join(',')}) VALUES (${cols.map(k => ':' + k).join(',')})`, r);
+        }
+      } catch (e) { console.log(c.gray(`      (되돌리기 실패: ${e.message})`)); }
+      if (fx) await fx.cleanup();
     }
   });
 

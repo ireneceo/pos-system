@@ -236,7 +236,8 @@
       "cancel": "取消",
       "itemsLabel": "本次发货的商品",
       "leftForLater": "未勾选的商品将保持“未发货”——之后用“发送剩余商品”发出。",
-      "selectAtLeastOne": "请至少选择一个要发货的商品"
+      "selectAtLeastOne": "请至少选择一个要发货的商品",
+      "stockShortNote": "{{count}} 项库存不足——发货后库存将为负"
     },
     "reject": {
       "title": "拒绝订单",
@@ -255,7 +256,8 @@
     "badge": {
       "needsDispatch": "买家已确认收货 — 请记录配送",
       "notYetDispatched": "{{count}} 个商品未发货",
-      "autoCompletes": "{{date}} 自动完成"
+      "autoCompletes": "{{date}} 自动完成",
+      "stockShort": "库存不足 · {{count}} 项"
     },
     "amend": {
       "title": "修改订单项目",
@@ -306,8 +308,13 @@
       "sharePackingApps": "备货清单 → KakaoTalk·其他应用",
       "shareCopiedTitle": "已复制",
       "shareCopied": "内容已复制。请打开 KakaoTalk（或其他聊天应用），选择对话后粘贴。",
-      "shareFailed": "此设备无法分享或复制。请使用 PDF 或电子邮件。"
-    }
+      "shareFailed": "此设备无法分享或复制。请使用 PDF 或电子邮件。",
+      "stockShort": "当前可用 {{available}} · 缺 {{short}}",
+      "stockOk": "当前可用 {{available}}",
+      "stockHint": "已扣除先到订单。配方产品以最缺的原料为准。"
+    },
+    "stockShortLine": "{{count}} 个未完成订单无法用当前库存全部发货",
+    "stockShortLink": "前往库存 →"
   },
   "tradeInvoicesPage": {
     "title": "交易发票",

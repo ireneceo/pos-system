@@ -24,6 +24,10 @@ interface Props {
   activeFilter: string;
   onFilter: (f: ForesightFilter | 'all') => void;
   onAddNeeded: () => void;
+  /** 브랜드 모드 — «Stock settings» 버튼(재고 설정 한 창 · phase2 §4-1) */
+  onOpenSettings?: () => void;
+  /** 브랜드 설정이 «보내기 막기» 면 띠 밑에 한 줄(켜 둔 걸 잊지 않게) */
+  blocking?: boolean;
 }
 
 const CARDS: Array<{ key: keyof ForesightSummary; filter: ForesightFilter; color: string }> = [
@@ -34,7 +38,7 @@ const CARDS: Array<{ key: keyof ForesightSummary; filter: ForesightFilter; color
 ];
 
 const ForesightPanel: React.FC<Props> = ({
-  summary, neededCount, soonLinkedCount, includeSoon, setIncludeSoon, activeFilter, onFilter, onAddNeeded,
+  summary, neededCount, soonLinkedCount, includeSoon, setIncludeSoon, activeFilter, onFilter, onAddNeeded, onOpenSettings, blocking,
 }) => {
   const { t } = useTranslation(['inventory']);
   if (!summary) return null;
@@ -73,6 +77,11 @@ const ForesightPanel: React.FC<Props> = ({
             />
             {t('foresight.includeSoon', 'Include items running low soon')}
           </label>
+          {onOpenSettings && (
+            <Button variant="secondary" onClick={onOpenSettings}>
+              {t('foresight.settings', 'Stock settings')}
+            </Button>
+          )}
           <Button variant="primary" onClick={onAddNeeded} disabled={addCount === 0}>
             {t('foresight.addNeeded', { count: addCount, defaultValue: 'Add what\'s needed ({{count}})' })}
           </Button>
@@ -99,6 +108,11 @@ const ForesightPanel: React.FC<Props> = ({
           );
         })}
       </DashboardStatsGrid>
+      {blocking && (
+        <div style={{ fontSize: 12, color: '#B91C1C', marginTop: -8, marginBottom: 4 }}>
+          {t('foresight.blockingOn', 'Stores can\'t send orders beyond your available stock (blocking is on).')}
+        </div>
+      )}
       {summary.no_basis > 0 && (
         <div style={{ fontSize: 12, color: '#6B7280', marginTop: -8 }}>
           {t('foresight.noBasisLine', { count: summary.no_basis, defaultValue: '{{count}} items have no min stock or daily usage — set one in each item\'s settings and we\'ll warn you before they run out.' })}

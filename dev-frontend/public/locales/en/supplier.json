@@ -236,7 +236,8 @@
       "cancel": "Cancel",
       "itemsLabel": "Items in this shipment",
       "leftForLater": "Unchecked items stay as not yet dispatched — ship them later with «Ship remaining».",
-      "selectAtLeastOne": "Select at least one item to ship"
+      "selectAtLeastOne": "Select at least one item to ship",
+      "stockShortNote": "{{count}} item(s) short — stock will go negative"
     },
     "reject": {
       "title": "Reject Order",
@@ -255,7 +256,8 @@
     "badge": {
       "needsDispatch": "Buyer confirmed receipt — record delivery",
       "notYetDispatched": "{{count}} item(s) not yet dispatched",
-      "autoCompletes": "Auto-completes {{date}}"
+      "autoCompletes": "Auto-completes {{date}}",
+      "stockShort": "Stock short · {{count}} item(s)"
     },
     "amend": {
       "title": "Edit order items",
@@ -306,8 +308,13 @@
       "sharePackingApps": "Packing list → KakaoTalk / other apps",
       "shareCopiedTitle": "Copied",
       "shareCopied": "The message is copied. Open KakaoTalk (or another chat app), pick the chat and paste it.",
-      "shareFailed": "Could not share or copy on this device. Please use PDF or Email."
-    }
+      "shareFailed": "Could not share or copy on this device. Please use PDF or Email.",
+      "stockShort": "Available now {{available}} · short {{short}}",
+      "stockOk": "Available now {{available}}",
+      "stockHint": "Counted after earlier orders. For recipe products, the scarcest ingredient decides."
+    },
+    "stockShortLine": "{{count}} open order(s) can't be fully shipped from current stock",
+    "stockShortLink": "Go to inventory →"
   },
   "tradeInvoicesPage": {
     "title": "Trade Invoices",

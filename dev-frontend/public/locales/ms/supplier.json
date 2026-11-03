@@ -236,7 +236,8 @@
       "cancel": "Batal",
       "itemsLabel": "Item dalam penghantaran ini",
       "leftForLater": "Item yang tidak ditanda kekal belum dihantar — hantar kemudian dengan «Hantar baki».",
-      "selectAtLeastOne": "Pilih sekurang-kurangnya satu item untuk dihantar"
+      "selectAtLeastOne": "Pilih sekurang-kurangnya satu item untuk dihantar",
+      "stockShortNote": "{{count}} item tidak cukup — stok akan menjadi negatif"
     },
     "reject": {
       "title": "Tolak Pesanan",
@@ -255,7 +256,8 @@
     "badge": {
       "needsDispatch": "Pembeli sahkan penerimaan — rekod penghantaran",
       "notYetDispatched": "{{count}} item belum dihantar",
-      "autoCompletes": "Selesai automatik {{date}}"
+      "autoCompletes": "Selesai automatik {{date}}",
+      "stockShort": "Stok tidak cukup · {{count}} item"
     },
     "amend": {
       "title": "Ubah item pesanan",
@@ -306,8 +308,13 @@
       "sharePackingApps": "Senarai bungkusan → KakaoTalk / aplikasi lain",
       "shareCopiedTitle": "Disalin",
       "shareCopied": "Mesej telah disalin. Buka KakaoTalk (atau aplikasi sembang lain), pilih sembang dan tampal.",
-      "shareFailed": "Tidak dapat berkongsi atau menyalin pada peranti ini. Sila guna PDF atau E-mel."
-    }
+      "shareFailed": "Tidak dapat berkongsi atau menyalin pada peranti ini. Sila guna PDF atau E-mel.",
+      "stockShort": "Tersedia sekarang {{available}} · kurang {{short}}",
+      "stockOk": "Tersedia sekarang {{available}}",
+      "stockHint": "Dikira selepas pesanan terdahulu. Untuk produk resipi, bahan paling kurang yang menentukan."
+    },
+    "stockShortLine": "{{count}} pesanan terbuka tidak dapat dihantar sepenuhnya dengan stok semasa",
+    "stockShortLink": "Ke inventori →"
   },
   "tradeInvoicesPage": {
     "title": "Invois Dagangan",

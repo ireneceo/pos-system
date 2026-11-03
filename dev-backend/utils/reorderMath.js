@@ -155,58 +155,32 @@ async function onOrderQtyBrand(piIds) {
  *   연결 → brand_products → 레시피(Σ qty × 레시피 양) · 다이렉트(qty × directDeductConversion) · 그 밖(자체 재고 등) 0.
  */
 async function committedOutboundBrand(brandIds, piIds) {
+  // 2026-11-03 2단계: 줄 조회·환산은 utils/sellerStockPool 한 벌(가용량·배지·막기와 같은 숫자 — 설계 phase2 §3-2 G)
   const out = new Map();
   if (!brandIds.length || !piIds.length) return out;
-  const { sequelize } = require('../config/database');
-  const { OPEN_OUTBOUND_STATUSES } = require('./poStatuses');
-  const lines = await sequelize.query(
-    `SELECT i.quantity_ordered qty, bp.id bp_id, bp.product_recipe_id rid, bp.product_ingredient_id pid
-       FROM purchase_order_items i
-       JOIN purchase_orders p ON p.id = i.purchase_order_id
-       JOIN ingredient_seller_products isp ON isp.id = i.ingredient_seller_product_id AND isp.seller_type = 'brand'
-       JOIN brand_products bp ON bp.id = isp.seller_product_id
-      WHERE p.seller_type = 'brand' AND p.seller_entity_id IN (:bids) AND p.status IN (:st) AND p.deleted_at IS NULL
-        AND i.shipped_at IS NULL`,
-    { replacements: { bids: brandIds, st: OPEN_OUTBOUND_STATUSES }, type: sequelize.QueryTypes.SELECT });
+  const pool = require('./sellerStockPool');
+  const lines = await pool.openOutboundLines(brandIds);
   if (!lines.length) return out;
+  const rules = await pool.productRules(lines);
+  const all = pool.committedByPi({ lines, rules });
   const want = new Set(piIds.map(Number));
-  const add = (pid, q) => { if (want.has(pid) && q > 0) out.set(pid, r2((out.get(pid) || 0) + q)); };
+  all.forEach((q, id) => { if (want.has(id) && q > 0) out.set(id, q); });
+  return out;
+}
 
-  const recipeIds = [...new Set(lines.filter(l => l.rid).map(l => Number(l.rid)))];
-  const recipeRows = recipeIds.length ? await sequelize.query(
-    `SELECT recipe_id, ingredient_id, quantity FROM product_recipe_ingredients WHERE recipe_id IN (:ids)`,
-    { replacements: { ids: recipeIds }, type: sequelize.QueryTypes.SELECT }) : [];
-  const byRecipe = new Map();
-  recipeRows.forEach(r => { const k = Number(r.recipe_id); if (!byRecipe.has(k)) byRecipe.set(k, []); byRecipe.get(k).push(r); });
-
-  const directLines = lines.filter(l => !l.rid && l.pid);
-  let convByBp = new Map();
-  if (directLines.length) {
-    const { BrandProduct, ProductIngredient } = require('../models');
-    const { directDeductConversion } = require('../services/sellerLinkConversion');
-    const bps = await BrandProduct.findAll({ where: { id: [...new Set(directLines.map(l => Number(l.bp_id)))] } });
-    const pis = await ProductIngredient.findAll({ where: { id: [...new Set(directLines.map(l => Number(l.pid)))] } });
-    const piById = new Map(pis.map(p => [Number(p.id), p]));
-    bps.forEach(bp => {
-      const st = piById.get(Number(bp.product_ingredient_id));
-      if (st) convByBp.set(Number(bp.id), directDeductConversion({ stock: st, sellerProduct: bp }).conv);
-    });
-  }
-
-  for (const l of lines) {
-    const qty = Number(l.qty) || 0;
-    if (qty <= 0) continue;
-    if (l.rid) {
-      (byRecipe.get(Number(l.rid)) || []).forEach(ri => add(Number(ri.ingredient_id), qty * (Number(ri.quantity) || 0)));
-    } else if (l.pid) {
-      const conv = convByBp.get(Number(l.bp_id));
-      if (conv != null) add(Number(l.pid), qty * conv);
-    }
-  }
+/** 품목별 우선 판매처 하나(우선 → 싼 것 · 보이는 연결만 · 매장 연결 먼저) — 발주 제안·대시보드가 같은 규칙 */
+function preferredLinkMap(links, keyOf, visible) {
+  const ordered = (links || [])
+    .filter(visible)
+    .map((s, i) => ({ s, i }))
+    .sort((a, b) => ((a.s.buyer_restaurant_id == null) - (b.s.buyer_restaurant_id == null)) || (a.i - b.i))
+    .map(x => x.s);
+  const out = new Map();
+  for (const s of ordered) { const k = keyOf(s); if (!out.has(k)) out.set(k, s); }
   return out;
 }
 
 module.exports = {
   compute, pickDailyUsage, ledgerUsage, onOrderQty, MIN_DAYS, WINDOW_DAYS, COVER_DAYS,
-  classify, orderQtyFor, leadTimeFor, ledgerUsageBrand, onOrderQtyBrand, committedOutboundBrand,
+  classify, orderQtyFor, leadTimeFor, ledgerUsageBrand, onOrderQtyBrand, committedOutboundBrand, preferredLinkMap,
 };

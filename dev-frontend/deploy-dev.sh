@@ -15,6 +15,27 @@ CACHE_DIR="$SCRIPT_DIR/node_modules/.cache"
 DEPLOY_DIR="/var/www/dev-frontend-build"
 CURRENT_USER=$(whoami)
 
+# ── 메모리 자리표 (2026-11-03 Irene «같은 일 안생기게 메모리 나눠서 순서대로 쓰게 해야지») ──
+#   11-03 PlanQ 빌드 두 개가 겹쳐 메모리 바닥·스왑 99% → 서버 통신 끊김 → 재부팅. 솔루션마다 게이트가 따로라
+#   서로의 «들어가는 중» 을 못 봤다. 자리표(~/dev-server/bin/mem-slot)는 세 솔루션이 같이 서는 줄 — 먼저 선 순서대로,
+#   메모리가 될 때 들어가고, 들어간 일은 칸막이 상자(몫×1.3) 안에서 돌아 넘치면 그 일만 죽는다(137).
+#   60분 안 차례가 안 오면 75(실행 안 함 · 우회 금지).
+#   몫 2850MB = 실측 정점 2475MB(타입 검사기 뺀 10-23 이후 빌드 29번의 최댓값 · 11-03 집계) + 15% → 상자 3705MB.
+#   정점이 올라가면 끝에 찍히는 «빌드 상자 메모리 피크» 를 보고 이 숫자를 고친다.
+#
+#   **이 스크립트 전체**를 자리표 안에서 돌린다 — 빌드 줄만 감싸면 «옛 빌드 지우기»·«복사» 가 밖이라
+#   다음 PurpleHere 빌드가 줄 서기 전에 build/ 를 지워 앞 빌드의 복사를 깨뜨린다(11-03 10:05 실제로 남).
+#   ⚠ 두 겹 금지 — 이미 자리표 상자 안이면(작업방이 `mem-slot run … -- npm run build:dev` 로 감쌈) 다시 감싸지 않는다.
+#     두 겹이면 안쪽이 바깥 자리를 기다리며 60분 멈추고 뒤에 선 다른 솔루션 빌드까지 막는다(11-03 10:05 실제로 남).
+#     package.json 의 build 스크립트도 그래서 감싸지 않는다. build:dev 끝 주석은 공용 검사(mem-slot-guard) 표시 — 지우지 말 것.
+MEM_SLOT=/home/irene/dev-server/bin/mem-slot
+BUILD_MB=2850
+INSIDE_SLOT_UNIT=$(grep -o 'memslot-[A-Za-z0-9_.-]*\.scope' /proc/self/cgroup 2>/dev/null | head -1)
+if [ -z "$INSIDE_SLOT_UNIT" ] && [ -x "$MEM_SLOT" ]; then
+    echo -e "${BLUE}메모리 자리표로 빌드 (몫 ${BUILD_MB}MB · 상자 $(( BUILD_MB * 13 / 10 ))MB) — 차례가 오면 시작합니다. 지금 상태: $MEM_SLOT status${NC}"
+    exec "$MEM_SLOT" run purple-build "$BUILD_MB" -- "$SCRIPT_DIR/deploy-dev.sh" "$@"
+fi
+
 echo -e "${BLUE}Dev Frontend 배포 시작...${NC}"
 
 # 0. 권한 문제 자동 해결 — 디렉터리 내 한 파일이라도 CURRENT_USER 가 아닌 소유면 전체 chown.
@@ -84,23 +105,31 @@ cd "$SCRIPT_DIR"
 export TSC_COMPILE_ON_ERROR=true
 BUILD_START=$(date +%s)
 
-# 빌드를 cgroup 상자에 가둔다 — 폭주해도 빌드만 죽고 서버는 산다.
-# (실측 총피크 3.08GiB → 4G 캡. 힙 상한 2560MB 는 package.json.)
-# 2026-10-17: 화면이 늘어 4G 를 넘어 배포 빌드가 oom-kill 3회(10-16 16:37·23:57 외) → 5G. 시작 전 메모리 게이트(2.5GB 여유)는 그대로.
+# 빌드 상자 — 위에서 자리표 안으로 들어왔으면 그 상자가 곧 빌드 상자다(다시 감싸지 않음).
+#   자리표를 못 쓰는 계정(다른 개발자 등)이면 예전처럼 systemd-run 상자(5G)만 씌운다.
 BUILD_RUNNER=""
-if systemd-run --user --scope -q -p MemoryMax=10M true >/dev/null 2>&1; then
-    BUILD_UNIT="purple-build-$$"
-    BUILD_RUNNER="systemd-run --user --scope -q --unit=${BUILD_UNIT} -p MemoryMax=5G -p MemorySwapMax=512M"
+BUILD_BOX_MB="?"
+if [ -n "$INSIDE_SLOT_UNIT" ]; then
+    BUILD_UNIT_GLOB="${INSIDE_SLOT_UNIT%.scope}"
+    _max=$(cat "/sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup | head -1)/memory.max" 2>/dev/null || true)
+    case "$_max" in ''|*[!0-9]*) ;; *) BUILD_BOX_MB=$(( _max / 1048576 )) ;; esac
+    echo -e "${BLUE}메모리 자리표 상자 안(${INSIDE_SLOT_UNIT} · 상한 ${BUILD_BOX_MB}MB)에서 빌드합니다${NC}"
+elif systemd-run --user --scope -q -p MemoryMax=10M true >/dev/null 2>&1; then
+    echo -e "${YELLOW}⚠ 메모리 자리표($MEM_SLOT)를 못 씀 — 자리표 없이 상자(5G)만 씌워 빌드합니다${NC}"
+    BUILD_UNIT_GLOB="purple-build-$$"
+    BUILD_BOX_MB=5120
+    BUILD_RUNNER="systemd-run --user --scope -q --unit=purple-build-$$ -p MemoryMax=5G -p MemorySwapMax=512M"
 else
-    echo -e "${YELLOW}⚠ systemd-run 사용 불가 — cgroup 상자 없이 빌드합니다${NC}"
+    echo -e "${YELLOW}⚠ 자리표·systemd-run 모두 사용 불가 — 상자 없이 빌드합니다${NC}"
 fi
 
-# 상자 메모리 피크 기록 (2026-10-17 Fable 조건 B) — 5G 가 맞는지 숫자로 가른다. scope 는 끝나면 사라지므로
+# 상자 메모리 피크 기록 (2026-10-17 Fable 조건 B) — 몫이 맞는지 숫자로 가른다. scope 는 끝나면 사라지므로
 #   빌드 도는 동안 5초마다 memory.peak 를 읽어 둔다. 실패해도 빌드엔 영향 없음.
+#   자리표 상자 = 이 스크립트 전체가 든 상자라 피크에 자동인쇄 회귀 검사(node)도 들어간다(작음).
 PEAK_FILE="/tmp/purple-build-peak-$$"
-if [ -n "${BUILD_UNIT:-}" ]; then
+if [ -n "${BUILD_UNIT_GLOB:-}" ]; then
     ( for _ in $(seq 1 1800); do
-        f=$(ls -d /sys/fs/cgroup/user.slice/user-$(id -u).slice/user@$(id -u).service/app.slice/${BUILD_UNIT}.scope 2>/dev/null)
+        f=$(ls -d /sys/fs/cgroup/user.slice/user-$(id -u).slice/user@$(id -u).service/app.slice/${BUILD_UNIT_GLOB}.scope 2>/dev/null | head -1)
         [ -n "$f" ] && [ -r "$f/memory.peak" ] && cat "$f/memory.peak" > "$PEAK_FILE" 2>/dev/null
         sleep 5
       done ) &
@@ -108,27 +137,30 @@ if [ -n "${BUILD_UNIT:-}" ]; then
 fi
 report_peak() {
     [ -n "${PEAK_PID:-}" ] && kill "$PEAK_PID" 2>/dev/null
-    if [ -s "$PEAK_FILE" ]; then echo -e "  빌드 상자 메모리 피크: $(( $(cat "$PEAK_FILE") / 1048576 ))MB (상한 5120MB)"; rm -f "$PEAK_FILE"; fi
+    if [ -s "$PEAK_FILE" ]; then echo -e "  빌드 상자 메모리 피크: $(( $(cat "$PEAK_FILE") / 1048576 ))MB (상한 ${BUILD_BOX_MB}MB)"; rm -f "$PEAK_FILE"; fi
     return 0  # 피크를 못 읽었어도(set -e) 빌드 성공을 실패로 끝내지 않는다
 }
 
 # 빌드 실행 — 진행 상황을 실시간 출력
+# set -e 가 실패한 파이프에서 바로 끝내면 아래 «✗ 빌드 실패»·피크·자리표 안내가 안 찍힌다(10-17 부수 결함) → 종료 코드를 받아 둔다.
+#   pipefail 이라 $? = 오른쪽에서 처음 0 아닌 코드 = 빌드(자리표) 쪽 코드(아래 while 은 늘 0).
 set -o pipefail
+BUILD_STATUS=0
 $BUILD_RUNNER npm run build 2>&1 | while IFS= read -r line; do
     # 핵심 진행 메시지만 출력 (Creating, Compiled, error)
     if echo "$line" | grep -qiE "Creating|Compiled|error|warning|Failed"; then
         echo -e "  ${line}"
     fi
-done
-BUILD_STATUS=${PIPESTATUS[0]}
+done || BUILD_STATUS=$?
 set +o pipefail
 report_peak
 
 if [ "$BUILD_STATUS" -ne 0 ]; then
     echo -e "${RED}✗ 빌드 실패 (exit ${BUILD_STATUS})${NC}"
     if [ "$BUILD_STATUS" -eq 137 ] || [ "$BUILD_STATUS" -eq 134 ]; then
-        echo -e "${RED}  메모리 상한(5G)에 걸려 죽었습니다. 다른 무거운 작업을 끄고 재시도하거나,${NC}"
-        echo -e "${RED}  필요치를 재측정해 package.json 힙 상한(현재 2560MB)을 조정하세요.${NC}"
+        echo -e "${RED}  빌드 상자 메모리 한도(${BUILD_BOX_MB:-?}MB)에 걸려 빌드만 죽었습니다(서버는 그대로).${NC}"
+        echo -e "${RED}  위 «빌드 상자 메모리 피크» 를 보고 이 파일의 BUILD_MB(몫)를 피크+15% 로 고치거나,${NC}"
+        echo -e "${RED}  package.json 힙 상한(현재 2560MB)을 조정하세요.${NC}"
     fi
     exit 1
 fi

@@ -528,6 +528,8 @@ app.use('/api/brand-menus', brandMenusRouter);
 app.use('/api/brand-menu-categories', brandMenuCategoriesRouter);
 app.use('/api/brand-menu-option-groups', brandMenuOptionGroupsRouter);
 app.use('/api/restaurant/:restaurantId/brand-menus', restaurantBrandMenusRouter);
+// 브랜드 재고 설정 한 창(막기 여부·아침 알림·«곧 부족» 기본) — 가드는 파일 안 · 정확한 경로 마운트 · .claude/fable-design-20261103-stock-foresight-phase2.md §4
+app.use('/api/brands/:brandId/stock-settings', require('./routes/brand-stock-settings'));
 app.use('/api/brands', brandsRouter);
 app.use('/api/foodcourts', foodcourtsRouter);
 app.use('/api', recipesRouter);
@@ -778,6 +780,7 @@ async function startServer() {
 
     // Start standing-order (정기 발주) scheduler — hourly, buyer-local 07:00 (2026-10-22 recurring-po)
     recurringPoScheduler.start(io);
+    require('./services/brandStockAlertScheduler').start(io);   // 아침 재고 알림(브랜드) — 2026-11-03 phase2 §5-4
 
     // Start PO auto-receive scheduler — hourly, delivered + 72h → received (2026-10-30 po-auto-complete)
     require('./services/poAutoReceiveScheduler').start(io);

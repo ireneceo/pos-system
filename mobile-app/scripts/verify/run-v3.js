@@ -103,9 +103,16 @@ function assertRoomForEmulator() {
 }
 
 // A runaway qemu must die alone, not freeze the box (see run-v4.js).
+// 2026-11-03: 에뮬레이터는 서버 공용 «메모리 자리표»(mem-slot)로 띄운다 — 세 솔루션 빌드·크롬 시험과 같은 줄에 서서
+// 먼저 선 순서대로 들어가고, 상자(몫×1.3 · 나눠 쓸 메모리 한도로 잘림) 안에서 돌아 넘치면 에뮬레이터만 죽는다.
+// (Irene «같은 일 안생기게 메모리 나눠서 순서대로 쓰게 해야지» · 몫 = dev-backend/scripts/lib/memSlot.js 한 곳)
+// 자리표를 못 쓰면 예전처럼 5G 상자만.
+const memSlot = require('/var/www/dev-backend/scripts/lib/memSlot');
 function emulatorCmd() {
   const args = ['-avd', AVD, '-no-window', '-no-audio', '-no-snapshot',
     '-gpu', 'swiftshader_indirect', '-no-boot-anim'];
+  const w = memSlot.wrap('purple-emulator', [EMULATOR, ...args]);
+  if (w.slotted) return { cmd: w.cmd[0], args: w.cmd.slice(1), env: w.env, slotted: true };
   const boxed = spawnSync('systemd-run', ['--user', '--scope', '-q', '-p', 'MemoryMax=10M', 'true'], { encoding: 'utf8' });
   if (boxed.status === 0) {
     return { cmd: 'systemd-run', args: ['--user', '--scope', '-q', '-p', 'MemoryMax=5G', EMULATOR, ...args] };
@@ -137,8 +144,10 @@ async function main() {
   if (booted.trim() !== '1') {
     console.log('  에뮬레이터 부팅 중...');
     const e = emulatorCmd();
-    const emu = spawn(e.cmd, e.args, { stdio: 'ignore', detached: false });
+    const emu = spawn(e.cmd, e.args, { env: e.env || process.env, stdio: 'ignore', detached: false });
     children.push(emu);
+    // 자리표 차례가 와서 에뮬레이터가 실제로 뜬 뒤부터 부팅 5분을 잰다(줄 서는 시간은 빼고).
+    if (e.slotted) await memSlot.waitAdmitted(emu, { onWait: () => console.log('  메모리 자리표 차례 기다리는 중 (상태: mem-slot status)...') });
     await waitFor('boot', () => (sh(ADB, ['shell', 'getprop', 'sys.boot_completed']).stdout || '').trim() === '1', 300000, 3000);
   }
   console.log('  에뮬레이터 준비됨');

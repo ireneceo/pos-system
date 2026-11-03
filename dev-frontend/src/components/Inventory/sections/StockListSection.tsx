@@ -106,6 +106,12 @@ interface Props {
   noBasisIds?: Set<number>;
   selectedIds?: Set<number>;
   onToggleSelect?: (id: number) => void;
+
+  // 공급처 연결을 이 목록 안에서 바로 (2026-11-03 Irene «여기서 바로 바로 연결하게 해줘. 이동시키지 말고»)
+  //   있으면 «Link» 가 다른 화면으로 가지 않고 연결 창을 연다. 없으면(매장 모드) 종전대로.
+  onLinkSupplier?: (ingredient: IngredientStock) => void;
+  /** 카탈로그에 없는 업체 — 외부 공급업체 상품으로 만들어 바로 연결 */
+  onCreateSupplierProduct?: (ingredient: IngredientStock) => void;
 }
 
 const StockListSection: React.FC<Props> = ({
@@ -141,8 +147,33 @@ const StockListSection: React.FC<Props> = ({
   noBasisIds,
   selectedIds,
   onToggleSelect,
+  onLinkSupplier,
+  onCreateSupplierProduct,
 }) => {
   const { t } = useTranslation(['inventory', 'common']);
+
+  // 공급업체 필터 — «우리가 어느 공급업체를 쓰는지» 를 목록에서 바로 좁혀 본다.
+  //   'all' = 전부 · '__none__' = 연결 없음(발주 불가) · 그 밖 = 그 공급업체 이름
+  const [supplierFilter, setSupplierFilter] = React.useState('all');
+  const namesOf = (i: IngredientStock): string[] =>
+    (i.seller_source_names && i.seller_source_names.length > 0)
+      ? i.seller_source_names
+      : ((i.seller_source_name || i.supplier_name) ? [String(i.seller_source_name || i.supplier_name)] : []);
+  const isLinked = (i: IngredientStock): boolean =>
+    i.has_seller_source !== undefined ? !!i.has_seller_source : namesOf(i).length > 0;
+  const supplierOptions = React.useMemo(() => {
+    const count = new Map<string, number>();
+    inventory.forEach(i => { if (isLinked(i)) namesOf(i).forEach(n => count.set(n, (count.get(n) || 0) + 1)); });
+    return Array.from(count.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inventory]);
+  const unlinkedCount = React.useMemo(() => inventory.filter(i => !isLinked(i)).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [inventory]);
+  const matchesSupplier = (i: IngredientStock) =>
+    supplierFilter === 'all' ? true
+      : supplierFilter === '__none__' ? !isLinked(i)
+      : isLinked(i) && namesOf(i).includes(supplierFilter);
 
   // 카테고리 목록 — 지금 보고 있는 재고에서 실제로 쓰이는 것만(빈 카테고리는 안 띄운다).
   const categories = React.useMemo(() => {
@@ -173,7 +204,7 @@ const StockListSection: React.FC<Props> = ({
     const fs = matchesForesight(item.id);
     const matchesStatus = fs !== null ? fs : matchesStatusFilter(item);
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
+    return matchesSearch && matchesStatus && matchesCategory && matchesSupplier(item);
   });
 
   return (
@@ -202,6 +233,20 @@ const StockListSection: React.FC<Props> = ({
           >
             <option value="all">All Categories</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </FilterSelect>
+        )}
+        {(supplierOptions.length > 0 || unlinkedCount > 0) && (
+          <FilterSelect
+            value={supplierFilter}
+            onChange={(e) => setSupplierFilter(e.target.value)}
+            style={{ minWidth: '170px' }}
+            aria-label={t('inventory:supplierFilter.label', 'Supplier') as string}
+          >
+            <option value="all">{t('inventory:supplierFilter.all', 'All Suppliers')}</option>
+            {supplierOptions.map(([n, c]) => <option key={n} value={n}>{n} ({c})</option>)}
+            {unlinkedCount > 0 && (
+              <option value="__none__">{t('inventory:supplierFilter.none', 'No supplier linked')} ({unlinkedCount})</option>
+            )}
           </FilterSelect>
         )}
         <FilterSelect
@@ -612,10 +657,26 @@ const StockListSection: React.FC<Props> = ({
                             ↓ {sugg.suggested_qty} {sugg.order_unit || sugg.unit}
                           </div>
                         </div>
-                      ) : (item.seller_source_name || item.supplier_name) ? (
-                        // 연결된 공급처 이름. seller_source_name = 실제 연결(ingredient_seller_products),
-                        // supplier_name = 쓰기중단된 레거시 컬럼이라 뒤로 둔다.
-                        <div style={{ color: '#0A2540', fontSize: '13px' }}>{item.seller_source_name || item.supplier_name}</div>
+                      ) : hasMapping && namesOf(item).length > 0 ? (
+                        // 연결된 공급처 이름 — 대표 먼저, 여럿이면 «+N» (2026-11-03 Irene «어느 공급업체를 쓰는지 리스트에서 바로»).
+                        // seller_source_names = 실제 연결(ingredient_seller_products), supplier_name = 쓰기중단 레거시라 맨 뒤.
+                        <div>
+                          <div
+                            style={{ color: '#0A2540', fontSize: '13px', fontWeight: 600 }}
+                            title={namesOf(item).join(', ')}
+                          >
+                            {namesOf(item)[0]}
+                            {namesOf(item).length > 1 && (
+                              <span style={{ color: '#4B5563', fontWeight: 500 }}> +{namesOf(item).length - 1}</span>
+                            )}
+                          </div>
+                          {item.seller_source_all_off && (
+                            <div style={{ display: 'inline-block', marginTop: 2, fontSize: 10, padding: '1px 6px',
+                              background: '#FEE2E2', color: '#991B1B', borderRadius: 999, fontWeight: 600 }}>
+                              {t('inventory:sellerOff', 'Product removed by supplier — relink')}
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <span style={{ display: 'inline-block', padding: '1px 6px', background: '#F1F4F8', color: '#6B7280', borderRadius: 999, fontWeight: 600, fontSize: 10 }}>
                           No mapping
@@ -633,17 +694,35 @@ const StockListSection: React.FC<Props> = ({
                       똑같이 수량칸+Order 버튼을 그려서, 눌러야 "No supplier mapping" 을 보고
                       알 수 있었다 — 목록만 봐서는 무엇을 발주할 수 있는지 구분이 안 됐다.
                       버튼을 비활성으로 두지 않고(비활성 금지 규칙), 연결하러 가는 행동을 준다. */}
-                  {!hasMapping ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span style={{ fontSize: 12, color: '#6B7280', whiteSpace: 'nowrap' }}>
-                        No supplier linked
-                      </span>
+                  {(!hasMapping || (item.seller_source_all_off && onLinkSupplier)) ? (
+                    // 연결이 없거나, 연결된 판매 상품이 전부 삭제·판매중지면 발주가 안 된다 → 그 자리에서 연결.
+                    //   onLinkSupplier 가 있으면(브랜드 모드) 창이 이 목록 위에 열리고, 연결하면 목록을 다시 불러
+                    //   같은 행이 곧바로 수량칸+Order 로 바뀐다(2026-11-03 Irene «이동시키지 말고 · 발주도 바로바로»).
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      {!hasMapping && (
+                        <span style={{ fontSize: 12, color: '#6B7280', whiteSpace: 'nowrap' }}>
+                          {t('inventory:supplierFilter.none', 'No supplier linked')}
+                        </span>
+                      )}
                       <OrderButton
-                        onClick={() => { window.location.href = '/pos/purchase-orders'; }}
+                        onClick={() => {
+                          if (onLinkSupplier) onLinkSupplier(item);
+                          else window.location.href = '/pos/purchase-orders';
+                        }}
                         style={{ background: '#F1F4F8', color: '#374151', borderColor: '#C7CED6' }}
                       >
-                        Link
+                        {t('inventory:linkSupplier', 'Link')}
                       </OrderButton>
+                      {onCreateSupplierProduct && (
+                        <button
+                          type="button"
+                          onClick={() => onCreateSupplierProduct(item)}
+                          style={{ background: 'transparent', border: 'none', color: '#635BFF', fontSize: 12,
+                            fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                        >
+                          {t('inventory:newSupplierProduct', 'New supplier')}
+                        </button>
+                      )}
                     </div>
                   ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

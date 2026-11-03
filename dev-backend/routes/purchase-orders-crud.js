@@ -577,17 +577,7 @@ async function buildSuggestionRows({ subjects, usage, onOrder, committed, links,
   return { groups: Object.values(groups), summary, no_basis_ids: noBasisIds, computed_at: new Date().toISOString() };
 }
 
-/** 품목별 우선 판매처 하나(우선 → 싼 것 · 보이는 연결만 · 매장 연결 먼저) */
-function preferredLinkMap(links, keyOf, visible) {
-  const ordered = links
-    .filter(visible)
-    .map((s, i) => ({ s, i }))
-    .sort((a, b) => ((a.s.buyer_restaurant_id == null) - (b.s.buyer_restaurant_id == null)) || (a.i - b.i))
-    .map(x => x.s);
-  const out = new Map();
-  for (const s of ordered) { const k = keyOf(s); if (!out.has(k)) out.set(k, s); }
-  return out;
-}
+const { preferredLinkMap } = require('../utils/reorderMath');   // 대시보드와 같은 함수(2026-11-03 2단계 §6-2)
 
 /**
  * 브랜드 구매자의 발주 제안 — 본사 재고아이템(ProductIngredient) (2026-10-09 Fable 판정 C-1 #5 · 2026-11-03 공용 빌더).
@@ -595,10 +585,15 @@ function preferredLinkMap(links, keyOf, visible) {
  *   약속한 양 = 그 owner 가 가진 모든 브랜드의 미출고 판매 주문(같은 재고를 깎는다).
  */
 async function brandStockItemSuggestions(req) {
+  return brandStockItemSuggestionsFor(req.buyerEntity.id);
+}
+
+/** 브랜드 id 하나로 — 라우트와 아침 재고 알림(services/brandStockAlertService)이 같은 답을 쓴다(2단계 §6-9) */
+async function brandStockItemSuggestionsFor(brandId) {
   const { ProductIngredient } = require('../models');
   const Brand = require('../models/Brand');
   const reorderMath = require('../utils/reorderMath');
-  const b = await Brand.findByPk(req.buyerEntity.id, { attributes: ['owner_id'] });
+  const b = await Brand.findByPk(brandId, { attributes: ['owner_id'] });
   const ownerUserId = b && b.owner_id ? b.owner_id : null;
   if (!ownerUserId) return { groups: [], summary: null, computed_at: new Date().toISOString() };
   const items = await ProductIngredient.findAll({ where: { owner_user_id: ownerUserId, is_active: true } });
@@ -626,7 +621,7 @@ async function brandStockItemSuggestions(req) {
     is_brand_shared: false,
     product_ingredient_id: Number(pi.id)
   }));
-  return buildSuggestionRows({ subjects, usage, onOrder, committed, links, req });
+  return buildSuggestionRows({ subjects, usage, onOrder, committed, links });
 }
 
 // ============================================
@@ -1470,7 +1465,10 @@ router.post('/purchase-orders/bulk', async (req, res) => {
             // 일괄발주(재고관리 Bulk Order)도 **발주가 나가는 경로**다 → 오너 승인 게이트 필수.
             // 예전엔 여기서 submitted 직행이라 승인 ON 이어도 그냥 나갔다 (Fable 2026-07-13).
             // 합쳐진 옛 초안 줄에 판매 중지 상품이 있으면 보내지 않고 초안으로 남긴다(아래 catch).
-            await assertLinesSellerProductActive(await PurchaseOrderItem.findAll({ where: { purchase_order_id: fresh.id } }));
+            const freshItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: fresh.id } });
+            await assertLinesSellerProductActive(freshItems);
+            // 브랜드 재고 «막기» 설정 — 걸리면 아래 catch 가 초안으로 남긴다(2026-11-03 phase2 §4-3)
+            await require('../utils/sellerStockPool').assertLinesWithinBrandStock(freshItems);
             const needsApproval = await applySubmitGate(fresh, null, appendTrackingEvent, req.user);
             if (needsApproval) {
               emitPoEvent(req, fresh, 'seller-order-updated');
@@ -1618,3 +1616,4 @@ module.exports = router;
 // 두 경로가 갈라지므로, 파일을 쪼개는 리팩터링 없이 이 함수만 내보낸다.
 // (Express router 는 함수라 프로퍼티를 붙여도 `require(...)` 를 라우터로 쓰는 기존 호출부는 그대로다.)
 module.exports.createPurchaseOrderCore = createPurchaseOrderCore;
+module.exports.brandStockItemSuggestionsFor = brandStockItemSuggestionsFor;

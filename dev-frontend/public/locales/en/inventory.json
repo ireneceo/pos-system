@@ -187,6 +187,35 @@
     "badgeOut": "Out",
     "badgeOrderNow": "Order now",
     "badgeSoonDays": "Soon ({{n}}d)",
-    "badgeSoon": "Soon"
-  }
+    "badgeSoon": "Soon",
+    "settings": "Stock settings",
+    "blockingOn": "Stores can't send orders beyond your available stock (blocking is on)."
+  },
+  "stockSettings": {
+    "title": "Stock settings",
+    "close": "Close",
+    "saving": "Saving…",
+    "save": "Save",
+    "loading": "Loading…",
+    "appliesTo": "Applies to: {{names}} (they share the same stock)",
+    "policyTitle": "When a store orders more than your available stock",
+    "warn": "Warn only (default)",
+    "block": "Block sending",
+    "warnHint": "The order still comes in. Stores see «Out at brand» when ordering, and your incoming orders show «Stock short». Restock to cover it.",
+    "blockHint": "Stores can't send an order above what you have left and are asked to reduce the quantity. Turn on only when your stock numbers are accurate (they are estimates until a stock take).",
+    "morningTitle": "Morning stock alert",
+    "morningOn": "Send an app notification each morning",
+    "at": "At",
+    "morningHint": "Only when items are out or at their reorder point, once a day, to every manager of this brand. No email. To turn it off just for yourself: Notifications › Low Stock Alert.",
+    "includeSoon": "Include items running low soon in «Add what's needed» by default",
+    "perItemHint": "Min stock, daily usage and lead time are set per item — use the Settings button on each row."
+  },
+  "supplierFilter": {
+    "label": "Supplier",
+    "all": "All Suppliers",
+    "none": "No supplier linked"
+  },
+  "sellerOff": "Product removed by supplier — relink",
+  "linkSupplier": "Link",
+  "newSupplierProduct": "New supplier"
 }

@@ -3,9 +3,21 @@ import { initReactI18next } from 'react-i18next';
 import HttpBackend from 'i18next-http-backend';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
-// Cache-bust locale files per page load so translation key updates take effect
-// without users manually clearing cache. Evaluated once at module load.
-const I18N_CACHE_BUST = Date.now().toString();
+// 번역 파일 주소 끝 표시 = 이번 빌드의 main.<지문>.js 지문 (2026-11-03 운영 속도 점검).
+//   예전엔 Date.now() 라 새로고침마다 주소가 바뀌어 39개 묶음(영어만 ~750KB)을 매번 다시 받았다.
+//   빌드 지문이면 같은 빌드 안에서는 브라우저가 저장본을 쓰고, 새 배포(새 지문)에서만 새로 받는다.
+//   지문을 못 읽으면(개발 서버 npm start 등) 옛 방식 그대로 — 번역이 낡을 일은 없다.
+//   같은 지문 읽기는 index.tsx 의 서비스워커 등록(?b=) 과 같다.
+const I18N_CACHE_BUST = (() => {
+  try {
+    const s = typeof document !== 'undefined'
+      ? (document.querySelector('script[src*="/static/js/main."]') as HTMLScriptElement | null)
+      : null;
+    const m = s?.src.match(/main\.([a-f0-9]+)\.js/);
+    if (m) return m[1];
+  } catch { /* 아래 옛 방식 */ }
+  return Date.now().toString();
+})();
 
 i18n
   .use(HttpBackend)

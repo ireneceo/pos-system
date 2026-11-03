@@ -576,7 +576,14 @@
     "deliveryZoneUnknown": "매장 주소에 주(State)가 없어 기본 배송비가 적용됩니다.",
     "deliveryZoneFix": "주 입력하기",
     "discontinued": "판매 중지",
-    "discontinuedText": "{{seller}}에서 더 이상 판매하지 않는 품목이에요"
+    "discontinuedText": "{{seller}}에서 더 이상 판매하지 않는 품목이에요",
+    "brandStock": {
+      "left": "브랜드 재고: {{n}}{{u}} 남음",
+      "outWarn": "브랜드 품절 — 주문은 받고, 브랜드가 입고 후 보냅니다",
+      "outBlock": "브랜드 품절 — 지금은 주문을 받지 않습니다",
+      "overWarn": "브랜드에 지금 {{n}}{{u}} 만 있습니다 — 나머지는 입고 후 보냅니다",
+      "overBlock": "브랜드가 지금은 {{n}}{{u}} 까지만 받습니다"
+    }
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",
@@ -1131,5 +1138,9 @@
     "masterOnConfirm": "이 매장 발주에 다시 내 승인이 필요합니다(아래 규칙은 예외).",
     "masterOffConfirm": "이 매장의 모든 발주가 내 승인 없이 공급업체로 나갑니다. 규칙은 그대로 남습니다.",
     "masterSaveFailed": "오너 승인 설정을 바꾸지 못했습니다."
+  },
+  "brandStockShort": {
+    "error": "브랜드가 지금 재고보다 많이 받을 수 없습니다: {{items}}. 수량을 줄여 주세요.",
+    "line": "{{name}} — 최대 {{max}} {{unit}} (주문 {{qty}})"
   }
 }

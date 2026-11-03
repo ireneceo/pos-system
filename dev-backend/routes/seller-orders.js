@@ -261,6 +261,8 @@ router.get('/', async (req, res) => {
       return obj;
     }));
     await attachSellerProductInfo(data);
+    // 브랜드 재고 부족 — 줄별 short · 주문별 stock_short_count (utils/sellerStockPool · 2026-11-03 phase2 §5-2). 표시용 — 실패해도 목록은 준다.
+    try { await require('../utils/sellerStockPool').attachStockShortage(data); } catch (e) { console.error('[stock-short] attach failed:', e.message); }
 
     res.json({
       success: true,
@@ -305,12 +307,21 @@ router.get('/stats', async (req, res) => {
       }
     });
 
+    // 지금 재고로 다 못 보내는 열린 주문 수(브랜드 판매자만 · utils/sellerStockPool · phase2 §5-2)
+    let stockShort = 0;
+    if (req.sellerEntity && req.sellerEntity.type === 'brand') {
+      const bids = Array.isArray(req.sellerEntity.ids) && req.sellerEntity.ids.length ? req.sellerEntity.ids : [req.sellerEntity.id];
+      try { stockShort = await require('../utils/sellerStockPool').stockShortOrderCount(bids.filter(x => x != null)); }
+      catch (e) { console.error('[stock-short] stats failed:', e.message); }
+    }
+
     res.json({
       success: true,
       data: {
         pending,
         confirmed,
         shipped,
+        stock_short: stockShort,
         received_this_month: receivedThisMonth,
         cancelled,
         // Tab counts (used by incoming-orders TabBadge — submitted/confirmed/shipped/received total/cancelled)
@@ -559,6 +570,7 @@ router.get('/:id', async (req, res) => {
     attachAutoReceiveAt(obj);
     await attachSellerProductInfo(obj);
     await attachSellerProductCategory(obj); // 상세 품목을 판매자 카테고리별로 묶어 보이게(2026-09-29 Irene)
+    try { await require('../utils/sellerStockPool').attachStockShortage(obj); } catch (e) { console.error('[stock-short] attach failed:', e.message); }
     res.json({ success: true, data: obj });
   } catch (err) {
     console.error('GET /api/seller-orders/:id error:', err);

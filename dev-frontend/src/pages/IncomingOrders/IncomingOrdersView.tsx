@@ -181,6 +181,10 @@ interface IncomingOrderItem {
   // 품목별 발송 표시 (2026-10-08) — null = 아직 안 보냄. is_service = 배송 없는 줄(서버 판정)
   shipped_at?: string | null;
   is_service?: boolean;
+  // 브랜드 재고 부족(2026-11-03 phase2 §5-2 · 서버 utils/sellerStockPool) — 이 줄 차례에 남아 있던 양·못 채우는 양(주문 단위)
+  stock_tracked?: boolean;
+  stock_short_units?: number;
+  stock_available_units?: number | null;
 }
 
 interface IncomingOrderRow {
@@ -198,6 +202,8 @@ interface IncomingOrderRow {
   is_service_only?: boolean;
   // 배송 대상인데 아직 안 보낸 줄 수 (2026-10-08 품목별 발송 — 서버가 센다)
   unshipped_count?: number;
+  /** 지금 재고로 못 채우는 미발송 줄 수(브랜드 판매자만) */
+  stock_short_count?: number;
   auto_receive_at?: string | null;
   item_count?: number;
   items?: IncomingOrderItem[];
@@ -247,6 +253,8 @@ interface SellerOrderStats {
   confirmed?: number;
   shipped?: number;
   received_this_month?: number;
+  /** 지금 재고로 다 못 보내는 열린 주문 수(브랜드 판매자만 · phase2 §5-2) */
+  stock_short?: number;
 }
 
 interface IncomingOrdersViewProps {
@@ -729,7 +737,8 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         pending: payload.pending ?? payload.submitted ?? 0,
         confirmed: payload.confirmed ?? 0,
         shipped: payload.shipped ?? 0,
-        received_this_month: payload.received_this_month ?? payload.received ?? 0
+        received_this_month: payload.received_this_month ?? payload.received ?? 0,
+        stock_short: payload.stock_short ?? 0
       });
       if (payload.counts) {
         const c = {
@@ -1325,6 +1334,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           ))}
         </RLStatusTabs>
 
+        {sellerScope === 'brand' && (stats.stock_short || 0) > 0 && (
+          <div style={{ margin: '0 0 12px', padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', fontSize: 13, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span>{tNs('orders.stockShortLine', "{{count}} open order(s) can't be fully shipped from current stock").replace('{{count}}', String(stats.stock_short))}</span>
+            <a href="/pos/brand-inventory?tab=list&filter=fs_out" style={{ color: '#635BFF', fontWeight: 600 }}>{tNs('orders.stockShortLink', 'Go to inventory →')}</a>
+          </div>
+        )}
         {/* StatisticsBar: 사업 KPI (탭 카운트와 중복 X). 기간 필터에 따라 자동 갱신. */}
         <StatisticsBar>
           <StatItem>{tNs('orders.stats.totalRevenue', 'Total Revenue')}<strong>{formatMoney(periodStats.totalRevenue)}</strong></StatItem>
@@ -1437,6 +1452,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                           {row.status === 'delivered' && !!row.auto_receive_at && (
                             <div style={{ fontSize: '11px', fontWeight: 500, color: '#6B7280', marginTop: 2 }}>
                               {tNs('orders.badge.autoCompletes', 'Auto-completes {{date}}').replace('{{date}}', formatDateTime(row.auto_receive_at))}
+                            </div>
+                          )}
+                          {/* 브랜드 재고 부족 — 지금 재고로 못 채우는 줄(phase2 §5-2 · Irene «재고없음 표시되서 문제 인지하게») */}
+                          {(row.stock_short_count || 0) > 0 && (
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#EF4444', marginTop: 2 }}>
+                              {tNs('orders.badge.stockShort', 'Stock short · {{count}} item(s)').replace('{{count}}', String(row.stock_short_count))}
                             </div>
                           )}
                           {/* 품목별 발송 (2026-10-08) — 일부만 보낸 주문 */}
@@ -1609,6 +1630,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           </>
         }
       >
+        {/* 재고 부족 줄을 보내면 재고가 마이너스로 — 안내만, 막지 않는다(phase2 §5-2 · 현행 출고 규칙) */}
+        {shipMode === 'ship' && (() => {
+          const shortN = (shipModalRow?.items || []).filter(it => !it.shipped_at && (it.stock_short_units || 0) > 0 && (shipChecked.size === 0 || shipChecked.has(it.id))).length;
+          return shortN > 0 ? (
+            <div style={{ marginBottom: 12, padding: '8px 12px', borderRadius: 8, background: '#FFFBEB', border: '1px solid #F59E0B', color: '#92400E', fontSize: 12 }}>
+              {tNs('orders.ship.stockShortNote', '{{count}} item(s) short — stock will go negative').replace('{{count}}', String(shortN))}
+            </div>
+          ) : null;
+        })()}
         {/* 품목별 발송 (2026-10-08 · Irene «배송했다 안했다 개별표시») — 보내는 품목에 체크. 기본은 전부 체크.
             체크를 푼 품목은 «미발송» 으로 남고, 나중에 «나머지 보내기» 로 보낸다. 재고는 체크한 품목만 빠진다. */}
         {shipMode === 'ship' && (shipModalRow?.items || []).filter(it => !it.is_service).length > 1 && (
@@ -2233,6 +2263,16 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                           {it.shipped_at
                             ? `${tNs('orders.detail.shipped', 'Shipped')} ✓ ${formatDate(it.shipped_at)}`
                             : tNs('orders.detail.notShipped', 'Not dispatched yet')}
+                        </div>
+                      )}
+                      {it.stock_tracked && !it.shipped_at && it.stock_available_units != null && (
+                        <div
+                          style={{ fontSize: 11, fontWeight: (it.stock_short_units || 0) > 0 ? 700 : 400, color: (it.stock_short_units || 0) > 0 ? '#EF4444' : '#6B7280' }}
+                          title={tNs('orders.detail.stockHint', 'Counted after earlier orders. For recipe products, the scarcest ingredient decides.') as string}
+                        >
+                          {(it.stock_short_units || 0) > 0
+                            ? tNs('orders.detail.stockShort', 'Available now {{available}} · short {{short}}').replace('{{available}}', String(it.stock_available_units)).replace('{{short}}', String(it.stock_short_units))
+                            : tNs('orders.detail.stockOk', 'Available now {{available}}').replace('{{available}}', String(it.stock_available_units))}
                         </div>
                       )}
                     </div>

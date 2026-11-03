@@ -21,6 +21,7 @@
  *    CLAUDE.md 규칙상 빌드는 run_in_background 로 별도 실행).
  */
 const { spawnSync } = require('child_process');
+const memSlot = require('./lib/memSlot');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
@@ -73,12 +74,12 @@ const GATES = [
   { id: 'contract-tests', tier: 'runtime', label: '📜 계약 테스트 (금액공식·설정wipe·소켓경계·마감기대금액·결제원장)', cwd: BACKEND, cmd: ['npx', 'jest', 'tests/order-totals.test.js', 'tests/settings-guard.test.js', 'tests/socket-auth.test.js', 'tests/cashup-expected.test.js', 'tests/order-payment-ledger.test.js', '--forceExit', '--silent'], timeout: 300000 },
   { id: 'inspection', tier: 'runtime', label: '🔎 인스펙션 하니스 (구조 불변식, 신규 위반 0)', cwd: BACKEND, cmd: ['node', 'scripts/inspection/run.js'] },
   { id: 'health', tier: 'runtime', label: '❤️ health-check 전체 회귀 (인쇄 계약+보안+API)', cwd: BACKEND, cmd: ['node', 'scripts/health-check.js', '--quiet'], timeout: 300000 },
-  { id: 'print-routes', tier: 'runtime', label: '🖨️ 인쇄 라우트 가드 (자동인쇄 전 루트 실제 실행)', cwd: FRONTEND, cmd: ['node', 'scripts/print-route-guard/run.js', '--quiet'], timeout: 600000 },  // 300s→600s (2026-08-20): e2e·빌드와 겹치면 34/34 정상인데도 타임아웃으로 거짓 실패했다. 게이트를 느슨하게 한 게 아니라 부하 여유만 준 것.
+  { id: 'print-routes', tier: 'runtime', label: '🖨️ 인쇄 라우트 가드 (자동인쇄 전 루트 실제 실행)', cwd: FRONTEND, cmd: ['node', 'scripts/print-route-guard/run.js', '--quiet'], timeout: 600000, slot: 'purple-chrome' },  // 300s→600s (2026-08-20): e2e·빌드와 겹치면 34/34 정상인데도 타임아웃으로 거짓 실패했다. 게이트를 느슨하게 한 게 아니라 부하 여유만 준 것.
   // 빌드 밖 타입 검사 (2026-09-27 R3) — 빌드는 타입 검사기가 죽어도 exit 0 이다. 파일별 기준선보다 늘면 실패.
   //   무거운 작업(tsc 약 3.5GB)이라 heavy-task-gate 를 먼저 통과해야 하고, 막히면 «확인 불가» 로 실패한다.
   { id: 'type-baseline', tier: 'runtime', label: '🔤 타입 오류 기준선 (빌드 밖 tsc · 파일별 신규 0)', cwd: BACKEND, cmd: ['node', 'scripts/check-type-baseline.js'], timeout: 600000 },
   { id: 'i18n', tier: 'runtime', label: '🌐 i18n 4언어 키 일치', cwd: FRONTEND, cmd: ['node', 'scripts/verify-translations.js'] },
-  { id: 'mount', tier: 'mount', label: '🖥️ 실브라우저 mount sweep (8역할 + /pos/manager/*, 크래시0)', cwd: FRONTEND, cmd: null /* 특수 처리: 토큰 자동조달 + 2개 sweep 병합 */, timeout: 1200000 },
+  { id: 'mount', tier: 'mount', label: '🖥️ 실브라우저 mount sweep (8역할 + /pos/manager/*, 크래시0)', cwd: FRONTEND, cmd: null /* 특수 처리: 토큰 자동조달 + 2개 sweep 병합 */, timeout: 1200000, slot: 'purple-chrome' },
 ];
 
 function postJson(url, body) {
@@ -177,15 +178,25 @@ async function signRoleToken(role) {
   }
 }
 
+// 크롬을 띄우는 게이트(slot)는 서버 공용 메모리 자리표로 감싼다(2026-11-03 — lib/memSlot.js).
+//   줄 서는 시간(최대 SLOT_WAIT_SEC)은 게이트 시간 한도에 더해 준다 — 기다리다 «시간 초과» 로 거짓 실패하지 않게.
+const SLOT_WAIT_SEC = 1800;
 function runGate(gate, extraEnv) {
   const started = Date.now();
-  const r = spawnSync(gate.cmd[0], gate.cmd.slice(1), {
+  const baseEnv = { ...process.env, ...(extraEnv || {}) };
+  const w = gate.slot ? memSlot.wrap(gate.slot, gate.cmd, { waitSec: SLOT_WAIT_SEC, env: baseEnv })
+    : { cmd: gate.cmd, env: baseEnv, slotted: false };
+  const r = spawnSync(w.cmd[0], w.cmd.slice(1), {
     cwd: gate.cwd,
     encoding: 'utf8',
-    timeout: gate.timeout || 120000,
-    env: { ...process.env, ...(extraEnv || {}) },
+    timeout: (gate.timeout || 120000) + (w.slotted ? SLOT_WAIT_SEC * 1000 : 0),
+    env: w.env,
     maxBuffer: 20 * 1024 * 1024,
   });
+  if (r.status === 75) {
+    // 자리표 차례가 안 옴 = 검사를 아예 안 돌렸다. 통과도 결함도 아닌 «확인 불가» — 출력에 분명히 남긴다.
+    return { ok: false, code: 75, out: `확인 불가 — 메모리 자리표에서 ${SLOT_WAIT_SEC}초 동안 차례가 오지 않아 실행하지 않음(우회 금지). 앞의 무거운 작업이 끝난 뒤 다시 돌릴 것.\n` + (r.stdout || '') + (r.stderr || ''), ms: Date.now() - started };
+  }
   const out = (r.stdout || '') + (r.stderr || '');
   return { ok: r.status === 0, code: r.status, out, ms: Date.now() - started, timedOut: r.error && /ETIMEDOUT/.test(String(r.error)) };
 }

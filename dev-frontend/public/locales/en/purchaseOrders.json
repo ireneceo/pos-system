@@ -576,7 +576,14 @@
     "deliveryZoneUnknown": "Your store address has no state, so the default delivery fee applies.",
     "deliveryZoneFix": "Add state",
     "discontinued": "Discontinued",
-    "discontinuedText": "{{seller}} no longer sells this item"
+    "discontinuedText": "{{seller}} no longer sells this item",
+    "brandStock": {
+      "left": "Brand stock: {{n}}{{u}} left",
+      "outWarn": "Out at brand — order still accepted, brand will restock",
+      "outBlock": "Out at brand — not accepting now",
+      "overWarn": "Only {{n}}{{u}} at the brand right now — the rest ships when restocked",
+      "overBlock": "Brand accepts up to {{n}}{{u}} right now"
+    }
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",
@@ -1131,5 +1138,9 @@
     "masterOnConfirm": "Purchase orders of this restaurant will need your approval again (except the rules below).",
     "masterOffConfirm": "Every purchase order of this restaurant will be sent to the supplier without your approval. Your rules are kept.",
     "masterSaveFailed": "Could not change the Owner approval setting."
+  },
+  "brandStockShort": {
+    "error": "The brand can't accept more than its stock right now: {{items}}. Reduce the quantity to continue.",
+    "line": "{{name}} — up to {{max}} {{unit}} (ordered {{qty}})"
   }
 }

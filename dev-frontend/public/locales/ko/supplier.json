@@ -236,7 +236,8 @@
       "cancel": "취소",
       "itemsLabel": "이번에 보낼 품목",
       "leftForLater": "체크를 푼 품목은 «미발송» 으로 남습니다 — 나중에 «나머지 보내기» 로 보내세요.",
-      "selectAtLeastOne": "보낼 품목을 하나 이상 고르세요"
+      "selectAtLeastOne": "보낼 품목을 하나 이상 고르세요",
+      "stockShortNote": "{{count}}품목 재고 부족 — 보내면 재고가 마이너스가 됩니다"
     },
     "reject": {
       "title": "주문 거부",
@@ -255,7 +256,8 @@
     "badge": {
       "needsDispatch": "구매자가 수령 확인 — 배송 기록 필요",
       "notYetDispatched": "{{count}}개 품목 미발송",
-      "autoCompletes": "{{date}} 자동 완료"
+      "autoCompletes": "{{date}} 자동 완료",
+      "stockShort": "재고 부족 · {{count}}품목"
     },
     "amend": {
       "title": "주문 품목 수정",
@@ -306,8 +308,13 @@
       "sharePackingApps": "배송 준비 목록 → 카톡·다른 앱",
       "shareCopiedTitle": "복사했습니다",
       "shareCopied": "보낼 내용을 복사했습니다. 카톡(또는 다른 메신저)에서 대화를 고른 뒤 붙여 넣으세요.",
-      "shareFailed": "이 기기에서는 공유·복사를 할 수 없습니다. PDF 나 메일로 보내 주세요."
-    }
+      "shareFailed": "이 기기에서는 공유·복사를 할 수 없습니다. PDF 나 메일로 보내 주세요.",
+      "stockShort": "지금 남은 양 {{available}} · 부족 {{short}}",
+      "stockOk": "지금 남은 양 {{available}}",
+      "stockHint": "앞서 들어온 주문을 뺀 뒤 숫자입니다. 레시피 상품은 가장 모자란 재료 기준입니다."
+    },
+    "stockShortLine": "지금 재고로 다 못 보내는 열린 주문 {{count}}건",
+    "stockShortLink": "재고 화면으로 →"
   },
   "tradeInvoicesPage": {
     "title": "거래 인보이스",

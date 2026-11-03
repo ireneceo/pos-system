@@ -19,6 +19,26 @@
 - 리눅스 기본 OOM 킬러는 **너무 늦게** 발동한다. 그 사이 스왑 스래싱으로 SSH·nginx 까지 멈추고, 사람이 호스팅 콘솔에서 리셋한다(= "Power key pressed short" 로그).
 - OOM 희생자 6건은 **전부 프론트 빌드 node**. 빌드 힙 상한이 `--max-old-space-size=4096` 이라 V8 이 한계까지 부풀었다. **실측 필요치는 총 피크 3.08GiB.**
 
+## 0층 — 서버 공용 «메모리 자리표»(mem-slot) (2026-11-03 추가 · 지금 기준)
+
+> Irene «같은 일 안생기게 메모리 나눠서 순서대로 쓰게 해야지» — 11-03 07:51·07:55 PlanQ 빌드 두 개가 겹쳐 메모리 바닥·스왑 99% → 통신 끊김 → 08:02 재부팅.
+> 아래 1층 게이트는 PurpleHere 것이라 PlanQ·Lingo 의 «들어가는 중» 을 못 봤다. 자리표는 세 솔루션이 같이 서는 줄이다. 설명 단일 진실 = `~/dev-server/README.md` §2.
+
+- 쓰는 법: `mem-slot run <이름> <MB> -- <명령>` — 먼저 선 순서대로, 상자 합이 나눠 쓸 메모리(전체 − 2400MB) 안일 때 들어간다. 상자 = 몫×1.3(최대 5494MB) · 넘치면 그 일만 죽음(137) · 60분(우리 검사는 30분) 안 차례가 안 오면 75(실행 안 함 · 우회 금지).
+- 자리표 없이 빌드·에뮬레이터·`playwright test` 를 치면 공용 검사 `mem-slot-guard` 가 작업방 명령을 막는다.
+
+| 이름 | 몫 | 근거 | 어디서 감싸나 |
+|---|---|---|---|
+| `purple-build` | **2850MB** (상자 3705) | 실측 정점 2475MB(10-23 타입 검사기 뺀 뒤 빌드 29번 최댓값) + 15% | `dev-frontend/deploy-dev.sh` **스크립트 전체**(맨 위에서 자기를 자리표로 다시 띄움 · `BUILD_MB`) — 지우기·빌드·복사가 한 자리 안이라 다음 빌드가 앞 빌드의 build/ 를 못 지운다(11-03 10:05 사고) · `build:dev`·운영 배포(`deploy-to-production.sh` 가 `build:dev` 를 부름) 둘 다 |
+| `purple-chrome` | 1000MB | 공용 어림값 — 실측 뒤 고침 | `verify-all.js` 의 `mount`·`print-routes` 게이트 (`slot:`) |
+| `purple-emulator` | 4500MB (상자 5494 로 잘림) | qemu 약 4.5GB RSS(07-14 실측) | `mobile-app/scripts/verify/run-v3.js`·`run-v4.js` — 에뮬레이터만 상자에, 차례가 온 뒤부터 부팅 5분을 잰다 |
+| `purple-typecheck` | 4000MB | tsc 힙 상한 3584MB 기준 어림 — 실측 뒤 고침 | `check-type-baseline.js` (빌드 밖 tsc) |
+
+- 몫 숫자는 한 곳: 빌드 = `deploy-dev.sh` 의 `BUILD_MB`, 나머지 = `dev-backend/scripts/lib/memSlot.js` 의 `SHARES`. 실측 정점+15% 로 고친다(빌드는 끝에 «빌드 상자 메모리 피크» 줄이 찍힌다).
+- ⚠ **두 겹 금지** — 자리표 안에서 또 자리표를 부르면 자기 자리를 기다리며 멈춘다. 그래서 `package.json` 의 `build` 는 감싸지 않고 `deploy-dev.sh` 에서 한 번만 감싼다. `deploy-dev.sh` 도 이미 자리표 상자 안이면 다시 감싸지 않는다(11-03 10:05 — 작업방이 바깥에서 `mem-slot run … -- npm run build:dev` 로 감싸 두 겹이 되어 멈추고 뒤의 PlanQ 빌드까지 막힌 일). `memSlot.wrap` 은 이미 자리표 상자 안(`/proc/self/cgroup` 에 `memslot-`)이거나 `PURPLE_MEM_SLOT` 이 있으면 감싸지 않는다.
+- `package.json` 의 `build:dev` 끝 주석(`# … mem-slot …`)은 공용 검사가 «이미 감쌌음» 을 알아보게 하는 표시다 — 지우면 `npm run build:dev` 가 막힌다.
+- 아래 1층 게이트(heavy-task-gate)는 그대로 앞에 둔다(자리표 밖 프로그램까지 보는 겹). 3층 상자는 자리표가 맡고, 자리표를 못 쓰는 계정이면 예전 상자(빌드 5G·에뮬레이터 5G)로 돌아간다.
+
 ## 4중 방어 (하나가 뚫려도 다음 층이 잡는다)
 
 | 층 | 무엇 | 어디 |

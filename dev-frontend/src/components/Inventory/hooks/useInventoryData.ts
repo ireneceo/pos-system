@@ -161,7 +161,15 @@ export function useInventoryData({ mode, restaurantId, authFetch, includeUntrack
               has_seller_source: Array.isArray(ing.sellers) && ing.sellers.length > 0,
               seller_source_name: (Array.isArray(ing.sellers) && ing.sellers.length > 0)
                 ? (ing.sellers.find((sv: any) => sv.is_preferred) || ing.sellers[0])?.seller_name || null
-                : null
+                : null,
+              seller_source_names: Array.isArray(ing.sellers)
+                ? Array.from(new Set(
+                    [...ing.sellers].sort((a: any, b: any) => Number(!!b.is_preferred) - Number(!!a.is_preferred))
+                      .map((sv: any) => sv.seller_name).filter(Boolean)
+                  )) as string[]
+                : [],
+              seller_source_all_off: Array.isArray(ing.sellers) && ing.sellers.length > 0
+                && ing.sellers.every((sv: any) => sv.seller_product_active === false)
             };
           });
 

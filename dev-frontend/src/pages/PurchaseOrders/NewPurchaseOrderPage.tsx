@@ -73,6 +73,8 @@ interface SellerOpt {
   seller_product_sku?: string | null;
   // 판매자가 이 상품을 껐는가(2026-10-09) — 서버 utils/poSellerProductActive.js 가 싣는다. false 면 담을 수 없다.
   seller_product_active?: boolean;
+  // 브랜드 재고 — 이미 들어온 주문을 뺀 뒤 남은 양(2026-11-03 phase2 §5-1 · 서버 utils/sellerStockPool). 브랜드 줄만, 세지 않는 상품은 null.
+  seller_stock?: SellerStock | null;
   // 규격·주문방식 (2026-08-30 단위주문). 백엔드 ?include=sellers 가 supplier_products 에서 채운다.
   // order_mode 는 supplier_products 에만 있는 컬럼이라 브랜드·푸드코트 판매자는 'pack' 로 온다.
   seller_unit?: string | null;
@@ -107,6 +109,28 @@ interface MyIngredientRow {
   brand_product_id?: number;  // BG — brand_products.id
 }
 
+/** 브랜드 재고 안내 — available_units 는 주문 단위(0 이하 = 브랜드 품절) · policy block = 브랜드가 «보내기 막기» 를 켬 */
+interface SellerStock { tracked: boolean; available_units: number; status: 'ok' | 'out'; policy: 'warn' | 'block'; }
+
+/** 브랜드 재고 한 줄 — 카탈로그 카드·내 재고 행·장바구니 줄이 같은 문구(phase2 §5-1) */
+const BrandStockNote: React.FC<{ ss?: SellerStock | null; qty?: number; unit?: string | null; t: (k: string, o?: any) => any }> = ({ ss, qty, unit, t }) => {
+  if (!ss) return null;
+  const u = unit ? ` ${unit}` : '';
+  const over = qty != null && qty > Math.max(0, ss.available_units);
+  if (ss.status === 'out' || over) {
+    const block = ss.policy === 'block';
+    const text = ss.status === 'out' && !over
+      ? (block ? t('newPo.brandStock.outBlock', 'Out at brand — not accepting now') : t('newPo.brandStock.outWarn', 'Out at brand — order still accepted, brand will restock'))
+      : ss.status === 'out'
+        ? (block ? t('newPo.brandStock.outBlock', 'Out at brand — not accepting now') : t('newPo.brandStock.outWarn', 'Out at brand — order still accepted, brand will restock'))
+        : (block
+          ? t('newPo.brandStock.overBlock', { defaultValue: 'Brand accepts up to {{n}}{{u}} right now', n: ss.available_units, u })
+          : t('newPo.brandStock.overWarn', { defaultValue: 'Only {{n}}{{u}} at the brand right now — the rest ships when restocked', n: ss.available_units, u }));
+    return <div style={{ fontSize: 11, marginTop: 2, fontWeight: 600, color: block ? '#EF4444' : '#B45309' }}>{text}</div>;
+  }
+  return <div style={{ fontSize: 11, marginTop: 2, color: '#6B7280' }}>{t('newPo.brandStock.left', { defaultValue: 'Brand stock: {{n}}{{u}} left', n: ss.available_units, u })}</div>;
+};
+
 interface CatalogRow {
   id: number;
   name: string;
@@ -126,6 +150,8 @@ interface CatalogRow {
   order_mode?: OrderMode;
   base_quantity?: number;
   package_unit?: string | null;
+  /** 브랜드 상품 행의 브랜드 재고(phase2 §5-1) */
+  seller_stock?: SellerStock | null;
 }
 
 interface CartRow {
@@ -1361,6 +1387,7 @@ const NewPurchaseOrderPage: React.FC = () => {
               seller_product_name: s.seller_product_name ?? null,
               seller_product_sku: s.seller_product_sku ?? null,
               seller_product_active: s.seller_product_active !== false,
+              seller_stock: s.seller_stock ?? null,
             })),
           }));
         } catch { /* brand-shared fetch is additive; ignore failures */ }
@@ -1412,6 +1439,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                 seller_product_name: s.seller_product_name ?? null,
                 seller_product_sku: s.seller_product_sku ?? null,
                 seller_product_active: s.seller_product_active !== false,
+              seller_stock: s.seller_stock ?? null,
               })),
             }));
         } catch { /* BG stock-item fetch is additive; ignore failures */ }
@@ -1456,6 +1484,7 @@ const NewPurchaseOrderPage: React.FC = () => {
               seller_product_name: s.seller_product_name ?? null,
               seller_product_sku: s.seller_product_sku ?? null,
               seller_product_active: s.seller_product_active !== false,
+              seller_stock: s.seller_stock ?? null,
             })),
           }));
         } catch { /* additive — 실패해도 재료 목록은 그대로 준다 */ }
@@ -2512,6 +2541,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                                 {badges}
                               </ListNameTop>
                               <ListMeta title={metaText}>{metaText}</ListMeta>
+                              {leadSeller?.seller_type === 'brand' && <BrandStockNote ss={leadSeller.seller_stock} t={t} />}
                             </ListName>
                             <ListVendor title={vendorText}>{hasSeller ? vendorText : ''}</ListVendor>
                             {hasSeller
@@ -2524,6 +2554,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                             <BadgeRow>{badges}</BadgeRow>
                             <CardName>{row.name}</CardName>
                             <CardMeta>{metaText}</CardMeta>
+                            {leadSeller?.seller_type === 'brand' && <BrandStockNote ss={leadSeller.seller_stock} t={t} />}
                             {hasSeller ? (
                               <>
                                 <CardPrice>{priceText}</CardPrice>
@@ -2641,7 +2672,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                               <ListNameText title={p.name}>{p.name}</ListNameText>
                               {badges}
                             </ListName>
-                            <ListMeta title={metaText}>{metaText}</ListMeta>
+                            <ListMeta title={metaText}>{metaText}{p.seller_stock && <BrandStockNote ss={p.seller_stock} t={t} />}</ListMeta>
                             <ListVendor title={sellerText}>{sellerText}</ListVendor>
                             <ListPrice>{p.unit_price.toFixed(2)}</ListPrice>
                             <ListActions>{actions}</ListActions>
@@ -2656,6 +2687,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                             )}
                             <CardName>{p.name}</CardName>
                             <CardMeta>{metaText}</CardMeta>
+                            <BrandStockNote ss={p.seller_stock} t={t} />
                             <CardPrice>{p.unit_price.toFixed(2)}</CardPrice>
                             <CardMeta>{sellerText}</CardMeta>
                             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>{actions}</div>
@@ -2778,6 +2810,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                             )}
                           </div>
                         )}
+                        {seller.seller_type === 'brand' && <BrandStockNote ss={seller.seller_stock} qty={row.quantity} t={t} />}
                       </div>
                       {(() => {
                         // 수량 접미 = **판매 단위, 항상**. 무엇을 몇 개/몇 kg 담고 있는지 숫자 옆에서 바로 읽혀야 한다.

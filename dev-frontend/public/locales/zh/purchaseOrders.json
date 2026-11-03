@@ -576,7 +576,14 @@
     "deliveryZoneUnknown": "门店地址未填写州，因此适用默认配送费。",
     "deliveryZoneFix": "填写州",
     "discontinued": "已停售",
-    "discontinuedText": "{{seller}} 已不再销售此商品"
+    "discontinuedText": "{{seller}} 已不再销售此商品",
+    "brandStock": {
+      "left": "品牌库存：剩余 {{n}}{{u}}",
+      "outWarn": "品牌缺货——订单仍可接收，品牌补货后发货",
+      "outBlock": "品牌缺货——暂不接单",
+      "overWarn": "品牌目前仅有 {{n}}{{u}}——其余补货后发货",
+      "overBlock": "品牌目前最多接受 {{n}}{{u}}"
+    }
   },
   "staging": {
     "noPhoneTitle": "无电话号码",
@@ -1131,5 +1138,9 @@
     "masterOnConfirm": "此餐厅的采购订单将重新需要您审批（以下规则除外）。",
     "masterOffConfirm": "此餐厅的所有采购订单将无需您审批直接发送给供应商。您的规则会保留。",
     "masterSaveFailed": "无法更改业主审批设置。"
+  },
+  "brandStockShort": {
+    "error": "品牌目前无法接受超过库存的数量：{{items}}。请减少数量后继续。",
+    "line": "{{name}}——最多 {{max}} {{unit}}（已订 {{qty}}）"
   }
 }

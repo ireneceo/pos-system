@@ -34,10 +34,14 @@ import GeneralStockReceiveModal from './modals/GeneralStockReceiveModal';
 import OrderModal from './modals/OrderModal';
 import BulkOrderModal from './modals/BulkOrderModal';
 import ForesightPanel from './sections/ForesightPanel';
+import StockSettingsModal, { StockSettings } from './modals/StockSettingsModal';
+import { getAuthToken } from '../../utils/auth';
 import { useStore } from '../../contexts/StoreContext';
 import SettingsModal from './modals/SettingsModal';
 import GeneralStockFormModal from './modals/GeneralStockFormModal';
 import DeleteConfirmModal from './modals/DeleteConfirmModal';
+import ConnectSellerModal from '../Common/ConnectSellerModal';
+import RegisterExternalSupplierModal from '../Common/RegisterExternalSupplierModal';
 
 const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId: propRestaurantId }) => {
   const { user } = useAuth();
@@ -55,7 +59,11 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
 
   // Filters (owned here because shared across sections)
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  // ?filter=fs_out — 아침 재고 알림·받은 주문 «재고 부족» 줄에서 들어오면 그 단계로 걸러 연다(phase2 §5-2·§5-4)
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const f = new URLSearchParams(window.location.search).get('filter');
+    return f && /^fs_(out|order_now|soon|no_basis)$/.test(f) ? f : 'all';
+  });
   const [stockTypeFilter, setStockTypeFilter] = useState<'all' | 'ingredients' | 'general_stock'>('all');
   // 카테고리 필터 — 재고가 많아지면 "무엇을 발주할지" 를 카테고리로 좁혀 보게 된다.
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -112,6 +120,16 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   // 예전에는 끄는 순간 목록에서 사라져, 다시 켜려면 재료 관리(RA)나 매입자재(BG) 화면으로
   // 따로 가야 했다. 여기서 "관리 안 함도 보기"를 켜면 꺼진 항목까지 나와 바로 되돌릴 수 있다.
   const [showUntracked, setShowUntracked] = useState(false);
+
+  // 공급처 연결 — 목록 안에서 바로 (2026-11-03 Irene «여기서 바로 바로 연결하게 해줘. 이동시키지 말고»).
+  //   창·경로는 브랜드 재료 화면(ProductIngredientsTab)과 같은 공유 부품: 카탈로그에서 고르기 / 외부 업체 상품 만들기.
+  //   연결 뒤 목록을 다시 불러 그 행이 곧바로 «Order» 가 된다. 브랜드 모드만(매장 모드는 종전 그대로).
+  const [linkTarget, setLinkTarget] = useState<any | null>(null);
+  const [extSupplierTarget, setExtSupplierTarget] = useState<any | null>(null);
+  //   재고아이템 연결(product_ingredient)은 두 창 모두 /api/product-ingredients/from-catalog 를 쓰고 brand 주소는 안 쓴다 —
+  //   브랜드 번호가 없는 계정(System Admin 등)에서도 꺼지지 않게 «브랜드 모드면 켬» (브랜드 재료 화면과 같은 '/api/brands/0' 대체).
+  const linkEnabled = isBrandGeneralMode;
+  const linkBuyerBase = `/api/brands/${(user as any)?.brand_id || 0}`;
 
   const { t } = useTranslation(['inventory', 'common']);
   const authFetch = useAuthFetch();
@@ -182,6 +200,23 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const storeTz = (operationSettings as any)?.timeZone || 'Asia/Kuala_Lumpur';
   // «필요한 것 담기» 에 «곧 부족» 도 넣을지 — 기본 끔(과발주가 미발주보다 되돌리기 어렵다 · Fable §9 Q3)
   const [includeSoon, setIncludeSoon] = useState(false);
+  // 브랜드 재고 설정 한 창(phase2 §4-1·§5-3) — 브랜드 모드에서만 1회 읽어 «곧 부족» 기본값·막기 표시에 쓴다
+  const settingsBrandId = mode === 'brand' ? Number((user as any)?.brand_id) || null : null;
+  const [stockSettings, setStockSettings] = useState<StockSettings | null>(null);
+  const [showStockSettings, setShowStockSettings] = useState(false);
+  React.useEffect(() => {
+    if (!settingsBrandId) return;
+    let alive = true;
+    fetch(`/api/brands/${settingsBrandId}/stock-settings`, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+      .then(r => r.json())
+      .then(j => {
+        if (!alive || !j?.success) return;
+        setStockSettings(j.data.settings);
+        setIncludeSoon(!!j.data.settings?.include_soon_default);
+      })
+      .catch(() => { /* 설정을 못 읽어도 띠는 동작한다(기본값) */ });
+    return () => { alive = false; };
+  }, [settingsBrandId]);
   const suggList = Array.from(bulk.suggestionsById.values());
   const linkedPositive = (x: any) => !!x.seller_type && ((x.order_qty ?? x.suggested_qty) || 0) > 0;
   const neededCount = suggList.filter(x => (x.status === 'out' || x.status === 'order_now') && linkedPositive(x)).length;
@@ -197,6 +232,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       activeFilter={statusFilter}
       onFilter={(f) => { setStatusFilter(f); if (f !== 'all') setActiveTab('list'); }}
       onAddNeeded={() => bulk.openNeeded(includeSoon)}
+      onOpenSettings={settingsBrandId ? () => setShowStockSettings(true) : undefined}
+      blocking={stockSettings?.short_order_policy === 'block'}
     />
   );
 
@@ -340,6 +377,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             noBasisIds={bulk.noBasisIds}
             selectedIds={bulk.selectedIds}
             onToggleSelect={bulk.toggleSelect}
+            onLinkSupplier={linkEnabled ? setLinkTarget : undefined}
+            onCreateSupplierProduct={linkEnabled ? setExtSupplierTarget : undefined}
           />
           </>
         ) : activeTab === 'categories' ? (
@@ -452,6 +491,14 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         costSubject={mode === 'restaurant' ? 'ingredient' : 'product_ingredient'}
       />
 
+      {settingsBrandId && (
+        <StockSettingsModal
+          isOpen={showStockSettings}
+          onClose={() => setShowStockSettings(false)}
+          brandId={settingsBrandId}
+          onSaved={(st) => { setStockSettings(st); setIncludeSoon(st.include_soon_default); }}
+        />
+      )}
       <BulkOrderModal
         isOpen={bulk.showBulkModal}
         onClose={bulk.closeBulk}
@@ -575,6 +622,26 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         saving={gsForm.saving}
         onConfirm={gsForm.handleEdit}
       />
+
+      {linkEnabled && (
+        <>
+          <ConnectSellerModal
+            open={!!linkTarget}
+            ingredient={linkTarget ? { id: linkTarget.id, name: linkTarget.name, unit: linkTarget.unit } : null}
+            targetKind="product_ingredient"
+            buyerApiBase={linkBuyerBase}
+            onClose={() => setLinkTarget(null)}
+            onConnected={() => { setLinkTarget(null); data.refetch(); }}
+          />
+          <RegisterExternalSupplierModal
+            target={extSupplierTarget ? { id: extSupplierTarget.id, name: extSupplierTarget.name, unit: extSupplierTarget.unit } : null}
+            targetKind="product_ingredient"
+            buyerApiBase={linkBuyerBase}
+            onClose={() => setExtSupplierTarget(null)}
+            onRegistered={() => { setExtSupplierTarget(null); data.refetch(); }}
+          />
+        </>
+      )}
 
       <DeleteConfirmModal
         isOpen={deleteConfirm.showModal}

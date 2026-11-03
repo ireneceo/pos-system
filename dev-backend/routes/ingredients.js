@@ -238,6 +238,7 @@ router.get('/brands/:brandId/ingredients', authenticateToken, isBrandManager, as
       if (hasSellersFilter) enriched = enriched.filter(ing => ing.sellers.length > 0);
       // 판매 중지 상품 표시 — 발주 검사와 같은 판정(utils/poSellerProductActive.js)
       try { await attachSellerProductActive(enriched.flatMap(i => i.sellers || [])); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
+      try { await require('../utils/sellerStockPool').attachBrandSellerStock(enriched.flatMap(i => i.sellers || [])); } catch (e) { console.error('[seller-stock] attach failed:', e.message); }   // 브랜드 재고 안내(phase2 §5-1)
       return res.json({ success: true, data: enriched });
     }
 
@@ -734,6 +735,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
 
     if (wantSellers) {
       try { await attachSellerProductActive(enrichedIngredients.flatMap(i => i.sellerSources || [])); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
+      try { await require('../utils/sellerStockPool').attachBrandSellerStock(enrichedIngredients.flatMap(i => i.sellerSources || [])); } catch (e) { console.error('[seller-stock] attach failed:', e.message); }   // 브랜드 재고 안내(phase2 §5-1)
     }
     res.json({ success: true, data: enrichedIngredients });
   } catch (error) {
@@ -969,6 +971,7 @@ router.get('/foodcourts/:foodcourtId/ingredients', authenticateToken, isFoodcour
       if (hasSellersFilter) enriched = enriched.filter(ing => ing.sellers.length > 0);
       // 판매 중지 상품 표시 — 발주 검사와 같은 판정(utils/poSellerProductActive.js)
       try { await attachSellerProductActive(enriched.flatMap(i => i.sellers || [])); } catch (e) { console.error('[seller-active] attach failed:', e.message); }
+      try { await require('../utils/sellerStockPool').attachBrandSellerStock(enriched.flatMap(i => i.sellers || [])); } catch (e) { console.error('[seller-stock] attach failed:', e.message); }   // 브랜드 재고 안내(phase2 §5-1)
       return res.json({ success: true, data: enriched });
     }
 

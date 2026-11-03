@@ -576,7 +576,14 @@
     "deliveryZoneUnknown": "Alamat kedai tiada negeri, jadi caj penghantaran lalai dikenakan.",
     "deliveryZoneFix": "Tambah negeri",
     "discontinued": "Dihentikan",
-    "discontinuedText": "{{seller}} tidak lagi menjual item ini"
+    "discontinuedText": "{{seller}} tidak lagi menjual item ini",
+    "brandStock": {
+      "left": "Stok jenama: tinggal {{n}}{{u}}",
+      "outWarn": "Habis di jenama — pesanan tetap diterima, jenama akan tambah stok",
+      "outBlock": "Habis di jenama — tidak menerima sekarang",
+      "overWarn": "Hanya {{n}}{{u}} di jenama sekarang — selebihnya dihantar selepas tambah stok",
+      "overBlock": "Jenama menerima sehingga {{n}}{{u}} sahaja sekarang"
+    }
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",
@@ -1131,5 +1138,9 @@
     "masterOnConfirm": "Pesanan belian restoran ini akan memerlukan kelulusan anda semula (kecuali peraturan di bawah).",
     "masterOffConfirm": "Setiap pesanan belian restoran ini akan dihantar kepada pembekal tanpa kelulusan anda. Peraturan anda dikekalkan.",
     "masterSaveFailed": "Tidak dapat menukar tetapan kelulusan Pemilik."
+  },
+  "brandStockShort": {
+    "error": "Jenama tidak boleh menerima lebih daripada stoknya sekarang: {{items}}. Kurangkan kuantiti untuk teruskan.",
+    "line": "{{name}} — sehingga {{max}} {{unit}} (dipesan {{qty}})"
   }
 }

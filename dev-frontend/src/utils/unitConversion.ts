@@ -226,6 +226,22 @@ export const inactiveSellerProductText = (
 }) as string;
 
 /**
+ * 서버 400 BRAND_STOCK_SHORT 의 `data.lines` → 한 줄 (2026-11-03 phase2 §4-3).
+ * 브랜드가 «보내기 막기» 를 켜 두었고, 이 주문이 브랜드의 남은 재고보다 많을 때 — 서버 utils/sellerStockPool.js.
+ * t 는 purchaseOrders 네임스페이스.
+ */
+export const brandStockShortText = (
+  lines: Array<{ description?: string | null; requested?: number | string; available_units?: number | string | null; order_unit?: string | null }> | null | undefined,
+  t: (key: string, opts?: any) => any,
+): string => t('brandStockShort.error', {
+  defaultValue: 'The brand can\'t accept more than its stock right now: {{items}}. Reduce the quantity to continue.',
+  items: (lines || []).map(l => t('brandStockShort.line', {
+    defaultValue: '{{name}} — up to {{max}} {{unit}} (ordered {{qty}})',
+    name: l.description || '', max: formatQuantity(Number(l.available_units) || 0), unit: l.order_unit || '', qty: formatQuantity(Number(l.requested) || 0),
+  }) as string).join(' / '),
+}) as string;
+
+/**
  * 판매상품 주문 방식 — 백엔드 ENUM 과 같은 목록(models/SupplierProduct.js).
  * 'pack'    = 개수로 주문 (팩/박스/포대) — 기본이자 기존 동작
  * 'measure' = 무게·부피로 주문 (kg·g·L·ml, 소수)

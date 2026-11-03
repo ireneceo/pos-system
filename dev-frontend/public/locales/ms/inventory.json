@@ -187,6 +187,35 @@
     "badgeOut": "Habis",
     "badgeOrderNow": "Pesan sekarang",
     "badgeSoonDays": "Hampir habis ({{n}}h)",
-    "badgeSoon": "Hampir habis"
-  }
+    "badgeSoon": "Hampir habis",
+    "settings": "Tetapan stok",
+    "blockingOn": "Kedai tidak boleh menghantar pesanan melebihi stok tersedia anda (sekatan dihidupkan)."
+  },
+  "stockSettings": {
+    "title": "Tetapan stok",
+    "close": "Tutup",
+    "saving": "Menyimpan…",
+    "save": "Simpan",
+    "loading": "Memuatkan…",
+    "appliesTo": "Terpakai untuk: {{names}} (berkongsi stok yang sama)",
+    "policyTitle": "Apabila kedai memesan lebih daripada stok tersedia anda",
+    "warn": "Amaran sahaja (lalai)",
+    "block": "Sekat penghantaran",
+    "warnHint": "Pesanan tetap masuk. Kedai melihat «Habis di jenama» semasa memesan, dan pesanan masuk anda menunjukkan «Stok tidak cukup». Tambah stok untuk menampungnya.",
+    "blockHint": "Kedai tidak boleh menghantar pesanan melebihi baki dan diminta mengurangkan kuantiti. Hidupkan hanya apabila angka stok tepat (anggaran sehingga kiraan stok).",
+    "morningTitle": "Amaran stok pagi",
+    "morningOn": "Hantar pemberitahuan aplikasi setiap pagi",
+    "at": "Pada",
+    "morningHint": "Hanya apabila ada item habis atau pada titik pesanan semula, sekali sehari, kepada semua pengurus jenama ini. Tiada e-mel. Untuk matikan bagi diri sendiri: Pemberitahuan › Low Stock Alert.",
+    "includeSoon": "Sertakan item yang hampir habis dalam «Tambah yang diperlukan» secara lalai",
+    "perItemHint": "Stok minimum, penggunaan harian dan masa pendahuluan ditetapkan bagi setiap item — gunakan butang Settings pada setiap baris."
+  },
+  "supplierFilter": {
+    "label": "Pembekal",
+    "all": "Semua Pembekal",
+    "none": "Tiada pembekal dipautkan"
+  },
+  "sellerOff": "Produk dikeluarkan oleh pembekal — pautkan semula",
+  "linkSupplier": "Pautkan",
+  "newSupplierProduct": "Pembekal baharu"
 }

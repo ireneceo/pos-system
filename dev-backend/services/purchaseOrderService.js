@@ -434,6 +434,8 @@ async function submitDraftInTx(id, t, { canAccess, actor, preApproved } = {}) {
   await assertLinesMeetMinOrder(locked.items, { transaction: t });
   // 판매 중지 상품 — 담은 뒤 판매자가 끈 경우(utils/poSellerProductActive.js)
   await assertLinesSellerProductActive(locked.items, { transaction: t });
+  // 브랜드 재고 «막기» 설정이면 보내는 순간 검사(utils/sellerStockPool · BRAND_STOCK_SHORT) — 2026-11-03 phase2 §4-3
+  await require('../utils/sellerStockPool').assertLinesWithinBrandStock(locked.items, { transaction: t });
   // 배송비 제출 때 1회 재계산 (2026-10-07 Fable 배송 지역) — 담은 뒤 매장 주소(주)·판매자 지역이 바뀌었으면
   //   제출 시점 값으로 맞춘다. 품목은 그대로라 subtotal 은 같아야 한다. 판매자 확인 후 동결 규칙은 그대로.
   const subTotals = await computeTotalsWithDelivery(locked.items, locked,

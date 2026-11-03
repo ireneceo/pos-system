@@ -824,3 +824,9 @@ async function updateAvgDailyUsage(ingredientId) {
 - 상시 검사: health-check `inventory` 장부 ③ 잠금 계약 · ④ 동시 HTTP 12건 · ⑤ 동시 입고 20건 · ⑥ 주문 차감 데드락 재시도. 인스펙션 LEDGER-004(사슬 끊김 0)가 배포 차단.
 - 별건(미조치): `config/database.js` 의 «서버면 풀 20» 판별이 pm2 에선 안 맞아 풀이 5 — 고칠 땐 운영 max_connections 실측 먼저.
 - 설계·판정: `.claude/fable-design-20261016-stock-ledger-lock.md` · `.claude/fable-gate-20261016-stock-ledger-lock.md`
+
+## 브랜드 재고 목록 — 그 자리에서 공급업체 연결 (2026-11-03 · [Claude Code] · 개발서버)
+- 화면만(서버 변경 0): `components/Inventory/sections/StockListSection.tsx` «Link» = 이동하지 않고 그 자리 창(공유 부품 `ConnectSellerModal`·`RegisterExternalSupplierModal`, `InventoryManager.tsx` 브랜드 모드만) · «New supplier».
+- 공급업체 필터(업체별 개수 + «No supplier linked») · 공급업체 칸 = 대표 업체 + «+N» · 연결된 상품이 전부 삭제·판매중지면 «다시 연결» 표시.
+- 데이터: `hooks/useInventoryData.ts` `seller_source_names` · `seller_source_all_off` — 판정은 기존 `GET …?include=sellers`(ingredient_seller_products 활성 연결) 그대로.
+- 시험: `e2e/inventory-inline-link.spec.js`.

@@ -21,7 +21,7 @@ import { Button } from '../../components/UI/Button';
 import { Modal } from '../../components/UI/Modal';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
-import { formatQuantity, lineQtyText, minOrderViolationText, inactiveSellerProductText } from '../../utils/unitConversion';
+import { formatQuantity, lineQtyText, minOrderViolationText, inactiveSellerProductText, brandStockShortText } from '../../utils/unitConversion';
 import { formatDateTime } from '../../utils/dateFormat';
 import { useStore } from '../../contexts/StoreContext';
 import { renderIframeToPdf } from '../../utils/invoicePdf';
@@ -511,7 +511,9 @@ const PurchaseOrderStagingPage: React.FC = () => {
           ? `${minOrderViolationText(j?.data?.violations, t)}. ${t('staging.belowMinRetry', 'Remove this line and add it again from the order screen.')}`
           : j?.code === 'SELLER_PRODUCT_INACTIVE'
             ? inactiveSellerProductText(j?.data?.lines, t)
-            : (j?.message || (t('staging.submitFailed', 'Failed to submit this purchase order') as string));
+            : j?.code === 'BRAND_STOCK_SHORT'   // 브랜드가 «보내기 막기» 를 켬 — 남은 양 이하로 줄여 다시(phase2 §4-3)
+              ? `${brandStockShortText(j?.data?.lines, t)} ${t('staging.belowMinRetry', 'Remove this line and add it again from the order screen.')}`
+              : (j?.message || (t('staging.submitFailed', 'Failed to submit this purchase order') as string));
         setAlertDlg({
           title: t('common:error.title', 'Error') as string,
           message: msg

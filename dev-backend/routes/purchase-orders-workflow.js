@@ -41,6 +41,7 @@ const { appendTrackingEvent, emitPoEvent } = require('../services/poRealtimeServ
 const { isApprovalRequiredForRestaurant, applySubmitGate } = require('../utils/poOwnerApproval');
 const { MinOrderError, minOrderErrorBody } = require('../utils/poMinOrder');
 const { assertLinesSellerProductActive, InactiveSellerProductError, inactiveSellerProductErrorBody } = require('../utils/poSellerProductActive');
+const { assertLinesWithinBrandStock, BrandStockShortError, brandStockShortErrorBody } = require('../utils/sellerStockPool');
 const { fireSellerSubmittedNotification, fireOwnerApprovalPendingNotification, fireBuyerConfirmNotification, fireBuyerReceivedNotification } = require('../services/poNotifications');
 // 수령 시 재고 반영 단일 소스 — /receive 와 mark-received 가 같은 함수를 쓴다(P4-2, 복제 금지)
 const { applyReceipt, markAllReceived } = require('../services/purchaseOrderReceive');
@@ -380,8 +381,10 @@ router.post('/purchase-orders/:id/mark-sent-external', async (req, res) => {
     try {
       const lines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
       await assertLinesSellerProductActive(lines, { transaction: t });
+      await assertLinesWithinBrandStock(lines, { transaction: t });   // 브랜드 재고 «막기» 설정(phase2 §4-3)
     } catch (e) {
       if (e instanceof InactiveSellerProductError) { await t.rollback(); return res.status(400).json(inactiveSellerProductErrorBody(e)); }
+      if (e instanceof BrandStockShortError) { await t.rollback(); return res.status(400).json(brandStockShortErrorBody(e)); }
       throw e;
     }
 
@@ -982,6 +985,7 @@ router.post('/purchase-orders/:id/submit', async (req, res) => {
     if (err.code === 'EMPTY_ITEMS') return res.status(400).json({ success: false, message: err.message });
     if (err instanceof MinOrderError) return res.status(400).json(minOrderErrorBody(err));
     if (err instanceof InactiveSellerProductError) return res.status(400).json(inactiveSellerProductErrorBody(err));
+    if (err instanceof BrandStockShortError) return res.status(400).json(brandStockShortErrorBody(err));
     console.error('POST /api/purchase-orders/:id/submit error:', err);
     res.status(500).json({ success: false, message: 'Failed to submit purchase order' });
   }

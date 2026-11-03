@@ -1154,6 +1154,16 @@ router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
     const ids = ingredients.map(i => i.id);
     const usage = await reorderMath.ledgerUsage(parseInt(restaurantId, 10), ids);
     const incoming = await reorderMath.onOrderQty(parseInt(restaurantId, 10), ids);
+    // 리드타임 = max(품목, 우선 연결) — 발주 제안(purchase-orders suggestions)과 같은 규칙·같은 연결 고르기(2026-11-03 phase2 §6-11)
+    const { IngredientSellerProduct } = require('../models');
+    const ingByIdR = new Map(ingredients.map(i => [Number(i.id), i]));
+    const linkRowsR = ids.length ? await IngredientSellerProduct.findAll({
+      where: { ingredient_id: { [Op.in]: ids }, is_active: true },
+      order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
+    }) : [];
+    const buyerR = { type: 'restaurant', id: parseInt(restaurantId, 10) };
+    const linksR = reorderMath.preferredLinkMap(linkRowsR, s => Number(s.ingredient_id),
+      s => sellerLinkVisible(s, ingByIdR.get(Number(s.ingredient_id)), buyerR));
     const suggestions = [];
 
     for (const ing of ingredients) {
@@ -1167,7 +1177,7 @@ router.get('/:restaurantId/inventory/reorder-suggestions', async (req, res) => {
       const minStock = parseFloat(eff.min_stock) || 0;
       const picked = reorderMath.pickDailyUsage(usage.get(Number(ing.id)), eff.manual_daily_usage);
       const r = reorderMath.compute({
-        dailyUsage: picked.daily, leadTimeDays: eff.lead_time_days || 2, minStock,
+        dailyUsage: picked.daily, leadTimeDays: reorderMath.leadTimeFor(eff, linksR.get(Number(ing.id)) || null), minStock,
         safetyStockPercent: eff.safety_stock_percent, onHand: currentStock, onOrder: incoming.get(Number(ing.id)) || 0,
       });
       const effectiveCost = costMap[ing.id] !== undefined ? costMap[ing.id] : parseFloat(ing.unit_cost);

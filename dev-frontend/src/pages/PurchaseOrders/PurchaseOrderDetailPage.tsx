@@ -15,7 +15,7 @@ import EditPoItemsModal from '../../components/PurchaseOrders/EditPoItemsModal';
 import ConfirmModal from '../../components/ConfirmModal';
 import DateField from '../../components/Common/DateField';
 import { getAuthToken } from '../../utils/auth';
-import { formatQuantity, qtyStepForUnit, lineQtyText, inactiveSellerProductText } from '../../utils/unitConversion';
+import { formatQuantity, qtyStepForUnit, lineQtyText, inactiveSellerProductText, brandStockShortText } from '../../utils/unitConversion';
 import { sharePoViaWhatsApp, sharePoViaEmail, isRealSupplierSku, poItemName, poShareText } from '../../utils/poShare';
 import { shareTextViaApps, AppShareResult } from '../../utils/appShare';
 import { returnShareText, shareReturnViaWhatsApp, shareReturnViaEmail, printReturnSheet } from '../../utils/returnShare';
@@ -775,7 +775,9 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       if (!res.ok || !data.success) {
         setError(data?.code === 'SELLER_PRODUCT_INACTIVE'
           ? inactiveSellerProductText(data?.data?.lines, t)
-          : (data?.message || (t('new.errors.submitFailed') as string)));
+          : data?.code === 'BRAND_STOCK_SHORT'
+            ? brandStockShortText(data?.data?.lines, t)
+            : (data?.message || (t('new.errors.submitFailed') as string)));
         return;
       }
       await fetchDetail();

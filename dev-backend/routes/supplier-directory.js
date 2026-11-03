@@ -1054,6 +1054,16 @@ router.get('/supplier-catalog', async (req, res) => {
       }
     }
 
+    // 브랜드 상품 행에 «브랜드 재고» — 남은 양(이미 들어온 주문을 뺀 뒤) · 품절 · 막기 정책 (utils/sellerStockPool · 2026-11-03 phase2 §5-1)
+    //   표시용 — 실패해도 목록은 준다.
+    try {
+      const bRows = extraData.filter(r => r.supplier && r.supplier.seller_type === 'brand');
+      if (bRows.length) {
+        const m = await require('../utils/sellerStockPool').brandSellerStockMap(bRows.map(r => ({ bpId: r.id, brandId: r.supplier.id })));
+        bRows.forEach(r => { r.seller_stock = m.get(`${r.supplier.id}:${r.id}`) ?? null; });
+      }
+    } catch (e) { console.error('[seller-stock] catalog attach failed:', e.message); }
+
     res.json({
       success: true,
       data: [...data, ...extraData],

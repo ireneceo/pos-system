@@ -52,10 +52,16 @@ fs.writeFileSync(tmpConfig, JSON.stringify({
   compilerOptions: { tsBuildInfoFile: path.join(tmpDir, 'verify.tsbuildinfo') },
 }));
 
-const r = spawnSync('npx', ['tsc', '--noEmit', '-p', tmpConfig], {
+// tsc 는 서버 공용 메모리 자리표로 감싼다(2026-11-03 Irene «메모리 나눠서 순서대로» — lib/memSlot.js).
+//   차례가 30분 안 오면 75 → 아래에서 «확인 불가» 로 실패(우회 금지).
+const w = require('./lib/memSlot').wrap('purple-typecheck', ['npx', 'tsc', '--noEmit', '-p', tmpConfig],
+  { waitSec: 1800, env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=3584' } });
+const r = spawnSync(w.cmd[0], w.cmd.slice(1), {
   cwd: FRONTEND, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
-  env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=3584' },
+  env: w.env,
 });
+if (w.slotted && r.status === 75) fail(`확인 불가 — 메모리 자리표에서 30분 동안 차례가 오지 않아 tsc 를 돌리지 않음(우회 금지). 앞의 무거운 작업이 끝난 뒤 다시 돌릴 것.\n${(r.stderr || '').slice(-600)}`);
+if (w.slotted && r.status === 137) fail(`확인 불가 — tsc 가 자리표 상자 한도(${require('./lib/memSlot').SHARES['purple-typecheck']}MB×1.3)를 넘어 멈춤. lib/memSlot.js 의 purple-typecheck 몫을 실측 정점+15% 로 고칠 것.`);
 const out = (r.stdout || '') + (r.stderr || '');
 // tsc: 0 = 오류 없음, 1·2 = 오류 있음(정상 동작 — 증분 캐시가 있으면 1 이 나온다, 2026-09-29 실측).
 //   그 밖(134 = 힙 부족, null = 시그널 등)은 검사기 고장.

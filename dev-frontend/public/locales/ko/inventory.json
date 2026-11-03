@@ -187,6 +187,35 @@
     "badgeOut": "품절",
     "badgeOrderNow": "지금 발주",
     "badgeSoonDays": "곧 부족 ({{n}}일)",
-    "badgeSoon": "곧 부족"
-  }
+    "badgeSoon": "곧 부족",
+    "settings": "재고 설정",
+    "blockingOn": "매장이 남은 재고보다 많이 보낼 수 없습니다(보내기 막기 켜짐)."
+  },
+  "stockSettings": {
+    "title": "재고 설정",
+    "close": "닫기",
+    "saving": "저장 중…",
+    "save": "저장",
+    "loading": "불러오는 중…",
+    "appliesTo": "적용: {{names}} (같은 재고를 씁니다)",
+    "policyTitle": "매장 주문이 남은 재고보다 많을 때",
+    "warn": "안내만 (기본)",
+    "block": "보내기 막기",
+    "warnHint": "주문은 들어옵니다. 매장은 주문할 때 «브랜드 품절» 을 보고, 받은 주문 목록에 «재고 부족» 이 표시됩니다. 입고로 메우면 됩니다.",
+    "blockHint": "매장이 남은 양보다 많이 보내지 못하고 수량을 줄이라는 안내를 받습니다. 재고 숫자가 정확할 때만 켜세요(실사 전에는 근사치입니다).",
+    "morningTitle": "아침 재고 알림",
+    "morningOn": "매일 아침 앱 알림 보내기",
+    "at": "시각",
+    "morningHint": "품절·지금 발주 품목이 있을 때만 하루 한 번, 이 브랜드의 관리자 모두에게 보냅니다. 이메일은 없습니다. 나만 끄려면: 알림 설정 › Low Stock Alert.",
+    "includeSoon": "«필요한 것 담기» 에 «곧 부족» 도 기본으로 넣기",
+    "perItemHint": "품목별 최소 재고·하루 사용량·리드타임은 각 행의 Settings 버튼에서 정합니다."
+  },
+  "supplierFilter": {
+    "label": "공급업체",
+    "all": "모든 공급업체",
+    "none": "공급업체 연결 없음"
+  },
+  "sellerOff": "공급업체가 상품을 내림 — 다시 연결",
+  "linkSupplier": "연결",
+  "newSupplierProduct": "새 공급업체"
 }

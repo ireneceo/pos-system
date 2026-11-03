@@ -187,6 +187,35 @@
     "badgeOut": "缺货",
     "badgeOrderNow": "立即采购",
     "badgeSoonDays": "即将不足 ({{n}}天)",
-    "badgeSoon": "即将不足"
-  }
+    "badgeSoon": "即将不足",
+    "settings": "库存设置",
+    "blockingOn": "门店无法提交超过您可用库存的订单（已开启拦截）。"
+  },
+  "stockSettings": {
+    "title": "库存设置",
+    "close": "关闭",
+    "saving": "保存中…",
+    "save": "保存",
+    "loading": "加载中…",
+    "appliesTo": "适用于：{{names}}（共用同一库存）",
+    "policyTitle": "门店订购量超过可用库存时",
+    "warn": "仅提示（默认）",
+    "block": "拦截提交",
+    "warnHint": "订单照常进入。门店下单时会看到“品牌缺货”，您的收到订单中会显示“库存不足”。补货即可。",
+    "blockHint": "门店无法提交超过剩余数量的订单，并会被提示减少数量。仅在库存数字准确时开启（盘点前为估算值）。",
+    "morningTitle": "早间库存提醒",
+    "morningOn": "每天早上发送应用通知",
+    "at": "时间",
+    "morningHint": "仅在有缺货或已到再订货点的项目时，每天一次发送给本品牌的所有管理员。不发邮件。仅为自己关闭：通知设置 › Low Stock Alert。",
+    "includeSoon": "默认在“加入所需项目”中包含即将不足的项目",
+    "perItemHint": "最低库存、日用量和交货期按项目设置——使用每行的 Settings 按钮。"
+  },
+  "supplierFilter": {
+    "label": "供应商",
+    "all": "所有供应商",
+    "none": "未关联供应商"
+  },
+  "sellerOff": "供应商已下架该商品 — 请重新关联",
+  "linkSupplier": "关联",
+  "newSupplierProduct": "新供应商"
 }
