@@ -43,11 +43,21 @@
 - /개발시작: 운영 문의 조회(prod-query.js 읽기 전용)가 이 방에서 권한 거부 → 우회·재시도 안 함 · 마지막 확인(11-01 e20e9adc) 기준 새 문의 0 · 열린 3건(SUPP-2026-6842-103 · 1886-062 · 2401-270) 이미 해결 그대로 · 기존 Irene 할 일 todomvsui6c3 그대로
 - 분기: 진행 중 97e48743 운영 느림 조사(그 방이 맡음) · 나중에 45252426 앱 0.4.1 피드(Irene 할 일 todomvzdy6cs 종이 확인 뒤) · 다음 확정 작업 없음 — 지시 대기
 
-### 나중에 — 멀티역할 이동 «Offline»·느림: 6.03 운영 배포 뒤 기기 기록으로 판독 [Claude Code · 백그라운드 작업방 5ac6854f]
+### ✅ 완료 (2026-11-03) — «Offline» 갑자기 뜸: 숨은 화면에서 잠그지 않기 + 같은 기록 두 줄 막기 [Claude Code · 백그라운드 작업방 5ac6854f]
+- Irene 원문: «지금 멀티역할로 이동하는데 또 갑자기 오프라인이 떴어. 그리고 너무 느렸어. 확인해줘. 이런 문제 없게»
+- 운영 기록(prod-query 읽기만): offline-detect 2줄(같은 id) 2026-11-02 19:52:40 UTC help@gitconsulting.group · /restaurant/10/dashboard · visibility=hidden · 3번 모두 timeout(6.3·7.0·7.0초) · slowRes 0 · 회선 4g rtt50 · 5초 뒤 저절로 복구 · 그 시각 서버 기록 오류 0 → 숨은 탭(다른 탭·잠든 맥)에서 브라우저가 늦춘 것을 «끊김» 으로 판정. 마지막 모자 전환은 10:00:39 UTC(6.03 배포 전이라 그때 기록 없음)
+- 느림: 그 시각 운영 DB 풀 5개(22568bad8 이 20개로 고쳐 6.06 으로 이미 운영에 나감) — 전환 때 요청 34개 동시라 직접 원인 후보
+- 고침: OfflineContext.tsx 숨은 동안 실패는 세기만·잠그지 않음 · 다시 보이면 즉시 핑(실제 끊김이면 바로 잠금) · routes/offline-events.js 처리 중 id 메모리로 동시 중복 막기
+- 검증: Playwright A(숨김 32초 실패→보임 계속 실패: 숨김 중 잠금 false·보이자마자 true) · B(숨김 실패→복구 후 보임: false) · C(보이는 채 실패: true, 기존 그대로) · 중복 3번 동시 → 1줄(고장주입: 막기 빼면 3줄) · check-sensitive-diff 비대상 · print-guard 8/8 · 화면 쪽 고장주입은 빌드 2번이라 안 함(A·B 가 옛 동작과 다름으로 갈음)
+- Fable 안 씀 — 판정 기계 비대상 · 숨은 탭 판정 1곳·되돌리기 쉬움
+- 운영 반영: 다음 배포 때
+
+#### (이전) 나중에 — 멀티역할 이동 «Offline»·느림: 6.03 운영 배포 뒤 기기 기록으로 판독
 - 운영 서버 기록(Irene 붙여 넣기, 13:28 UTC): 부하 0.00 · production-backend 5일 재시작 0 · 메모리 426MB · 오류·시간 초과·health 줄 0 → 서버 쪽 원인 아님. 이 서버에서 운영 health 0.05~0.11초
 - Cloudflare 말레이시아 여전히 JHB major_outage · KUL degraded(13:3x UTC) → 다시 켤 기준 미충족
 - 남은 후보 = 기기↔독일 서버 회선(10-30 Fable 1순위와 같음). 확정 못 함
 - 언제: 6.03(오프라인 원인 기록)이 운영에 나간 뒤(기존 Irene 할 일 todomvvd4uz7 배포 버튼) «Offline» 이 다시 뜨면
+- (19:35 UTC 확인) 운영 SW 6.06 — 6.03 기록 + DB 풀 고침(22568bad8, 풀 5→20 · «데이터 API 60초 멈춤» 원인)도 함께 운영에 나감 · 운영 offline-detect 기록 0건(배포 뒤 재발 없음) → 다시 뜨기를 기다림. 느림은 풀 5개 고침이 직접 원인 후보(전환 때 요청 34개 동시)
 - 그때 할 일: 운영 System Logs service=offline-detect 읽기 → timeout+느린 내려받기면 회선 → 전환 때 겹치는 요청(badge-counts·menu·store/settings 2번씩) 줄이기 + Cloudflare 말레이시아 정상되면 다시 켜기 검토 · http/429 면 한도 · network 면 기기 와이파이
 
 #### (이전) 답 기다림 (2026-11-02) — 멀티역할 이동 때 «Offline»·느림: 운영 기록 읽기 허락 [Claude Code · 백그라운드 작업방 5ac6854f]

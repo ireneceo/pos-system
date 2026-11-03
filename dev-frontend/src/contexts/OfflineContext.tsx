@@ -73,6 +73,15 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsOffline(false);
     };
 
+    // 화면이 숨어 있을 때(다른 탭·창 최소화·노트북 잠듦)는 핑 실패를 세기만 하고 잠그지 않는다 —
+    // 브라우저가 숨은 탭의 타이머·네트워크를 늦춰 «시간 초과» 가 나는 것이지 서버가 끊긴 게 아니다
+    // (2026-11-02 19:52 UTC 운영 기록: visibility=hidden · 3번 모두 timeout · 5초 뒤 저절로 복구).
+    // 다시 보이면 곧바로 한 번 핑 — 실제로 끊겼으면(세어 둔 실패 + 이번 실패) 즉시 오프라인, 아니면 0으로.
+    const isHidden = () => typeof document !== 'undefined' && document.visibilityState === 'hidden';
+    const maybeGoOffline = () => {
+      if (failRef.current >= FAIL_THRESHOLD && !isHidden()) goOffline('probe');
+    };
+
     const ping = async () => {
       // 브라우저가 확실히 오프라인이라고 하면 핑 생략하고 즉시 오프라인.
       if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -102,7 +111,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
             retryAfter: res.headers.get('Retry-After') ?? undefined,
             rlRemaining: res.headers.get('RateLimit-Remaining') ?? undefined,
           });
-          failRef.current += 1; if (failRef.current >= FAIL_THRESHOLD) goOffline('probe');
+          failRef.current += 1; maybeGoOffline();
         }
       } catch (e) {
         noteProbeFailure({
@@ -110,7 +119,7 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
           ms: Math.round(performance.now() - t0),
         });
         failRef.current += 1;
-        if (failRef.current >= FAIL_THRESHOLD) goOffline('probe');
+        maybeGoOffline();
       }
     };
 
@@ -120,12 +129,15 @@ export const OfflineProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const onOfflineEvt = () => { failRef.current = FAIL_THRESHOLD; goOffline('offline_event'); };
     window.addEventListener('online', onOnlineEvt);
     window.addEventListener('offline', onOfflineEvt);
+    const onVisible = () => { if (!isHidden()) ping(); };
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
       alive = false;
       clearInterval(iv);
       window.removeEventListener('online', onOnlineEvt);
       window.removeEventListener('offline', onOfflineEvt);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 

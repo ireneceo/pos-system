@@ -11,6 +11,7 @@ const systemLogger = require('../utils/systemLogger');
 const { clientIp } = require('../utils/clientIp');
 
 const SERVICE = 'offline-detect';
+const inFlight = new Set(); // 지금 저장 중인 기록 id (동시 중복 막기)
 const MAX_EVENTS = 20;
 const MAX_PROBES = 3;
 const MAX_EVENT_BYTES = 3000;
@@ -88,6 +89,11 @@ router.post('/', async (req, res) => {
       const ev = sanitizeEvent(raw);
       if (!ev) { rejected += 1; continue; }
       // 응답이 유실돼 기기가 다시 보낸 건 — 한 번만 남긴다.
+      // 같은 기기의 탭 두 개가 같은 기록(같은 id)을 동시에 보내면 둘 다 «없음» 을 보고 두 줄이 생긴다
+      // (2026-11-02 운영 19:52:40 .240/.241). 이 서버는 프로세스 하나라 처리 중 id 를 메모리에서 막는다.
+      if (inFlight.has(ev.id)) { skipped += 1; continue; }
+      inFlight.add(ev.id);
+      try {
       const dup = await SystemLog.findOne({ where: { service: SERVICE, request_id: ev.id }, attributes: ['id'] });
       if (dup) { skipped += 1; continue; }
       const first = ev.probes[0];
@@ -103,6 +109,9 @@ router.post('/', async (req, res) => {
         statusCode: first && first.status,
       });
       accepted += 1;
+      } finally {
+        inFlight.delete(ev.id);
+      }
     }
     if (accepted === 0 && skipped === 0) {
       return res.status(400).json({ success: false, message: 'No valid events', data: { accepted, skipped, rejected } });

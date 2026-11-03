@@ -649,3 +649,10 @@ interface OfflineEvent {
 **순위:** ① 회선 품질 + 로그인 직후 내려받기 겹침(`timeout`) ② 한도 429(`http/429` — Irene 혼자서는 5000 을 못 채우므로 지금은 낮음, Cloudflare 켜면 높음) ③ 기기 와이파이·절전(`offline_event`). 기록이 쌓이면 이 순서를 바꾼다.
 **그 외 조사 사실(이번엔 안 건드림):** 운영 error.log 에 `[AUTH] No token found in request` 가 연속으로 많이 찍힘 — 토큰 없는 요청이 보호 경로를 두드린 것(로그아웃 뒤 남은 폴링 또는 봇). 오프라인과 무관하나 다음 평소 작업 때 출처 1회 확인. nginx `listen 443 ssl` 에 http2 가 안 적혀 있는데 h2 가 협상됨 — 같은 포트의 다른 server 블록(planq.kr 또는 purplehere-ip)이 켠 것, 이상 아님.
 **Cloudflare 다시 켤 조건(10-29 §4)에 1개 추가:** §16-1-4(한도 키 = 손님 실주소)가 운영에 배포된 뒤에만 켠다.
+
+### 16-10. 첫 운영 기록 판독과 고침 (2026-11-03 · [Claude Code] 작업방 5ac6854f · Fable 안 씀)
+- 운영 기록 1건(2줄 — 같은 id): 2026-11-02 19:52:40 UTC · `/restaurant/10/dashboard` · `visibility=hidden` · probes 3번 모두 timeout(6.3·7.0·7.0초 — 숨은 탭 타이머가 1초 단위로 밀림) · slowRes 0 · 회선 4g rtt50 · 5초 뒤 ping 으로 저절로 복구 · 그 시각 서버 기록 오류 0.
+- 판정: 숨은 탭(다른 탭·잠든 맥)에서 브라우저가 늦춘 것을 «끊김» 으로 본 오탐.
+- 고침(`OfflineContext.tsx`): 숨은 동안 실패는 세기만 하고 잠그지 않음 · `visibilitychange` 로 보이면 즉시 ping — 세어 둔 실패 + 이번 실패가 3 이상이면 바로 잠금(진짜 끊김은 오히려 빨리 잡힘), 성공이면 0. 보이는 상태 판정·브라우저 offline 이벤트는 그대로.
+- 두 줄: 같은 기기 탭 두 개가 같은 localStorage 기록을 동시에 보내 서버의 «있나 보고 넣기» 가 겹침 → `routes/offline-events.js` 처리 중 id 를 메모리로 막음(프로세스 하나).
+
