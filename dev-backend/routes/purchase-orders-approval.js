@@ -289,8 +289,19 @@ router.post('/purchase-orders/:id/approve', authenticateToken, requireOwnerScope
         const e = new Error('Only orders awaiting approval can be approved');
         e.code = 'BAD_STATUS'; throw e;
       }
+      // 오너가 본 발주와 지금 발주가 같은가 (2026-11-04) — 오너가 화면을 연 뒤 매장이 품목을 고쳤으면
+      //   그 바뀐 발주를 오너가 못 본 채 승인하지 않게 막는다. 화면이 본 updated_at 을 보낸다(안 보내면 예전처럼 승인).
+      const expected = req.body && req.body.expected_updated_at;
+      if (expected) {
+        const seen = new Date(expected).getTime();
+        const now0 = new Date(locked.updated_at).getTime();
+        if (!Number.isFinite(seen) || seen !== now0) {
+          const e = new Error('This order was changed after you opened it — review the latest version before approving');
+          e.code = 'PO_CHANGED'; throw e;
+        }
+      }
       const now = new Date();
-      const tracking = appendTrackingEvent(locked, 'submitted', 'Approved by Owner');
+      const tracking = appendTrackingEvent(locked, 'submitted', 'Approved by Owner', null, { owner_signed: true });
       await locked.update({
         status: 'submitted',
         submitted_at: now,
@@ -331,6 +342,7 @@ router.post('/purchase-orders/:id/approve', authenticateToken, requireOwnerScope
   } catch (err) {
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Purchase order not found' });
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
+    if (err.code === 'PO_CHANGED') return res.status(409).json({ success: false, code: 'PO_CHANGED', message: err.message });
     console.error('POST /api/purchase-orders/:id/approve error:', err);
     res.status(500).json({ success: false, message: 'Failed to approve purchase order' });
   }

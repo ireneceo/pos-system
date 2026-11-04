@@ -294,6 +294,7 @@
     "rejectedByOwner": "오너가 반려함",
     "amendedByBuyer": "매장이 이 발주를 수정했습니다",
     "amendedByOwner": "오너가 이 발주를 수정했습니다",
+    "amendReverted": "매장 수정을 되돌렸습니다 — 원래 품목으로 돌아왔습니다",
     "editItems": {
       "title": "품목 수정",
       "addItem": "품목 추가",
@@ -319,6 +320,7 @@
         "ALREADY_PAID": "결제된 발주입니다. 결제를 먼저 되돌린 뒤 수정하세요.",
         "ALREADY_RECEIVED": "이미 받은 품목이 있어 수정할 수 없습니다.",
         "ALREADY_SHIPPED": "공급업체가 이미 보낸 품목이 있어 수정할 수 없습니다.",
+        "OWNER_APPROVED": "오너가 이미 승인했거나 직접 보낸 발주라 매장에서는 고칠 수 없습니다. 오너에게 수정을 부탁하거나 먼저 승인 취소를 요청해 주세요.",
         "EMPTY_ITEMS": "품목이 하나는 남아야 합니다. 전부 빼려면 발주를 취소하세요.",
         "BELOW_MIN_ORDER": "최소 주문 수량보다 적습니다{{detail}}"
       },
@@ -688,6 +690,7 @@
     "approved": "발주가 승인되었습니다.",
     "rejected": "발주가 반려되었습니다.",
     "actionFailed": "작업에 실패했습니다. 다시 시도해주세요.",
+    "changedSinceOpened": "이 화면을 연 뒤 매장이 발주를 고쳤습니다. 목록을 새로 불러왔으니 바뀐 품목을 확인한 뒤 승인해 주세요.",
     "details": "상세",
     "pdf": "PDF",
     "whatsapp": "WhatsApp",

@@ -745,7 +745,8 @@ router.get('/purchase-orders/:id', async (req, res) => {
     // 구매자 품목 수정 가능 여부 — POST /amend 거부와 같은 함수(utils/poAmend.buyerAmendBlock · 2026-10-15 buyer-po-edit §4-2)
     {
       const { buyerAmendBlock } = require('../utils/poAmend');
-      const blk = buyerAmendBlock(po, plain.items || [], { isExternal: plain.is_external });
+      const { isOwnerActorForPo } = require('../utils/poOwnerApproval');
+      const blk = buyerAmendBlock(po, plain.items || [], { isExternal: plain.is_external, actorIsOwner: await isOwnerActorForPo(po, req) });
       plain.can_amend = !blk;
       plain.amend_blocked = blk ? blk.code : null;
     }

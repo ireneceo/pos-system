@@ -1386,9 +1386,28 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             {(() => {
               const events = (detail as any).tracking_info?.events;
               if (!Array.isArray(events)) return null;
-              const last = [...events].reverse().find((e: any) => e?.status === 'amended');
+              const last = [...events].reverse().find((e: any) => e?.status === 'amended' || e?.store_edit_reverted);
               if (!last) return null;
               const when = last.at ? formatDate(last.at) : '';
+              // 매장 수정을 되돌린 기록(2026-11-04 운영 일회성 되돌리기) — 옛 «고침» 박스 대신 «되돌림» 한 줄
+              if (last.store_edit_reverted) {
+                return (
+                  <div style={{
+                    background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: 8,
+                    padding: '12px 16px', marginBottom: 16, color: '#3730A3', fontSize: 14, lineHeight: 1.6
+                  }}>
+                    <strong>
+                      {t('detail.amendReverted', 'The store edit was reverted')}
+                      {when ? ` · ${when}` : ''}
+                    </strong>
+                    {typeof last.total_after === 'number' && (
+                      <div style={{ marginTop: 4, fontSize: 13 }}>
+                        {t('detail.amendedTotal', 'Order total')}: {formatMoney(last.total_after)}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
               return (
                 <div style={{
                   background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: 8,

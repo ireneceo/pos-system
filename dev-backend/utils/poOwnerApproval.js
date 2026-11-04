@@ -32,6 +32,20 @@ async function resolveOwnerRestaurantIds(user, t) {
   return [...ids];
 }
 
+/**
+ * 이 요청자가 이 발주 매장의 오너(또는 System Admin)인가 — 매장 수정 차단(poAmend.buyerAmendBlock actorIsOwner)과
+ * 수정 승인 게이트(applyBuyerAmendGate)가 같은 판정을 쓴다. 오너 «소유 매장으로 행동»(req.buyerIsOwnerView)도 오너.
+ */
+async function isOwnerActorForPo(po, req, t) {
+  const user = req && req.user;
+  if (!user || !po) return false;
+  if (user.role === 'System Admin') return true;
+  if (req.buyerIsOwnerView) return true;
+  if (po.entity_type !== 'restaurant') return false;
+  const owned = await resolveOwnerRestaurantIds(user, t);
+  return owned.includes(parseInt(po.entity_id, 10));
+}
+
 /** 이 레스토랑에 연결된 오너(ownership)가 있는가. */
 async function restaurantHasOwner(restaurantId, t) {
   const rows = await sequelize.query(
@@ -200,7 +214,8 @@ async function applySubmitGate(po, t, appendTrackingEvent, actor, opts = {}) {
   if (needsApproval && pre && pre.approvedByUserId) {
     const when = pre.approvedAt ? new Date(pre.approvedAt).toISOString().slice(0, 10) : '';
     const tracking = appendTrackingEvent(po, 'submitted',
-      `Pre-approved by Owner via standing order #${pre.scheduleId}${when ? ` (approved ${when})` : ''}`);
+      `Pre-approved by Owner via standing order #${pre.scheduleId}${when ? ` (approved ${when})` : ''}`,
+      null, { owner_signed: true });
     await po.update({
       status: 'submitted',
       submitted_at: new Date(),
@@ -223,7 +238,7 @@ async function applySubmitGate(po, t, appendTrackingEvent, actor, opts = {}) {
     }, { transaction: t });
   } else {
     const tracking = byOwner
-      ? appendTrackingEvent(po, 'submitted', 'Submitted by Owner (approval skipped)')
+      ? appendTrackingEvent(po, 'submitted', 'Submitted by Owner (approval skipped)', null, { owner_signed: true })
       : exemptKind
         ? appendTrackingEvent(po, 'submitted',
           `Submitted (Owner approval skipped — ${exemptKind === 'seller' ? 'exempt supplier' : 'all items exempt'})`,
@@ -364,6 +379,7 @@ module.exports = {
   canRevokeApproval,
   applyBuyerAmendGate,
   resolveOwnerRestaurantIds,
+  isOwnerActorForPo,
   restaurantHasOwner,
   isApprovalRequiredForRestaurant,
   isApprovalRequiredForPo,

@@ -245,13 +245,40 @@ function buyerAmendableStatuses(isExternal) {
 }
 
 /**
+ * 이 발주가 지금 «오너가 손을 댄 채» 나가 있는가 — 마지막 'submitted' 이력이 오너 승인·오너 사전승인(정기 발주)·오너 직접 보냄인가.
+ * 마지막 것만 본다: 반려·승인취소 뒤 매장이 다시 보낸 발주는 오너 손을 다시 거치지 않았으면 매장 것이다.
+ * 새 이력은 owner_signed:true 를 달고(approve 라우트·applySubmitGate), 옛 이력은 그 세 곳이 쓰는 문구로 가린다.
+ */
+const OWNER_SIGNED_NOTE = /^(Approved by Owner|Pre-approved by Owner|Submitted by Owner)/;
+function ownerSignedOff(po) {
+  let ti = po && po.tracking_info;
+  if (typeof ti === 'string') { try { ti = JSON.parse(ti); } catch { ti = null; } }
+  const events = ti && Array.isArray(ti.events) ? ti.events : [];
+  for (let i = events.length - 1; i >= 0; i--) {
+    const e = events[i];
+    if (!e || e.status !== 'submitted') continue;
+    return e.owner_signed === true || OWNER_SIGNED_NOTE.test(String(e.note || ''));
+  }
+  return false;
+}
+
+/**
  * 구매자 수정을 막는 조건 — 첫 번째 걸리는 것 하나. null 이면 고칠 수 있다.
  * ⚠ 상세 GET 의 can_amend/amend_blocked 와 POST amend 거부가 **이 함수 하나**를 부른다.
  * @returns {null | {code:string, message:string, http:number}}
  */
-function buyerAmendBlock(po, lines, { isExternal } = {}) {
+function buyerAmendBlock(po, lines, { isExternal, actorIsOwner } = {}) {
   if (!buyerAmendableStatuses(!!isExternal).includes(po.status)) {
     return { code: 'BAD_STATUS', http: 400, message: `Cannot edit an order in status '${po.status}'` };
+  }
+  // 오너가 이미 승인했거나 오너가 직접 보낸 발주는 매장이 고치지 못한다 (2026-11-04 Irene «오너가 했으면 아이템 추가 안되어야지»).
+  //   승인 대기(pending_approval) 중에는 오너가 아직 정하지 않았으니 매장이 고칠 수 있다. 오너 본인은 계속 고칠 수 있다.
+  //   매장이 고쳐야 하면 오너가 «승인 취소»(승인 대기로 되돌림)한 뒤 고친다.
+  if (!actorIsOwner && po.status !== 'pending_approval' && ownerSignedOff(po)) {
+    return {
+      code: 'OWNER_APPROVED', http: 400,
+      message: 'The Owner has already approved or placed this order — ask the Owner to edit it or to revoke the approval first'
+    };
   }
   if (po.trade_invoice_id) {
     return { code: 'ALREADY_INVOICED', http: 400, message: 'Cannot edit an order that already has an invoice' };
@@ -276,6 +303,7 @@ function buyerAmendBlock(po, lines, { isExternal } = {}) {
 module.exports = {
   buyerAmendableStatuses,
   buyerAmendBlock,
+  ownerSignedOff,
   AMENDABLE_STATUSES,
   buyerEntityOf,
   mappingUsableBy,

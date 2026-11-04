@@ -294,6 +294,7 @@
     "rejectedByOwner": "Rejected by Owner",
     "amendedByBuyer": "This order was edited by the store",
     "amendedByOwner": "The Owner edited this order",
+    "amendReverted": "The store edit was reverted — the order is back to its original items",
     "editItems": {
       "title": "Edit items",
       "addItem": "Add item",
@@ -319,6 +320,7 @@
         "ALREADY_PAID": "This order is paid. Reverse the payment first, then edit.",
         "ALREADY_RECEIVED": "Some items were already received, so this order cannot be edited.",
         "ALREADY_SHIPPED": "The supplier has already dispatched items, so this order cannot be edited.",
+        "OWNER_APPROVED": "The Owner has already approved or placed this order, so the store cannot edit it. Ask the Owner to edit it, or to revoke the approval first.",
         "EMPTY_ITEMS": "At least one item must remain. To remove everything, cancel the order instead.",
         "BELOW_MIN_ORDER": "Below the minimum order quantity{{detail}}"
       },
@@ -688,6 +690,7 @@
     "approved": "Order approved and sent to the supplier.",
     "rejected": "Order rejected.",
     "actionFailed": "Action failed. Please try again.",
+    "changedSinceOpened": "The store changed this order after you opened it. The list has been refreshed — please check the latest items before approving.",
     "details": "Details",
     "pdf": "PDF",
     "whatsapp": "WhatsApp",

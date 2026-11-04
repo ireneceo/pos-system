@@ -294,6 +294,7 @@
     "rejectedByOwner": "Ditolak oleh Pemilik",
     "amendedByBuyer": "Pesanan ini telah diedit oleh kedai",
     "amendedByOwner": "Pemilik telah mengedit pesanan ini",
+    "amendReverted": "Suntingan kedai telah dibatalkan — pesanan kembali kepada item asal",
     "editItems": {
       "title": "Edit item",
       "addItem": "Tambah item",
@@ -319,6 +320,7 @@
         "ALREADY_PAID": "Pesanan ini telah dibayar. Batalkan bayaran dahulu, kemudian edit.",
         "ALREADY_RECEIVED": "Sesetengah item telah diterima, jadi pesanan ini tidak boleh diedit.",
         "ALREADY_SHIPPED": "Pembekal telah menghantar item, jadi pesanan ini tidak boleh diedit.",
+        "OWNER_APPROVED": "Pemilik telah meluluskan atau membuat pesanan ini, jadi kedai tidak boleh mengeditnya. Minta Pemilik mengeditnya, atau membatalkan kelulusan dahulu.",
         "EMPTY_ITEMS": "Sekurang-kurangnya satu item mesti kekal. Untuk membuang semua, batalkan pesanan.",
         "BELOW_MIN_ORDER": "Di bawah kuantiti pesanan minimum{{detail}}"
       },
@@ -688,6 +690,7 @@
     "approved": "Pesanan diluluskan dan dihantar kepada pembekal.",
     "rejected": "Pesanan ditolak.",
     "actionFailed": "Tindakan gagal. Sila cuba lagi.",
+    "changedSinceOpened": "Kedai telah mengubah pesanan ini selepas anda membukanya. Senarai telah dimuat semula — sila semak item terkini sebelum meluluskan.",
     "details": "Butiran",
     "pdf": "PDF",
     "whatsapp": "WhatsApp",

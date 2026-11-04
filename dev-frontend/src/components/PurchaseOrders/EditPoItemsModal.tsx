@@ -54,7 +54,7 @@ interface Props {
   onSaved: (po: any) => void;
 }
 
-const ERROR_CODES = ['BAD_STATUS', 'ALREADY_INVOICED', 'ALREADY_RECONCILED', 'ALREADY_PAID', 'ALREADY_RECEIVED', 'ALREADY_SHIPPED', 'EMPTY_ITEMS'];
+const ERROR_CODES = ['BAD_STATUS', 'ALREADY_INVOICED', 'ALREADY_RECONCILED', 'ALREADY_PAID', 'ALREADY_RECEIVED', 'ALREADY_SHIPPED', 'OWNER_APPROVED', 'EMPTY_ITEMS'];
 
 const EditPoItemsModal: React.FC<Props> = ({ open, po, role, zIndex, onClose, onSaved }) => {
   const { t } = useTranslation('purchaseOrders');

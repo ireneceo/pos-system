@@ -1468,6 +1468,13 @@ health-check `pos`(또는 기존 오너 승인 계약이 있는 카테고리) �
 > - 언제: `pending_approval`·`submitted`(판매자 확인 전). 외부 공급업체는 confirm 이 없어 수령 전까지 사실상 언제나. 막는 조건 6개 = `poAmend.buyerAmendBlock`(상세 GET `can_amend` 와 같은 함수).
 > - 오너 승인 매장은 수정 = 다시 승인 대기(`poOwnerApproval.applyBuyerAmendGate`, 오너 본인 수정은 생략). 화면 = 발주 상세 «Edit items» · 오너 승인 화면 «Edited» 배지.
 > - `PUT /purchase-orders/:id` 는 품목 수정 경로로 쓰지 않는다(화면 진입점 없음 유지 · 화면 단가를 믿는 기존 부채 — 다음 정리 후보).
+>
+> **2026-11-04 — 오너가 승인·직접 보낸 발주는 매장이 못 고친다** (Irene «이미 오너가 발주를 했는데 레스토랑관리자가 주문을 수정했어 … 오너가 했으면 아이템 추가 안되어야지» · 사례 운영 PO-R10-20261101-003 Guan Kee Poultry 1kg→2kg · RM 90.70→109.20 · 설계 §10 Q1 의 (가)를 이 범위만큼 좁힘)
+> - 막는 조건 7번째 `OWNER_APPROVED` = `poAmend.buyerAmendBlock(…, { actorIsOwner })` — 상태가 `pending_approval` 이 아니고 **마지막 `submitted` 이력이 오너 손**(오너 승인 · 정기 발주 사전승인 · 오너 직접 보냄 — 새 이력 `owner_signed:true`, 옛 이력은 그 세 문구)이면 매장(RA·직원) 수정 400. 외부·가입 공급업체 똑같다.
+> - 오너 본인·System Admin 은 계속 고친다(`poOwnerApproval.isOwnerActorForPo` — 수정 게이트와 같은 오너 판정). 매장이 고쳐야 하면 오너가 «승인 취소»(→ 승인 대기)한 뒤 고친다.
+> - 오너 승인 매장이 아니거나 예외 규칙으로 승인 없이 나간 발주는 예전 그대로(판매자 확인 전까지 매장 수정 가능).
+> - **승인 때 바뀐 판 막기**: `POST /purchase-orders/:id/approve` 가 화면이 본 `expected_updated_at` 을 받아 지금과 다르면 409 `PO_CHANGED`(오너가 화면을 연 뒤 매장이 고친 발주를 못 본 채 승인하지 않게). 오너 승인 화면이 보내고, 409 면 안내 뒤 목록을 다시 불러온다. 안 보내면 예전처럼 승인.
+> - 계약: health-check `매장 발주 품목 수정 … (B1~B12)` B11·B12(고장주입 2/2 — 막기를 빼면 B12·B11 각각 실패 확인).
 
 ---
 

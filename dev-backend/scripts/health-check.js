@@ -8562,10 +8562,11 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   //   Irene «미스 발주 했을 때 다 삭제하고 다시 하기에 너무 힘들어 … 오너 승인 절차가 있는 경우에는 수정요청 … 승인»
   //   B1 후보 GET · B2 빼기+추가+수량 · B3 confirmed 400 · B4 가드 5종(상세 amend_blocked 와 같은 코드) ·
   //   B5 승인 매장 RA 수정 → pending_approval · 판매자 목록에서 사라짐 · B6 오너 승인 → submitted · 줄 유지 ·
-  //   B7 오너 본인 수정 = 승인 생략 · B8 외부 공급업체 · B9 거부 묶음 · B10 draft 400
+  //   B7 오너 본인 수정 = 승인 생략 · B8 외부 공급업체 · B9 거부 묶음 · B10 draft 400 ·
+  //   B11 오너가 본 뒤 바뀐 판 승인 409 · B12 오너가 승인·직접 보낸 발주는 매장 수정 400 OWNER_APPROVED · 승인취소 뒤엔 다시 됨 (2026-11-04)
   //   데모 매장 38 · 원래 operation_settings 는 DB 원문 그대로 저장했다 되돌린다.
   // ══════════════════════════════════════════════════════════════════
-  test('po', '매장 발주 품목 수정 = 판매자 확인 전·돈/물건 안 움직였을 때 · 승인 매장은 다시 승인 · 오너 본인은 생략 (B1~B10)', async () => {
+  test('po', '매장 발주 품목 수정 = 판매자 확인 전·돈/물건 안 움직였을 때 · 승인 매장은 다시 승인 · 오너 본인은 생략 · 오너 승인 뒤 매장 잠금 (B1~B12)', async () => {
     const { sequelize } = require('../config/database');
     const jwtLib = require('jsonwebtoken');
     const M = require('../models');
@@ -8692,13 +8693,38 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       const gateEv = ev5.find(e => e.status === 'pending_approval' && e.edited_by_buyer);
       if (a5.status !== 200 || pp5.status !== 'pending_approval' || !pp5.approval_required || !inQueue || !gateEv || sellerSees0.status !== 200 || sellerSees.status === 200)
         return fail(`B5 ${a5.status} 상태 ${pp5.status} 큐 ${inQueue} 이벤트 ${!!gateEv} 판매자 전 ${sellerSees0.status}/후 ${sellerSees.status}`);
-      // B6 오너 승인 → submitted · 줄 유지
-      const ap = await request('POST', `/purchase-orders/${p5.id}/approve`, {}, ownerAuth);
+      // B11 오너가 화면을 연 뒤 매장이 고친 발주 → 옛 판으로 승인하면 409 PO_CHANGED · 상태 그대로 (2026-11-04)
+      const seenAt = new Date(new Date(pp5.updated_at).getTime() - 1000).toISOString();
+      const apOld = await request('POST', `/purchase-orders/${p5.id}/approve`, { expected_updated_at: seenAt }, ownerAuth);
+      if (apOld.status !== 409 || apOld.body?.code !== 'PO_CHANGED' || (await M.PurchaseOrder.findByPk(p5.id)).status !== 'pending_approval')
+        return fail(`B11 옛 판 승인 ${apOld.status} ${apOld.body?.code}`);
+      // B6 오너 승인(지금 판) → submitted · 줄 유지
+      const ap = await request('POST', `/purchase-orders/${p5.id}/approve`, { expected_updated_at: new Date(pp5.updated_at).toISOString() }, ownerAuth);
       const pp6 = await M.PurchaseOrder.findByPk(p5.id);
       const r6 = await linesOf(p5.id);
       if (ap.status !== 200 || pp6.status !== 'submitted' || r6.length !== 1 || Number(r6[0].quantity_ordered) !== 1) return fail(`B6 ${ap.status} ${pp6.status} 줄 ${r6.length}`);
+      // B12 오너가 승인한 발주 → 매장 수정 400 OWNER_APPROVED · 상세 버튼 닫힘 · 줄·상태 그대로 (2026-11-04 Irene «오너가 했으면 아이템 추가 안되어야지»)
+      const a12 = await amend(p5.id, [{ item_id: r6[0].id, ingredient_seller_product_id: A.map.id, quantity_ordered: 5 }]);
+      const d12 = await request('GET', `/purchase-orders/${p5.id}`, null, raAuth);
+      const g12 = await request('GET', `/purchase-orders/${p5.id}/amendable-products`, null, raAuth);
+      const pp12 = await M.PurchaseOrder.findByPk(p5.id);
+      if (a12.status !== 400 || a12.body?.code !== 'OWNER_APPROVED' || d12.body?.data?.amend_blocked !== 'OWNER_APPROVED'
+          || g12.body?.data?.can_amend !== false || pp12.status !== 'submitted' || Number((await linesOf(p5.id))[0].quantity_ordered) !== 1)
+        return fail(`B12 매장 수정 ${a12.status} ${a12.body?.code} · 상세 ${d12.body?.data?.amend_blocked} · 후보 ${g12.body?.data?.can_amend} · 상태 ${pp12.status}`);
+      // B12' 오너가 직접 보낸 발주(승인 생략)도 매장은 못 고친다 — 옛 이력 문구만 있는 발주 포함
+      const p12b = await mkPo(SID, 'submitted', [{ f: A, qty: 1, price: 10 }]);
+      await p12b.update({ tracking_info: { events: [{ at: new Date().toISOString(), status: 'submitted', note: 'Submitted by Owner (approval skipped)' }] } });
+      const a12b = await amend(p12b.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 2 }]);
+      if (a12b.status !== 400 || a12b.body?.code !== 'OWNER_APPROVED') return fail(`B12' 오너 직접 보냄 ${a12b.status} ${a12b.body?.code}`);
+      // B12'' 오너가 승인 취소(승인 대기로 되돌림) → 매장이 다시 고칠 수 있다
+      const rv = await request('POST', `/purchase-orders/${p5.id}/revoke-approval`, {}, ownerAuth);
+      const a12c = await amend(p5.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 1 }]);
+      if (rv.status !== 200 || a12c.status !== 200) return fail(`B12'' 승인취소 ${rv.status} 뒤 매장 수정 ${a12c.status} ${a12c.body?.code}`);
+      const reAp = await request('POST', `/purchase-orders/${p5.id}/approve`, {}, ownerAuth);
+      if (reAp.status !== 200) return fail(`B12'' 재승인 ${reAp.status}`);
       // B7 오너 본인 수정 → 승인 생략
-      const a7 = await amend(p5.id, [{ item_id: r6[0].id, ingredient_seller_product_id: A.map.id, quantity_ordered: 2 }], ownerAuth, `?entity_type=restaurant&entity_id=${RID}`);
+      const r7 = await linesOf(p5.id);
+      const a7 = await amend(p5.id, [{ item_id: r7[0].id, ingredient_seller_product_id: A.map.id, quantity_ordered: 2 }], ownerAuth, `?entity_type=restaurant&entity_id=${RID}`);
       const { p: pp7, last: ev7 } = await lastEv(p5.id);
       if (a7.status !== 200 || pp7.status !== 'submitted' || !ev7 || ev7.status !== 'amended' || ev7.by_owner !== true)
         return fail(`B7 ${a7.status} ${JSON.stringify(a7.body).slice(0, 120)} 상태 ${pp7.status} 이벤트 ${ev7 && ev7.status}/${ev7 && ev7.by_owner}`);

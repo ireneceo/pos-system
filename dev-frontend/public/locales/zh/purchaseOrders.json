@@ -294,6 +294,7 @@
     "rejectedByOwner": "业主已拒绝",
     "amendedByBuyer": "门店修改了此采购单",
     "amendedByOwner": "店主修改了此采购单",
+    "amendReverted": "门店的修改已撤回——采购单已恢复为原品项",
     "editItems": {
       "title": "修改品项",
       "addItem": "添加品项",
@@ -319,6 +320,7 @@
         "ALREADY_PAID": "此采购单已付款。请先撤销付款再修改。",
         "ALREADY_RECEIVED": "已有品项收货，无法修改。",
         "ALREADY_SHIPPED": "供应商已发出部分品项，无法修改。",
+        "OWNER_APPROVED": "业主已批准或亲自下达此采购单，门店无法修改。请联系业主修改，或请其先撤销批准。",
         "EMPTY_ITEMS": "至少要保留一个品项。如需全部删除，请取消该采购单。",
         "BELOW_MIN_ORDER": "低于最低订购量{{detail}}"
       },
@@ -688,6 +690,7 @@
     "approved": "订单已批准并发送给供应商。",
     "rejected": "订单已拒绝。",
     "actionFailed": "操作失败，请重试。",
+    "changedSinceOpened": "您打开后门店修改了此采购单。列表已刷新——请先查看最新品项再批准。",
     "details": "详情",
     "pdf": "PDF",
     "whatsapp": "WhatsApp",

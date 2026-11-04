@@ -40,6 +40,8 @@ interface PendingPO {
   total_amount: number | string;
   currency?: string;
   created_at: string;
+  /** 오너가 본 판 — 승인 때 보내서, 그 사이 매장이 고쳤으면 서버가 409 PO_CHANGED 로 막는다(2026-11-04) */
+  updated_at?: string;
   /** 발주 주인 매장 — 상세·PDF 를 그 매장 전환(?entity_type=restaurant&entity_id=)으로 연다 */
   entity_id: number;
   /** 외부(앱 미사용) 공급업체 — 서버 목록·상세와 같은 해석기(utils/sellerNames.isExternalSeller) */
@@ -184,8 +186,16 @@ const OwnerPoApprovalsPage: React.FC = () => {
         if (!rr.ok) setAlert({ title: t('approvalRules.tab', 'Approval rules'), message: t('approvalRules.saveFailed', 'Could not save the rule.') as string });
       }
       const res = await fetch(`/api/purchase-orders/${target.id}/approve`, {
-        method: 'POST', headers: { Authorization: `Bearer ${token}` }
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ expected_updated_at: target.updated_at || null })
       });
+      if (res.status === 409) {
+        // 화면을 연 뒤 매장이 고친 발주 — 바뀐 판을 다시 보여 주고 오너가 다시 고르게 한다
+        setAlert({ title: t('ownerApprovals.approve'), message: t('ownerApprovals.changedSinceOpened') });
+        await load();
+        return;
+      }
       if (!res.ok) throw new Error('approve failed');
       // 행을 지우지 않고 «방금 승인» 띠로 남긴다(목록 재조회 안 함 — 재조회하면 승인된 행이 빠진다)
       setApproved(prev => ({ ...prev, [target.id]: null }));

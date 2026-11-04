@@ -31,7 +31,7 @@ const {
   mappingUsableBy, listAmendableProducts, buildAmendedLine, diffLines, buyerAmendBlock
 } = require('../utils/poAmend');
 const { carriedOptionsFor, resolveLineOptions, LineOptionError, lineOptionErrorBody } = require('../utils/poLineOptions');
-const { isApprovalRequiredForPo, applyBuyerAmendGate } = require('../utils/poOwnerApproval');
+const { isApprovalRequiredForPo, applyBuyerAmendGate, isOwnerActorForPo } = require('../utils/poOwnerApproval');
 const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
 const { assertLinesMeetMinOrder, minOrderRulesByMapping, MinOrderError, minOrderErrorBody } = require('../utils/poMinOrder');
 const { assertLinesSellerProductActive, InactiveSellerProductError, inactiveSellerProductErrorBody } = require('../utils/poSellerProductActive');
@@ -74,7 +74,7 @@ router.get('/purchase-orders/:id/amendable-products', async (req, res) => {
     }
     const lines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id } });
     const isExternal = await isExternalPo(po);
-    const block = buyerAmendBlock(po, lines, { isExternal });
+    const block = buyerAmendBlock(po, lines, { isExternal, actorIsOwner: await isOwnerActorForPo(po, req) });
     const keepMappingIds = lines.map(r => r.ingredient_seller_product_id).filter(Boolean);
     const products = block ? [] : await listAmendableProducts(po, buyerEntityFor(po, req), undefined, { keepMappingIds });
     // 화면이 고를 때 미리 채우는 하한 = 저장 검사와 같은 규칙(판매자 상품 현재 값, utils/poMinOrder). 연결 사본 값은 덮어쓴다.
@@ -126,7 +126,7 @@ router.post('/purchase-orders/:id/amend', async (req, res) => {
 
       const beforeRows = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
       const isExternal = await isExternalPo(po);
-      const block = buyerAmendBlock(po, beforeRows, { isExternal });
+      const block = buyerAmendBlock(po, beforeRows, { isExternal, actorIsOwner: await isOwnerActorForPo(po, req, t) });
       if (block) throw fail(block.code, block.message, block.http);
 
       const buyerEntity = buyerEntityFor(po, req);

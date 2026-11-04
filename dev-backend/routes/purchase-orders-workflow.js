@@ -390,8 +390,8 @@ router.post('/purchase-orders/:id/mark-sent-external', async (req, res) => {
 
     // 외부업체 수동 전송도 **발주가 나가는 경로**다 → 오너 승인 게이트를 반드시 탄다.
     // (예전엔 draft → submitted 직행이라 승인 ON 이어도 그냥 나갔다 — Fable 2026-07-13)
-    const needsApproval = await applySubmitGate(po, t, (p, st, note) =>
-      appendTrackingEvent(p, st, note, { source: 'external_manual_send', method: req.body?.method || 'manual' })
+    const needsApproval = await applySubmitGate(po, t, (p, st, note, _x, ev) =>
+      appendTrackingEvent(p, st, note, { source: 'external_manual_send', method: req.body?.method || 'manual' }, ev)
     , req.user);
     await t.commit();
 
@@ -856,8 +856,8 @@ router.post('/purchase-orders/:id/direct-purchase', async (req, res) => {
       if (itemCount === 0) { const e = new Error('Purchase order has no items'); e.code = 'EMPTY_ITEMS'; throw e; }
 
       // ① 보냄 — 승인 게이트를 **거친다**(우회 금지). 승인 필요면 롤백.
-      const needsApproval = await applySubmitGate(po, t, (pp, st, note) =>
-        appendTrackingEvent(pp, st, note, { source: 'direct_purchase', method: method || 'manual' }), req.user);
+      const needsApproval = await applySubmitGate(po, t, (pp, st, note, _x, ev) =>
+        appendTrackingEvent(pp, st, note, { source: 'direct_purchase', method: method || 'manual' }, ev), req.user);
       if (needsApproval) {
         const e = new Error('이 매장은 발주에 오너 승인이 필요합니다. Mark as Sent → 승인 후 이력에서 Receive & pay 하세요.');
         e.code = 'APPROVAL_REQUIRED'; throw e;
