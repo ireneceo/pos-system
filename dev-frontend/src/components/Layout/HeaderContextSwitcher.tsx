@@ -66,6 +66,17 @@ const Chip = styled(Button)`
   @media (max-width: 768px) {
     max-width: 140px;
   }
+
+  /* 폰 폭(≤480)에서는 이름이 머리줄 오른쪽 버튼(언어·내 정보)을 화면 밖으로 밀어냈다(375px 실측 93px 넘침).
+     아이콘만 남기고 이름은 title 로 — 접힌 사이드바(rail)와 같은 모양. */
+  @media (max-width: 480px) {
+    width: 36px;
+    min-width: 36px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+    & > span:not(:first-child) { display: none; }
+  }
 `;
 
 // 접힘 사이드바용 — 아이콘만, 정사각 44px(터치 타깃).

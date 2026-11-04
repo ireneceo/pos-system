@@ -76,6 +76,12 @@ const TableCard = styled.div`
   padding: 24px;
   border-radius: 8px;
   border: 1px solid #C7CED6;
+  /* 폰 폭에서 4열 표가 상자보다 넓어 오른쪽 열(평균 주문액)이 잘렸다(375px 실측 455/341) — 옆으로 밀어 보게 한다. */
+  overflow-x: auto;
+
+  @media (max-width: 600px) {
+    padding: 16px 12px;
+  }
 `;
 
 const Table = styled.table`

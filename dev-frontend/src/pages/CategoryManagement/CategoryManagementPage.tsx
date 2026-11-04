@@ -127,6 +127,15 @@ const CategoryCard = styled.div<{ $sub?: boolean }>`
   &:hover {
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
+
+  /* 폰 폭: 한 줄에 순서·아이콘·이름·켜기·수정·삭제가 다 못 들어가 수정/삭제가 화면 밖으로 잘렸다(375px 실측).
+     줄을 넘겨 켜기·수정·삭제가 아랫줄 오른쪽에 오게 한다. */
+  @media (max-width: 600px) {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 12px 14px;
+    margin-left: ${p => (p.$sub ? '16px' : '0')};
+  }
 `;
 
 const CategoryIcon = styled.div`
@@ -143,6 +152,12 @@ const CategoryIcon = styled.div`
 
 const CategoryInfo = styled.div`
   flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+
+  @media (max-width: 600px) {
+    flex: 1 1 120px;
+  }
 `;
 
 const CategoryName = styled.div`
@@ -162,6 +177,11 @@ const CategoryMeta = styled.div`
 const CategoryActions = styled.div`
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
+
+  @media (max-width: 600px) {
+    margin-left: auto;
+  }
 `;
 
 const IconButton = styled.button`
@@ -196,6 +216,10 @@ const ToggleSwitch = styled.label`
   width: 44px;
   height: 24px;
   flex-shrink: 0;
+
+  @media (max-width: 600px) {
+    margin-left: auto;
+  }
 `;
 
 const ToggleInput = styled.input`

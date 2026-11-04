@@ -140,7 +140,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
 
   const pageTitle = user?.role === 'Brand General' || user?.role === 'Brand Manager'
     ? t('recipes:recipeManagementPage.brandRecipes', 'Brand Recipes')
-    : t('recipes:recipeManagementPage.recipes');
+    : t('recipes:recipeManagementPage.recipes', 'Recipes');
 
   if (loading) {
     return (

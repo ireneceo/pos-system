@@ -179,6 +179,14 @@ const GlobeToggle = styled.button`
     background: rgba(0, 0, 0, 0.04);
     border-color: rgba(0, 0, 0, 0.2);
   }
+
+  /* 폰 폭: 관리 화면 머리줄에서 «EN» 글자 때문에 내 정보 버튼이 화면 밖으로 밀렸다(375px 실측).
+     지구 모양만 남긴다 — 고른 언어는 펼친 목록의 ✓ 로 보인다. */
+  @media (max-width: 480px) {
+    padding: 8px;
+    gap: 0;
+    span { display: none; }
+  }
 `;
 
 const GlobeDropdown = styled.div`

@@ -7928,7 +7928,9 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                 {/* Responsive: stack columns + hide divider on small screens */}
                 <style>{`
                   @media (max-width: 768px) {
-                    .receipt-grid { grid-template-columns: 1fr !important; }
+                    .receipt-grid { grid-template-columns: minmax(0, 1fr) !important; }
+                    .receipt-grid > * { min-width: 0; }
+                    .receipt-grid input, .receipt-grid textarea { max-width: 100%; box-sizing: border-box; }
                     .receipt-divider { display: none !important; }
                     .receipt-col-left { padding-right: 0 !important; padding-bottom: 20px !important; border-bottom: 1px solid #C7CED6 !important; }
                     .receipt-col-right { padding-left: 0 !important; padding-top: 20px !important; }
