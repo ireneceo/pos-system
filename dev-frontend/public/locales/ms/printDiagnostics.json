@@ -30,8 +30,8 @@
       },
       "bt_permission": {
         "title": "Kebenaran Bluetooth",
-        "denied": "Kebenaran Bluetooth dimatikan, jadi pencetak Bluetooth tidak dapat dicapai.",
-        "deniedForever": "Kebenaran Bluetooth disekat. Hidupkannya untuk aplikasi ini dalam tetapan telefon.",
+        "denied": "“{{btList}}” bukan pencetak Wi-Fi/LAN pada tablet ini, jadi ia mesti Bluetooth — dan kebenaran Bluetooth dimatikan, jadi ia tidak boleh mencetak.",
+        "deniedForever": "“{{btList}}” ialah pencetak Bluetooth, tetapi Bluetooth disekat untuk aplikasi ini. Hidupkan dalam tetapan aplikasi Android.",
         "unknown": "Kebenaran Bluetooth tidak dapat diperiksa.",
         "guide": "Benarkan Bluetooth apabila aplikasi meminta, kemudian jalankan semakan semula.",
         "guideSettings": "Buka tetapan aplikasi telefon dan benarkan Bluetooth untuk aplikasi ini."
@@ -64,13 +64,16 @@
         "qzFail": "Apl pencetak (QZ Tray) tidak berjalan atau tidak dapat dicapai pada PC ini.",
         "nativeFail": "Perkhidmatan cetak peranti ini tidak memberi respons. Mulakan semula apl.",
         "rawbtUnknown": "Cetakan melalui apl RawBT yang tidak dapat diperiksa secara automatik. Guna cetakan ujian untuk sahkan.",
-        "guide": "Pastikan apl pencetak dipasang dan berjalan, kemudian jalankan semakan semula."
+        "guide": "Pastikan apl pencetak dipasang dan berjalan, kemudian jalankan semakan semula.",
+        "guideNative": "Tutup aplikasi sepenuhnya dan buka semula. Jika berulang, kemas kini aplikasi ke versi terkini."
       },
       "printers_visible": {
         "title": "Pengesanan pencetak",
         "missing": "Pencetak ini tiada dalam senarai pencetak peranti ini: {{missingList}}.",
         "noList": "Senarai pencetak peranti ini tidak dapat dibaca, jadi nama pencetak tidak dapat disahkan.",
-        "guide": "Semak kuasa dan kabel pencetak, dan pastikan namanya sepadan dengan nama dalam tetapan pencetak."
+        "guide": "Semak kuasa dan kabel pencetak, dan pastikan namanya sepadan dengan nama dalam tetapan pencetak.",
+        "noneAndroid": "Belum ada pencetak disediakan pada tablet ini, tetapi ini telah dipilih: {{missingList}}.",
+        "guideAndroid": "Dalam “Pencetak pada tablet ini” di bawah: pencetak Wi-Fi/LAN → tambah dengan nama yang tepat ini. Pencetak Bluetooth → pasangkan dalam tetapan Bluetooth Android dan benarkan Bluetooth."
       },
       "cert_trusted": {
         "title": "Cetakan dipercayai",

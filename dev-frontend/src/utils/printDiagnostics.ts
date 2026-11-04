@@ -95,6 +95,20 @@ async function readBtPermission(): Promise<string | null> {
   return null;
 }
 
+/**
+ * Names registered on this Android tablet as network (Wi-Fi/LAN) printers, or null
+ * when the setup surface cannot be read. Read-only (__NATIVE_PRINT_SETUP.getState()).
+ */
+async function readAndroidNetNames(): Promise<string[] | null> {
+  try {
+    const setup = (window as any).__NATIVE_PRINT_SETUP;
+    if (!setup?.getState) return null;
+    const st = await setup.getState();
+    if (!st || st.error || !Array.isArray(st.net)) return null;
+    return st.net.map((p: any) => String(p?.name || '')).filter(Boolean);
+  } catch { return null; }
+}
+
 /** websocket.isActive() — a passive read. Never connects. */
 export function readQzActive(): boolean | null {
   try {
@@ -266,7 +280,8 @@ export async function runDeviceChecks(): Promise<DiagCheck[]> {
   checks.push(chk('bridge_or_qz', bridgeOk ? 'pass' : 'fail', {
     severity: 'critical',
     cause: bridgeOk ? null : (np ? 'diag.check.bridge_or_qz.nativeFail' : 'diag.check.bridge_or_qz.qzFail'),
-    guide: bridgeOk ? [] : ['diag.check.bridge_or_qz.guide'],
+    // The app has no separate print app to install — tell it to restart/update the app instead.
+    guide: bridgeOk ? [] : [np ? 'diag.check.bridge_or_qz.guideNative' : 'diag.check.bridge_or_qz.guide'],
     evidence: {
       platform,
       qzVersion: diag?.summary?.qzVersion || null,
@@ -278,14 +293,26 @@ export async function runDeviceChecks(): Promise<DiagCheck[]> {
   // D3 printers_visible — configured NAMED printers must appear in the detected list.
   const detected: string[] = (() => {
     const step = (diag?.steps || []).find((s: any) => s.key === 'printers');
+    // The native bridge reports an empty list as status 'failed' + detail "none found" — that is no printer, not a printer named "none found".
+    if (np && step?.status === 'failed') return [];
     if (step?.detail && typeof step.detail === 'string') {
       return step.detail.split(',').map((x: string) => x.trim()).filter(Boolean);
     }
     return [];
   })();
   const wanted = configuredPrinterNames(ps);
+  // Android: the list is this tablet's own registry (Wi-Fi/LAN names + paired Bluetooth),
+  // so an empty list is real, and the fix is "add it on this tablet", not "check the cable".
+  const visibleGuide = platform === 'android-app' ? 'diag.check.printers_visible.guideAndroid' : 'diag.check.printers_visible.guide';
   if (wanted.length === 0) {
     checks.push(chk('printers_visible', 'na', { evidence: { wanted, detected } }));
+  } else if (detected.length === 0 && platform === 'android-app' && bridgeOk) {
+    checks.push(chk('printers_visible', 'fail', {
+      severity: 'critical',
+      cause: 'diag.check.printers_visible.noneAndroid',
+      guide: [visibleGuide],
+      evidence: { wanted, detected, missingList: wanted.join(', ') },
+    }));
   } else if (detected.length === 0) {
     // Could not read the list (e.g. bridge failed) — don't fake green.
     checks.push(chk('printers_visible', 'unknown', {
@@ -299,7 +326,7 @@ export async function runDeviceChecks(): Promise<DiagCheck[]> {
     checks.push(chk('printers_visible', missing.length ? 'fail' : 'pass', {
       severity: 'critical',
       cause: missing.length ? 'diag.check.printers_visible.missing' : null,
-      guide: missing.length ? ['diag.check.printers_visible.guide'] : [],
+      guide: missing.length ? [visibleGuide] : [],
       evidence: { wanted, detected, missing, missingList: missing.join(', ') },
     }));
   }
@@ -320,7 +347,15 @@ export async function runDeviceChecks(): Promise<DiagCheck[]> {
   // D7 bt_permission — Android native only. Bluetooth printing needs the runtime
   // permission (Android 12+). Honest states: granted/not_needed → pass, denied →
   // warn (can re-prompt), denied_forever → fail (must enable in OS settings).
-  if (platform === 'android-app') {
+  // 2026-11-04 Irene «전체 테스트하면 왜 굳이 블루투스 문제 있는 거 안내와?» — only when a printer
+  // this shop chose could be Bluetooth: a chosen name that is not a registered Wi-Fi/LAN printer
+  // (IP addresses are never Bluetooth). All-Wi-Fi / nothing chosen → no Bluetooth line at all.
+  // If the registry cannot be read we keep the check (don't hide a possible cause).
+  const androidNet = platform === 'android-app' ? await readAndroidNetNames() : null;
+  const btCandidates = androidNet
+    ? wanted.filter((n) => !androidNet.some((x) => x.toLowerCase() === n.toLowerCase()))
+    : wanted;
+  if (platform === 'android-app' && btCandidates.length > 0) {
     const bt = await readBtPermission();
     if (bt === 'granted' || bt === 'not_needed') {
       checks.push(chk('bt_permission', 'pass', { evidence: { state: bt } }));
@@ -329,14 +364,14 @@ export async function runDeviceChecks(): Promise<DiagCheck[]> {
         severity: 'major',
         cause: 'diag.check.bt_permission.denied',
         guide: ['diag.check.bt_permission.guide'],
-        evidence: { state: bt },
+        evidence: { state: bt, btList: btCandidates.join(', ') },
       }));
     } else if (bt === 'denied_forever') {
       checks.push(chk('bt_permission', 'fail', {
         severity: 'major',
         cause: 'diag.check.bt_permission.deniedForever',
         guide: ['diag.check.bt_permission.guideSettings'],
-        evidence: { state: bt },
+        evidence: { state: bt, btList: btCandidates.join(', ') },
       }));
     } else {
       checks.push(chk('bt_permission', 'unknown', {

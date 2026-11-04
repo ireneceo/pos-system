@@ -50,6 +50,98 @@ const stepNo = (n: number) => (
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 0) 연결 방식 — 2026-11-04 Irene «원하는 연결방식에 맞게 제대로 안내들 정리 … 굳이 다 안내할 필요 있어?»
+//    고른 방식의 순서만 보여 준다. 고른 값은 이 기기 브라우저 저장(편의값 — 매장 설정 아님, 인쇄 경로와 무관).
+//    안내(위 카드) · 프린터 등록 카드(아래) · 자동 인쇄 준비 상자가 같은 값을 같이 본다.
+// ─────────────────────────────────────────────────────────────────────────────
+export type AndroidConn = 'wifi' | 'lan' | 'bluetooth' | 'builtin';
+const CONN_KEY = 'android_printer_conn';
+const CONNS: AndroidConn[] = ['wifi', 'lan', 'bluetooth', 'builtin'];
+const readConn = (): AndroidConn | null => {
+  try { const v = localStorage.getItem(CONN_KEY); return CONNS.includes(v as AndroidConn) ? (v as AndroidConn) : null; } catch { return null; }
+};
+let connNow: AndroidConn | null = typeof window !== 'undefined' ? readConn() : null;
+const connListeners = new Set<() => void>();
+export const useAndroidConn = (): [AndroidConn | null, (c: AndroidConn) => void] => {
+  const [c, setC] = useState<AndroidConn | null>(connNow);
+  useEffect(() => {
+    const l = () => setC(connNow);
+    connListeners.add(l);
+    return () => { connListeners.delete(l); };
+  }, []);
+  const set = useCallback((v: AndroidConn) => {
+    connNow = v;
+    try { localStorage.setItem(CONN_KEY, v); } catch { /* 저장 못 해도 이 화면에선 그대로 */ }
+    connListeners.forEach((f) => f());
+  }, []);
+  return [c, set];
+};
+const isNetConn = (c: AndroidConn | null) => c === 'wifi' || c === 'lan';
+const isBtConn = (c: AndroidConn | null) => c === 'bluetooth' || c === 'builtin';
+
+// 방식별 순서. 안내·준비 상자의 «N단계» 가 이 표 하나에서 나온다(번호가 서로 어긋나지 않게).
+type StepKey = 'wifiJoin' | 'wifiCheck' | 'lanPlug' | 'find' | 'btPair' | 'btAllow' | 'builtinAllow' | 'pick' | 'auto' | 'keepOpen';
+const PLAN: Record<AndroidConn, StepKey[]> = {
+  wifi: ['wifiJoin', 'wifiCheck', 'find', 'pick', 'auto', 'keepOpen'],
+  lan: ['lanPlug', 'find', 'pick', 'auto', 'keepOpen'],
+  bluetooth: ['btPair', 'btAllow', 'pick', 'auto', 'keepOpen'],
+  builtin: ['builtinAllow', 'pick', 'auto', 'keepOpen'],
+};
+// 준비 상자가 가리키는 자리: add = 이 태블릿에 프린터가 생기는 단계 · pick = 자리마다 고르기 · auto = 자동 인쇄 켜기
+const ADD_STEP: Record<AndroidConn, StepKey> = { wifi: 'find', lan: 'find', bluetooth: 'btPair', builtin: 'builtinAllow' };
+export const stepNumber = (c: AndroidConn | null, what: 'add' | 'pick' | 'auto'): number | null => {
+  if (!c) return null;
+  const key: StepKey = what === 'add' ? ADD_STEP[c] : what;
+  const i = PLAN[c].indexOf(key);
+  return i >= 0 ? i + 1 : null;
+};
+
+const connLabel = (t: T, c: AndroidConn) => ({
+  wifi: t('settings:printer.androidConn.wifi', { defaultValue: 'Wi-Fi printer' }),
+  lan: t('settings:printer.androidConn.lan', { defaultValue: 'LAN cable printer' }),
+  bluetooth: t('settings:printer.androidConn.bluetooth', { defaultValue: 'Bluetooth printer' }),
+  builtin: t('settings:printer.androidConn.builtin', { defaultValue: 'Built-in printer (Sunmi etc.)' }),
+}[c]);
+const connSub = (t: T, c: AndroidConn) => ({
+  wifi: t('settings:printer.androidConn.wifiSub', { defaultValue: 'Printer joins the shop Wi-Fi (no cable)' }),
+  lan: t('settings:printer.androidConn.lanSub', { defaultValue: 'Cable from the printer to the router — most stable' }),
+  bluetooth: t('settings:printer.androidConn.bluetoothSub', { defaultValue: 'Paired to this tablet, works without Wi-Fi' }),
+  builtin: t('settings:printer.androidConn.builtinSub', { defaultValue: 'The printer is inside this POS device' }),
+}[c]);
+
+/** 연결 방식 고르기 — compact 는 아래 등록 카드용(한 줄). */
+export const AndroidConnPicker: React.FC<{ t: T; compact?: boolean }> = ({ t, compact = false }) => {
+  const [conn, setConn] = useAndroidConn();
+  return (
+    <div style={{ marginBottom: compact ? '12px' : '14px' }}>
+      <div style={{ fontSize: '13px', fontWeight: 700, color: '#1F2937', marginBottom: '6px' }}>
+        {t('settings:printer.androidConn.question', { defaultValue: 'How is the printer connected?' })}
+      </div>
+      {!conn && (
+        <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '6px', lineHeight: 1.5 }}>
+          {t('settings:printer.androidConn.pickFirst', { defaultValue: 'Pick one — only the steps for that way are shown.' })}
+        </div>
+      )}
+      <div role="radiogroup" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '6px' }}>
+        {CONNS.map((c) => {
+          const on = conn === c;
+          return (
+            <button key={c} type="button" role="radio" aria-checked={on} onClick={() => setConn(c)}
+              style={{
+                textAlign: 'left', padding: compact ? '8px 10px' : '10px 12px', borderRadius: '8px', cursor: 'pointer', minWidth: 0,
+                border: on ? '2px solid #635BFF' : '1px solid #D1D5DB', background: on ? '#EEF2FF' : '#fff',
+              }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: on ? '#312E81' : '#1F2937' }}>{on ? '● ' : '○ '}{connLabel(t, c)}</div>
+              {!compact && <div style={{ fontSize: '11px', color: '#6B7280', lineHeight: 1.4, marginTop: '2px' }}>{connSub(t, c)}</div>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 1) 이 태블릿의 프린터 — 자동 찾기 + 등록 목록 + 직접 넣기 + 블루투스
 // ─────────────────────────────────────────────────────────────────────────────
 interface CardProps { bridge: NativeSetupBridge; onRegistryChange: () => void; t: T }
@@ -64,6 +156,8 @@ export const AndroidPrinterSetupCard: React.FC<CardProps> = ({ bridge, onRegistr
   const [scan, setScan] = useState<{ running: boolean; done: boolean; supported: boolean; hosts: string[] }>({ running: false, done: false, supported: true, hosts: [] });
   const [newNames, setNewNames] = useState<Record<string, string>>({});
   const [moveTo, setMoveTo] = useState<Record<string, string>>({});
+  const [conn] = useAndroidConn();
+  const [showOther, setShowOther] = useState(false);
 
   const refresh = useCallback(async () => { setState(await bridge.getState()); }, [bridge]);
   useEffect(() => { refresh(); }, [refresh]);
@@ -118,6 +212,16 @@ export const AndroidPrinterSetupCard: React.FC<CardProps> = ({ bridge, onRegistr
   const foundNew = scan.hosts.filter((h) => !net.some((p) => p.host === h));
   // 찾기를 돌렸는데 등록된 프린터가 옛 주소에서 안 보이면 = 주소가 바뀌었을 수 있다(공유기가 새 주소를 줌).
   const missing = scan.done && scan.supported ? net.filter((p) => !scan.hosts.includes(p.host)) : [];
+  // 고른 방식의 칸만 연다. 이미 등록된 와이파이·랜 프린터는 방식과 상관없이 늘 보인다(지우거나 바꿀 수 있게).
+  const showNet = isNetConn(conn) || net.length > 0 || (isBtConn(conn) && showOther);
+  const showBt = isBtConn(conn) || (isNetConn(conn) && showOther);
+  const desc = !conn
+    ? t('settings:printer.android.descPick', { defaultValue: 'Pick how the printer is connected first — then this box shows only what you need.' })
+    : conn === 'bluetooth'
+      ? t('settings:printer.android.descBt', { defaultValue: 'Printers you pair in the Android Bluetooth settings show up here by their own name. Then pick them by name for the counter and each kitchen below.' })
+      : conn === 'builtin'
+        ? t('settings:printer.android.descBuiltin', { defaultValue: 'Allow Bluetooth once — the built-in printer then shows up as “InnerPrinter”. Then pick it for the counter and the kitchen below.' })
+        : t('settings:printer.android.descNet', { defaultValue: 'Find the printers on this shop’s network (Wi-Fi or LAN cable) and add them here. Then pick them by name for the counter and each kitchen below.' });
 
   return (
     <div style={{ marginBottom: '16px', padding: '16px', background: '#FAFBFF', border: '1px solid #E2E8F0', borderRadius: '10px' }}>
@@ -125,16 +229,18 @@ export const AndroidPrinterSetupCard: React.FC<CardProps> = ({ bridge, onRegistr
         {t('settings:printer.android.title', { defaultValue: 'Printers on this tablet' })}
       </div>
       <div style={{ fontSize: '12px', color: '#6B7280', lineHeight: 1.6, marginBottom: '12px' }}>
-        {t('settings:printer.android.desc2', { defaultValue: 'Find the Wi-Fi printers on this shop’s network and add them here. Then pick them by name for the counter and each kitchen below.' })}
+        {desc}
       </div>
       <NativeAppVersionRow />
+      <AndroidConnPicker t={t} compact />
 
+      {showNet && (<>
       {/* 자동 찾기 */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '10px' }}>
         <button type="button" onClick={runScan} disabled={scan.running} style={{ ...btn(true), opacity: scan.running ? 0.6 : 1, cursor: scan.running ? 'wait' : 'pointer' }}>
           {scan.running
             ? t('settings:printer.android.scanning', { defaultValue: 'Searching this Wi-Fi… (up to about 40 seconds)' })
-            : t('settings:printer.android.scanBtn', { defaultValue: 'Find Wi-Fi printers automatically' })}
+            : t('settings:printer.android.scanBtnNet', { defaultValue: 'Find printers automatically (Wi-Fi · LAN)' })}
         </button>
       </div>
 
@@ -145,7 +251,7 @@ export const AndroidPrinterSetupCard: React.FC<CardProps> = ({ bridge, onRegistr
       )}
       {scan.done && scan.supported && scan.hosts.length === 0 && (
         <div style={{ fontSize: '12px', color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', padding: '10px', marginBottom: '10px', lineHeight: 1.6 }}>
-          {t('settings:printer.android.scanNone', { defaultValue: 'No Wi-Fi printer found. Check: the printer is on, it is connected to the SAME Wi-Fi as this tablet (not a guest Wi-Fi), then search again. Steps are in the guide above.' })}
+          {t('settings:printer.android.scanNoneNet', { defaultValue: 'No printer found. Check: the printer is on · its self-test page shows an IP address (= it is on the network) · this tablet is on the SAME Wi-Fi (not guest Wi-Fi). Then search again — or type the IP from the self-test page with “Add by IP address”.' })}
         </div>
       )}
 
@@ -173,7 +279,7 @@ export const AndroidPrinterSetupCard: React.FC<CardProps> = ({ bridge, onRegistr
 
       {/* 등록된 네트워크 프린터 */}
       <div style={{ fontSize: '13px', fontWeight: 600, color: '#1F2937', margin: '6px 0' }}>
-        {t('settings:printer.android.network', { defaultValue: 'Network printers (Wi-Fi)' })}
+        {t('settings:printer.android.networkNet', { defaultValue: 'Network printers (Wi-Fi · LAN cable)' })}
       </div>
       {net.length === 0 && (
         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
@@ -240,10 +346,20 @@ export const AndroidPrinterSetupCard: React.FC<CardProps> = ({ bridge, onRegistr
         </div>
       )}
 
-      {/* 블루투스 — 페어링은 안드로이드 설정에서, 여기선 목록만 */}
-      <div style={{ fontSize: '13px', fontWeight: 600, color: '#1F2937', margin: '16px 0 6px' }}>
-        {t('settings:printer.android.bluetooth', { defaultValue: 'Bluetooth printers' })}
+      </>)}
+
+      {/* 블루투스 — 페어링은 안드로이드 설정에서, 여기선 목록만. 블루투스·내장 방식일 때만 연다. */}
+      {showBt && (<>
+      <div style={{ fontSize: '13px', fontWeight: 600, color: '#1F2937', margin: showNet ? '16px 0 6px' : '6px 0' }}>
+        {conn === 'builtin'
+          ? t('settings:printer.android.builtinTitle', { defaultValue: 'Built-in printer' })
+          : t('settings:printer.android.bluetooth', { defaultValue: 'Bluetooth printers' })}
       </div>
+      {conn === 'builtin' && bt === 'granted' && bonded.length > 0 && !bonded.some((d) => /innerprinter/i.test(d.name)) && (
+        <div style={{ fontSize: '12px', color: '#92400E', marginBottom: '8px', lineHeight: 1.5 }}>
+          {t('settings:printer.android.builtinMissing', { defaultValue: 'No “InnerPrinter” on this device — it may not have a built-in printer. Pick “Bluetooth printer” or “Wi-Fi printer” above instead.' })}
+        </div>
+      )}
       {bt === 'granted' && bonded.length === 0 && (
         <div style={{ fontSize: '12px', color: '#6B7280', marginBottom: '8px' }}>
           {t('settings:printer.android.btNonePaired', { defaultValue: 'No paired devices. Pair the printer in the Android Bluetooth settings first.' })}
@@ -274,90 +390,158 @@ export const AndroidPrinterSetupCard: React.FC<CardProps> = ({ bridge, onRegistr
         {bt === 'denied_forever' && (
           <button type="button" onClick={() => bridge.openAppSettings()} style={btn()}>{t('settings:printer.android.openAppSettings', { defaultValue: 'Open app settings' })}</button>
         )}
-        <button type="button" onClick={() => bridge.openSystemBluetoothSettings()} style={btn()}>{t('settings:printer.android.openBtSettings', { defaultValue: 'Open Bluetooth settings' })}</button>
+        {conn !== 'builtin' && (
+          <button type="button" onClick={() => bridge.openSystemBluetoothSettings()} style={btn()}>{t('settings:printer.android.openBtSettings', { defaultValue: 'Open Bluetooth settings' })}</button>
+        )}
         <button type="button" onClick={() => { refresh(); onRegistryChange(); }} style={btn()}>{t('settings:printer.android.refresh', { defaultValue: 'Refresh' })}</button>
       </div>
+      </>)}
+
+      {/* 한 매장에서 방식을 섞어 쓰는 경우(드묾) — 다른 방식 칸을 펼쳐 볼 수 있게 */}
+      {conn && !showOther && (isNetConn(conn) || !showNet) && (
+        <button type="button" onClick={() => setShowOther(true)}
+          style={{ marginTop: '12px', padding: 0, border: 'none', background: 'none', color: '#4F46E5', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}>
+          {isNetConn(conn)
+            ? t('settings:printer.android.alsoBt', { defaultValue: 'Also using a Bluetooth printer on this tablet?' })
+            : t('settings:printer.android.alsoNet', { defaultValue: 'Also using a Wi-Fi or LAN printer on this tablet?' })}
+        </button>
+      )}
     </div>
   );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 2) 따라 하기 안내 — 처음 한 번(표준 순서) + 기종별 «주소 보는 법» + 안 나올 때
+// 2) 따라 하기 안내 — 연결 방식을 고르면 그 방식의 순서만(2026-11-04).
+//    와이파이 프린터는 «기종마다 방법대로 매장 와이파이에 붙이기» 가 1단계 — 기종별 방법을 그 단계 안에 바로 보인다.
+//    셀프테스트 종이(= 주소가 찍힌 종이) 보는 법은 와이파이 2단계·랜선 1단계 안에.
 // ─────────────────────────────────────────────────────────────────────────────
+type Sub = [string, string];
+const subList = (items: Sub[]) => (
+  <div style={{ marginTop: '6px', border: '1px solid #E5E7EB', borderRadius: '6px', background: '#fff' }}>
+    {items.map(([m, how], i) => (
+      <div key={m} style={{ padding: '7px 10px', borderTop: i ? '1px solid #F1F4F8' : 'none' }}>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: '#1F2937' }}>{m}</div>
+        <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6 }}>{how}</div>
+      </div>
+    ))}
+  </div>
+);
+
 export const AndroidPrintGuide: React.FC<{ t: T }> = ({ t }) => {
-  const [open, setOpen] = useState<'none' | 'models' | 'trouble'>('none');
-  const steps = [
-    { title: t('settings:printer.androidGuide.s1Title', { defaultValue: 'Connect the printer to the shop network' }),
-      body: t('settings:printer.androidGuide.s1Body', { defaultValue: 'Printer with a LAN port: plug a cable from the printer into the Wi-Fi router — done, it gets an address by itself (most stable, best for the kitchen). Wi-Fi-only printer: join it to the shop Wi-Fi once with the maker’s setup app. Use the SAME Wi-Fi as this tablet — not a guest Wi-Fi.' }) },
-    { title: t('settings:printer.androidGuide.s2Title', { defaultValue: 'Find it on this tablet' }),
-      body: t('settings:printer.androidGuide.s2Body', { defaultValue: 'Tap “Find Wi-Fi printers automatically” below. Give each found printer a name by its place — COUNTER, KITCHEN, BAR — and tap Add.' }) },
-    { title: t('settings:printer.androidGuide.s3Title', { defaultValue: 'Choose a printer for each place' }),
-      body: t('settings:printer.androidGuide.s3Body', { defaultValue: 'Further down: pick the counter (bill) printer and the printer of each kitchen station by name, then tap Test next to each. A ticket must come out.' }) },
-    { title: t('settings:printer.androidGuide.s4Title', { defaultValue: 'Turn on auto-print' }),
-      body: t('settings:printer.androidGuide.s4Body', { defaultValue: 'Switch on “Auto-print” for kitchen tickets (and the bill if you want). With 2 or more POS devices, only ONE device prints: on this tablet tap “Use on this device” on the POS that has auto-print on.' }) },
-    { title: t('settings:printer.androidGuide.s5Title', { defaultValue: 'Leave the app open' }),
-      body: t('settings:printer.androidGuide.s5Body', { defaultValue: 'Keep Purple POS open on this tablet (any screen), plugged into power and on Wi-Fi. The screen stays on by itself. If you close the app or switch the tablet off, orders wait and print when it is back.' }) },
+  const [conn] = useAndroidConn();
+  const [troubleOpen, setTroubleOpen] = useState(false);
+  const g = (k: string, d: string) => t(`settings:printer.androidGuide.${k}`, { defaultValue: d });
+
+  // 셀프테스트 종이 — 기종별(와이파이 2단계·랜선 1단계가 같이 씀)
+  const selfTest: Sub[] = [
+    [g('stGenericName', 'Most 80 mm receipt printers (Xprinter, Gprinter, Rongta, HPRT …)'),
+     g('stGenericHow', 'Switch the printer OFF. Hold the FEED button, switch it ON, release after 2 seconds. The page that comes out shows “IP Address”.')],
+    [g('stEpsonName', 'Epson TM series (TM-m30, TM-T82X …)'),
+     g('stEpsonHow', 'TM-m30: press the small button on the back once — a network sheet with the IP prints. Others: hold FEED while switching ON.')],
+    [g('stStarName', 'Star (TSP143, mC-Print …)'),
+     g('stStarHow', 'Hold FEED while switching ON — the self-test page shows the IP address.')],
   ];
-  const models: Array<[string, string]> = [
-    [t('settings:printer.androidGuide.mGeneric', { defaultValue: 'Most 80 mm receipt printers (Xprinter, Gprinter, Rongta, HPRT …)' }),
-     t('settings:printer.androidGuide.mGenericHow', { defaultValue: 'Switch the printer OFF. Hold the FEED button, switch it ON, release after 2 seconds. The test page shows “IP Address”.' })],
-    [t('settings:printer.androidGuide.mEpson', { defaultValue: 'Epson TM series (TM-m30, TM-T82X …)' }),
-     t('settings:printer.androidGuide.mEpsonHow', { defaultValue: 'TM-m30: press the small button on the back once — a network sheet with the IP prints. Others: hold FEED while switching ON. Wi-Fi setup: Epson “TM Utility” app.' })],
-    [t('settings:printer.androidGuide.mSunmi', { defaultValue: 'Sunmi tablet with a built-in printer' }),
-     t('settings:printer.androidGuide.mSunmiHow', { defaultValue: 'No Wi-Fi setup needed. Allow Bluetooth below and pick “InnerPrinter”.' })],
-    [t('settings:printer.androidGuide.mBt', { defaultValue: 'Bluetooth printer' }),
-     t('settings:printer.androidGuide.mBtHow', { defaultValue: 'Pair it once in Android Bluetooth settings (PIN is usually 0000 or 1234), then allow Bluetooth below. It appears in the printer lists by its own name.' })],
+  // 와이파이에 붙이기 — 기종마다(Irene «프린터 와이파이를 프린터마다 안내하는대로 … 순서에 들어가야지»)
+  const wifiJoin: Sub[] = [
+    [g('wjEpsonName', 'Epson TM (Wi-Fi models)'),
+     g('wjEpsonHow', 'Install the Epson “TM Utility” app on a phone or this tablet → pick the printer → Network (Wi-Fi) settings → choose the shop Wi-Fi, type its password → save.')],
+    [g('wjStarName', 'Star (Wi-Fi models)'),
+     g('wjStarHow', 'Install the “Star Quick Setup Utility” app → pick the printer → Wi-Fi settings → choose the shop Wi-Fi, type its password → save.')],
+    [g('wjGenericName', 'Other Wi-Fi receipt printers (Xprinter, Gprinter, Rongta, HPRT …)'),
+     g('wjGenericHow', 'Follow the setup sheet in the printer’s box — usually the maker’s “Wi-Fi setting” app or tool: type the shop Wi-Fi name and password, save, then switch the printer off and on. Keep the setup sheet; every model does this a little differently.')],
+    [g('wjLanName', 'The printer also has a LAN port?'),
+     g('wjLanHow', 'A cable to the router is easier and more stable than Wi-Fi — no Wi-Fi setup at all. Pick “LAN cable printer” above.')],
   ];
-  const trouble: string[] = [
-    t('settings:printer.androidGuide.t1', { defaultValue: 'Nothing found: printer on? Same Wi-Fi as the tablet (not guest Wi-Fi)? Many Wi-Fi printers work only on 2.4 GHz Wi-Fi. Print its test page — if it shows an IP, use “Add by IP address”.' }),
-    t('settings:printer.androidGuide.t2', { defaultValue: 'Test prints but orders do not print by themselves: check the “Ready to auto-print” box right below this guide — every line must be green.' }),
-    t('settings:printer.androidGuide.t3', { defaultValue: 'Worked before, now nothing: the router may have given the printer a new address. Tap “Find Wi-Fi printers automatically” — a printer that moved shows “Not found at this address” with an Update button.' }),
-    t('settings:printer.androidGuide.t4', { defaultValue: 'Blank or strange paper: set Print Format to “Text” (in this tab) and test again.' }),
-  ];
-  const toggle = (k: 'models' | 'trouble') => setOpen((o) => (o === k ? 'none' : k));
+
+  const STEPS: Record<StepKey, { title: string; body: string; extra?: React.ReactNode }> = {
+    wifiJoin: { title: g('wifiJoinTitle', 'Join the printer to the shop Wi-Fi — the way your printer model does it'),
+      body: g('wifiJoinBody', 'Do this once per printer. Use the Wi-Fi this tablet uses — not the guest Wi-Fi. Most Wi-Fi printers only see 2.4 GHz Wi-Fi: if the router has two names (e.g. “Shop” and “Shop-5G”), pick the one without 5G.'),
+      extra: subList(wifiJoin) },
+    wifiCheck: { title: g('wifiCheckTitle', 'Check it joined — print the self-test page'),
+      body: g('wifiCheckBody', 'An address like 192.168.x.x under “IP Address” = it is on the Wi-Fi. 0.0.0.0, 169.254.x.x or no IP = not yet — go back to step 1. Keep the page: the IP is useful if the search below misses it. Also check this tablet’s Android Wi-Fi shows the SAME Wi-Fi name.'),
+      extra: subList(selfTest) },
+    lanPlug: { title: g('lanPlugTitle', 'Plug the printer into the router'),
+      body: g('lanPlugBody', 'LAN cable from the printer’s LAN port to the shop router (or a switch on it). Switch the printer on and wait about a minute — it gets an address by itself, no setup. This tablet must be on the Wi-Fi of that same router (not guest Wi-Fi). To check: print the self-test page — an IP like 192.168.x.x means it is connected.'),
+      extra: subList(selfTest) },
+    find: { title: g('findTitle', 'Add it on this tablet'),
+      body: g('findBody', 'Tap “Find printers automatically” in the box below. Give each found printer the name of its place — COUNTER, KITCHEN, BAR — and tap Add. Not found? Use “Add by IP address” with the IP from the self-test page.') },
+    btPair: { title: g('btPairTitle', 'Pair the printer with this tablet'),
+      body: g('btPairBody', 'Switch the printer on. On this tablet open Android Settings › Bluetooth (the box below has an “Open Bluetooth settings” button), tap the printer’s name and pair — the PIN is usually 0000 or 1234. A Bluetooth printer connects to one device at a time: unpair it from any other phone or tablet first.') },
+    btAllow: { title: g('btAllowTitle', 'Allow Bluetooth for Purple POS'),
+      body: g('btAllowBody', 'In the box below tap “Allow Bluetooth” → Allow. The paired printer then appears in the list by its own name. Already allowed? The list shows it straight away — tap Refresh after pairing.') },
+    builtinAllow: { title: g('builtinAllowTitle', 'Allow Bluetooth — the built-in printer appears'),
+      body: g('builtinAllowBody', 'No Wi-Fi or pairing needed. In the box below tap “Allow Bluetooth” → Allow. The built-in printer shows up as “InnerPrinter” (Android lists built-in printers through Bluetooth).') },
+    pick: { title: g('pickTitle', 'Choose a printer for each place'),
+      body: g('pickBody', 'Further down: pick the counter (bill) printer and the printer of each kitchen station by the name from the box below, then tap Test next to each. A ticket must come out.') },
+    auto: { title: g('autoTitle', 'Turn on auto-print'),
+      body: g('autoBody', 'Switch on “Auto-print” for kitchen tickets (and the bill if you want). With 2 or more POS devices, only ONE device prints: on this tablet tap “Use on this device” on the POS that has auto-print on.') },
+    keepOpen: { title: g('keepOpenTitle', 'Leave the app open'),
+      body: isBtConn(conn)
+        ? g('keepOpenBodyBt', 'Keep Purple POS open on this tablet (any screen) and plugged into power, with the printer switched on and nearby (Bluetooth reaches about 10 m). If you close the app or switch the tablet off, orders wait and print when it is back.')
+        : g('keepOpenBody', 'Keep Purple POS open on this tablet (any screen), plugged into power and on Wi-Fi. The screen stays on by itself. If you close the app or switch the tablet off, orders wait and print when it is back.') },
+  };
+
+  // 안 나올 때 — 고른 방식의 것만
+  const trouble: string[] = !conn ? [] : isNetConn(conn)
+    ? [
+        conn === 'lan'
+          ? g('tLanNone', 'Nothing found: printer on? Cable firmly in both ends, and the light next to the printer’s LAN port blinking? This tablet on the Wi-Fi of the same router (not guest Wi-Fi)? Self-test page shows an IP → use “Add by IP address”.')
+          : g('tWifiNone', 'Nothing found: printer on? Self-test page shows an IP (step 2)? Same Wi-Fi as the tablet, not guest Wi-Fi, and 2.4 GHz? Self-test page shows an IP → use “Add by IP address”.'),
+        g('tAuto', 'Test prints but orders do not print by themselves: check the “Ready to auto-print” box right below this guide — every line must be green.'),
+        g('tMoved', 'Worked before, now nothing: the router may have given the printer a new address. Tap “Find printers automatically” — a printer that moved shows “Not found at this address” with an Update button.'),
+        g('tBlank', 'Blank or strange paper: set Print Format to “Text” (in this tab) and test again.'),
+      ]
+    : [
+        conn === 'builtin'
+          ? g('tBuiltinNone', 'No “InnerPrinter” in the list: is Bluetooth allowed (step 1)? Tap Refresh. Still nothing — this device may have no built-in printer.')
+          : g('tBtNone', 'Printer not in the list: paired in Android Bluetooth settings (step 1)? Bluetooth allowed (step 2)? Tap Refresh.'),
+        conn === 'builtin'
+          ? g('tBuiltinPaper', 'Test does not print: paper roll in and the cover closed? Restart the device and test again.')
+          : g('tBtTest', 'Test does not print: printer on and nearby? Not connected to another phone or tablet? Switch the printer off and on, then test again.'),
+        g('tAuto', 'Test prints but orders do not print by themselves: check the “Ready to auto-print” box right below this guide — every line must be green.'),
+        g('tBlank', 'Blank or strange paper: set Print Format to “Text” (in this tab) and test again.'),
+      ];
   const accBtn: React.CSSProperties = { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#F9FAFB', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#1F2937', textAlign: 'left' };
+  const plan = conn ? PLAN[conn] : [];
 
   return (
     <div style={{ marginBottom: '16px' }}>
       <div style={{ fontSize: '14px', fontWeight: 700, color: '#312E81', marginBottom: '10px' }}>
-        {t('settings:printer.androidGuide.title', { defaultValue: 'Set up printing on this tablet — 5 steps' })}
+        {conn
+          ? t('settings:printer.androidGuide.titleConn', { defaultValue: 'Set up printing on this tablet — {{conn}}, {{n}} steps', conn: connLabel(t, conn), n: plan.length })
+          : t('settings:printer.androidGuide.titlePick', { defaultValue: 'Set up printing on this tablet' })}
       </div>
-      <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-        {steps.map((s, i) => (
-          <li key={i} style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-            {stepNo(i + 1)}
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#1F2937' }}>{s.title}</div>
-              <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6 }}>{s.body}</div>
-            </div>
-          </li>
-        ))}
-      </ol>
-      <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden', marginTop: '4px' }}>
-        <button type="button" style={accBtn} aria-expanded={open === 'models'} onClick={() => toggle('models')}>
-          <span>{t('settings:printer.androidGuide.modelsTitle', { defaultValue: 'How to find a printer’s address — by printer type' })}</span>
-          <span>{open === 'models' ? '−' : '+'}</span>
-        </button>
-        {open === 'models' && (
-          <div style={{ padding: '10px 14px' }}>
-            {models.map(([m, how]) => (
-              <div key={m} style={{ padding: '8px 0', borderBottom: '1px solid #F1F4F8' }}>
-                <div style={{ fontSize: '13px', fontWeight: 600, color: '#1F2937' }}>{m}</div>
-                <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6 }}>{how}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        <button type="button" style={{ ...accBtn, borderTop: '1px solid #E5E7EB' }} aria-expanded={open === 'trouble'} onClick={() => toggle('trouble')}>
-          <span>{t('settings:printer.androidGuide.troubleTitle', { defaultValue: 'Not printing? Check in this order' })}</span>
-          <span>{open === 'trouble' ? '−' : '+'}</span>
-        </button>
-        {open === 'trouble' && (
-          <ol style={{ margin: 0, padding: '10px 14px 10px 32px' }}>
-            {trouble.map((x, i) => <li key={i} style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6, marginBottom: '6px' }}>{x}</li>)}
-          </ol>
-        )}
-      </div>
+      <AndroidConnPicker t={t} />
+      {conn && (
+        <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {plan.map((k, i) => {
+            const s = STEPS[k];
+            return (
+              <li key={k} style={{ display: 'flex', gap: '10px', marginBottom: '12px' }}>
+                {stepNo(i + 1)}
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#1F2937' }}>{s.title}</div>
+                  <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6 }}>{s.body}</div>
+                  {s.extra}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+      {conn && (
+        <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden', marginTop: '4px' }}>
+          <button type="button" style={accBtn} aria-expanded={troubleOpen} onClick={() => setTroubleOpen((o) => !o)}>
+            <span>{t('settings:printer.androidGuide.troubleTitle', { defaultValue: 'Not printing? Check in this order' })}</span>
+            <span>{troubleOpen ? '−' : '+'}</span>
+          </button>
+          {troubleOpen && (
+            <ol style={{ margin: 0, padding: '10px 14px 10px 32px' }}>
+              {trouble.map((x, i) => <li key={i} style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6, marginBottom: '6px' }}>{x}</li>)}
+            </ol>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -393,6 +577,17 @@ const IP_RE = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/;
 const resolves = (addr: string, names: string[]) => !!addr && (IP_RE.test(addr) || names.some((n) => n.toLowerCase() === addr.toLowerCase()));
 
 export const AndroidPrintReadiness: React.FC<ReadinessProps> = ({ t, printerNames, kitchenAutoPrint, kitchenTargets, billTarget, workstationCount, thisDeviceIsPrintStation, appVersion }) => {
+  const [conn] = useAndroidConn();
+  // «— N단계» 는 고른 연결 방식의 순서 번호(안내와 같은 표 PLAN). 방식을 안 골랐으면 «위에서 연결 방식 고르기».
+  const ref = (what: 'add' | 'pick' | 'auto') => {
+    const n = stepNumber(conn, what);
+    return n
+      ? t('settings:printer.androidReady.stepRef', { defaultValue: ' — step {{n}}', n })
+      : t('settings:printer.androidReady.pickConnRef', { defaultValue: ' — first pick how the printer is connected (above)' });
+  };
+  const unknownText = (place: string, printer: string) => isBtConn(conn)
+    ? t('settings:printer.androidReady.targetUnknownBt', { defaultValue: '{{place}} → “{{printer}}” is not paired with this tablet (or Bluetooth is not allowed){{ref}}', place, printer, ref: ref('add') })
+    : t('settings:printer.androidReady.targetUnknownNet', { defaultValue: '{{place}} → “{{printer}}” is not on this tablet — add a printer with exactly this name{{ref}}', place, printer, ref: ref('add') });
   const rows: Array<{ ok: boolean; text: string }> = [];
   const verOk = appVersionOk(appVersion);
   if (verOk !== null) {
@@ -402,30 +597,24 @@ export const AndroidPrintReadiness: React.FC<ReadinessProps> = ({ t, printerName
   }
   rows.push({ ok: printerNames.length > 0, text: printerNames.length > 0
     ? t('settings:printer.androidReady.printersOk', { defaultValue: '{{n}} printer(s) registered on this tablet', n: printerNames.length })
-    : t('settings:printer.androidReady.printersNo', { defaultValue: 'No printer registered on this tablet yet — step 2' }) });
-  kitchenTargets.forEach((k) => {
+    : t('settings:printer.androidReady.printersNone', { defaultValue: 'No printer on this tablet yet{{ref}}', ref: ref('add') }) });
+  const targetRow = (k: ReadinessTarget) => {
     const ok = resolves(k.address, printerNames);
     rows.push({ ok, text: !k.address
-      ? t('settings:printer.androidReady.targetNone', { defaultValue: '{{place}}: no printer chosen — step 3', place: k.label })
+      ? t('settings:printer.androidReady.targetNoneRef', { defaultValue: '{{place}}: no printer chosen{{ref}}', place: k.label, ref: ref('pick') })
       : ok
         ? t('settings:printer.androidReady.targetOk', { defaultValue: '{{place}} → {{printer}}', place: k.label, printer: k.address })
-        : t('settings:printer.androidReady.targetUnknown', { defaultValue: '{{place}} → “{{printer}}” is not registered on this tablet — add a printer with exactly this name (step 2)', place: k.label, printer: k.address }) });
-  });
-  if (billTarget) {
-    const ok = resolves(billTarget.address, printerNames);
-    rows.push({ ok, text: !billTarget.address
-      ? t('settings:printer.androidReady.targetNone', { defaultValue: '{{place}}: no printer chosen — step 3', place: billTarget.label })
-      : ok
-        ? t('settings:printer.androidReady.targetOk', { defaultValue: '{{place}} → {{printer}}', place: billTarget.label, printer: billTarget.address })
-        : t('settings:printer.androidReady.targetUnknown', { defaultValue: '{{place}} → “{{printer}}” is not registered on this tablet — add a printer with exactly this name (step 2)', place: billTarget.label, printer: billTarget.address }) });
-  }
+        : unknownText(k.label, k.address) });
+  };
+  kitchenTargets.forEach(targetRow);
+  if (billTarget) targetRow(billTarget);
   rows.push({ ok: kitchenAutoPrint, text: kitchenAutoPrint
     ? t('settings:printer.androidReady.autoOn', { defaultValue: 'Kitchen auto-print is on' })
-    : t('settings:printer.androidReady.autoOff', { defaultValue: 'Kitchen auto-print is off — step 4' }) });
+    : t('settings:printer.androidReady.autoOffRef', { defaultValue: 'Kitchen auto-print is off{{ref}}', ref: ref('auto') }) });
   if (workstationCount > 1) {
     rows.push({ ok: thisDeviceIsPrintStation, text: thisDeviceIsPrintStation
       ? t('settings:printer.androidReady.stationOk', { defaultValue: 'This tablet is the device that auto-prints' })
-      : t('settings:printer.androidReady.stationNo', { defaultValue: 'This tablet does NOT auto-print (another POS does). To print here: “Use on this device” on the POS with auto-print on — step 4' }) });
+      : t('settings:printer.androidReady.stationNoRef', { defaultValue: 'This tablet does NOT auto-print (another POS does). To print here: “Use on this device” on the POS with auto-print on{{ref}}', ref: ref('auto') }) });
   }
   const allOk = rows.every((r) => r.ok);
   return (
