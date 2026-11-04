@@ -8,19 +8,22 @@
  * - 연결이 돌아오면 OfflineContext 가 자동으로 오프라인 상태를 풀어 오버레이가 사라진다.
  *
  * 인쇄/주문 로직 무관 — 순수 표시·입력차단 레이어. 메인 POS 기기에는 절대 뜨지 않는다.
+ * 2026-11-04: 주문을 넣거나 바꾸는 화면 4곳(OFFLINE_LOCK_PATHS)에서만 뜬다 — 나머지 화면은 안내 띠만.
  */
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { useOffline } from '../../contexts/OfflineContext';
-import { useOfflineMainPos, setOfflineMainPos } from '../../utils/offlineMainPos';
+import { useOfflineMainPos, setOfflineMainPos, isOfflineLockPath } from '../../utils/offlineMainPos';
 
 const OfflineLockOverlay: React.FC = () => {
   const { isOffline } = useOffline();
   const isMainPos = useOfflineMainPos();
   const { t } = useTranslation('common');
+  const { pathname } = useLocation();
 
-  // 메인 POS 이거나 온라인이면 잠그지 않는다.
-  if (!isOffline || isMainPos) return null;
+  // 메인 POS 이거나 온라인이면 잠그지 않는다. 주문 화면 4곳이 아니면 안내 띠만(§16-11 E).
+  if (!isOffline || isMainPos || !isOfflineLockPath(pathname)) return null;
 
   return (
     <div

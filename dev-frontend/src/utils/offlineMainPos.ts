@@ -48,3 +48,18 @@ export function useOfflineMainPos(): boolean {
   }, []);
   return val;
 }
+
+/**
+ * 오프라인 때 «보조기기 잠금» 이 뜨는 화면 = 직원이 주문을 넣거나 바꾸는 화면만 (2026-11-04 Irene «권고대로»,
+ * docs/OFFLINE_MODE_DESIGN.md §16-11-4 E). 관리 화면·브랜드/푸드코트 화면·주방 화면·손님 모바일 화면은 잠그지 않고
+ * 위쪽 안내 띠(OfflineBanner)만 보인다 — 운영 잠금 6건이 전부 관리 화면이었고 막은 주문은 0건이었다.
+ */
+export const OFFLINE_LOCK_PATHS: RegExp[] = [
+  /^\/restaurant\/\d+\/pos-terminal(\/|$)/,
+  /^\/restaurant\/\d+\/floor-plan(\/|$)/,        // floor-plan-editor 는 '-' 가 와서 안 맞음
+  /^\/pos\/foodcourt\/floor-plan(\/|$)/,
+  /^\/restaurant\/\d+\/live-orders(\/|$)/,
+];
+export function isOfflineLockPath(pathname: string): boolean {
+  return OFFLINE_LOCK_PATHS.some((re) => re.test(pathname));
+}

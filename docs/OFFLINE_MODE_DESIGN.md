@@ -699,3 +699,8 @@ V1 핑만 죽고 다른 API 살아 있음 → 90초 잠금 0 · V1′ 전부 죽
 
 #### 16-11-7. 남는 리스크
 진짜 끊김 감지 24→30초(수용) · 3G 같은 매우 느린 회선의 한가한 화면은 30초 넘게 응답이 없으면 여전히 오프라인(맞는 판정) · 손님 폰 잠금 수는 과거 기록 없음 · 소켓 증거는 이번에 안 넣음.
+
+#### 16-11-8. E 구현 — 잠금 범위 주문 화면 4곳 (2026-11-04 Irene «권고대로» · askmw1ir3sp · SW 6.11-offline-lock-scope-20261104)
+- `utils/offlineMainPos.ts` `OFFLINE_LOCK_PATHS`·`isOfflineLockPath` + `OfflineLockOverlay` `useLocation` — 설계 그대로. 문구·i18n 변경 0(설정 화면 설명 «every other device is paused» 는 그대로).
+- 시험(6.11 번들, /api 전부 abort, 보조기기): pos-terminal 32.4초 · floor-plan 32.2초 · live-orders 32.3초 잠금 / dashboard · kitchen · /pos/recipes(→ dashboard 로 이동) · /mobile/demo-korean-bbq/menu · floor-plan-editor · pos-terminal(메인 POS) 잠금 없음 · 9곳 모두 안내 띠 보임. V1(핑만 죽음) 90초 잠금 없음 유지. 6.10 번들에선 recipes 32.3초 잠금(반증).
+- **Fable 게이트(2026-11-04, 직접 재현 · 6.11 번들 main.34b5596e.js):** 경로 4개가 App.tsx 라우트(pos-terminal · floor-plan · /pos/foodcourt/floor-plan · live-orders)와 일치, `(\/|$)` 로 floor-plan-editor 제외 · 오버레이는 `<Router>` 안(App.tsx:536) · 푸드코트 General 로 `/pos/foodcourt/floor-plan` **24.3초 잠김**(Opus 미시험분 — 화면이 한가해 마지막 응답이 끊기 전부터 묵어 30초 침묵이 먼저 찬 것, 규칙대로) · live-orders 32.4초 잠김 · dashboard · floor-plan-editor 잠김 없음 · 4곳 모두 안내 띠 · print-guard 8/8 · design-guard 신규 0. 확인 불가: RA 화면 3곳에서 끊은 뒤 pageerror 1건이 한 번 잡혔으나 재현(52초 관찰) 0건·문구 미포착 — 경로 검사 코드와 무관할 가능성이 크나 단정 안 함.

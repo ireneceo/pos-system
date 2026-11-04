@@ -15118,5 +15118,5 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 ## ✅ 완료: 운영 «Offline» 잠금 오탐 — 원인 확정·판정 고침 (2026-11-04) [Claude Code] 작업방 0412d7d3
 - 운영 기록 12건 판독: 숨은 탭 4 · 보이는 화면 핑 시간 초과 4(다른 응답은 오던 중·깨어난 맥 핑 겹침·화면 연 직후) · 브라우저 offline 이벤트 4(진짜 순간 끊김, 관리 화면 잠금). 서버 정상.
 - 판정 고침 ✅(Fable 설계+게이트 PASS 8f71f29c7375 · docs/OFFLINE_MODE_DESIGN.md §16-11 · SW 6.10-offline-detect-20261104) — serverSeen.ts(신규) · httpClient · OfflineContext · offlineEvents · sw.js · routes/offline-events.js
-- 잠금 범위 좁히기(주문 화면 4곳만) ⏸ Irene 답 대기(askmw1ir3sp · Fable 권고: 좁힌다)
+- 잠금 범위 좁히기(주문 화면 4곳만) ✅ Irene «권고대로» · Fable 게이트 PASS 544330aab762 · SW 6.11-offline-lock-scope-20261104
 - 개발서버·미배포 · 마이그 0 · 보호파일 무접촉
