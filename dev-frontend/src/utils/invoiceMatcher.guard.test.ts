@@ -294,3 +294,33 @@ describe('이름 사전 — 저장과 매칭이 같은 규칙을 본다', () => 
     expect(aliasToRemember({ parsed: { name: DIRTY }, viaAlias: false })).toBe('xxxxx bawang holland');
   });
 });
+
+/**
+ * 운영 발주 93 (PO-R10-20261002-001 · LOW SEAT HOONG IV2610-1429) — 2026-11-04 Irene «매칭을 전혀 못해».
+ * PDF 첫 장이 «2쪽 중 2쪽»(합계만)이라 첫 장만 읽던 화면이 품목 0줄 → 짝 0. 원인 수정은 `invoiceOcr.ts`(모든 쪽 읽기).
+ * 여기서는 같이 드러난 파서 구멍 «- 1 Paket» 의 대시가 수량 −1 로 붙어 줄째 버려지던 것을 지킨다.
+ * 고장주입: parseInvoiceLine 의 «음수 수량 부호 떼기» 블록을 지우면 아래 첫 테스트가 실패해야 한다.
+ */
+describe('발주 93 — 대시가 붙은 수량', () => {
+  const LST_PAGE1_HEADER_ONLY = `with MIN Cafe & Dining Page :20f2
+Re Ba 3 Gam 10. COpm
+a | Total ~ 428.60`;
+
+  it('«- 1 Paket» 이 수량 −1 로 읽혀도 줄이 살아남고 수량은 1 이다', () => {
+    const p = parseInvoiceLine("10 1027-001 Black Fungus KE FREX A? DOUBLE DRAGON - 1kg/10pkt/ctn -1 ‘@Paket [] 16.5000 16.50");
+    expect(p).not.toBeNull();
+    expect(p!.quantity).toBe(1);
+    expect(p!.unitPrice).toBe(16.5);
+    expect(p!.amount).toBe(16.5);
+  });
+
+  it('금액이 음수인 줄(반품)은 여전히 품목 줄로 치지 않는다', () => {
+    expect(parseInvoiceLine('Return Black Fungus -1 16.50 -16.50')).toBeNull();
+  });
+
+  it('합계만 있는 쪽 글자로는 품목 줄이 거의 없다 — 그래서 모든 쪽을 읽어야 한다', () => {
+    const lines = [po(539, 'Black Fungus', 1, 16.5, 'Black Fungus')];
+    const m = matchInvoiceToPo(lines, parseInvoiceText(LST_PAGE1_HEADER_ONLY));
+    expect(m[0].state).toBe('unmatched');
+  });
+});

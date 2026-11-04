@@ -158,6 +158,14 @@ export function parseInvoiceLine(raw: string): ParsedInvoiceLine | null {
   // 금액이 0 이하면 품목 줄이 아니다(문서번호·페이지수 등이 걸린 것).
   if (!(amount !== null && amount > 0)) return null;
 
+  // «설명 - 1 Paket» 의 구분 대시가 수량에 붙어 «-1» 로 읽힌다 (2026-11-04 운영 발주 93 · LOW SEAT HOONG 실측:
+  //   Black Fungus · Squid Cube 등 3줄이 수량 −1 → 아래 상식 검사에 걸려 줄째 사라졌다).
+  //   금액이 양수인 줄의 음수 수량은 반품이 아니라(반품은 금액도 음수라 위에서 이미 빠진다) 대시다 → 부호만 뗀다.
+  if (quantity !== null && quantity < 0) {
+    quantity = -quantity;
+    if (tail.length === 2) unitPrice = quantity > 0 ? Math.round((amount / quantity) * 10000) / 10000 : null;
+  }
+
   // ── 상식 검사 (2026-09-11 Fable 판정) — 품목 줄이 될 수 없는 숫자 조합은 버린다.
   //   실측: 운영 발주 32(Guan Kee **손글씨** 인보이스)를 OCR 하면 전화번호 줄
   //   «Hand Phone: 019-3221326, 0122031628» 이 수량 19 · 단가 −3,221,326 · 금액 122,031,628 로 통과해

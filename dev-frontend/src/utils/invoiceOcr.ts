@@ -46,8 +46,20 @@ async function imageToCanvas(url: string): Promise<HTMLCanvasElement> {
   return shrink(img, img.naturalWidth || img.width, img.naturalHeight || img.height);
 }
 
-/** PDF 첫 장을 캔버스에 그린다. 아이폰·스캐너가 사진을 PDF 로 감싸 올리는 것이 현장 기본형이다. */
-async function pdfFirstPageToCanvas(url: string): Promise<HTMLCanvasElement> {
+/**
+ * 한 번에 읽을 PDF 쪽 수 상한 — 폰·태블릿 메모리·시간 보호. 공급업체 인보이스는 대개 1~2쪽이다.
+ */
+const MAX_PDF_PAGES = 4;
+
+/**
+ * PDF **모든 쪽**(상한 MAX_PDF_PAGES)을 캔버스로 그린다. 아이폰·스캐너가 사진을 PDF 로 감싸 올리는 것이 현장 기본형이다.
+ *
+ * ⚠ 첫 장만 읽으면 안 된다 (2026-11-04 운영 발주 93 · LOW SEAT HOONG 실측):
+ *   CamScanner 가 «2쪽 중 2쪽»(합계만 있는 쪽)을 PDF 첫 장에, 품목 17줄이 있는 «2쪽 중 1쪽»을 둘째 장에 넣었다.
+ *   첫 장만 읽어 품목 줄 0 → 발주 16줄 중 짝 0, 고르기 목록엔 머리글 조각 2줄만 떴다(Irene «매칭을 전혀 못해»).
+ *   두 장 다 읽으면 16줄 중 12줄이 채워진다. 쪽 순서는 믿을 수 없으니 **전부** 읽어 이어 붙인다.
+ */
+async function pdfPagesToCanvases(url: string): Promise<HTMLCanvasElement[]> {
   const pdfjs: any = await import('pdfjs-dist');
   // 워커도 **자체 호스팅** 파일을 쓴다(외부 CDN 금지 — 매장 네트워크가 막힐 수 있다).
   // ⚠ 확장자를 .js 로 둔다 — nginx 가 .mjs 를 모르면 application/octet-stream 으로 내보내고
@@ -55,15 +67,21 @@ async function pdfFirstPageToCanvas(url: string): Promise<HTMLCanvasElement> {
   //   서버를 건드리지 않는 쪽을 택했다.
   pdfjs.GlobalWorkerOptions.workerSrc = '/tesseract/pdf.worker.min.js';
   const doc = await pdfjs.getDocument({ url }).promise;
-  const page = await doc.getPage(1);
-  const viewport = page.getViewport({ scale: 2 });
-  const canvas = document.createElement('canvas');
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas_unavailable');
-  await page.render({ canvasContext: ctx, viewport }).promise;
-  return shrink(canvas, canvas.width, canvas.height);
+  const count = Math.min(doc.numPages || 1, MAX_PDF_PAGES);
+  const out: HTMLCanvasElement[] = [];
+  for (let n = 1; n <= count; n++) {
+    const page = await doc.getPage(n);
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('canvas_unavailable');
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    out.push(shrink(canvas, canvas.width, canvas.height));
+    canvas.width = 0; canvas.height = 0;   // 큰 원본 캔버스 메모리를 바로 놓는다
+  }
+  return out;
 }
 
 /**
@@ -76,22 +94,29 @@ export async function readInvoiceText(
 ): Promise<string> {
   const isPdf = /\.pdf(\?|$)/i.test(url);
   onProgress?.({ status: 'loading', progress: 0.05 });
-  const canvas = isPdf ? await pdfFirstPageToCanvas(url) : await imageToCanvas(url);
+  const canvases = isPdf ? await pdfPagesToCanvases(url) : [await imageToCanvas(url)];
 
   onProgress?.({ status: 'recognizing', progress: 0.2 });
+  // 쪽마다 진행률을 나눠 준다 — 워커 logger 는 쪽 하나 안의 진행률(0~1)만 알려 준다.
+  let pageIdx = 0;
+  const share = 0.75 / canvases.length;
   const { createWorker } = await import('tesseract.js');
   const worker = await createWorker('eng', 1, {
     ...ASSETS,
     logger: (m: any) => {
       if (m && typeof m.progress === 'number') {
-        onProgress?.({ status: m.status || 'recognizing', progress: 0.2 + m.progress * 0.75 });
+        onProgress?.({ status: m.status || 'recognizing', progress: 0.2 + share * (pageIdx + m.progress) });
       }
     },
   } as any);
   try {
-    const { data } = await worker.recognize(canvas);
+    const texts: string[] = [];
+    for (pageIdx = 0; pageIdx < canvases.length; pageIdx++) {
+      const { data } = await worker.recognize(canvases[pageIdx]);
+      texts.push(data.text || '');
+    }
     onProgress?.({ status: 'done', progress: 1 });
-    return data.text || '';
+    return texts.join('\n');
   } finally {
     try { await worker.terminate(); } catch { /* 종료 실패는 무해 */ }
   }
