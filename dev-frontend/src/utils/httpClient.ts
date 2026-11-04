@@ -2,6 +2,7 @@ import { getApiBaseUrl } from '../config/api';
 import { getAuthToken, clearAuthToken } from './auth';
 import { getKioskToken, needsKioskHeader, clearKioskDevice } from './kioskDevice';
 import { shouldDedupe, buildDedupeKey, dedupedFetch, invalidateDedupe } from './fetchDedupe';
+import { noteServerSeen } from './serverSeen';
 
 // POS 관리자 인증을 건너뛸 경로
 // - 토큰 자동 주입 안 함
@@ -88,6 +89,10 @@ export function installFetchInterceptor(): void {
     const startsWithApi = urlString.startsWith('/api/');
     const includesApi = urlString.includes('/api/');
     const isBypass = POS_BYPASS_PATHS.some((p) => urlString.includes(p));
+    // 서버 도달 증거(§16-11) — 앱이 답한 응답(4xx·429 포함)만. 502~504 는 nginx 만 산 것, X-SW-Cache 는 서비스워커 캐시.
+    const noteReach = (res: Response) => {
+      if (includesApi && res.status > 0 && res.status < 500 && !res.headers.get('X-SW-Cache')) noteServerSeen();
+    };
 
     // 1) API_BASE_URL 프리픽스 (상대 /api/* 만, BASE 값이 있을 때만)
     let resolvedInput: RequestInfo | URL = input;
@@ -148,6 +153,7 @@ export function installFetchInterceptor(): void {
       }
       notifyContextFallback(response);
       if (sentKiosk && response.status === 401) onKioskRevoked();
+      noteReach(response);
       // dedupedFetch 가 이미 구독자별 clone 을 준다 — 여기서 다시 clone 하지 않는다.
       return response;
     }
@@ -176,6 +182,7 @@ export function installFetchInterceptor(): void {
     // 6) 키오스크 등록 해제(401 KIOSK_REVOKED) — 토큰을 지우고 직원 로그인 화면으로
     if (sentKiosk && response.status === 401) onKioskRevoked();
 
+    noteReach(response);
     return response;
   };
 }

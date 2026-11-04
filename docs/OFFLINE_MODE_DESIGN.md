@@ -614,7 +614,7 @@ interface OfflineEvent {
    - `max: 5` 로 낮춤 → `/api/restaurants` 류 아무 API 6회 → 6번째 **429** (한도 작동) · 같은 상태에서 `/api/health` 20회 → **20/20 200** (제외 작동).
    - skip 줄을 지움(max 5 유지) → `/api/health` 6번째 **429** (반증: 가드를 빼면 실제로 실패) → 둘 다 원복.
 **B. 기기 기록·전송 (Playwright, dev 데모 매장 38 `restaurant` 역할, 보조기기 = `offline_main_pos` 미설정)**
-3. `page.route('**/api/health**', r => r.fulfill({status:429, headers:{'Retry-After':'900','RateLimit-Remaining':'0'}, body:'{}'}))` → ≤30초 안에 잠금 오버레이 표시 → `localStorage.offline_events_v1` 1건: `trigger='probe'`, `probes.length=3`, `probes[0].kind='http'`, `status=429`, `retryAfter='900'`, `recoveredAt` 없음.
+3. (§16-11 뒤로는 **잠기지 않음** 이 정답 — §16-11-5 V6 주의) `page.route('**/api/health**', r => r.fulfill({status:429, headers:{'Retry-After':'900','RateLimit-Remaining':'0'}, body:'{}'}))` → ≤30초 안에 잠금 오버레이 표시 → `localStorage.offline_events_v1` 1건: `trigger='probe'`, `probes.length=3`, `probes[0].kind='http'`, `status=429`, `retryAfter='900'`, `recoveredAt` 없음.
 4. `unroute` → ≤10초 안에 오버레이 소멸 → `page.waitForRequest(POST /api/offline-events)` 응답 200 `accepted:1` → localStorage 비어 있음 → DB `system_logs` 에 `service='offline-detect' AND request_id=<id>` 1행, `level='warning'`, `user_id` = 시험 계정.
 5. 같은 식으로 `route.abort()` → `kind='network'` / 7초 지연 뒤 fulfill → `kind='timeout'` / `context.setOffline(true)` → `trigger='offline_event'` 각 1건.
 6. 오프라인 중 새로고침: 3 상태에서 `page.reload()`(라우트 유지) → unroute → 첫 핑 성공 → 전송된 행의 `recoveredBy='reload'`.
@@ -656,3 +656,46 @@ interface OfflineEvent {
 - 고침(`OfflineContext.tsx`): 숨은 동안 실패는 세기만 하고 잠그지 않음 · `visibilitychange` 로 보이면 즉시 ping — 세어 둔 실패 + 이번 실패가 3 이상이면 바로 잠금(진짜 끊김은 오히려 빨리 잡힘), 성공이면 0. 보이는 상태 판정·브라우저 offline 이벤트는 그대로.
 - 두 줄: 같은 기기 탭 두 개가 같은 localStorage 기록을 동시에 보내 서버의 «있나 보고 넣기» 가 겹침 → `routes/offline-events.js` 처리 중 id 를 메모리로 막음(프로세스 하나).
 
+
+### 16-11. 원인 확정과 고침 설계 (2026-11-04 · Fable 판정 · 작업방 0412d7d3 · Opus 실측 운영 기록 12건)
+
+**결론: 서버는 멀쩡하다. 운영 12건은 전부 «기기가 서버 도달을 잘못 판정했거나, 맞게 판정했어도 지킬 것 없는 화면을 잠근 것» 이다. 판정 결함 3개 + 범위 결함 1개를 확정했고, 넷 다 고친다. 이전 고침(§16-10, SW 6.07)은 운영에 안 올라갔고(운영 6.06), 올라갔어도 12건 중 4건만 막는다.**
+
+#### 16-11-1. 12건을 가른 결과
+| 묶음 | 건 | 무엇 | 판정 |
+|---|---|---|---|
+| ① 숨은 탭에서 핑 시간 초과 | 4 (user62 ×3 안드로이드 live-orders · gitconsulting 11-02 대시보드) | 브라우저가 숨은 탭 타이머·요청을 늦춤(간격 1~2분) | 오탐. §16-10(6.07) 이 잡음 — 운영 미배포 |
+| ② 보이는 상태에서 핑 시간 초과 | 4 | kate.kim `/pos` 화면 연 지 22초(느린 리소스 19개, brand-logo 18초) · k-dine ×2 3G rtt 750~950ms (live-orders 에선 pending-print 응답이 27초 만에 도착 = 서버에 닿고 있었다) · kate.kim 맥 `/pos/suppliers` 핑 3건이 6013·6035·6109ms 로 거의 동시 종료(깨어난 맥 — 결함 B) | 오탐. 6.07 로 안 잡힘 |
+| ③ 브라우저 offline 이벤트 | 4 (minky ×3 사파리 — IP 180.74→182.62 = 회선 전환 · gitconsulting 17분 = 잠든 맥) | 진짜 순간 끊김 4~51초 | 판정은 맞음. 그러나 잠근 화면이 레시피·브랜드재고·대시보드 — 지킬 주문이 없다(결함 D) |
+
+피해 형태: 보조기기 6건 전부 관리 화면 전체 잠금. 메인 POS 6건은 배너 + 주문이 로컬 기록 모드 + 카드 단말 꺼짐(`PaymentModal.tsx:538` `!isOffline`) — 오탐이 메인 POS 에서 더 위험하다.
+
+#### 16-11-2. 확정한 결함
+- **A. 서버 도달 증거를 핑 하나만 본다.** 같은 HTTP/2 연결에서 다른 응답이 오고 있어도 무시.
+- **B. 핑이 겹친다(단일 비행 없음).** interval·online·visibilitychange 세 곳이 진행 중 여부를 안 봄 → 깨어난 노트북이 핑 3개를 동시에 보내 6초 만에 «3회 실패».
+- **C. 화면을 연 직후를 구분하지 않는다.** 번들·이미지 내려받기가 핑을 밀어내는 동안 그대로 센다(§16-9 가설이 `sinceLoad 22s · slowRes 19` 로 확인).
+- **D. 잠금 범위가 «메인 POS 아닌 모든 기기의 모든 화면».** 관리 화면·BG 화면·손님 모바일 주문 화면까지 덮는다(손님 폰은 토큰이 없어 기록도 안 올라온다).
+서버 쪽 제외: 부하 0.05 · 메모리 4.5GB 여유 · health 0.04초 · 한도 제외 배포됨 · 같은 시각 매장8 주문 정상. 타임아웃 6초·간격 8초·3회 값은 그대로(세는 방식이 문제).
+
+#### 16-11-3. 새 판정 규칙
+**«보이는 화면에서 · 화면을 연 지 30초가 지났고 · 최근 40초 안에 연결 확인이 3번 실패했으며 · 그 사이 서버에서 온 응답(어떤 API 든, 캐시 아닌 것)이 30초 넘게 하나도 없을 때만» 오프라인.** 브라우저 `offline` 이벤트·`navigator.onLine=false` 는 즉시. 진짜 끊김 감지 ~24초 → ~30초.
+
+#### 16-11-4. 변경
+- A. 신규 `utils/serverSeen.ts` — `noteServerSeen()` / `msSinceServerSeen()` (import 0).
+- B. `utils/httpClient.ts` — 두 return 경로에서 `/api` 응답 `0<status<500` 이고 `X-SW-Cache` 없으면 `noteServerSeen()`.
+- C. `public/sw.js` — `networkFirst` 캐시 폴백에 `X-SW-Cache: 1` 표식(`markCached`) — 캐시 200 이 서버 응답으로 세이지 않게.
+- D. `contexts/OfflineContext.tsx` — `FAIL_WINDOW_MS=40000`·`SERVER_SILENCE_MS=30000`·`STARTUP_GRACE_MS=30000`, 실패를 시각 목록으로, 단일 비행(`inFlightRef`), `maybeGoOffline` 4조건.
+- E. (Irene 결정 대기) `offlineMainPos.ts` `OFFLINE_LOCK_PATHS`(pos-terminal · floor-plan · foodcourt floor-plan · live-orders) + `OfflineLockOverlay` 에서 `useLocation` 으로 그 화면만 잠금. 배너는 전역 그대로.
+- F. 기록 `sinceSeenMs` 1칸(`offlineEvents.ts` · `routes/offline-events.js`). 판독: `trigger='probe'` 행은 `sinceSeenMs ≥ 30000` 이어야 정상.
+- G. 안 바꾸는 것: 🔒 인쇄 보호파일·KDS · 타임아웃/간격/3회 값 · 서버 한도·health · Cloudflare · 소켓 증거(이번 범위 밖).
+
+#### 16-11-5. 검증 (옛 번들 반증 → 고친 뒤)
+V1 핑만 죽고 다른 API 살아 있음 → 90초 잠금 0 · V1′ 전부 죽음 → 30~45초 잠금 + `sinceSeenMs ≥ 30000` · V2 이벤트 몰려도 핑 1개 · V3 화면 연 직후 30초 전 잠금 0 · V4 범위(E) · V5 SW 캐시 표식 · V6 §16-7 회귀 · V7 게이트(print-guard 0 · design · health-check · verify-all --full · sensitive).
+**V6 주의(Fable 게이트 2026-11-04):** §16-7 B-3 «핑에 429 → ≤30초 잠금» 은 이 규칙에서 **잠기지 않는 것이 정답** 이다 — 429 는 앱이 답한 응답(서버 도달)이라 `noteServerSeen` 이 찍힌다. 그 사건(11-02 한도에 세인 health)이 바로 오탐이었다. 기록(`probes[].kind='http' status=429`)은 그대로 남고 잠금만 안 한다. abort(network)·지연(timeout)·`setOffline`(offline_event) 은 그대로 잠긴다(V1′ 로 증명).
+**게이트 결과(Fable 직접 재현):** V1 90초 잠금 없음 · V1′ 32.4초 잠금 `trigger=probe sinceSeenMs=33642` · V5 SW 허용 브라우저에서 `/api/menu?restaurantId=38` 네트워크 살아 있을 때 `X-SW-Cache` 없음 → 네트워크 끊으니 캐시가 200 으로 답하고 `X-SW-Cache: 1` 붙음 · health-check 459/459 · print-guard 8/8. V2·V3·V4·mount sweep 은 Opus 실측 수치 수용(같은 번들 main.72c49656.js).
+**운영 판독(배포 48시간 뒤, 읽기만):** `probe`+`visible` 행 0 이어야 한다. 남는 `probe` 행은 `details.sinceSeenMs < 30000` 인지 본다.
+
+#### 16-11-6. Irene 결정 — 보조기기 잠금을 주문 화면 4종으로 좁힐까(Fable 권고: 좁힌다 — 운영 잠금 6건 모두 관리 화면, 막은 주문 0건). 상황판 askmw1ir3sp.
+
+#### 16-11-7. 남는 리스크
+진짜 끊김 감지 24→30초(수용) · 3G 같은 매우 느린 회선의 한가한 화면은 30초 넘게 응답이 없으면 여전히 오프라인(맞는 판정) · 손님 폰 잠금 수는 과거 기록 없음 · 소켓 증거는 이번에 안 넣음.

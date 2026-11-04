@@ -5,6 +5,7 @@
  * 이 파일의 함수는 **절대 throw 하지 않는다**. 받는 곳 = POST /api/offline-events → system_logs(offline-detect).
  */
 import { getAuthToken } from './auth';
+import { msSinceServerSeen } from './serverSeen';
 import { isOfflineMainPos } from './offlineMainPos';
 
 export interface ProbeFail {
@@ -34,6 +35,7 @@ interface OfflineEvent {
   storeId?: number;
   // 회선·화면 사정 — «화면 여는 순간의 큰 내려받기에 핑이 묻혔나» 와 «어디·어떤 회선인가» 를 가른다(§16-3 보완). 전부 선택.
   sinceLoadMs?: number;
+  sinceSeenMs?: number;   // 오프라인 판정 순간 마지막 서버 응답 뒤 지난 ms(§16-11) — probe 행은 ≥30000 이어야 정상
   visibility?: 'visible' | 'hidden';
   conn?: { type?: string; rtt?: number; downlink?: number };
   tz?: string;
@@ -96,6 +98,7 @@ function storeIdFromUser(): number | undefined {
 function contextFields(): Partial<OfflineEvent> {
   const out: Partial<OfflineEvent> = {};
   try { out.sinceLoadMs = Math.round(performance.now()); } catch { /* ignore */ }
+  try { const ms = msSinceServerSeen(); if (Number.isFinite(ms)) out.sinceSeenMs = Math.round(ms); } catch { /* ignore */ }
   try { const v = document.visibilityState; if (v === 'visible' || v === 'hidden') out.visibility = v; } catch { /* ignore */ }
   try {
     const c = (navigator as any).connection;

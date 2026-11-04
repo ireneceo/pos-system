@@ -44,6 +44,7 @@ function sanitizeEvent(raw) {
     storeId: num(raw.storeId),
     // 회선·화면 사정(§16-3 보완) — 전부 선택
     sinceLoadMs: num(raw.sinceLoadMs),
+    sinceSeenMs: num(raw.sinceSeenMs),
     visibility: pick(raw.visibility, VISIBILITY),
     conn: undefined,
     tz: str(raw.tz, 40),

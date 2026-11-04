@@ -10,7 +10,7 @@
  *    캐시는 SW_VERSION 네임스페이스 → 새 배포(install)가 옛 캐시 전체 삭제로 stale-chunk 차단.
  */
 
-const SW_VERSION = '6.09-recipe-list-speed-20261103';
+const SW_VERSION = '6.10-offline-detect-20261104';
 const RUNTIME_CACHE = `pos-runtime-${SW_VERSION}`;
 // 오프라인에 캐시할 API GET (메뉴/설정/플로어플랜 — 끊겨도 주문화면이 뜨게). 그 외 API 는 캐시 안 함.
 const API_CACHE_PATTERNS = [/\/api\/menu(\b|\/|\?)/, /\/api\/mobile\/.*menu/, /\/restaurants\/\d+\/floor-plan/, /\/api\/.*\/operation-settings/, /\/api\/.*\/store/];
@@ -51,10 +51,18 @@ async function networkFirst(req, fallbackKey) {
     // 오프라인 — 캐시에서 (네비게이션은 캐시된 index '/' 로 폴백 → 앱 셸 부팅).
     if (cache) {
       const hit = await cache.match(req) || (fallbackKey ? await cache.match(fallbackKey) : null);
-      if (hit) return hit;
+      if (hit) return markCached(hit);
     }
     return Response.error();
   }
+}
+
+// 캐시로 대신 답한 응답에 표식 — 화면이 이것을 «서버 응답» 으로 세면 끊겨도 영영 오프라인이 안 된다(§16-11 C).
+function markCached(res) {
+  try {
+    const h = new Headers(res.headers); h.set('X-SW-Cache', '1');
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+  } catch (_) { return res; }
 }
 
 // 해시된 정적 자산(/static/*.[hash].js|css)은 immutable(내용-해시 파일명) → cache-first(즉시, 네트워크 왕복 0).
