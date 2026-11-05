@@ -2820,6 +2820,7 @@ Irene 「Submit 한 순서대로 나와야해. 생성일이 발주일이여야�
 - **변경 0**: 구매자 수령(보냄과 무관하게 받을 수 있음 — 공급업체 판매 발주는 «보내기» 없이 수령이 실사용 경로) · 반품 · 청구서 · 정산서 · `TRADE_STRUCTURE.md`.
 - **범위 밖**: 한 품목 안에서 수량 나눠 보내기 · «나머지 못 보냄(품절)» 처리(돈 문제 — 별도) · 지난 발송 송장 개별 수정 · 발송별 포장 목록.
 - 검사: health-check `inventory` «품목별 발송» 2건(S1~S5 · 동시 S7).
+- **2026-11-05 «준비함» 표시 추가** — `purchase_order_items.prepared_at`(null = 미준비) · `POST /:id/prepare` · 보내기가 미준비 줄의 `prepared_at` 을 같이 채움 · 헤더 `unprepared_count`. 판매자 «주문 준비 보드» 용 — 상세는 `docs/SELLER_ORDER_MANAGEMENT_SYSTEM.md` «주문 준비 보드» 절.
 
 ## 정기 발주(Standing order) — 같은 품목·같은 수량을 주기마다 자동 발주 (2026-10-22 · Fable 설계 · [Claude Code])
 > Irene: «외부공급업체 중에 구독구매의 경우 발주가 정기적으로 생성되게 … 매주 1회 항상 같거든 … 레스토랑오너 승인도 1번만 하면 그 다음 계속 자동으로»

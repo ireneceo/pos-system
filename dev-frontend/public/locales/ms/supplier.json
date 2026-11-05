@@ -314,7 +314,28 @@
       "stockHint": "Dikira selepas pesanan terdahulu. Untuk produk resipi, bahan paling kurang yang menentukan."
     },
     "stockShortLine": "{{count}} pesanan terbuka tidak dapat dihantar sepenuhnya dengan stok semasa",
-    "stockShortLink": "Ke inventori →"
+    "stockShortLink": "Ke inventori →",
+    "board": {
+      "viewLabel": "Paparan",
+      "viewBoard": "Papan",
+      "viewList": "Senarai",
+      "col": {
+        "new": "Baharu",
+        "preparing": "Sedang disediakan",
+        "ready": "Sedia untuk dihantar",
+        "shipped": "Dihantar",
+        "done": "Selesai hari ini"
+      },
+      "markPrepared": "Sudah disediakan",
+      "prepared": "Sudah disediakan",
+      "shipped": "Dihantar",
+      "noDelivery": "Tiada penghantaran",
+      "partShipped": "{{shipped}} daripada {{total}} dihantar",
+      "items": "item",
+      "emptyColumn": "Tiada",
+      "prepareFailed": "Tidak dapat mengemas kini item. Sila cuba lagi.",
+      "loadFailed": "Tidak dapat memuatkan papan. Akan cuba semula pada kemas kini seterusnya."
+    }
   },
   "tradeInvoicesPage": {
     "title": "Invois Dagangan",

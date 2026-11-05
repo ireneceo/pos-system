@@ -23,6 +23,9 @@ const PurchaseOrderItem = sequelize.define('PurchaseOrderItem', {
   // 판매자 품목별 발송 표시 (2026-10-08 Fable 판정) — null = 미발송. «받은 양» 의 거울이지만 수량이 아니라
   //   «보냈다/안 보냈다» 하나다. 한 줄은 한 번만 보낸다(재고 차감도 그 줄 수량 전부 1회). 마이그 migrate-po-item-shipped-at.js
   shipped_at: { type: DataTypes.DATE, allowNull: true, comment: '판매자가 이 줄을 보낸 시각. null = 미발송' },
+  // 판매자 «주문 준비 보드» (2026-11-05 Fable 판정 .claude/fable-verdict-20261105-bg-order-kds.md) — null = 미준비.
+  //   보낸 줄은 «준비됨» 취급(보내기가 비어 있으면 같이 채움). 재고·금액 무관. 마이그 migrate-po-item-prepared-at.js
+  prepared_at: { type: DataTypes.DATE, allowNull: true, comment: '판매자가 이 줄을 준비 완료로 표시한 시각. null = 미준비' },
   options: { type: DataTypes.JSON, allowNull: true, comment: '고른 공급업체 상품 옵션 스냅샷 [{group_id,group_name,option_id,option_name,price_adjustment}] · NULL=없음 (utils/poLineOptions.js)' },
   unit: { type: DataTypes.STRING(50), allowNull: true },
   // 주문 시점 용량 스냅샷 (2026-09-11) — «10 kg/BOX × 3 BOX» 의 10 kg. unit 은 포장단위(BOX).

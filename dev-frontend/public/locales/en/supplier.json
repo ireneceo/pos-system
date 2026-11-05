@@ -314,7 +314,28 @@
       "stockHint": "Counted after earlier orders. For recipe products, the scarcest ingredient decides."
     },
     "stockShortLine": "{{count}} open order(s) can't be fully shipped from current stock",
-    "stockShortLink": "Go to inventory →"
+    "stockShortLink": "Go to inventory →",
+    "board": {
+      "viewLabel": "View",
+      "viewBoard": "Board",
+      "viewList": "List",
+      "col": {
+        "new": "New",
+        "preparing": "Preparing",
+        "ready": "Ready to ship",
+        "shipped": "Shipped",
+        "done": "Done today"
+      },
+      "markPrepared": "Prepared",
+      "prepared": "Prepared",
+      "shipped": "Shipped",
+      "noDelivery": "No delivery",
+      "partShipped": "{{shipped}} of {{total}} shipped",
+      "items": "items",
+      "emptyColumn": "Nothing here",
+      "prepareFailed": "Could not update the item. Please try again.",
+      "loadFailed": "Could not load the board. It will retry on the next update."
+    }
   },
   "tradeInvoicesPage": {
     "title": "Trade Invoices",

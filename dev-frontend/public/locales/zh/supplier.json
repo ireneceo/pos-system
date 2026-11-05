@@ -314,7 +314,28 @@
       "stockHint": "已扣除先到订单。配方产品以最缺的原料为准。"
     },
     "stockShortLine": "{{count}} 个未完成订单无法用当前库存全部发货",
-    "stockShortLink": "前往库存 →"
+    "stockShortLink": "前往库存 →",
+    "board": {
+      "viewLabel": "视图",
+      "viewBoard": "看板",
+      "viewList": "列表",
+      "col": {
+        "new": "新订单",
+        "preparing": "备货中",
+        "ready": "待发货",
+        "shipped": "已发货",
+        "done": "今日完成"
+      },
+      "markPrepared": "已备好",
+      "prepared": "已备好",
+      "shipped": "已发货",
+      "noDelivery": "无需配送",
+      "partShipped": "已发 {{shipped}}/{{total}} 项",
+      "items": "项",
+      "emptyColumn": "暂无",
+      "prepareFailed": "无法更新该商品，请重试。",
+      "loadFailed": "无法加载看板，将在下次更新时重试。"
+    }
   },
   "tradeInvoicesPage": {
     "title": "交易发票",

@@ -193,13 +193,18 @@ async function attachShipmentState(obj) {
   const svc = await serviceLineIdsOf(sequelize, obj.id);
   const items = Array.isArray(obj.items) ? obj.items : [];
   let unshipped = 0;
+  let unprepared = 0;   // 주문 준비 보드(2026-11-05) — 안 보낸 물건 줄 중 «준비함» 안 된 수
   for (const it of items) {
     it.is_service = svc.has(Number(it.id));
-    if (!it.is_service && !it.shipped_at) unshipped++;
+    if (!it.is_service && !it.shipped_at) {
+      unshipped++;
+      if (!it.prepared_at) unprepared++;
+    }
   }
   // 백필 전 옛 전량 출고(헤더만 기록)는 «다 보냄» 으로 본다 — ship 라우트의 레거시 가드와 같은 판정
-  if (obj.shipped_at && !items.some(it => it.shipped_at)) unshipped = 0;
+  if (obj.shipped_at && !items.some(it => it.shipped_at)) { unshipped = 0; unprepared = 0; }
   obj.unshipped_count = unshipped;
+  obj.unprepared_count = unprepared;
   return obj;
 }
 
@@ -811,6 +816,9 @@ router.post('/:id/ship', async (req, res) => {
       }, { transaction: t });
       await PurchaseOrderItem.update({ shipped_at: now },
         { where: { id: [...shipSet], purchase_order_id: locked.id }, transaction: t });
+      // 주문 준비 보드(2026-11-05) — 보낸 줄은 준비된 줄이다. «준비함» 을 안 누르고 바로 보냈으면 같이 채운다.
+      await PurchaseOrderItem.update({ prepared_at: now },
+        { where: { id: [...shipSet], purchase_order_id: locked.id, prepared_at: null }, transaction: t });
 
       // Sprint 6: Decrement supplier stock + record inventory transaction — IN SAME TRANSACTION.
       // Only for seller_type='supplier'. Failure here rolls back the ship.
@@ -1018,6 +1026,76 @@ router.post('/:id/ship', async (req, res) => {
     }
     console.error('POST /api/seller-orders/:id/ship error:', err);
     res.status(500).json({ success: false, message: 'Failed to ship order' });
+  }
+});
+
+// ============================================
+// 4-1. POST /api/seller-orders/:id/prepare — 주문 준비 보드: 품목 «준비함» / «준비 취소»
+//   (2026-11-05 Fable 판정 .claude/fable-verdict-20261105-bg-order-kds.md Ⅱ-2 · Irene «항목별로 준비했다 배송하면 된다»)
+//   body { item_ids: number[], prepared?: boolean(기본 true) }
+//   - 확인된 주문부터(새 주문은 먼저 «확인») · 보낸 줄은 못 바꿈(준비 취소도 불가) · 서비스 줄은 조용히 뺌
+//   - 재고·금액·운송 기록 무접촉 · 추적 이력 안 남김(준비는 내부 작업 — 이력은 발송부터)
+// ============================================
+router.post('/:id/prepare', async (req, res) => {
+  let po, out;
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Order not found' });
+    const rawIds = req.body?.item_ids;
+    if (!Array.isArray(rawIds) || rawIds.length === 0) {
+      return res.status(400).json({ success: false, code: 'BAD_ITEM', message: 'item_ids must be a non-empty array' });
+    }
+    const wantIds = [...new Set(rawIds.map(v => parseInt(v, 10)))];
+    if (wantIds.some(v => !Number.isFinite(v))) {
+      return res.status(400).json({ success: false, code: 'BAD_ITEM', message: 'item_ids must be numbers' });
+    }
+    const prepared = req.body?.prepared === undefined ? true : req.body.prepared === true;
+
+    out = await sequelize.transaction(async (t) => {
+      const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      const NOT_PREPARABLE = ['draft', 'pending_approval', 'submitted', 'cancelled', 'rejected'];
+      if (NOT_PREPARABLE.includes(locked.status)) {
+        const e = new Error(locked.status === 'submitted' ? 'Confirm the order first' : `Cannot prepare order in status '${locked.status}'`);
+        e.code = 'BAD_STATUS'; throw e;
+      }
+      const allLines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: locked.id }, order: [['id', 'ASC']], transaction: t });
+      const ownIds = new Set(allLines.map(it => Number(it.id)));
+      if (wantIds.some(v => !ownIds.has(v))) {
+        const e = new Error('Unknown item for this order'); e.code = 'BAD_ITEM'; throw e;
+      }
+      const { serviceLineIdsOf } = require('../utils/orderFulfillment');
+      const serviceIds = await serviceLineIdsOf(sequelize, locked.id, t);
+      // 백필 전 옛 전량 출고(헤더만 기록) = 전부 보낸 주문
+      const legacyAllShipped = !!locked.shipped_at && !allLines.some(it => it.shipped_at);
+      const want = new Set(wantIds);
+      const target = allLines.filter(it => want.has(Number(it.id)) && !serviceIds.has(Number(it.id)));
+      if (target.some(it => it.shipped_at) || (legacyAllShipped && target.length > 0)) {
+        const e = new Error('This item was already dispatched'); e.code = 'ALREADY_SHIPPED_LINE'; throw e;
+      }
+      const now = new Date();
+      if (target.length > 0) {
+        await PurchaseOrderItem.update({ prepared_at: prepared ? now : null },
+          { where: { id: target.map(it => it.id), purchase_order_id: locked.id }, transaction: t });
+      }
+      const fresh = await PurchaseOrderItem.findAll({ where: { purchase_order_id: locked.id }, order: [['id', 'ASC']], transaction: t });
+      const unprepared = legacyAllShipped ? 0
+        : fresh.filter(it => !serviceIds.has(Number(it.id)) && !it.shipped_at && !it.prepared_at).length;
+      po = locked;
+      return { id: locked.id, unprepared_count: unprepared, items: fresh.map(it => ({ id: it.id, prepared_at: it.prepared_at })) };
+    });
+
+    emitPoEvent(req, po, 'seller-order-updated');
+    res.json({ success: true, data: out });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.code === 'BAD_STATUS') return res.status(409).json({ success: false, code: err.code, message: err.message });
+    if (err.code === 'BAD_ITEM' || err.code === 'ALREADY_SHIPPED_LINE') {
+      return res.status(400).json({ success: false, code: err.code, message: err.message });
+    }
+    console.error('POST /api/seller-orders/:id/prepare error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update preparation' });
   }
 });
 

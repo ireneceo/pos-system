@@ -51,6 +51,8 @@
 | **인보이스 주기** | 즉시 | 즉시 or 월 SOA | 즉시 or 월 SOA | 고객별 (Immediate/Monthly SOA) |
 | **배송 추적** | O (장비 배송) | X (내부 분배) | X (내부 분배) | O (외부 배송) |
 
+> ⚠ 2026-11-05 고침: 위 «X (내부 분배)» 는 옛말이다. 2026-09-01(Q6)부터 브랜드·푸드코트도 «보내기» 를 쓰고(재고가 그때 빠짐), 2026-10-08 품목별 발송 표시, 2026-11-05 «주문 준비 보드» 가 붙었다 — 아래 «주문 준비 보드» 절.
+
 ### 결제 조건 설정 주체
 
 | 판매자 | 결제 조건 설정 |
@@ -278,7 +280,7 @@ invoiceScheduler에 cron 추가 (매월 말일 또는 1일):
 | Delivered | received | (완료 — 인보이스 발행됨) |
 | Cancelled | cancelled | (취소됨) |
 
-**Brand/Foodcourt는 [Ship] 없음** (내부 분배이므로 Confirmed → 구매자가 바로 Receive 가능)
+~~Brand/Foodcourt는 [Ship] 없음~~ — **옛말(2026-11-05 고침).** 지금은 모든 판매자가 [Ship] 을 쓴다(2026-09-01 Q6 · 재고 차감 시점). 구매자는 보내기 전에도 바로 Receive 할 수 있다(공급업체 판매 발주의 실사용 경로).
 
 **Stats Bar:**
 
@@ -1302,3 +1304,18 @@ Irene 원문: 「주문내역 좀 바꿔줘. … 이런 거 주문관리 수정�
 `routes/seller-orders.js`(라우트 2개) · `services/poRealtimeService.js`(`appendTrackingEvent` 확장) ·
 `pages/IncomingOrders/IncomingOrdersView.tsx`(「품목 수정」 버튼·모달) ·
 `pages/PurchaseOrders/PurchaseOrderDetailPage.tsx`(구매자 배너).
+
+---
+
+# 주문 준비 보드 (2026-11-05 · Fable 설계 · [Claude Code])
+> Irene 원문: «브랜드제너럴에 주문관리를 할 수 있게 레스토랑 키친디스플레이처럼 관리하게 해주면 좋겠어. 항목별로 준비했다 배송하면 된다 정도로.» → Fable 권고 A → Irene «권고대로 진행해 줘». 판정 `.claude/fable-verdict-20261105-bg-order-kds.md`.
+
+- **원리만 가져옴**: 칸 = 단계, 카드 = 주문, 카드는 가장 덜 끝난 품목 기준 한 칸. 🔒 주방화면(KitchenDisplayPage) 코드는 import·공용화하지 않는다.
+- **화면**: «들어온 주문»(`IncomingOrdersView` — 브랜드·푸드코트·공급업체 공용) 머리에 «보드 / 목록» 전환. 기기마다 기억(`localStorage incomingOrders.view.<scope>`, 기본 목록). 보드 = `IncomingOrdersBoard.tsx`, 칸 배치 = `boardColumn.ts` `boardColumnOf`(순수 함수 · jest).
+  - 칸: 새 주문(확인·거절) → 준비 중(품목마다 ✓ 준비함) → 보낼 준비 끝(보내기 — 기존 창) → 보냄(배송 완료 · ✎) → 오늘 끝남(접힌 줄 · 판매자 시간대 «오늘»).
+  - 서비스 줄은 준비 대상 아님 · 서비스만 주문은 «보낼 준비 끝» 에서 «완료 처리» · 취소·거절은 보드에 없음 · 끌어다 놓기 없음(태블릿 실수 방지) · 체크 칸 44px.
+  - 자료: 목록 API 를 진행 상태별(submitted·confirmed·shipped·in_transit 100건씩) + 끝난 상태 최근 30건씩 불러 «오늘» 만. 실시간 신호·확인/보내기 뒤 다시 불러옴.
+- **데이터**: `purchase_order_items.prepared_at`(null = 미준비) 하나. 주문 상태 목록 무변경 · 새 표 0 · 재고·금액 무관(재고는 지금처럼 «보내기» 때만). 마이그 `scripts/migrate-po-item-prepared-at.js`(deploy · 멱등 · 백필 없음 — 보낸 줄은 «준비됨» 취급).
+- **서버**: `POST /api/seller-orders/:id/prepare` { item_ids, prepared(기본 true) } — PO 행 잠금 · 확인 전 상태(submitted 등) 409 BAD_STATUS · 남의 줄 400 BAD_ITEM · 보낸 줄 400 ALREADY_SHIPPED_LINE(준비 취소도) · 서비스 줄 조용히 뺌 · 추적 이력 안 남김 · `seller-order-updated` 소켓. `/ship` 은 보낸 줄의 비어 있는 `prepared_at` 을 같이 채움. 목록·상세 GET 헤더 `unprepared_count`.
+- **범위 밖**: 매장(구매자) 화면의 «준비 중» 표시 · 수량 나눠 준비 · 스테이션(냉장/냉동) 나눔 · 피킹 목록 인쇄(기존 인쇄 단추) · 주문 상태 추가.
+- **검사**: health-check `inventory` «주문 준비» 2건(P1 가드 · P2 보내기가 준비 채움 — 고장주입 반증) · jest `boardColumn.test.ts` 13건.

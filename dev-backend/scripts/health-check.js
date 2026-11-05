@@ -7794,6 +7794,88 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   });
 
   // ══════════════════════════════════════════════════════════════════
+  // 주문 준비 보드 (2026-11-05 Fable 판정 .claude/fable-verdict-20261105-bg-order-kds.md Ⅱ-4)
+  //   Irene «항목별로 준비했다 배송하면 된다» — 줄마다 prepared_at 하나. 재고·금액 무관.
+  //   P1 submitted 409 · 남의 줄 400 · 서비스 줄 조용히 제외 · 되돌리기 null · 보낸 줄 400(준비 취소도)
+  //   P2 «준비함» 없이 바로 보내도 보낸 줄의 prepared_at 이 채워진다
+  // ══════════════════════════════════════════════════════════════════
+  test('inventory', '주문 준비 — 확인 전 409·남의 줄 400·서비스 줄 제외·되돌리기·보낸 줄 400 (P1)', async () => {
+    const { BrandProduct, PurchaseOrder, PurchaseOrderItem, IngredientSellerProduct } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    let svcBp = null, svcIsp = null;
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      const jwtLib = require('jsonwebtoken');
+      const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.bgUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      svcBp = await BrandProduct.create({
+        owner_user_id: fx.bgUser.id, name: 'ZZ-HC-PREP-SVC-' + Date.now(), unit: 'hour', stock_unit: 'hour',
+        base_quantity: 1, unit_price: 5, min_order_quantity: 1, is_active: true, current_stock: 0, product_kind: 'service',
+        sku: 'ZZ-PSV-' + Math.random().toString(36).slice(2, 8),
+      });
+      svcIsp = await IngredientSellerProduct.create({
+        product_id: fx.buyerProd.id, seller_type: 'brand', seller_entity_id: fx.brand.id,
+        seller_product_id: svcBp.id, unit_price: 5, unit_conversion: 1, is_preferred: false, is_active: true,
+      });
+      const svcItem = await PurchaseOrderItem.create({
+        purchase_order_id: fx.po.id, product_id: fx.buyerProd.id, ingredient_seller_product_id: svcIsp.id,
+        quantity_ordered: 1, unit: 'hour', unit_price: 5, line_total: 5, unit_conversion: 1,
+      });
+      // 새 주문(submitted) → 409
+      await PurchaseOrder.update({ status: 'submitted' }, { where: { id: fx.po.id } });
+      const r0 = await request('POST', `/seller-orders/${fx.po.id}/prepare`, { item_ids: [fx.item.id] }, auth);
+      if (r0.status !== 409 || r0.body?.code !== 'BAD_STATUS') return fail(`submitted ${r0.status}`);
+      await PurchaseOrder.update({ status: 'confirmed' }, { where: { id: fx.po.id } });
+      // 남의 줄 → 400
+      const r1 = await request('POST', `/seller-orders/${fx.po.id}/prepare`, { item_ids: [999999999] }, auth);
+      if (r1.status !== 400 || r1.body?.code !== 'BAD_ITEM') return fail(`남의 줄 ${r1.status}`);
+      // 준비함 — 물건 줄 + 서비스 줄 같이 보냄 → 물건 줄만 표시
+      const r2 = await request('POST', `/seller-orders/${fx.po.id}/prepare`, { item_ids: [fx.item.id, svcItem.id] }, auth);
+      if (r2.status !== 200) return fail(`준비 ${r2.status} ${JSON.stringify(r2.body).slice(0, 140)}`);
+      const iA = await PurchaseOrderItem.findByPk(fx.item.id), iS = await PurchaseOrderItem.findByPk(svcItem.id);
+      if (!iA.prepared_at || iS.prepared_at) return fail(`표시 A=${iA.prepared_at} S=${iS.prepared_at}`);
+      if (r2.body?.data?.unprepared_count !== 0) return fail(`unprepared_count ${r2.body?.data?.unprepared_count}`);
+      // 상세 GET 계약
+      const g = await request('GET', `/seller-orders/${fx.po.id}`, null, auth);
+      const gA = (g.body?.data?.items || []).find(i => i.id === fx.item.id);
+      if (g.status !== 200 || g.body?.data?.unprepared_count !== 0 || !gA?.prepared_at) return fail('상세 GET 계약');
+      // 되돌리기 → null
+      const r3 = await request('POST', `/seller-orders/${fx.po.id}/prepare`, { item_ids: [fx.item.id], prepared: false }, auth);
+      if (r3.status !== 200 || (await PurchaseOrderItem.findByPk(fx.item.id)).prepared_at) return fail(`되돌리기 ${r3.status}`);
+      if (r3.body?.data?.unprepared_count !== 1) return fail(`되돌린 뒤 unprepared_count ${r3.body?.data?.unprepared_count}`);
+      // 보낸 뒤 → 준비 취소 400
+      const s = await request('POST', `/seller-orders/${fx.po.id}/ship`, { item_ids: [fx.item.id] }, auth);
+      if (s.status !== 200) return fail(`ship ${s.status}`);
+      const r4 = await request('POST', `/seller-orders/${fx.po.id}/prepare`, { item_ids: [fx.item.id], prepared: false }, auth);
+      if (r4.status !== 400 || r4.body?.code !== 'ALREADY_SHIPPED_LINE') return fail(`보낸 줄 ${r4.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      await cleanQ6(fx);
+      try { if (svcIsp) await IngredientSellerProduct.destroy({ where: { id: svcIsp.id }, force: true }); } catch {}
+      try { if (svcBp) await BrandProduct.destroy({ where: { id: svcBp.id }, force: true }); } catch {}
+    }
+  });
+
+  test('inventory', '주문 준비 — «준비함» 없이 보내도 보낸 줄은 준비됨으로 채워짐 (P2)', async () => {
+    const { PurchaseOrder, PurchaseOrderItem } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    try {
+      const jwtLib = require('jsonwebtoken');
+      const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.bgUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      await PurchaseOrder.update({ status: 'confirmed' }, { where: { id: fx.po.id } });
+      if ((await PurchaseOrderItem.findByPk(fx.item.id)).prepared_at) { console.log(c.gray('      (시작부터 준비됨)')); return false; }
+      const s = await request('POST', `/seller-orders/${fx.po.id}/ship`, {}, auth);
+      if (s.status !== 200) { console.log(c.gray(`      (ship ${s.status})`)); return false; }
+      const it = await PurchaseOrderItem.findByPk(fx.item.id);
+      if (!it.shipped_at || !it.prepared_at) { console.log(c.gray(`      (shipped=${it.shipped_at} prepared=${it.prepared_at})`)); return false; }
+      return true;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await cleanQ6(fx); }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
   // 배송 완료 → 청구서 · 배송 완료 + 72h 자동 완료 (2026-10-30 Fable 설계 .claude/fable-design-20261030-po-auto-complete.md §3)
   //   Irene «고객이 안받았다고 주문완료가 안되면 어떻게 해? … 배송완료되면 인보이스 나와야 하는 거 아니야?»
   //   AC1 배송 완료 즉시 청구서 1장(구매자가 뒤에 받아도 1장) · AC2 71h 전 0건 · 73h 뒤 완료+재고+이벤트+멱등

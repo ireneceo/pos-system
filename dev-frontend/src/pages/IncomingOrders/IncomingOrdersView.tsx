@@ -24,6 +24,7 @@ import { lineQtyText, formatQuantity } from '../../utils/unitConversion';
 import { supplierFacingName, groupItemsBySellerCategory, shareSellerOrderViaWhatsApp, shareSellerPackingListViaWhatsApp, sellerOrderShareText, sellerPackingListText } from '../../utils/poShare';
 import { shareTextViaApps, AppShareResult } from '../../utils/appShare';
 import AlertDialog from '../../components/Common/AlertDialog';
+import IncomingOrdersBoard from './IncomingOrdersBoard';
 
 // Layout / Form / ModalButton primitives are inlined here on purpose.
 // Importing them across chunks from `components/UI` triggered a TDZ runtime
@@ -539,6 +540,18 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
 
   // URL ?tab=<key> 동기화 — 다른 페이지(Suppliers / Trade Invoices 등)와 동일 패턴
   const [activeTab, setActiveTab] = useTabParam<TabKey>('all');
+  // 주문 준비 보드(2026-11-05 Fable 판정 .claude/fable-verdict-20261105-bg-order-kds.md) — «보드 / 목록» 보기 전환.
+  //   기기마다 마지막 선택을 기억(처음은 목록 — 지금 쓰는 사람 화면이 갑자기 안 바뀌게).
+  const viewKey = `incomingOrders.view.${sellerScope}`;
+  const [viewMode, setViewMode] = useState<'list' | 'board'>(() => {
+    try { return localStorage.getItem(viewKey) === 'board' ? 'board' : 'list'; } catch { return 'list'; }
+  });
+  const changeViewMode = (m: 'list' | 'board') => {
+    setViewMode(m);
+    try { localStorage.setItem(viewKey, m); } catch { /* 저장 못 해도 화면은 바뀐다 */ }
+  };
+  // 보드는 자기 자료를 따로 불러온다 — 이 숫자가 바뀌면 다시 불러온다(목록 새로고침·실시간 신호와 같이)
+  const [boardReloadKey, setBoardReloadKey] = useState(0);
   const [rows, setRows] = useState<IncomingOrderRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -802,6 +815,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     const refresh = () => {
       fetchListRef.current(activeTabRef.current);
       fetchStatsRef.current();
+      setBoardReloadKey(k => k + 1);
     };
     sock.on('seller-order-created', (payload: any) => {
       if (soundEnabledRef.current) playSellerChime();
@@ -906,9 +920,30 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     else if (r === 'failed') setShareNote({ title: tNs('orders.detail.shareApps', 'KakaoTalk / other apps'), message: tNs('orders.detail.shareFailed', 'Could not share or copy on this device.') });
   };
 
+  // 보드 카드의 «배송 완료»·«완료 처리» — 목록 단추와 같은 호출(본문 없음)
+  const postSimpleAction = async (poId: number, action: 'deliver' | 'complete') => {
+    try {
+      const r = await fetch(`/api/seller-orders/${poId}/${action}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${getAuthToken()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      if (r.ok) refreshAll();
+      else {
+        const d = await r.json().catch(() => null);
+        setErrorMessage(d?.message || 'Failed');
+        setBoardReloadKey(k => k + 1);
+      }
+    } catch (e) {
+      console.error(e);
+      setErrorMessage('Network error');
+    }
+  };
+
   const refreshAll = () => {
     fetchList(activeTab);
     fetchStats();
+    setBoardReloadKey(k => k + 1);
   };
 
   const handleConfirm = async () => {
@@ -1271,6 +1306,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           <Title>{tNs('orders.title', 'Live Orders')}</Title>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* 보기 전환 — 보드(진행 중 주문을 단계별 칸에) / 목록(표·필터·통계) */}
+          <div role="group" aria-label={tNs('orders.board.viewLabel', 'View') as string} style={{ display: 'inline-flex', gap: 4 }} data-testid="incoming-orders-view-toggle">
+            <ThemedButton variant={viewMode === 'board' ? 'primary' : 'outline'} onClick={() => changeViewMode('board')} aria-pressed={viewMode === 'board'}>
+              {tNs('orders.board.viewBoard', 'Board')}
+            </ThemedButton>
+            <ThemedButton variant={viewMode === 'list' ? 'primary' : 'outline'} onClick={() => changeViewMode('list')} aria-pressed={viewMode === 'list'}>
+              {tNs('orders.board.viewList', 'List')}
+            </ThemedButton>
+          </div>
           {/* 판매자가 구매자 대신 주문을 넣는다 — 전화·메신저로 받은 주문을 여기서 올린다. */}
           <ThemedButton variant="primary" onClick={openCreateModal}>
             {tNs('orders.create.action', 'Add order')}
@@ -1293,7 +1337,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
 
       <Content>
         <FilterToolbar>
-          <div>
+          {viewMode === 'list' && (<div>
             <DatePeriodFilter
               activePeriod={activePeriod}
               dateRange={dateRange}
@@ -1310,7 +1354,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
               }}
               includeToday
             />
-          </div>
+          </div>)}
           <SearchInput
             type="text"
             placeholder={tNs('orders.search.placeholder', 'Search buyer or PO #')}
@@ -1319,7 +1363,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           />
         </FilterToolbar>
 
-        <RLStatusTabs>
+        {viewMode === 'list' && (<RLStatusTabs>
           {TAB_KEYS.map(tab => (
             <RLStatusTab
               key={tab}
@@ -1332,7 +1376,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
               <RLTabBadge>{counts[tab] ?? 0}</RLTabBadge>
             </RLStatusTab>
           ))}
-        </RLStatusTabs>
+        </RLStatusTabs>)}
 
         {sellerScope === 'brand' && (stats.stock_short || 0) > 0 && (
           <div style={{ margin: '0 0 12px', padding: '10px 14px', borderRadius: 8, background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', fontSize: 13, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1340,6 +1384,24 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             <a href="/pos/brand-inventory?tab=list&filter=fs_out" style={{ color: '#635BFF', fontWeight: 600 }}>{tNs('orders.stockShortLink', 'Go to inventory →')}</a>
           </div>
         )}
+        {viewMode === 'board' ? (
+          <IncomingOrdersBoard
+            tNs={tNs}
+            reloadKey={boardReloadKey}
+            search={search}
+            newPoIds={newPoIds}
+            timeZone="Asia/Kuala_Lumpur"
+            timeAgo={timeAgo}
+            onOpenDetail={(row) => openDetail(row)}
+            onConfirm={(row) => { setConfirmModalRow(row); setErrorMessage(null); }}
+            onReject={(row) => { setRejectModalRow(row); setRejectReason(''); setErrorMessage(null); }}
+            onShip={(row) => openShipModal(row)}
+            onEditTracking={(row) => openShipModal(row, 'tracking')}
+            onDeliver={(row) => postSimpleAction(row.id, 'deliver')}
+            onComplete={(row) => postSimpleAction(row.id, 'complete')}
+            onChanged={() => { fetchStats(); window.dispatchEvent(new Event('refreshBadgeCounts')); }}
+          />
+        ) : (<>
         {/* StatisticsBar: 사업 KPI (탭 카운트와 중복 X). 기간 필터에 따라 자동 갱신. */}
         <StatisticsBar>
           <StatItem>{tNs('orders.stats.totalRevenue', 'Total Revenue')}<strong>{formatMoney(periodStats.totalRevenue)}</strong></StatItem>
@@ -1578,6 +1640,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             </tbody>
           </DataTable>
         </DataTableContainer>
+        </>)}
       </Content>
 
       {/* Confirm Modal */}
