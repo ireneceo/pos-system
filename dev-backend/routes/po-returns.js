@@ -12,9 +12,7 @@
  */
 
 const express = require('express');
-const stockLedger = require('../services/stockLedger');
-// 반품 금액 근거 = 그 반품 줄 가격(주문 단위) ÷ 환산 = 취급단위 1 의 값
-const returnPerStockUnit = (ret, item) => (parseFloat(ret.unit_price) || 0) / (parseFloat(item && item.unit_conversion) || 1);
+// 재고 되돌림(금액 근거 = 반품 줄 가격 ÷ 환산)은 services/poStockReversal 이 한다.
 const router = express.Router();
 const database = require('../config/database');
 const { Op } = require('sequelize');
@@ -27,6 +25,7 @@ const {
 } = require('../models');
 const { resolvePayer } = require('../services/purchaseOrderService');
 const { stockFor, applyStock } = require('../utils/brandStockAccess');
+const { reverseBuyerStock, restoreSellerStock } = require('../services/poStockReversal');
 const { authenticateToken } = require('../middleware/auth');
 const { requireBuyerRole } = require('../middleware/buyerScope');
 const { requireSellerRole , ownsPurchaseOrder } = require('../middleware/sellerScope');
@@ -237,158 +236,22 @@ async function approveReturnHandler(req, res) {
       });
     }
 
-    // 1. 구매자 재고 차감 — 입고의 정확한 역방향.
-    //    입고는 `quantity × unit_conversion` 을 더했으므로 반품도 같은 양을 뺀다(환산 누락 시 어긋난다).
-    //
-    //    ⚠ **엔티티 타입이 아니라 라인 모양으로 분기한다** — 입고가 그렇게 하기 때문이다.
-    //      BG 본사 라인 = product_ingredient_id (ProductIngredient), 그 외 = ingredient_id.
-    //      예전엔 `po.entity_type === 'restaurant'` 만 처리해서 **BG/FG 가 구매자면 반품해도
-    //      재고가 안 줄었다**(Fable 2026-07-13 B2).
-    const buyerPIngId = ret.product_ingredient_id || item?.product_ingredient_id || null;
-
-    if (buyerPIngId) {
-      // (a) BG 본사 재고아이템 라인 — 입고(purchase-orders-workflow: ProductIngredient += qty×conv)의 역방향
-      const pIng = await ProductIngredient.findByPk(buyerPIngId, { lock: t.LOCK.UPDATE, transaction: t });
-      if (pIng) {
-        const conv = parseFloat(item?.unit_conversion) || 1;
-        const reverseQty = Math.round(delta * conv * 100) / 100;
-        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다. 재고 + 장부(실제 이동량, 0 에서 멈춤)
-        const base = parseFloat(pIng.base_quantity) || 1;
-        const r = await stockLedger.record({
-          target: { kind: 'product_ingredient', row: pIng }, entity: { type: po.entity_type, id: po.entity_id },
-          type: 'return_out', delta: -reverseQty, clampAtZero: true, unit: pIng.unit || ret.unit || 'unit',
-          cost: { unit_cost: returnPerStockUnit(ret, item) * base, base_quantity: base },
-          refs: { purchase_order_id: po.id }, notes: `Return #${ret.id} approved — buyer stock reversal`, userId: req.user?.id || null, transaction: t,
-        });
-        if (-r.change < reverseQty) {
-          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 본사 재고 ${r.before} 뿐 — ${-r.change} 만 차감(클램프)`);
-        }
-      }
-    } else if (po.entity_type === 'restaurant' && ret.ingredient_id) {
-      const ingredient = await Ingredient.findByPk(ret.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
-      if (ingredient) {
-        const conv = parseFloat(item?.unit_conversion) || 1;
-        const reverseQty = Math.round(delta * conv * 100) / 100;
-        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다.
-        // 원장에는 **실제 이동량**을 적는다 — 재고가 모자라 클램프가 걸리면 의도량보다 작다(stockLedger 가 after−before 로 적는다).
-        const base = parseFloat(ingredient.base_quantity) || 1;
-        const r = await stockLedger.record({
-          target: { kind: 'ingredient', row: ingredient }, restaurantId: po.entity_id,
-          type: 'return_out', delta: -reverseQty, clampAtZero: true, unit: ingredient.unit || ret.unit || 'unit',
-          cost: { unit_cost: returnPerStockUnit(ret, item) * base, base_quantity: base },
-          refs: { purchase_order_id: po.id }, notes: `Return #${ret.id} approved — buyer stock reversal`, userId: req.user?.id || null, transaction: t,
-        });
-        if (-r.change < reverseQty) {
-          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 매장 재고 ${r.before} 뿐 — ${-r.change} 만 차감(클램프)`);
-        }
-      }
-    } else if (ret.ingredient_id) {
-      // (c) BG(레거시 Ingredient 소유)·FG 구매자 — 입고의 else 분기(ingredient.current_stock 직접 증가)의 역방향.
-      //     오버레이는 매장 전용이므로 여기선 재료 행을 직접 다룬다.
-      const ingredient = await Ingredient.findByPk(ret.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
-      if (ingredient) {
-        const conv = parseFloat(item?.unit_conversion) || 1;
-        const reverseQty = Math.round(delta * conv * 100) / 100;
-        // 2026-09-01(Q5): track_stock 게이트 제거 — 항상 되돌린다. 오버레이는 매장 전용 → 재료 행 직접(restaurantId 없이)
-        const base = parseFloat(ingredient.base_quantity) || 1;
-        const r = await stockLedger.record({
-          target: { kind: 'ingredient', row: ingredient }, entity: { type: po.entity_type, id: po.entity_id },
-          type: 'return_out', delta: -reverseQty, clampAtZero: true, unit: ingredient.unit || ret.unit || 'unit',
-          cost: { unit_cost: returnPerStockUnit(ret, item) * base, base_quantity: base },
-          refs: { purchase_order_id: po.id }, notes: `Return #${ret.id} approved — buyer stock reversal`, userId: req.user?.id || null, transaction: t,
-        });
-        if (-r.change < reverseQty) {
-          console.warn(`[po-returns] Return #${ret.id}: 반품 ${reverseQty} 요청이나 재고 ${r.before} 뿐 — ${-r.change} 만 차감(클램프)`);
-        }
-      }
+    // 1·2. 재고 되돌림 — services/poStockReversal 단일 소스(2026-11-07 추출 · 출고 뒤 수량 정정과 같은 함수).
+    //   구매자 재고 −q×환산(입고의 역방향, 라인 모양으로 분기 · 실제 이동량만 장부에) →
+    //   판매자 재고 +q(출고의 역방향 — 각 판매자가 **자기 재고**를 되돌린다. 구매자 재료 행을 올리면 net 0, 2026-07-13 사고).
+    const buyerRev = await reverseBuyerStock({
+      po, item, qty: delta, unitPrice: ret.unit_price, t, userId: req.user?.id || null,
+      note: `Return #${ret.id} approved — buyer stock reversal`,
+      ingredientId: ret.ingredient_id || null,
+      productIngredientId: ret.product_ingredient_id || item?.product_ingredient_id || null,
+      unit: ret.unit,
+    });
+    if (buyerRev && buyerRev.moved < buyerRev.requested) {
+      console.warn(`[po-returns] Return #${ret.id}: 반품 ${buyerRev.requested} 요청이나 재고 ${buyerRev.before} 뿐 — ${buyerRev.moved} 만 차감(클램프)`);
     }
-
-    // 2. 판매자 재고 환원 (양방향 무결성) — 각 판매자가 **자기 재고**를 되돌린다
-
-    if (po.seller_type === 'supplier' && po.seller_entity_id) {
-      // 기존 — Supplier 환원
-      if (item?.ingredient_seller_product_id) {
-        const mapping = await IngredientSellerProduct.findByPk(item.ingredient_seller_product_id, { transaction: t });
-        if (mapping?.seller_product_id) {
-          const sp = await SupplierProduct.findByPk(mapping.seller_product_id, { lock: t.LOCK.UPDATE, transaction: t });
-          if (sp) {
-            const old = parseFloat(sp.current_stock) || 0;
-            const nu = Math.round((old + delta) * 100) / 100;
-            await sp.update({ current_stock: nu }, { transaction: t });
-            await SupplierInventoryTransaction.create({
-              supplier_company_id: po.seller_entity_id,
-              supplier_product_id: sp.id,
-              transaction_type: 'manual_adjust',
-              quantity_change: delta,
-              unit: sp.unit || null,
-              stock_after: nu,
-              reason: 'return_approved',
-              reference_type: 'purchase_order',
-              reference_id: po.id,
-              notes: `Return #${ret.id} approved`,
-              created_by: req.user?.id || null
-            }, { transaction: t });
-          }
-        }
-      }
-    } else if (po.seller_type === 'brand' && po.seller_entity_id && item?.ingredient_seller_product_id) {
-      // Brand seller 환원 = **출고의 정확한 역방향**.
-      //   출고(seller-orders.js ship): BrandProduct.recipe(BOM) → ProductIngredient 차감
-      //   따라서 반품도 같은 BOM 으로 ProductIngredient 를 되돌린다.
-      // ⚠ 예전 코드는 `Ingredient.findByPk(ret.ingredient_id)`(= **구매자**의 재료 행)를 올렸다.
-      //   1단계에서 깎은 바로 그 행이라 −q 후 +q = **net 0** — 반품해도 매장 재고가 안 줄고
-      //   본사 재고는 복구되지 않았다. (2026-07-13 실증 후 수정)
-      const mapping = await IngredientSellerProduct.findByPk(item.ingredient_seller_product_id, { transaction: t });
-      if (mapping?.seller_product_id) {
-        const bp = await BrandProduct.findByPk(mapping.seller_product_id, { transaction: t });
-        // 재고아이템 다이렉트 (docs/TRADE_STRUCTURE.md §2-1) — 출고에서 «주문 수량 × 상품 규격» 으로 깎았으므로
-        // 반품도 **같은 재고아이템에 같은 환산으로 환원**한다. 방향만 반대이고 규칙은 대칭이다(2026-10-22).
-        if (bp && !bp.product_recipe_id && bp.product_ingredient_id) {
-          const pIngD = await ProductIngredient.findByPk(bp.product_ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
-          if (pIngD && delta > 0) {
-            const { directDeductConversion } = require('../services/sellerLinkConversion');
-            const { conv, compatible } = directDeductConversion({ stock: pIngD, sellerProduct: bp });
-            await stockLedger.record({
-              target: { kind: 'product_ingredient', row: pIngD }, entity: { type: 'brand', id: po.seller_entity_id },
-              type: 'return_in', delta: Math.round(delta * conv * 100) / 100, refs: { purchase_order_id: po.id },
-              notes: `Return #${ret.id} approved (brand seller, ${bp.name})` + (compatible ? '' : ` [unit_mismatch ${bp.unit}↔${pIngD.unit}]`),
-              userId: req.user?.id || null, transaction: t,
-            });
-          }
-        } else if (bp?.product_recipe_id) {   // 레시피 없으면 환원 없음 — 출고도 차감하지 않았다(대칭)
-          const recipeIngs = await ProductRecipeIngredient.findAll({
-            where: { recipe_id: bp.product_recipe_id }, transaction: t
-          });
-          for (const ri of recipeIngs) {
-            const pIng = await ProductIngredient.findByPk(ri.ingredient_id, { lock: t.LOCK.UPDATE, transaction: t });
-            if (!pIng) continue;
-            const backQty = Math.round((parseFloat(ri.quantity) || 0) * delta * 100) / 100;
-            if (backQty <= 0) continue;
-            // 2026-09-01(Q5): 게이트 제거 — 재고 + 장부 (services/stockLedger 단일 함수)
-            await stockLedger.record({
-              target: { kind: 'product_ingredient', row: pIng }, entity: { type: 'brand', id: po.seller_entity_id },
-              type: 'return_in', delta: backQty, refs: { purchase_order_id: po.id },
-              notes: `Return #${ret.id} approved (brand seller, ${bp.name})`, userId: req.user?.id || null, transaction: t,
-            });
-          }
-        }
-      }
-    } else if (po.seller_type === 'foodcourt' && po.seller_entity_id && item?.ingredient_seller_product_id) {
-      // Sprint 7 — Foodcourt seller 환원
-      // FoodcourtProduct는 IngredientSellerProduct → seller_product_id 가 FoodcourtProduct.id 이라고 가정
-      const mapping = await IngredientSellerProduct.findByPk(item.ingredient_seller_product_id, { transaction: t });
-      if (mapping?.seller_product_id) {
-        const fp = await FoodcourtProduct.findByPk(mapping.seller_product_id, { lock: t.LOCK.UPDATE, transaction: t });
-        if (fp) {
-          // 장부 대상 = 푸드코트 상품 자체(출고 seller-orders 와 대칭 — 예전엔 구매자 재료 id 를 적었다)
-          await stockLedger.record({
-            target: { kind: 'foodcourt_product', row: fp }, entity: { type: 'foodcourt', id: po.seller_entity_id },
-            type: 'return_in', delta, unit: fp.unit || ret.unit || 'unit', refs: { purchase_order_id: po.id },
-            notes: `Return #${ret.id} approved (foodcourt seller)`, userId: req.user?.id || null, transaction: t,
-          });
-        }
-      }
-    }
+    await restoreSellerStock({
+      po, item, qty: delta, t, userId: req.user?.id || null, note: `Return #${ret.id} approved`,
+    });
 
     const payer = await resolvePayer(po);
 

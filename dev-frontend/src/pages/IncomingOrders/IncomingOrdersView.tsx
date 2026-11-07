@@ -186,6 +186,9 @@ interface IncomingOrderItem {
   stock_tracked?: boolean;
   stock_short_units?: number;
   stock_available_units?: number | null;
+  // 출고 뒤 수량 정정(2026-11-07) — 이미 받은 양(주문 단위)·줄 금액
+  quantity_received?: number | string | null;
+  line_total?: number | string | null;
 }
 
 interface IncomingOrderRow {
@@ -206,6 +209,10 @@ interface IncomingOrderRow {
   /** 지금 재고로 못 채우는 미발송 줄 수(브랜드 판매자만) */
   stock_short_count?: number;
   auto_receive_at?: string | null;
+  /** 출고 뒤 «실제 보낸 양으로 정정» 가능 여부 — 서버 utils/poAmend.sellerCorrectionBlock 판정 그대로(2026-11-07) */
+  can_correct?: boolean;
+  correct_blocked?: { code: string; message: string } | null;
+  trade_invoice?: { id: number; invoice_number: string; status: string; total_amount: number | string } | null;
   item_count?: number;
   items?: IncomingOrderItem[];
   total_amount?: number | string | null;
@@ -582,6 +589,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   const [amendRaiseNeedsApproval, setAmendRaiseNeedsApproval] = useState(false);
   const [amendRaiseConfirmOpen, setAmendRaiseConfirmOpen] = useState(false);
   const [amendPendingNotice, setAmendPendingNotice] = useState(false);
+  // 출고 뒤 «실제 보낸 양으로 정정» (2026-11-07 Fable 설계 post-delivery-amend §4) — 줄이기만 · 사유 필수
+  const [correctRow, setCorrectRow] = useState<IncomingOrderRow | null>(null);
+  const [correctItems, setCorrectItems] = useState<IncomingOrderItem[]>([]);
+  const [correctQty, setCorrectQty] = useState<Record<number, string>>({});
+  const [correctReason, setCorrectReason] = useState('');
+  const [correctLoading, setCorrectLoading] = useState(false);
+  const [correctDeliveryFee, setCorrectDeliveryFee] = useState(0);
+  const [correctConfirmOpen, setCorrectConfirmOpen] = useState(false);
+  const [correctSavedOpen, setCorrectSavedOpen] = useState(false);
 
   // 주문 추가(판매자가 구매자 대신) — 상품 후보는 구매자를 고른 뒤에야 정해진다.
   const [createOpen, setCreateOpen] = useState(false);
@@ -1299,6 +1315,82 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     }
   };
 
+  // ── 출고 뒤 수량 정정 ─────────────────────────────────────────────────────
+  const openCorrectModal = async (row: IncomingOrderRow) => {
+    setCorrectRow(row);
+    setCorrectReason('');
+    setErrorMessage(null);
+    setCorrectItems([]);
+    setCorrectQty({});
+    setCorrectDeliveryFee(0);
+    setCorrectLoading(true);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/seller-orders/${row.id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const detail = await res.json();
+      const d = detail?.data || {};
+      const items: IncomingOrderItem[] = d.items || [];
+      setCorrectItems(items);
+      setCorrectQty(Object.fromEntries(items.map(it => [it.id, String(Number(it.quantity_ordered) || 0)])));
+      setCorrectDeliveryFee(Number(d.delivery_fee) || 0);
+      // 상세의 최신 판정으로 덮는다(목록을 연 뒤 결제됐을 수 있다)
+      setCorrectRow(prev => prev ? { ...prev, can_correct: d.can_correct, correct_blocked: d.correct_blocked, trade_invoice: d.trade_invoice, total_amount: d.total_amount } : prev);
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('Network error');
+    } finally {
+      setCorrectLoading(false);
+    }
+  };
+  const correctLineQty = (it: IncomingOrderItem) => {
+    const v = parseFloat(correctQty[it.id] ?? '');
+    return Number.isFinite(v) ? v : NaN;
+  };
+  const correctLineExceeds = (it: IncomingOrderItem) => correctLineQty(it) > (Number(it.quantity_ordered) || 0) + 0.005;
+  const correctLineInvalid = (it: IncomingOrderItem) => { const q = correctLineQty(it); return !Number.isFinite(q) || q < 0 || correctLineExceeds(it); };
+  const correctChanged = correctItems.filter(it => !correctLineInvalid(it) && Math.abs(correctLineQty(it) - (Number(it.quantity_ordered) || 0)) > 0.005);
+  const correctItemsBefore = correctItems.reduce((s2, it) => s2 + Math.round((Number(it.quantity_ordered) || 0) * (Number(it.unit_price) || 0) * 100) / 100, 0);
+  const correctItemsAfter = correctItems.reduce((s2, it) => {
+    const q = correctLineInvalid(it) ? (Number(it.quantity_ordered) || 0) : correctLineQty(it);
+    return s2 + Math.round(q * (Number(it.unit_price) || 0) * 100) / 100;
+  }, 0);
+  const correctTotalAfter = Math.round(((Number(correctRow?.total_amount) || 0) - (correctItemsBefore - correctItemsAfter)) * 100) / 100;
+  const correctAllZero = correctItems.length > 0 && correctItems.every(it => !correctLineInvalid(it) && correctLineQty(it) <= 0.005);
+  // 이미 받은 양보다 적게 적은 줄 — 구매자 재고가 그 차이만큼 준다(서버 규칙 미리 보기)
+  const correctReducesBuyerStock = correctItems.some(it => !correctLineInvalid(it) && (Number(it.quantity_received) || 0) > correctLineQty(it) + 0.005);
+  const correctCanSave = !!correctRow?.can_correct && !correctLoading && !submitting
+    && correctChanged.length > 0 && !correctItems.some(correctLineInvalid) && !correctAllZero && correctReason.trim().length >= 3;
+
+  const handleCorrect = async () => {
+    if (!correctRow || !correctCanSave) return;
+    setSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(`/api/seller-orders/${correctRow.id}/correct-delivery`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: correctChanged.map(it => ({ item_id: it.id, quantity: correctLineQty(it) })),
+          reason: correctReason.trim()
+        })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErrorMessage(data.message || 'Failed to correct quantities');
+        return;
+      }
+      setCorrectRow(null);
+      setCorrectSavedOpen(true);
+      refreshAll();
+    } catch (err) {
+      console.error(err);
+      setErrorMessage('Network error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <Container>
       <Header>
@@ -1563,6 +1655,18 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                           {(row.status === 'submitted' || row.status === 'confirmed') && (
                             <ThemedButton size="small" variant="outline" onClick={() => openAmendModal(row)}>
                               {tNs('orders.actions.amend', 'Edit items')}
+                            </ThemedButton>
+                          )}
+                          {/* 출고 뒤 «실제 보낸 양으로 정정» — 노출은 서버 판정(BAD_STATUS 가 아니면), 결제된 주문은 이유를 띄운 채 비활성 */}
+                          {row.correct_blocked?.code !== 'BAD_STATUS' && row.can_correct !== undefined && (
+                            <ThemedButton
+                              size="small"
+                              variant="outline"
+                              disabled={!row.can_correct}
+                              title={row.correct_blocked?.message || undefined}
+                              onClick={() => openCorrectModal(row)}
+                            >
+                              {tNs('orders.actions.correct', 'Correct quantities')}
                             </ThemedButton>
                           )}
                           {/* 서비스 전용 발주(배송 없음)는 «완료 처리» 하나로 끝난다 — 배송·도착 단계를 띄우지 않는다.
@@ -2150,6 +2254,144 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         onCancel={() => setAmendPendingNotice(false)}
       />
 
+      {/* 출고 뒤 «실제 보낸 양으로 정정» Modal (2026-11-07) */}
+      <Modal
+        isOpen={!!correctRow}
+        onClose={() => setCorrectRow(null)}
+        title={tNs('orders.correct.title', 'Correct delivered quantities')}
+        size="large"
+        footer={
+          <>
+            <ModalButton onClick={() => setCorrectRow(null)} disabled={submitting}>
+              {tNs('orders.correct.cancel', 'Cancel')}
+            </ModalButton>
+            <ModalButton variant="primary" onClick={() => setCorrectConfirmOpen(true)} disabled={!correctCanSave}>
+              {tNs('orders.correct.submit', 'Save correction')}
+            </ModalButton>
+          </>
+        }
+      >
+        {correctLoading ? (
+          <div style={{ padding: 24, textAlign: 'center', color: '#6B7280', fontSize: 14 }}>
+            {tNs('orders.amend.loading', 'Loading…')}
+          </div>
+        ) : (
+          <>
+            <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
+              {tNs('orders.correct.hint', 'Enter what was actually delivered. Quantities can only go down. The order total and the invoice are updated and the buyer is told.')}
+            </p>
+            {correctRow && !correctRow.can_correct && correctRow.correct_blocked && (
+              <div style={{ color: '#DC2626', fontSize: 13, margin: '0 0 12px' }}>{correctRow.correct_blocked.message}</div>
+            )}
+
+            {correctItems.map((it) => {
+              const ordered = Number(it.quantity_ordered) || 0;
+              const q = correctLineQty(it);
+              const price = Number(it.unit_price) || 0;
+              const before = Math.round(ordered * price * 100) / 100;
+              const after = correctLineInvalid(it) ? before : Math.round(q * price * 100) / 100;
+              const exceeds = correctLineExceeds(it);
+              return (
+                <div key={it.id} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap', padding: '10px 0', borderBottom: '1px solid #F3F4F6' }}>
+                  <div style={{ flex: '2 1 220px', minWidth: 0 }}>
+                    <FormLabel>{tNs('orders.correct.item', 'Item')}</FormLabel>
+                    <div style={{ fontSize: 14, color: '#111827', paddingBottom: 8 }}>{it.seller_product_name || supplierFacingName(it.ingredient?.name || it.description || `#${it.ingredient_id}`)}</div>
+                  </div>
+                  <div style={{ flex: '0 1 130px' }}>
+                    <FormLabel>{tNs('orders.correct.ordered', 'Ordered')}</FormLabel>
+                    <div style={{ fontSize: 14, color: '#6B7280', paddingBottom: 8 }}>{lineQtyText(it, it.quantity_ordered)}</div>
+                  </div>
+                  <div style={{ flex: '0 1 120px' }}>
+                    <FormLabel>{tNs('orders.correct.delivered', 'Delivered')}</FormLabel>
+                    <FormInput
+                      type="number"
+                      min="0"
+                      max={String(ordered)}
+                      step="any"
+                      value={correctQty[it.id] ?? ''}
+                      style={exceeds ? { borderColor: '#DC2626' } : undefined}
+                      onChange={(e) => setCorrectQty(prev => ({ ...prev, [it.id]: e.target.value }))}
+                    />
+                    {exceeds && (
+                      <div style={{ color: '#DC2626', fontSize: 12, marginTop: 4 }}>{tNs('orders.correct.exceedsOrdered', 'Cannot exceed the ordered quantity')}</div>
+                    )}
+                  </div>
+                  <div style={{ flex: '0 1 150px', textAlign: 'right', paddingBottom: 8, fontSize: 13, color: '#374151' }}>
+                    <div style={{ fontSize: 11, color: '#9CA3AF' }}>{tNs('orders.correct.lineTotal', 'Line total')}</div>
+                    {Math.abs(after - before) > 0.005
+                      ? <><span style={{ color: '#9CA3AF', textDecoration: 'line-through' }}>{formatMoney(before, correctRow?.currency)}</span>{' → '}<strong>{formatMoney(after, correctRow?.currency)}</strong></>
+                      : formatMoney(before, correctRow?.currency)}
+                  </div>
+                </div>
+              );
+            })}
+
+            <div style={{ background: '#F9FAFB', borderRadius: 8, padding: '12px 14px', margin: '16px 0', fontSize: 13, color: '#6B7280', lineHeight: 1.7 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                <span>{tNs('orders.correct.itemsTotal', 'Items total')}</span>
+                <span style={{ fontSize: 14 }}>
+                  <span style={{ color: '#9CA3AF', textDecoration: 'line-through' }}>{formatMoney(correctItemsBefore, correctRow?.currency)}</span>
+                  {'  →  '}
+                  <strong style={{ color: '#111827' }}>{formatMoney(correctItemsAfter, correctRow?.currency)}</strong>
+                </span>
+              </div>
+              {correctDeliveryFee > 0 && (
+                <div>{tNs('orders.correct.deliveryUnchanged', 'Delivery fee {{fee}} stays the same', { fee: formatMoney(correctDeliveryFee, correctRow?.currency) })}</div>
+              )}
+              {correctRow?.trade_invoice && (
+                <div>{tNs('orders.correct.invoiceWillUpdate', 'Invoice {{number}} will be updated', { number: correctRow.trade_invoice.invoice_number })}</div>
+              )}
+            </div>
+
+            {correctReducesBuyerStock && (
+              <div style={{ background: '#FFFBEB', borderLeft: '4px solid #F59E0B', borderRadius: '0 8px 8px 0', color: '#92400E', fontSize: 13, padding: '10px 14px', margin: '0 0 16px', lineHeight: 1.6 }}>
+                {tNs('orders.correct.receivedNotice', "The buyer has already received this order — their stock will be reduced by the difference.")}
+              </div>
+            )}
+            {correctAllZero && (
+              <div style={{ color: '#DC2626', fontSize: 13, margin: '0 0 12px' }}>{tNs('orders.correct.keepOneLine', 'An order must keep at least one item')}</div>
+            )}
+
+            <FormGroup>
+              <FormLabel>{tNs('orders.correct.reason', 'Reason (required)')}</FormLabel>
+              <FormTextArea
+                rows={3}
+                placeholder={tNs('orders.correct.reasonPlaceholder', 'e.g. Shipped 1 kg instead of 2 kg') as string}
+                value={correctReason}
+                onChange={(e) => setCorrectReason(e.target.value)}
+              />
+            </FormGroup>
+
+            {errorMessage && (
+              <div style={{ color: '#DC2626', fontSize: 13 }}>{errorMessage}</div>
+            )}
+          </>
+        )}
+      </Modal>
+      <ConfirmModal
+        isOpen={correctConfirmOpen}
+        title={tNs('orders.correct.confirmTitle', 'Lower the order to {{total}}?', { total: formatMoney(correctTotalAfter, correctRow?.currency) })}
+        message={
+          tNs('orders.correct.confirmBody', '{{count}} item(s) changed. The buyer is notified.', { count: correctChanged.length })
+          + (correctRow?.trade_invoice ? '\n\n' + tNs('orders.correct.invoiceWillUpdate', 'Invoice {{number}} will be updated', { number: correctRow.trade_invoice.invoice_number }) : '')
+        }
+        confirmText={tNs('orders.correct.confirmOk', 'Save correction') as string}
+        cancelText={tNs('orders.correct.cancel', 'Cancel') as string}
+        type="warning"
+        onConfirm={() => { setCorrectConfirmOpen(false); handleCorrect(); }}
+        onCancel={() => setCorrectConfirmOpen(false)}
+      />
+      <ConfirmModal
+        isOpen={correctSavedOpen}
+        title={tNs('orders.correct.savedTitle', 'Quantities corrected')}
+        message={tNs('orders.correct.saved', 'The order and its invoice were updated, and the buyer was told.')}
+        confirmText={tNs('orders.correct.ok', 'OK') as string}
+        type="info"
+        singleButton
+        onConfirm={() => setCorrectSavedOpen(false)}
+        onCancel={() => setCorrectSavedOpen(false)}
+      />
+
       {/* Sprint 5: Detail drawer — items + DeliveryTimeline */}
       <Modal
         isOpen={!!detailRow}
@@ -2206,6 +2448,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             {detailRow?.status === 'confirmed' && (
               <ModalButton onClick={() => { openShipModal(detailRow); closeDetail(); }}>
                 {tNs('orders.actions.ship', 'Mark Shipped')}
+              </ModalButton>
+            )}
+            {detailRow && detailRow.can_correct !== undefined && detailRow.correct_blocked?.code !== 'BAD_STATUS' && (
+              <ModalButton
+                disabled={!detailRow.can_correct}
+                title={detailRow.correct_blocked?.message || undefined}
+                onClick={() => { const r = detailRow; closeDetail(); openCorrectModal(r); }}
+              >
+                {tNs('orders.actions.correct', 'Correct quantities')}
               </ModalButton>
             )}
             {!!detailRow?.shipped_at && (detailRow?.unshipped_count || 0) > 0 && (

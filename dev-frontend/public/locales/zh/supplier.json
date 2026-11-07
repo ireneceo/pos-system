@@ -216,7 +216,8 @@
       "editTracking": "编辑追踪",
       "recordDispatch": "记录配送",
       "amend": "修改项目",
-      "shipRemaining": "发送剩余商品"
+      "shipRemaining": "发送剩余商品",
+      "correct": "更正发货数量"
     },
     "confirm": {
       "title": "确认订单",
@@ -335,6 +336,30 @@
       "emptyColumn": "暂无",
       "prepareFailed": "无法更新该商品，请重试。",
       "loadFailed": "无法加载看板，将在下次更新时重试。"
+    },
+    "correct": {
+      "title": "按实际发货数量更正",
+      "hint": "请填写实际发货的数量。数量只能减少。订单总额和发票会一起更新，并通知买方。",
+      "receivedNotice": "买方已收货 — 其库存将按差额减少。",
+      "item": "品项",
+      "ordered": "订购数量",
+      "delivered": "实际发货",
+      "lineTotal": "行金额",
+      "itemsTotal": "品项合计",
+      "deliveryUnchanged": "运费 {{fee}} 保持不变",
+      "invoiceWillUpdate": "发票 {{number}} 也会更新",
+      "reason": "原因（必填）",
+      "reasonPlaceholder": "例如：发了 1 kg 而不是 2 kg",
+      "exceedsOrdered": "不能超过订购数量",
+      "keepOneLine": "订单至少要保留一个品项",
+      "submit": "保存更正",
+      "cancel": "取消",
+      "confirmTitle": "将订单金额降为 {{total}}？",
+      "confirmBody": "{{count}} 个品项有变动。将通知买方。",
+      "confirmOk": "保存更正",
+      "savedTitle": "数量已更正",
+      "saved": "订单和发票已更新，并已通知买方。",
+      "ok": "确定"
     }
   },
   "tradeInvoicesPage": {

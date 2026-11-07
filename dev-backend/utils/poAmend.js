@@ -300,7 +300,41 @@ function buyerAmendBlock(po, lines, { isExternal, actorIsOwner } = {}) {
   return null;
 }
 
+/**
+ * 출고 뒤 «실제 보낸 양으로 정정»(POST /api/seller-orders/:id/correct-delivery)을 막는 조건 — 첫 번째 걸리는 것 하나.
+ *   (2026-11-07 Fable 설계 .claude/fable-design-20261107-post-delivery-amend.md §2-2)
+ * ⚠ 목록·상세의 can_correct/correct_blocked 와 POST 거부가 **이 함수 하나**를 부른다(«화면엔 떴는데 저장하면 400» 금지).
+ * 허용 = 출고 뒤 ~ 결제 전. 수령 전·후 모두(Irene «고객이 받은 거 완료하거나 인보이스 결제 전»).
+ * @param invoice  po.trade_invoice_id 의 청구서(없으면 null — 청구서 없는 옛 건도 정정 가능)
+ * @returns {null | {code:string, message:string, http:number}}
+ */
+const CORRECTABLE_STATUSES = ['shipped', 'in_transit', 'delivered', 'partial_received', 'received'];
+// eslint-disable-next-line no-unused-vars
+function sellerCorrectionBlock(po, lines, invoice) {
+  if (!CORRECTABLE_STATUSES.includes(po.status)) {
+    return { code: 'BAD_STATUS', http: 400, message: `Quantities can be corrected only after dispatch (current status '${po.status}')` };
+  }
+  // 돈이 오간 뒤(paid·refunded)의 정정은 원장을 사람이 봐야 한다 — «unpaid» 만 통과
+  if (po.payment_status !== 'unpaid') {
+    return { code: 'ALREADY_PAID', http: 400, message: 'This order has been paid — reverse the payment before correcting quantities' };
+  }
+  if (po.invoice_reconciled_at) {
+    return { code: 'ALREADY_RECONCILED', http: 400, message: 'The supplier invoice for this order is already reconciled' };
+  }
+  if (invoice && ['paid', 'payment_submitted', 'cancelled'].includes(invoice.status)) {
+    return {
+      code: 'INVOICE_LOCKED', http: 409,
+      message: invoice.status === 'payment_submitted'
+        ? 'The buyer has submitted payment for this invoice — reject the payment submission first'
+        : `The invoice is ${invoice.status} and cannot be rewritten`
+    };
+  }
+  return null;
+}
+
 module.exports = {
+  CORRECTABLE_STATUSES,
+  sellerCorrectionBlock,
   buyerAmendableStatuses,
   buyerAmendBlock,
   ownerSignedOff,

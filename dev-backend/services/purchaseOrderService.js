@@ -170,6 +170,33 @@ function deliveredAtOf(po) {
  * Create Trade Invoice for a received PO.
  * Idempotent: skip if po.trade_invoice_id is already set.
  */
+/**
+ * 거래 청구서 한 줄의 모양 — createTradeInvoice 와 «출고 뒤 수량 정정»(seller-orders correct-delivery)이 같이 쓴다
+ *   (2026-11-07 Fable 설계 §3-3 · 같은 줄 모양을 두 곳에 복제하지 않기 위한 기계적 추출 — 동작 변경 0).
+ * @param item  attachSellerProductIdentity 를 거친 평문 발주 줄(seller_product_name 이 있으면 그 이름)
+ */
+function tradeInvoiceLineAttrs(invoiceId, item, poStatus) {
+  // 받은 양만큼 청구한다 (2026-10-08 · Fable 판정 Ⅱ-4) — 수령이 끝난 발주인데 덜 받은 줄은 받은 양으로.
+  //   수령 전에 발행되는 청구서(브랜드 판매자 확정 시점)·받은 양이 0 인 줄(서비스 등)은 주문량 그대로.
+  const ordered = Number(item.quantity_ordered) || 0;
+  const received = Number(item.quantity_received) || 0;
+  const billReceived = poStatus === 'received' && received > 0 && received < ordered;
+  const qty = billReceived ? received : item.quantity_ordered;
+  const lineTotal = billReceived ? Math.round(received * (Number(item.unit_price) || 0) * 100) / 100 : item.line_total;
+  return {
+    invoice_id: invoiceId,
+    description: item.seller_product_name || item.description || `Item #${item.id}`,
+    quantity: qty,
+    unit: item.unit || null,
+    unit_price: item.unit_price,
+    calculated_amount: lineTotal,
+    total_amount: lineTotal,
+    tax_amount: 0,
+    item_type: 'product',
+    calculation_method: 'fixed'
+  };
+}
+
 async function createTradeInvoice(po) {
   // Reload with items to ensure freshness
   const fullPo = await PurchaseOrder.findByPk(po.id, {
@@ -294,25 +321,7 @@ async function createTradeInvoice(po) {
     console.error('[purchaseOrderService] seller identity attach failed:', e.message);
   }
   for (const item of poItems) {
-    // 받은 양만큼 청구한다 (2026-10-08 · Fable 판정 Ⅱ-4) — 수령이 끝난 발주인데 덜 받은 줄은 받은 양으로.
-    //   수령 전에 발행되는 청구서(브랜드 판매자 확정 시점)·받은 양이 0 인 줄(서비스 등)은 주문량 그대로.
-    const ordered = Number(item.quantity_ordered) || 0;
-    const received = Number(item.quantity_received) || 0;
-    const billReceived = fullPo.status === 'received' && received > 0 && received < ordered;
-    const qty = billReceived ? received : item.quantity_ordered;
-    const lineTotal = billReceived ? Math.round(received * (Number(item.unit_price) || 0) * 100) / 100 : item.line_total;
-    await InvoiceItem.create({
-      invoice_id: invoice.id,
-      description: item.seller_product_name || item.description || `Item #${item.id}`,
-      quantity: qty,
-      unit: item.unit || null,
-      unit_price: item.unit_price,
-      calculated_amount: lineTotal,
-      total_amount: lineTotal,
-      tax_amount: 0,
-      item_type: 'product',
-      calculation_method: 'fixed'
-    });
+    await InvoiceItem.create(tradeInvoiceLineAttrs(invoice.id, item, fullPo.status));
   }
 
   // 배송비는 **품목 단가에 섞지 않는다** — 세금이 사는 곳과 같은 자리(header.additional_charges)에
@@ -457,6 +466,7 @@ async function submitDraftInTx(id, t, { canAccess, actor, preApproved } = {}) {
 }
 
 module.exports = {
+  tradeInvoiceLineAttrs,
   submitDraftInTx,
   createTradeInvoice,
   deliveredAtOf,

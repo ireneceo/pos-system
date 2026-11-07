@@ -1386,7 +1386,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             {(() => {
               const events = (detail as any).tracking_info?.events;
               if (!Array.isArray(events)) return null;
-              const last = [...events].reverse().find((e: any) => e?.status === 'amended' || e?.store_edit_reverted);
+              const last = [...events].reverse().find((e: any) => e?.status === 'amended' || e?.status === 'corrected' || e?.store_edit_reverted);
               if (!last) return null;
               const when = last.at ? formatDate(last.at) : '';
               // 매장 수정을 되돌린 기록(2026-11-04 운영 일회성 되돌리기) — 옛 «고침» 박스 대신 «되돌림» 한 줄
@@ -1414,7 +1414,9 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                   padding: '12px 16px', marginBottom: 16, color: '#3730A3', fontSize: 14, lineHeight: 1.6
                 }}>
                   <strong>
-                    {last.by_owner
+                    {last.status === 'corrected'
+                      ? t('detail.correctedBySeller', 'The seller corrected the delivered quantities')
+                      : last.by_owner
                       ? t('detail.amendedByOwner', 'The Owner edited this order')
                       : last.by_buyer
                         ? t('detail.amendedByBuyer', 'This order was edited by the store')
@@ -1422,6 +1424,10 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                     {when ? ` · ${when}` : ''}
                   </strong>
                   {last.reason ? <div style={{ marginTop: 4 }}>{last.reason}</div> : null}
+                  {/* 출고 뒤 정정(2026-11-07)이 이미 받은 재고를 줄였으면 한 줄 */}
+                  {last.status === 'corrected' && Array.isArray(last.buyer_stock_reversed) && last.buyer_stock_reversed.length > 0 && (
+                    <div style={{ marginTop: 4, fontSize: 13 }}>{t('detail.correctedStockAdjusted', 'Your stock was adjusted by the difference.')}</div>
+                  )}
                   {Array.isArray(last.changes) && last.changes.length > 0 && (
                     <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 13 }}>
                       {last.changes.map((c: any, i: number) => {

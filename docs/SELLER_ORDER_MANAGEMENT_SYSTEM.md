@@ -1319,3 +1319,27 @@ Irene 원문: 「주문내역 좀 바꿔줘. … 이런 거 주문관리 수정�
 - **서버**: `POST /api/seller-orders/:id/prepare` { item_ids, prepared(기본 true) } — PO 행 잠금 · 확인 전 상태(submitted 등) 409 BAD_STATUS · 남의 줄 400 BAD_ITEM · 보낸 줄 400 ALREADY_SHIPPED_LINE(준비 취소도) · 서비스 줄 조용히 뺌 · 추적 이력 안 남김 · `seller-order-updated` 소켓. `/ship` 은 보낸 줄의 비어 있는 `prepared_at` 을 같이 채움. 목록·상세 GET 헤더 `unprepared_count`.
 - **범위 밖**: 매장(구매자) 화면의 «준비 중» 표시 · 수량 나눠 준비 · 스테이션(냉장/냉동) 나눔 · 피킹 목록 인쇄(기존 인쇄 단추) · 주문 상태 추가.
 - **검사**: health-check `inventory` «주문 준비» 2건(P1 가드 · P2 보내기가 준비 채움 — 고장주입 반증) · jest `boardColumn.test.ts` 13건.
+
+## 출고 뒤 수량 정정 (correct-delivery) — 2026-11-07
+
+> Irene: «고객이 받은 거 완료하거나 인보이스 결제 전에는 그대로 브랜드제너럴에서 주문내역 수정할 수 있어야 하는데 배송하고 나면 안되네. 그럼 미스했을 때 해결을 못하잖아.»
+> 설계: `.claude/fable-design-20261107-post-delivery-amend.md` (Fable) · 판정 함수 `utils/poAmend.sellerCorrectionBlock`
+
+| | 품목 수정 `amend` | **실제 보낸 양 정정 `correct-delivery`** |
+|---|---|---|
+| 때 | 출고 전 `submitted`·`confirmed` | 출고 뒤 `shipped`·`in_transit`·`delivered`·`partial_received`·`received` · **결제 전**(발주 `unpaid` · 대조 안 됨 · 청구서 paid/payment_submitted/cancelled 아님) |
+| 할 수 있는 것 | 수량↑↓·교체·추가/삭제·인상(확인+오너 승인) | **줄이기만**(0 = 줄 제거, 최소 1줄) · 사유 필수 |
+| 줄 | 지우고 다시 만듦 | 제자리 UPDATE(shipped_at·불량·반품 참조 보존) |
+| 재고 | 없음 | 판매자 재고 되돌림(출고된 줄) · 구매자 재고 차감(이미 받은 양 > 새 양일 때) — 장부 `adjustment` · reason_code `seller_correction` |
+| 청구서 | 있으면 거부 | 같은 트랜잭션에서 줄 다시 쓰기 + `finalizeInvoice` + 수정 이력(source `seller_correction`) · 묶인 정산서는 커밋 뒤 `followChildToSoa` |
+| 배송비 | 판매자 규칙으로 재계산 | **그대로** |
+| 상태 | 불변 | 불변(이벤트 `corrected`) |
+
+- API `POST /api/seller-orders/:id/correct-delivery` `{ items: [{ item_id, quantity }], reason }`. 오류 코드: `BAD_STATUS` `ALREADY_PAID` `ALREADY_RECONCILED` `INVOICE_LOCKED`(409) `BAD_ITEM` `QTY_INCREASE` `NO_CHANGE` `LINE_HAS_RETURNS` `NO_LINES` `REASON_REQUIRED`.
+- 목록·상세 응답 `can_correct` · `correct_blocked{code,message}` · `trade_invoice{id,invoice_number,status,total_amount}` — POST 와 같은 함수로 판정.
+- 재고 되돌림은 반품 승인과 같은 함수 `services/poStockReversal.js`(`reverseBuyerStock`·`restoreSellerStock`) — 이때 반품 승인에 빠져 있던 «브랜드 자체 재고 프로덕트» 환원 분기도 출고와 대칭으로 더했다.
+- 청구서 줄 모양은 `purchaseOrderService.tradeInvoiceLineAttrs` 하나(createTradeInvoice 와 공용).
+- 화면: 받은 주문 목록 행·상세 «Correct quantities» → 정정 창(보낸 수량 입력·줄 금액 전후·배송비 그대로·청구서도 바뀜 안내·사유 필수) → 확인 창. 구매자 발주 상세 상단 정정 배너. 구매자에게 «Order Corrected» 메일(`seller_order_received`).
+- 범위 밖: 주문 전체 미발송(출고 취소) · 단가·상품 교체·배송비 정정 · 더 보낸 경우(→ «주문 추가» 로 새 발주) · 외부(미가입) 공급업체(→ 인보이스 대조). 입고 배치 잔량·매장 마지막 매입가는 반품과 같이 건드리지 않는다(기존 한계).
+- 검증: health-check `inventory` «출고 뒤 수량 정정» 5건(C1·C6·C8 / C2·C4 / C3·C5 / C9 / C10 자체재고 부풀림 금지) · 고장주입 6건(판매자 되돌림·청구서 재작성·받은 양 낮추기·ALREADY_PAID·C10 상한·pos net 0 글자 검사) · Fable 게이트 PASS `.claude/fable-gate-20261107-post-delivery-amend.md`.
+- 자체재고 되돌림 상한: 출고(`/ship`)는 브랜드 자체재고 분기만 `min(주문량, 재고)` 로 0 에서 멈추므로(레시피·다이렉트는 음수 허용), 되돌림도 그 분기만 «장부 order_deduct 합 − 이미 되돌린 양» 까지. 반품 승인도 같은 상한을 탄다.

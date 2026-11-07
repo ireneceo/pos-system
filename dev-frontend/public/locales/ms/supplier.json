@@ -216,7 +216,8 @@
       "editTracking": "Edit jejak",
       "recordDispatch": "Rekod penghantaran",
       "amend": "Ubah item",
-      "shipRemaining": "Hantar baki"
+      "shipRemaining": "Hantar baki",
+      "correct": "Betulkan kuantiti"
     },
     "confirm": {
       "title": "Sahkan Pesanan",
@@ -335,6 +336,30 @@
       "emptyColumn": "Tiada",
       "prepareFailed": "Tidak dapat mengemas kini item. Sila cuba lagi.",
       "loadFailed": "Tidak dapat memuatkan papan. Akan cuba semula pada kemas kini seterusnya."
+    },
+    "correct": {
+      "title": "Betulkan kuantiti yang dihantar",
+      "hint": "Masukkan kuantiti sebenar yang dihantar. Kuantiti hanya boleh dikurangkan. Jumlah pesanan dan invois dikemas kini dan pembeli dimaklumkan.",
+      "receivedNotice": "Pembeli sudah menerima pesanan ini — stok mereka akan dikurangkan mengikut perbezaan.",
+      "item": "Item",
+      "ordered": "Dipesan",
+      "delivered": "Dihantar",
+      "lineTotal": "Jumlah baris",
+      "itemsTotal": "Jumlah item",
+      "deliveryUnchanged": "Caj penghantaran {{fee}} kekal sama",
+      "invoiceWillUpdate": "Invois {{number}} akan dikemas kini",
+      "reason": "Sebab (wajib)",
+      "reasonPlaceholder": "cth. Dihantar 1 kg bukan 2 kg",
+      "exceedsOrdered": "Tidak boleh melebihi kuantiti dipesan",
+      "keepOneLine": "Pesanan mesti mempunyai sekurang-kurangnya satu item",
+      "submit": "Simpan pembetulan",
+      "cancel": "Batal",
+      "confirmTitle": "Turunkan pesanan kepada {{total}}?",
+      "confirmBody": "{{count}} item berubah. Pembeli dimaklumkan.",
+      "confirmOk": "Simpan pembetulan",
+      "savedTitle": "Kuantiti dibetulkan",
+      "saved": "Pesanan dan invoisnya dikemas kini, dan pembeli telah dimaklumkan.",
+      "ok": "OK"
     }
   },
   "tradeInvoicesPage": {

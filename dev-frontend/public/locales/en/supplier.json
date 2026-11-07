@@ -216,7 +216,8 @@
       "editTracking": "Edit tracking",
       "recordDispatch": "Record delivery",
       "amend": "Edit items",
-      "shipRemaining": "Ship remaining"
+      "shipRemaining": "Ship remaining",
+      "correct": "Correct quantities"
     },
     "confirm": {
       "title": "Confirm Order",
@@ -335,6 +336,30 @@
       "emptyColumn": "Nothing here",
       "prepareFailed": "Could not update the item. Please try again.",
       "loadFailed": "Could not load the board. It will retry on the next update."
+    },
+    "correct": {
+      "title": "Correct delivered quantities",
+      "hint": "Enter what was actually delivered. Quantities can only go down. The order total and the invoice are updated and the buyer is told.",
+      "receivedNotice": "The buyer has already received this order — their stock will be reduced by the difference.",
+      "item": "Item",
+      "ordered": "Ordered",
+      "delivered": "Delivered",
+      "lineTotal": "Line total",
+      "itemsTotal": "Items total",
+      "deliveryUnchanged": "Delivery fee {{fee}} stays the same",
+      "invoiceWillUpdate": "Invoice {{number}} will be updated",
+      "reason": "Reason (required)",
+      "reasonPlaceholder": "e.g. Shipped 1 kg instead of 2 kg",
+      "exceedsOrdered": "Cannot exceed the ordered quantity",
+      "keepOneLine": "An order must keep at least one item",
+      "submit": "Save correction",
+      "cancel": "Cancel",
+      "confirmTitle": "Lower the order to {{total}}?",
+      "confirmBody": "{{count}} item(s) changed. The buyer is notified.",
+      "confirmOk": "Save correction",
+      "savedTitle": "Quantities corrected",
+      "saved": "The order and its invoice were updated, and the buyer was told.",
+      "ok": "OK"
     }
   },
   "tradeInvoicesPage": {

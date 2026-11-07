@@ -266,6 +266,8 @@ router.get('/', async (req, res) => {
       return obj;
     }));
     await attachSellerProductInfo(data);
+    // 출고 뒤 수량 정정 가능 여부 — 판정 = utils/poAmend.sellerCorrectionBlock(POST 와 같은 함수 · 2026-11-07)
+    try { await attachCorrectionState(data); } catch (e) { console.error('[correct-state] attach failed:', e.message); }
     // 브랜드 재고 부족 — 줄별 short · 주문별 stock_short_count (utils/sellerStockPool · 2026-11-03 phase2 §5-2). 표시용 — 실패해도 목록은 준다.
     try { await require('../utils/sellerStockPool').attachStockShortage(data); } catch (e) { console.error('[stock-short] attach failed:', e.message); }
 
@@ -575,6 +577,7 @@ router.get('/:id', async (req, res) => {
     attachAutoReceiveAt(obj);
     await attachSellerProductInfo(obj);
     await attachSellerProductCategory(obj); // 상세 품목을 판매자 카테고리별로 묶어 보이게(2026-09-29 Irene)
+    try { await attachCorrectionState(obj); } catch (e) { console.error('[correct-state] attach failed:', e.message); }
     try { await require('../utils/sellerStockPool').attachStockShortage(obj); } catch (e) { console.error('[stock-short] attach failed:', e.message); }
     res.json({ success: true, data: obj });
   } catch (err) {
@@ -1293,6 +1296,31 @@ const { isApprovalRequiredForPo, applyAmendRaiseGate } = require('../utils/poOwn
 const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
 const { currencySymbol } = require('../utils/currency');
 
+/** 구매자 메일의 변경 표(Item · Change · Before · After) — amend·출고 뒤 정정이 같이 쓴다(2026-11-07). */
+function changesTableHtml(changes, money) {
+  const label = { added: 'Added', removed: 'Removed', changed: 'Changed' };
+  const rows = (changes || []).map((c) => {
+    const name = (c.after || c.before).name || '-';
+    const was = c.before ? `${c.before.quantity} ${c.before.unit || ''} × ${money(c.before.unit_price)}` : '—';
+    const now = c.after ? `${c.after.quantity} ${c.after.unit || ''} × ${money(c.after.unit_price)}` : '—';
+    return `<tr>
+            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#374151;">${name}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;color:#6B7280;">${label[c.type] || c.type}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#9CA3AF;">${was}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#111827;font-weight:600;">${now}</td>
+          </tr>`;
+  }).join('');
+  return `<table style="width:100%;border-collapse:collapse;margin:0 0 20px;">
+             <thead><tr>
+               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Item</th>
+               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Change</th>
+               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Before</th>
+               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">After</th>
+             </tr></thead>
+             <tbody>${rows}</tbody>
+           </table>`;
+}
+
 router.post('/', async (req, res) => {
   // 아직 연결 안 된 배포 상품 줄({brand_product_id})은 **트랜잭션 전에** 매장의 «카탈로그에서 담기» 로 연결한다
   //   (2026-09-30 A안). 담기는 자기 트랜잭션으로 커밋되므로 아래 주문 트랜잭션보다 먼저 끝나야 새 연결이 보인다.
@@ -1607,30 +1635,10 @@ router.post('/:id/amend', async (req, res) => {
       try {
         const sym = currencySymbol(result.po.currency);
         const money = (n) => `${sym} ${(parseFloat(n) || 0).toFixed(2)}`;
-        const label = { added: 'Added', removed: 'Removed', changed: 'Changed' };
-        const rows = result.changes.map((c) => {
-          const name = (c.after || c.before).name || '-';
-          const was = c.before ? `${c.before.quantity} ${c.before.unit || ''} × ${money(c.before.unit_price)}` : '—';
-          const now = c.after ? `${c.after.quantity} ${c.after.unit || ''} × ${money(c.after.unit_price)}` : '—';
-          return `<tr>
-            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#374151;">${name}</td>
-            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:12px;color:#6B7280;">${label[c.type] || c.type}</td>
-            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#9CA3AF;">${was}</td>
-            <td style="padding:8px 10px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#111827;font-weight:600;">${now}</td>
-          </tr>`;
-        }).join('');
         const html = buyerMail(
           'Order Amended',
           (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">The seller has amended your purchase order <strong>${result.po.po_number}</strong>.</p>
-           <table style="width:100%;border-collapse:collapse;margin:0 0 20px;">
-             <thead><tr>
-               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Item</th>
-               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Change</th>
-               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">Before</th>
-               <th style="text-align:left;padding:8px 10px;border-bottom:2px solid #D1D5DB;font-size:12px;color:#6B7280;">After</th>
-             </tr></thead>
-             <tbody>${rows}</tbody>
-           </table>
+           ${changesTableHtml(result.changes, money)}
            <p style="color:#374151;font-size:14px;margin:0 0 20px;">Order total: <span style="color:#9CA3AF;">${money(result.totalBefore)}</span> → <strong>${money(result.totalAfter)}</strong></p>
            ${result.needsApproval
              ? '<div style="background:#FFFBEB;border-left:4px solid #F59E0B;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;"><p style="color:#92400E;font-size:14px;margin:0;">This change is waiting for Owner approval before it is confirmed.</p></div>'
@@ -1677,6 +1685,268 @@ router.post('/:id/amend', async (req, res) => {
     }
     console.error('POST /api/seller-orders/:id/amend error:', err);
     res.status(500).json({ success: false, message: 'Failed to amend order' });
+  }
+});
+
+// ============================================
+// 12. POST /api/seller-orders/:id/correct-delivery — 출고 뒤 «실제 보낸 양으로 정정» (2026-11-07)
+//   Fable 설계 .claude/fable-design-20261107-post-delivery-amend.md · Irene «배송하고 나면 안되네. 그럼 미스했을 때 해결을 못하잖아»
+//   amend(출고 전 · 지우고 다시 만듦)와 다른 길: 출고 뒤 · **줄이기만** · 제자리 UPDATE(shipped_at·불량·반품 참조 보존) ·
+//   한 트랜잭션으로 ①주문 줄·총액(배송비 그대로) ②판매자 재고 되돌림 ③구매자 재고 차감(이미 받은 양 > 새 양) ④청구서 다시 쓰기.
+//   커밋 뒤 ⑤정산서 합계 따라가기 · 구매자 메일. 판정은 utils/poAmend.sellerCorrectionBlock 하나(목록·상세 can_correct 와 같다).
+// ============================================
+const { sellerCorrectionBlock } = require('../utils/poAmend');
+
+/** 목록·상세 행에 can_correct · correct_blocked · trade_invoice 를 단다 — 청구서는 한 쿼리로 모은다. */
+async function attachCorrectionState(objs) {
+  const list = Array.isArray(objs) ? objs : [objs];
+  const { Invoice } = require('../models');
+  const ids = [...new Set(list.map(o => o && o.trade_invoice_id).filter(Boolean))];
+  const invs = ids.length ? await Invoice.findAll({
+    where: { id: ids }, attributes: ['id', 'status', 'invoice_number', 'total_amount', 'parent_soa_invoice_id']
+  }) : [];
+  const byId = new Map(invs.map(i => [i.id, i]));
+  for (const o of list) {
+    if (!o) continue;
+    const inv = o.trade_invoice_id ? byId.get(o.trade_invoice_id) || null : null;
+    const block = sellerCorrectionBlock(o, o.items, inv);
+    o.can_correct = !block;
+    o.correct_blocked = block ? { code: block.code, message: block.message } : null;
+    o.trade_invoice = inv ? { id: inv.id, invoice_number: inv.invoice_number, status: inv.status, total_amount: inv.total_amount } : null;
+  }
+  return objs;
+}
+
+router.post('/:id/correct-delivery', async (req, res) => {
+  let result;
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Order not found' });
+    const fail = (code, message, http = 400) => { const e = new Error(message); e.code = code; e.http = http; return e; };
+
+    const reason = sanitizeString(String(req.body?.reason || '').trim()).slice(0, 1000);
+    const reqItems = Array.isArray(req.body?.items) ? req.body.items : [];
+    const userId = req.user?.id || req.user?.userId || null;
+    const userName = req.user?.full_name || req.user?.username || null;
+
+    result = await sequelize.transaction(async (t) => {
+      const { Invoice, InvoiceItem, PurchaseOrderReturn } = require('../models');
+      const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!po || !checkSellerOwnership(po, req) || SELLER_HIDDEN.includes(po.status)) throw fail('NOT_FOUND', 'Order not found', 404);
+
+      const invoice = po.trade_invoice_id
+        ? await Invoice.findByPk(po.trade_invoice_id, { lock: t.LOCK.UPDATE, transaction: t })
+        : null;
+      const lines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, order: [['id', 'ASC']], transaction: t });
+      const block = sellerCorrectionBlock(po, lines, invoice);
+      if (block) throw fail(block.code, block.message, block.http);
+
+      // ── 본문 검증 (§2-3) ─────────────────────────────
+      if (reason.length < 3) throw fail('REASON_REQUIRED', 'Please give a reason for the correction');
+      const byId = new Map(lines.map(l => [Number(l.id), l]));
+      const wanted = new Map();
+      for (const r of reqItems) {
+        const itemId = parseInt(r && r.item_id, 10);
+        const q = Number(r && r.quantity);
+        if (!byId.has(itemId) || !Number.isFinite(q) || q < 0) throw fail('BAD_ITEM', 'Each line needs an item of this order and a quantity of 0 or more');
+        const ordered = parseFloat(byId.get(itemId).quantity_ordered) || 0;
+        if (q > ordered + 0.005) throw fail('QTY_INCREASE', 'Post-dispatch corrections can only lower quantities — add a new order for extra items');
+        if (Math.abs(q - ordered) <= 0.005) continue;   // 변경 없음
+        wanted.set(itemId, Math.round(q * 1000) / 1000);
+      }
+      if (wanted.size === 0) throw fail('NO_CHANGE', 'No quantity was changed');
+      if (lines.length - [...wanted.values()].filter(q => q === 0).length < 1) throw fail('NO_LINES', 'An order must keep at least one item');
+
+      const rets = await PurchaseOrderReturn.findAll({
+        where: { purchase_order_item_id: [...wanted.keys()] }, attributes: ['purchase_order_item_id', 'quantity', 'status'], transaction: t
+      });
+      for (const [itemId, q] of wanted) {
+        const mine = rets.filter(r => Number(r.purchase_order_item_id) === itemId);
+        const open = mine.filter(r => ['requested', 'approved'].includes(r.status)).reduce((s, r) => s + (parseFloat(r.quantity) || 0), 0);
+        if (open > q + 0.005 || (q === 0 && mine.length > 0)) {
+          throw fail('LINE_HAS_RETURNS', `Returns on this line total ${Math.round(open * 100) / 100} — the quantity cannot go below that`);
+        }
+      }
+
+      // ── 줄마다 재고·수량 (§3-1 ⑤) ─────────────────────
+      const { serviceLineIdsOf } = require('../utils/orderFulfillment');
+      const { reverseBuyerStock, restoreSellerStock } = require('../services/poStockReversal');
+      const { lineTotalOf } = require('../utils/poAmend');
+      const svc = await serviceLineIdsOf(sequelize, po.id, t);
+      const legacyAllShipped = !!po.shipped_at && !lines.some(l => l.shipped_at);
+      const note = `Correction on PO ${po.po_number} — shipped less than ordered: ${reason.slice(0, 200)}`;
+      const sellerRestored = [];
+      const buyerReversed = [];
+      const changes = [];
+      const snap = (l, qty) => ({
+        name: l.description || null, quantity: qty, unit: l.unit || null,
+        unit_price: parseFloat(l.unit_price) || 0, line_total: lineTotalOf(qty, parseFloat(l.unit_price) || 0)
+      });
+      for (const [itemId, nq] of wanted) {
+        const item = byId.get(itemId);
+        const oldQ = parseFloat(item.quantity_ordered) || 0;
+        const isService = svc.has(itemId);
+        const shipped = !!item.shipped_at || legacyAllShipped;
+        const deltaOrdered = Math.round((oldQ - nq) * 1000) / 1000;
+        if (shipped && !isService && deltaOrdered > 0) {
+          const ok = await restoreSellerStock({
+            po, item, qty: deltaOrdered, t, userId, note,
+            ledgerType: 'adjustment', reasonCode: 'seller_correction', supplierReason: 'po_correction'
+          });
+          if (ok) sellerRestored.push({ item_id: itemId, qty: deltaOrdered });
+        }
+        const recv = parseFloat(item.quantity_received) || 0;
+        let newRecv = recv;
+        if (recv > nq + 0.005) {
+          if (!isService) {
+            const r = await reverseBuyerStock({
+              po, item, qty: Math.round((recv - nq) * 1000) / 1000, unitPrice: item.unit_price, t, userId, note,
+              ledgerType: 'adjustment', reasonCode: 'seller_correction'
+            });
+            if (r) buyerReversed.push({ item_id: itemId, qty: Math.round((recv - nq) * 1000) / 1000, moved: r.moved });
+          }
+          newRecv = nq;
+        }
+        changes.push(nq === 0
+          ? { type: 'removed', before: snap(item, oldQ), after: null }
+          : { type: 'changed', before: snap(item, oldQ), after: snap(item, nq) });
+        if (nq === 0) {
+          await item.destroy({ transaction: t });
+          byId.delete(itemId);
+        } else {
+          await item.update({
+            quantity_ordered: nq, line_total: lineTotalOf(nq, parseFloat(item.unit_price) || 0), quantity_received: newRecv
+          }, { transaction: t });
+        }
+      }
+
+      // ── 총액 — 배송비·세금 그대로 (computeTotalsWithDelivery 금지 · §2-1) ──
+      const { computePurchaseOrderTotals } = require('../utils/purchaseOrderTotals');
+      const remaining = [...byId.values()];
+      const totals = computePurchaseOrderTotals(remaining, { delivery_fee: po.delivery_fee, tax_amount: po.tax_amount });
+      const totalBefore = parseFloat(po.total_amount) || 0;
+      const totalAfter = parseFloat(totals.total_amount) || 0;
+
+      // ── 청구서 다시 쓰기 (§3-1 ⑧) ──────────────────────
+      let invOut = null;
+      if (invoice) {
+        const { tradeInvoiceLineAttrs } = require('../services/purchaseOrderService');
+        const { finalizeInvoice } = require('../utils/invoiceCalculation');
+        const invTotalBefore = parseFloat(invoice.total_amount) || 0;
+        const plain = remaining.map(l => (typeof l.toJSON === 'function' ? l.toJSON() : l));
+        try { await attachSellerProductIdentity({ items: plain }); } catch (e) {
+          console.error('[correct-delivery] seller identity attach failed:', e.message);   // 이름 폴백으로 계속(createTradeInvoice 와 같다)
+        }
+        await InvoiceItem.destroy({ where: { invoice_id: invoice.id }, transaction: t });
+        for (const l of plain) {
+          await InvoiceItem.create(tradeInvoiceLineAttrs(invoice.id, l, po.status), { transaction: t });
+        }
+        await finalizeInvoice(invoice.id, t);
+        await invoice.reload({ transaction: t });
+        const invTotalAfter = parseFloat(invoice.total_amount) || 0;
+        if (Math.abs(invTotalAfter - invTotalBefore) > 0.005) {
+          let history = invoice.modification_history;
+          if (typeof history === 'string') { try { history = JSON.parse(history); } catch { history = []; } }
+          history = Array.isArray(history) ? [...history] : [];
+          history.push({
+            modified_at: new Date().toISOString(), modified_by: userId, modified_by_name: userName,
+            changes: { total_amount: { from: invTotalBefore, to: invTotalAfter } },
+            reason: `Delivered quantities corrected by seller — PO ${po.po_number}: ${reason.slice(0, 300)}`,
+            source: 'seller_correction'
+          });
+          await invoice.update({ modification_history: history, is_modified: true }, { transaction: t });
+        }
+        invOut = { id: invoice.id, invoice_number: invoice.invoice_number, total_before: invTotalBefore, total_after: invTotalAfter };
+      }
+
+      const tracking = appendTrackingEvent(
+        po, 'corrected', `Delivered quantities corrected by seller: ${reason.slice(0, 200)}`, null,
+        {
+          changes, reason, by_user_id: userId, total_before: totalBefore, total_after: totalAfter,
+          source: 'seller_correction', seller_stock_restored: sellerRestored, buyer_stock_reversed: buyerReversed,
+          invoice_id: invOut ? invOut.id : null,
+          invoice_total_before: invOut ? invOut.total_before : null,
+          invoice_total_after: invOut ? invOut.total_after : null,
+          delivery_fee_kept: true
+        }
+      );
+      // ⚠ status 는 바꾸지 않는다 — 'corrected' 는 이력 이벤트 이름일 뿐이다(amend 의 'amended' 와 같다).
+      await po.update({ subtotal: totals.subtotal, total_amount: totals.total_amount, tracking_info: tracking }, { transaction: t });
+
+      return { po, invoice, changes, reason, totalBefore, totalAfter, invOut, sellerRestored, buyerReversed };
+    });
+
+    // ── 커밋 뒤: 정산서 합계 따라가기 (자기 트랜잭션 — 안에서 부르지 않는다) ──
+    let soa = null;
+    if (result.invoice && result.invoice.parent_soa_invoice_id && result.invOut
+        && Math.abs(result.invOut.total_after - result.invOut.total_before) > 0.005) {
+      try {
+        const { followChildToSoa } = require('../services/externalSoa');
+        const r = await followChildToSoa(result.invoice, {
+          prevChildTotal: result.invOut.total_before,
+          actorId: req.user?.id || null, actorName: req.user?.full_name || req.user?.username || null
+        });
+        soa = r && r.soa_locked ? { soa_locked: true, soa_id: r.soa_id } : (r && r.followed ? { soa_id: r.soa_id, total: r.total } : null);
+      } catch (e) {
+        console.error('[correct-delivery] SOA follow failed:', e.message);
+        soa = { error: e.message };
+      }
+    }
+
+    emitPoEvent(req, result.po, 'seller-order-updated');
+
+    setImmediate(async () => {
+      try {
+        const sym = currencySymbol(result.po.currency);
+        const money = (n) => `${sym} ${(parseFloat(n) || 0).toFixed(2)}`;
+        const html = buyerMail(
+          'Order Corrected',
+          (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">The seller corrected the delivered quantities of your purchase order <strong>${result.po.po_number}</strong>.</p>
+           ${changesTableHtml(result.changes, money)}
+           <p style="color:#374151;font-size:14px;margin:0 0 12px;">Order total: <span style="color:#9CA3AF;">${money(result.totalBefore)}</span> → <strong>${money(result.totalAfter)}</strong></p>
+           ${result.invOut ? `<p style="color:#374151;font-size:14px;margin:0 0 12px;">Invoice <strong>${result.invOut.invoice_number}</strong> has been updated to <strong>${money(result.invOut.total_after)}</strong>.</p>` : ''}
+           ${result.buyerReversed.length ? '<p style="color:#374151;font-size:14px;margin:0 0 12px;">Your stock has been adjusted by the difference.</p>' : ''}
+           <div style="background:#F9FAFB;border-left:4px solid #635BFF;padding:16px;margin:12px 0 24px;border-radius:0 8px 8px 0;">
+             <p style="color:#4B5563;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
+             <p style="color:#374151;font-size:14px;margin:0;">${result.reason.slice(0, 600)}</p>
+           </div>
+           <div style="text-align:center;margin:24px 0;"><a href="${link}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`
+        );
+        const sellerName = await sellerNameOf(result.po);
+        await fireBuyerNotification(result.po, 'seller_order_received', {
+          subject: `Order Corrected: ${result.po.po_number}${sellerName ? ` · by ${sellerName}` : ''}`,
+          action: { state: 'action', key: 'review_changes' },
+          html,
+          text: `The seller corrected the delivered quantities of your purchase order ${result.po.po_number}. Reason: ${result.reason}`
+        });
+      } catch (e) {
+        console.error('[seller-orders] correct-delivery notification error:', e.message);
+      }
+    });
+
+    // 응답 = 상세와 같은 장식
+    const updated = await PurchaseOrder.findByPk(result.po.id, {
+      include: [{ model: PurchaseOrderItem, as: 'items', include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'name', 'unit'] }] }]
+    });
+    const obj = updated.toJSON();
+    obj.buyer = await resolveBuyerInfo(updated);
+    await attachShipmentState(obj);
+    attachAutoReceiveAt(obj);
+    await attachSellerProductInfo(obj);
+    await attachCorrectionState(obj);
+    res.json({
+      success: true, data: obj, message: 'Quantities corrected',
+      correction: {
+        changes: result.changes, total_before: result.totalBefore, total_after: result.totalAfter, reason: result.reason,
+        invoice: result.invOut, seller_stock_restored: result.sellerRestored.length,
+        buyer_stock_reversed: result.buyerReversed.length, soa
+      }
+    });
+  } catch (err) {
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.http) return res.status(err.http).json({ success: false, code: err.code, message: err.message });
+    console.error('POST /api/seller-orders/:id/correct-delivery error:', err);
+    res.status(500).json({ success: false, message: 'Failed to correct quantities' });
   }
 });
 

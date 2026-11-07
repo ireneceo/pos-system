@@ -3360,17 +3360,21 @@ function definePosTests({ adminToken }) {
   test('pos', '반품: 브랜드 판매자 환원이 구매자 재료를 되올리지 않는다 (net 0 회귀)', async () => {
     const fs = require('fs');
     const path = require('path');
-    const raw = fs.readFileSync(path.join(__dirname, '../routes/po-returns.js'), 'utf8');
     // 주석은 제외하고 **실제 코드**만 본다 (주석이 옛 코드를 인용하고 있어 오탐 났다)
-    const src = raw.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    const strip = (raw) => raw.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+    const route = strip(fs.readFileSync(path.join(__dirname, '../routes/po-returns.js'), 'utf8'));
+    // 2026-11-07: 재고 되돌림 본체는 services/poStockReversal.js 로 옮겼다(출고 뒤 수량 정정과 공용) — 불변식은 거기서 본다.
+    //   반품 승인이 그 두 함수를 실제로 부르는지도 같이 본다(안 부르면 반품해도 재고가 안 움직인다).
+    const src = strip(fs.readFileSync(path.join(__dirname, '../services/poStockReversal.js'), 'utf8'));
+    const routeCalls = /reverseBuyerStock\(/.test(route) && /restoreSellerStock\(/.test(route);
     // 브랜드 분기가 BOM(ProductRecipeIngredient → ProductIngredient) 으로 환원하는가
     const brandBranch = src.slice(src.indexOf("seller_type === 'brand'"), src.indexOf("seller_type === 'foodcourt'"));
     const usesBom = /ProductRecipeIngredient\.findAll/.test(brandBranch) && /ProductIngredient\.findByPk/.test(brandBranch);
-    // 구매자 재료 행(ret.ingredient_id)을 다시 올리면 안 된다 (net 0 의 원인)
-    const reRaisesBuyer = /[^t]Ingredient\.findByPk\(ret\.ingredient_id/.test(brandBranch);
-    // 구매자 차감이 unit_conversion 을 반영하고 원장을 남기는가
+    // 구매자 재료 행을 다시 올리면 안 된다 (net 0 의 원인)
+    const reRaisesBuyer = /[^t]Ingredient\.findByPk\(/.test(brandBranch);
+    // 구매자 차감이 unit_conversion 을 반영하고 원장(기본 return_out)을 남기는가
     const buyerScoped = /unit_conversion/.test(src) && /'return_out'/.test(src);
-    return usesBom && !reRaisesBuyer && buyerScoped;
+    return routeCalls && usesBom && !reRaisesBuyer && buyerScoped;
   });
 
   test('pos', '반품: 이중 승인·누적 초과 차단 (재고·크레딧노트 이중 발행 금지)', async () => {
@@ -8071,6 +8075,266 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       finally { if (t && !t.finished) { try { await t.rollback(); } catch {} } await cleanQ6(fx); }
     });
   }
+
+  // ══════════════════════════════════════════════════════════════════
+  // 출고 뒤 «실제 보낸 양으로 정정» (2026-11-07 Fable 설계 .claude/fable-design-20261107-post-delivery-amend.md §7)
+  //   Irene «배송하고 나면 안되네. 그럼 미스했을 때 해결을 못하잖아 … 육개장 소스 2kg인데 모르고 1kg 보냈고»
+  //   C1 수령 전 정정(+배송비 유지 C8 · 응답 칸 C6) · C2 수령 뒤 정정 + 반품 정합 C4 · C3 가드 + 줄 제거 C5 · C9 정산서 따라가기
+  // ══════════════════════════════════════════════════════════════════
+  async function cdLastLedger(where) {
+    const { InventoryTransaction } = require('../models');
+    return InventoryTransaction.findOne({ where, order: [['id', 'DESC']] });
+  }
+  async function cdCleanExtra(fx) {
+    const { sequelize } = require('../config/database');
+    try { await sequelize.query("DELETE FROM invoices WHERE invoice_number LIKE :p", { replacements: { p: `CN-${fx.po.po_number}%` } }); } catch {}
+    try { await sequelize.query('DELETE FROM purchase_order_returns WHERE purchase_order_id = :id', { replacements: { id: fx.po.id } }); } catch {}
+  }
+
+  test('inventory', '출고 뒤 수량 정정 — 수령 전: 주문·판매자 재고·청구서(배송비 유지)·이벤트, 뒤에 받으면 새 양만 (C1·C6·C8)', async () => {
+    const { PurchaseOrder, PurchaseOrderItem, Product, BrandProduct, Invoice, InvoiceItem } = require('../models');
+    if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      await PurchaseOrder.update({ delivery_fee: 5, total_amount: 11 }, { where: { id: fx.po.id } });
+      const r = await acDeliver(fx);
+      if (r.err) return fail(r.err);
+      const invId = await acWaitInvoice(fx.po.id);
+      if (!invId) return fail('청구서 없음');
+      const inv0 = await Invoice.findByPk(invId);
+      if (Math.abs(Number(inv0.total_amount) - 11) > 0.005) return fail(`정정 전 청구서 ${inv0.total_amount}, 기대 11`);
+      const bp0 = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      if (bp0 !== 17) return fail(`출고 뒤 판매자 재고 ${bp0}, 기대 17`);
+      // 응답 칸(C6) — 상세 · 목록
+      const g = await request('GET', `/seller-orders/${fx.po.id}`, null, r.auth);
+      if (g.body?.data?.can_correct !== true || g.body?.data?.trade_invoice?.id !== invId) return fail(`상세 can_correct=${g.body?.data?.can_correct} trade_invoice=${JSON.stringify(g.body?.data?.trade_invoice)}`);
+      const gl = await request('GET', `/seller-orders?status=delivered&limit=100`, null, r.auth);
+      const row = (gl.body?.data || []).find(x => x.id === fx.po.id);
+      if (!row || row.can_correct !== true || !row.trade_invoice?.invoice_number) return fail(`목록 행 ${JSON.stringify(row && { c: row.can_correct, t: row.trade_invoice })}`);
+
+      const res = await request('POST', `/seller-orders/${fx.po.id}/correct-delivery`,
+        { items: [{ item_id: fx.item.id, quantity: 2 }], reason: 'HC shipped 2 not 3' }, r.auth);
+      if (res.status !== 200) return fail(`정정 ${res.status} ${JSON.stringify(res.body).slice(0, 160)}`);
+      const po = await PurchaseOrder.findByPk(fx.po.id);
+      if (Math.abs(Number(po.total_amount) - 9) > 0.005 || Math.abs(Number(po.delivery_fee) - 5) > 0.005 || Math.abs(Number(po.subtotal) - 4) > 0.005) return fail(`발주 total ${po.total_amount} fee ${po.delivery_fee} sub ${po.subtotal}, 기대 9·5·4`);
+      if (po.status !== 'delivered') return fail(`상태 ${po.status}`);
+      const it = await PurchaseOrderItem.findByPk(fx.item.id);
+      if (Number(it.quantity_ordered) !== 2 || Math.abs(Number(it.line_total) - 4) > 0.005 || Number(it.quantity_received) !== 0 || !it.shipped_at) return fail(`줄 ${it.quantity_ordered}/${it.line_total}/${it.quantity_received}/${it.shipped_at}`);
+      const bp1 = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      if (Math.abs(bp1 - 18) > 0.001) return fail(`판매자 재고 ${bp1}, 기대 18`);
+      const led = await cdLastLedger({ brand_product_id: fx.bp.id });
+      if (!led || led.transaction_type !== 'adjustment' || led.reason_code !== 'seller_correction' || Math.abs(Number(led.quantity_change) - 1) > 0.001) return fail(`판매자 장부 ${led && `${led.transaction_type}/${led.reason_code}/${led.quantity_change}`}`);
+      const inv = await Invoice.findByPk(invId);
+      const invItems = await InvoiceItem.findAll({ where: { invoice_id: invId } });
+      if (Math.abs(Number(inv.total_amount) - 9) > 0.005) return fail(`청구서 총액 ${inv.total_amount}, 기대 9`);
+      if (invItems.length !== 1 || Number(invItems[0].quantity) !== 2) return fail(`청구서 줄 ${invItems.map(x => x.quantity)}`);
+      const charges = Array.isArray(inv.additional_charges) ? inv.additional_charges : JSON.parse(inv.additional_charges || '[]');
+      if (!charges.some(ch => String(ch.name).toLowerCase() === 'delivery' && Number(ch.amount) === 5)) return fail(`배송비 줄 ${JSON.stringify(charges)}`);
+      const hist = Array.isArray(inv.modification_history) ? inv.modification_history : JSON.parse(inv.modification_history || '[]');
+      const lastH = hist[hist.length - 1];
+      if (!inv.is_modified || !lastH || lastH.source !== 'seller_correction') return fail(`청구서 이력 ${JSON.stringify(lastH)}`);
+      const evs = po.tracking_info?.events || [];
+      const ev = evs[evs.length - 1];
+      if (!ev || ev.status !== 'corrected' || (ev.changes || []).length !== 1 || ev.total_before !== 11 || ev.total_after !== 9) return fail(`이벤트 ${JSON.stringify(ev).slice(0, 200)}`);
+      if (Number((await Product.findByPk(fx.buyerProd.id)).current_stock) !== 0) return fail('수령 전인데 구매자 재고 변동');
+      // 뒤에 구매자가 받으면 새 양만
+      const m = await request('POST', `/purchase-orders/${fx.po.id}/mark-received`, {}, { Authorization: `Bearer ${demoRaToken}` });
+      if (m.status !== 200) return fail(`mark-received ${m.status}`);
+      await new Promise(res2 => setTimeout(res2, 600));
+      const buyer = Number((await Product.findByPk(fx.buyerProd.id)).current_stock);
+      if (Math.abs(buyer - 2) > 0.001) return fail(`받은 뒤 구매자 재고 ${buyer}, 기대 2`);
+      const po2 = await PurchaseOrder.findByPk(fx.po.id);
+      const inv2 = await Invoice.findByPk(invId);
+      if (po2.trade_invoice_id !== invId || Math.abs(Number(inv2.total_amount) - 9) > 0.005) return fail(`받은 뒤 청구서 ${po2.trade_invoice_id} ${inv2.total_amount}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cdCleanExtra(fx); await cleanQ6(fx); }
+  });
+
+  test('inventory', '출고 뒤 수량 정정 — 수령 뒤: 구매자 재고 차감 · 반품 열린 줄은 그 아래로 못 내림 · 반품 승인 장부 모양 그대로 (C2·C4)', async () => {
+    const { PurchaseOrder, PurchaseOrderItem, Product, BrandProduct, Invoice, PurchaseOrderReturn } = require('../models');
+    if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      const { runAutoReceive } = require('../services/poAutoReceiveService');
+      const r = await acDeliver(fx);
+      if (r.err) return fail(r.err);
+      const invId = await acWaitInvoice(fx.po.id);
+      const ar = await runAutoReceive({ now: new Date(r.deliveredAt.getTime() + 73 * H), onlyIds: [fx.po.id] });
+      if (ar.completed !== 1) return fail(`자동 완료 ${ar.completed}`);
+      if (Math.abs(Number((await Product.findByPk(fx.buyerProd.id)).current_stock) - 3) > 0.001) return fail('자동 완료 뒤 구매자 재고 3 아님');
+      // 구매자 반품 1 요청 → 0.5 로는 못 내림
+      const rr = await request('POST', `/purchase-orders/${fx.po.id}/returns`,
+        { items: [{ purchase_order_item_id: fx.item.id, quantity: 1 }], reason: 'HC' }, { Authorization: `Bearer ${demoRaToken}` });
+      if (rr.status !== 201) return fail(`반품 요청 ${rr.status} ${JSON.stringify(rr.body).slice(0, 120)}`);
+      const low = await request('POST', `/seller-orders/${fx.po.id}/correct-delivery`,
+        { items: [{ item_id: fx.item.id, quantity: 0.5 }], reason: 'HC below return' }, r.auth);
+      if (low.status !== 400 || low.body?.code !== 'LINE_HAS_RETURNS') return fail(`반품 아래 ${low.status} ${low.body?.code}`);
+      const res = await request('POST', `/seller-orders/${fx.po.id}/correct-delivery`,
+        { items: [{ item_id: fx.item.id, quantity: 1 }], reason: 'HC shipped 1 not 3' }, r.auth);
+      if (res.status !== 200) return fail(`정정 ${res.status} ${JSON.stringify(res.body).slice(0, 160)}`);
+      const buyer = Number((await Product.findByPk(fx.buyerProd.id)).current_stock);
+      if (Math.abs(buyer - 1) > 0.001) return fail(`구매자 재고 ${buyer}, 기대 1`);
+      const bLed = await cdLastLedger({ product_id: fx.buyerProd.id });
+      if (!bLed || bLed.transaction_type !== 'adjustment' || bLed.reason_code !== 'seller_correction' || Math.abs(Number(bLed.quantity_change) + 2) > 0.001) return fail(`구매자 장부 ${bLed && `${bLed.transaction_type}/${bLed.reason_code}/${bLed.quantity_change}`}`);
+      const it = await PurchaseOrderItem.findByPk(fx.item.id);
+      if (Number(it.quantity_received) !== 1 || Number(it.quantity_ordered) !== 1) return fail(`줄 ${it.quantity_ordered}/${it.quantity_received}`);
+      const bp = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      if (Math.abs(bp - 19) > 0.001) return fail(`판매자 재고 ${bp}, 기대 19`);
+      const inv = await Invoice.findByPk(invId);
+      if (Math.abs(Number(inv.total_amount) - 2) > 0.005) return fail(`청구서 ${inv.total_amount}, 기대 2`);
+      const po = await PurchaseOrder.findByPk(fx.po.id);
+      if (po.status !== 'received') return fail(`상태 ${po.status}`);
+      // 반품 승인 — 새 수령량(1) 기준 합산 검사 통과 · 장부 return_out / return_in (추출 뒤에도 같은 모양)
+      const ret = await PurchaseOrderReturn.findOne({ where: { purchase_order_id: fx.po.id } });
+      const ap = await request('POST', `/seller-orders/${fx.po.id}/returns/${ret.id}/approve`, {}, r.auth);
+      if (ap.status !== 200) return fail(`반품 승인 ${ap.status} ${JSON.stringify(ap.body).slice(0, 140)}`);
+      const bLed2 = await cdLastLedger({ product_id: fx.buyerProd.id });
+      const sLed2 = await cdLastLedger({ brand_product_id: fx.bp.id });
+      if (!bLed2 || bLed2.transaction_type !== 'return_out' || Math.abs(Number(bLed2.quantity_change) + 1) > 0.001) return fail(`반품 구매자 장부 ${bLed2 && `${bLed2.transaction_type}/${bLed2.quantity_change}`}`);
+      if (!sLed2 || sLed2.transaction_type !== 'return_in' || Math.abs(Number(sLed2.quantity_change) - 1) > 0.001) return fail(`반품 판매자 장부 ${sLed2 && `${sLed2.transaction_type}/${sLed2.quantity_change}`}`);
+      if (Math.abs(Number((await Product.findByPk(fx.buyerProd.id)).current_stock)) > 0.001) return fail('반품 뒤 구매자 재고 0 아님');
+      if (Math.abs(Number((await BrandProduct.findByPk(fx.bp.id)).current_stock) - 20) > 0.001) return fail('반품 뒤 판매자 재고 20 아님');
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cdCleanExtra(fx); await cleanQ6(fx); }
+  });
+
+  test('inventory', '출고 뒤 수량 정정 — 가드(상태·인상·변경 없음·사유·줄 0개·결제·결제 제출·남의 주문·구매자) + 줄 제거 (C3·C5)', async () => {
+    const { PurchaseOrder, PurchaseOrderItem, BrandProduct, Invoice, InvoiceItem, User } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const jwtLib = require('jsonwebtoken');
+    try {
+      const item2 = await PurchaseOrderItem.create({
+        purchase_order_id: fx.po.id, product_id: fx.buyerProd.id, ingredient_seller_product_id: fx.isp.id,
+        quantity_ordered: 2, unit: 'pack', unit_price: 2, line_total: 4, unit_conversion: 1,
+      });
+      await PurchaseOrder.update({ subtotal: 10, total_amount: 10 }, { where: { id: fx.po.id } });
+      const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.bgUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      const post = (items, reason = 'HC guard', a = auth) => request('POST', `/seller-orders/${fx.po.id}/correct-delivery`, { items, reason }, a);
+      // 출고 전 = BAD_STATUS
+      await PurchaseOrder.update({ status: 'confirmed' }, { where: { id: fx.po.id } });
+      let x = await post([{ item_id: fx.item.id, quantity: 1 }]);
+      if (x.status !== 400 || x.body?.code !== 'BAD_STATUS') return fail(`confirmed ${x.status} ${x.body?.code}`);
+      const r = await acDeliver(fx);
+      if (r.err) return fail(r.err);
+      const invId = await acWaitInvoice(fx.po.id);
+      const bp0 = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      const expectCode = async (items, reason, code, http = 400) => {
+        const y = await post(items, reason);
+        if (y.status !== http || y.body?.code !== code) { console.log(c.gray(`      (${code} 기대 — ${y.status} ${y.body?.code})`)); return false; }
+        return true;
+      };
+      if (!await expectCode([{ item_id: fx.item.id, quantity: 4 }], 'HC up', 'QTY_INCREASE')) return false;
+      if (!await expectCode([{ item_id: fx.item.id, quantity: 3 }], 'HC same', 'NO_CHANGE')) return false;
+      if (!await expectCode([{ item_id: fx.item.id, quantity: 1 }], '', 'REASON_REQUIRED')) return false;
+      if (!await expectCode([{ item_id: 999999999, quantity: 1 }], 'HC bad', 'BAD_ITEM')) return false;
+      if (!await expectCode([{ item_id: fx.item.id, quantity: 0 }, { item_id: item2.id, quantity: 0 }], 'HC none', 'NO_LINES')) return false;
+      const po0 = await PurchaseOrder.findByPk(fx.po.id);
+      if (Math.abs(Number(po0.total_amount) - 10) > 0.005 || Number((await BrandProduct.findByPk(fx.bp.id)).current_stock) !== bp0) return fail('거부 뒤 총액·재고가 바뀜(롤백 안 됨)');
+      // 구매자(RA) 토큰 → 판매자 라우트 아님
+      if (demoRaToken) {
+        const b = await post([{ item_id: fx.item.id, quantity: 1 }], 'HC buyer', { Authorization: `Bearer ${demoRaToken}` });
+        if (b.status === 200) return fail('구매자 토큰이 통과');
+      }
+      // 다른 브랜드 제너럴 → 존재하지 않는 주문
+      const other = await User.findOne({ where: { role: 'Brand General', id: { [require('sequelize').Op.ne]: fx.bgUser.id } } });
+      if (other) {
+        const o = await post([{ item_id: fx.item.id, quantity: 1 }], 'HC other',
+          { Authorization: `Bearer ${jwtLib.sign({ userId: other.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+        if (![403, 404].includes(o.status)) return fail(`남의 판매자 ${o.status}`);
+      }
+      // 결제 제출된 청구서 → INVOICE_LOCKED 409 · 결제된 발주 → ALREADY_PAID (상세 can_correct false 같은 코드)
+      const inv = await Invoice.findByPk(invId);
+      const st0 = inv.status;
+      await inv.update({ status: 'payment_submitted' });
+      if (!await expectCode([{ item_id: fx.item.id, quantity: 1 }], 'HC locked', 'INVOICE_LOCKED', 409)) { await inv.update({ status: st0 }); return false; }
+      await inv.update({ status: st0 });
+      await PurchaseOrder.update({ payment_status: 'paid' }, { where: { id: fx.po.id } });
+      const okPaid = await expectCode([{ item_id: fx.item.id, quantity: 1 }], 'HC paid', 'ALREADY_PAID');
+      const gPaid = await request('GET', `/seller-orders/${fx.po.id}`, null, auth);
+      await PurchaseOrder.update({ payment_status: 'unpaid' }, { where: { id: fx.po.id } });
+      if (!okPaid) return false;
+      if (gPaid.body?.data?.can_correct !== false || gPaid.body?.data?.correct_blocked?.code !== 'ALREADY_PAID') return fail(`결제된 상세 ${gPaid.body?.data?.can_correct} ${gPaid.body?.data?.correct_blocked?.code}`);
+      // 줄 제거(C5) — 둘째 줄 0
+      const del = await post([{ item_id: item2.id, quantity: 0 }], 'HC line not shipped');
+      if (del.status !== 200) return fail(`줄 제거 ${del.status} ${JSON.stringify(del.body).slice(0, 140)}`);
+      const lines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: fx.po.id } });
+      const po1 = await PurchaseOrder.findByPk(fx.po.id);
+      const invItems = await InvoiceItem.findAll({ where: { invoice_id: invId } });
+      const inv1 = await Invoice.findByPk(invId);
+      if (lines.length !== 1 || Math.abs(Number(po1.total_amount) - 6) > 0.005) return fail(`줄 ${lines.length} 총액 ${po1.total_amount}`);
+      if (invItems.length !== 1 || Math.abs(Number(inv1.total_amount) - 6) > 0.005) return fail(`청구서 줄 ${invItems.length} 총액 ${inv1.total_amount}`);
+      if (Math.abs(Number((await BrandProduct.findByPk(fx.bp.id)).current_stock) - (bp0 + 2)) > 0.001) return fail('줄 제거 판매자 재고 +2 아님');
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cdCleanExtra(fx); await cleanQ6(fx); }
+  });
+
+  test('inventory', '출고 뒤 수량 정정 — 출고 때 재고가 없어 못 뺀 자체재고는 되돌리지 않는다(부풀림 금지 · C10)', async () => {
+    const { BrandProduct } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      await BrandProduct.update({ current_stock: 1 }, { where: { id: fx.bp.id } });   // 3 주문에 재고 1 → 출고는 1 만 뺀다
+      const r = await acDeliver(fx);
+      if (r.err) return fail(r.err);
+      await acWaitInvoice(fx.po.id);
+      if (Number((await BrandProduct.findByPk(fx.bp.id)).current_stock) !== 0) return fail('출고 뒤 재고 0 아님');
+      const a = await request('POST', `/seller-orders/${fx.po.id}/correct-delivery`, { items: [{ item_id: fx.item.id, quantity: 1 }], reason: 'HC shortfall' }, r.auth);
+      if (a.status !== 200) return fail(`정정 ${a.status}`);
+      const st = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      if (Math.abs(st - 1) > 0.001) return fail(`정정 뒤 재고 ${st}, 기대 1(실제로 뺀 1 만 돌아옴)`);
+      const b = await request('POST', `/seller-orders/${fx.po.id}/correct-delivery`, { items: [{ item_id: fx.item.id, quantity: 0.5 }], reason: 'HC shortfall again' }, r.auth);
+      if (b.status !== 200) return fail(`두 번째 정정 ${b.status}`);
+      const st2 = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);
+      if (Math.abs(st2 - 1) > 0.001) return fail(`두 번째 정정 뒤 재고 ${st2}, 기대 1 그대로(이미 다 돌려줌)`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cdCleanExtra(fx); await cleanQ6(fx); }
+  });
+
+  test('inventory', '출고 뒤 수량 정정 — 묶인 정산서 합계가 따라간다 (C9)', async () => {
+    const { Invoice } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    let soa = null;
+    try {
+      const r = await acDeliver(fx);
+      if (r.err) return fail(r.err);
+      const invId = await acWaitInvoice(fx.po.id);
+      if (!invId) return fail('청구서 없음');
+      const child = await Invoice.findByPk(invId);
+      const base = child.toJSON();
+      delete base.id; delete base.createdAt; delete base.updatedAt; delete base.created_at; delete base.updated_at;
+      soa = await Invoice.create({ ...base, invoice_number: 'ZZ-HC-SOA-' + Date.now(), invoice_category: 'soa',
+        status: 'pending_payment', parent_soa_invoice_id: null, modification_history: [], is_modified: false });
+      await child.update({ parent_soa_invoice_id: soa.id });
+      const res = await request('POST', `/seller-orders/${fx.po.id}/correct-delivery`,
+        { items: [{ item_id: fx.item.id, quantity: 1 }], reason: 'HC soa follow' }, r.auth);
+      if (res.status !== 200) return fail(`정정 ${res.status} ${JSON.stringify(res.body).slice(0, 140)}`);
+      const s = await Invoice.findByPk(soa.id);
+      const ch = await Invoice.findByPk(invId);
+      if (Math.abs(Number(ch.total_amount) - 2) > 0.005) return fail(`자식 ${ch.total_amount}`);
+      if (Math.abs(Number(s.total_amount) - Number(ch.total_amount)) > 0.005) return fail(`정산서 ${s.total_amount} ≠ 자식 ${ch.total_amount}`);
+      const h = Array.isArray(s.modification_history) ? s.modification_history : JSON.parse(s.modification_history || '[]');
+      if (!h.length || h[h.length - 1].source !== 'soa_child_sync') return fail(`정산서 이력 ${JSON.stringify(h[h.length - 1])}`);
+      if (res.body?.correction?.soa?.soa_id !== soa.id) return fail(`응답 soa ${JSON.stringify(res.body?.correction?.soa)}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { if (soa) { const { sequelize } = require('../config/database'); await sequelize.query('UPDATE invoices SET parent_soa_invoice_id = NULL WHERE parent_soa_invoice_id = :s', { replacements: { s: soa.id } }); await sequelize.query('DELETE FROM invoice_items WHERE invoice_id = :s', { replacements: { s: soa.id } }); await sequelize.query('DELETE FROM invoices WHERE id = :s', { replacements: { s: soa.id } }); } } catch {}
+      await cdCleanExtra(fx); await cleanQ6(fx);
+    }
+  });
 
   // ══════════════════════════════════════════════════════════════════
   // A안(Fable 2026-10-01 · .claude/fable-design-20261001-a-plan.md §4) — 판매자는 매장에 아직 안 담긴

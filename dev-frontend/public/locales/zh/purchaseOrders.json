@@ -325,7 +325,9 @@
         "BELOW_MIN_ORDER": "低于最低订购量{{detail}}"
       },
       "minQty": "最少 {{n}}"
-    }
+    },
+    "correctedBySeller": "卖方已按实际发货数量更正",
+    "correctedStockAdjusted": "库存已按差额调整。"
   },
   "receive": {
     "modalTitle": "收货登记",

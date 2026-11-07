@@ -325,7 +325,9 @@
         "BELOW_MIN_ORDER": "Below the minimum order quantity{{detail}}"
       },
       "minQty": "min {{n}}"
-    }
+    },
+    "correctedBySeller": "The seller corrected the delivered quantities",
+    "correctedStockAdjusted": "Your stock was adjusted by the difference."
   },
   "receive": {
     "modalTitle": "Receive Order",

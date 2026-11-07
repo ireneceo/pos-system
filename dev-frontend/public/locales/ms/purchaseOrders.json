@@ -325,7 +325,9 @@
         "BELOW_MIN_ORDER": "Di bawah kuantiti pesanan minimum{{detail}}"
       },
       "minQty": "min {{n}}"
-    }
+    },
+    "correctedBySeller": "Penjual membetulkan kuantiti yang dihantar",
+    "correctedStockAdjusted": "Stok anda telah diselaraskan mengikut perbezaan."
   },
   "receive": {
     "modalTitle": "Terima Pesanan",
