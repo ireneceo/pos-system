@@ -12758,6 +12758,61 @@ function definePrintTests({ adminToken }) {
     }
   });
 
+  // 2026-11-08 Irene «카테고리랑 브랜드 메뉴 순서 다 바꿔야 해. 관리자가 관리해야 하는데 기능이 없어» (설계 .claude/fable-design-20261108d)
+  test('pos', '브랜드 카테고리·메뉴 순서: reorder 1..N · «Lock menu order» OFF 면 매장 순서 불변 · ON 이면 매장 재정렬 409 · Push All 이 순서 차이(order·카테고리) 잡고 보냄 · 브랜드 카테고리 먼저 · 다시 0', async () => {
+    const h = await bmHc(); if (!h) { console.log(c.gray('      (건너뜀)')); return true; }
+    const [[others]] = await h.sequelize.query("SELECT COUNT(*) n FROM brand_menus WHERE brand_id = 17 AND name NOT LIKE 'ZZ-HC%'");
+    if (Number(others.n) > 0) { console.log(c.gray('      (건너뜀: 브랜드 17 에 시험용 아닌 메뉴가 있음)')); return true; }
+    const NAME = 'ZZ-HC order'; const ids = []; const catIds = [];
+    const [[orig]] = await h.sequelize.query('SELECT menu_settings FROM brands WHERE id = 17');
+    const base = { ...(orig.menu_settings || {}), push_frozen: false };
+    const [catBak] = await h.sequelize.query('SELECT id, displayOrder FROM categories WHERE restaurant_id = 38');
+    const [bmcBak] = await h.sequelize.query('SELECT id, sort_order FROM brand_menu_categories WHERE brand_id = 17');
+    const fp = async () => JSON.stringify((await h.sequelize.query('SELECT id, displayOrder, parent_id FROM categories WHERE restaurant_id = 38 ORDER BY id'))[0]);
+    try {
+      await request('PUT', '/brand-menus/settings', { brand_id: 17, settings: { ...base, enforce_menu_order: false } }, h.bg);
+      const fp0 = await fp();
+      for (const n of ['Beverages', 'Rice & Noodles']) {
+        const r = await request('POST', '/brand-menu-categories', { brand_id: 17, name: n }, h.bg); catIds.push(r.body?.data?.id);
+      }
+      const [cBev, cRice] = catIds;
+      const ro = await request('PUT', '/brand-menu-categories/reorder/bulk', { brand_id: 17, order: [cRice, cBev] }, h.bg);
+      const [cs] = await h.sequelize.query('SELECT id, sort_order FROM brand_menu_categories WHERE id IN (?) ORDER BY sort_order', { replacements: [catIds] });
+      for (const k of ['a', 'b']) ids.push(await bmHcMake(h, `${NAME} ${k}`, { category_id: cRice }));
+      await request('PUT', '/brand-menus/reorder/bulk', { brand_id: 17, order: [ids[1], ids[0]] }, h.bg);
+      for (const id of ids) await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const offSame = (await fp()) === fp0;
+      const [prods] = await h.sequelize.query('SELECT id, brand_menu_id FROM products WHERE restaurant_id = 38 AND brand_menu_id IN (?) ORDER BY brand_menu_id', { replacements: [ids] });
+      const offReorder = await request('PUT', '/menu/products/reorder', { restaurant_id: 38, order: prods.map(p => p.id) }, h.ra);
+      await request('PUT', '/brand-menus/settings', { brand_id: 17, settings: { ...base, enforce_menu_order: true } }, h.bg);
+      const onReorder = await request('PUT', '/menu/products/reorder', { restaurant_id: 38, order: prods.map(p => p.id) }, h.ra);
+      const dry = await request('POST', '/brand-menus/push-pending', { brand_id: 17, dry_run: true }, h.bg);
+      const hasOrder = (dry.body?.data?.menus || []).some(m => (m.changes || []).some(ch => (ch.fields || []).includes('order')));
+      const catStores = dry.body?.data?.category_order_restaurant_ids || [];
+      await request('POST', '/brand-menus/push-pending', { brand_id: 17 }, h.bg);
+      const [top] = await h.sequelize.query('SELECT name, displayOrder FROM categories WHERE restaurant_id = 38 AND parent_id IS NULL ORDER BY displayOrder, id');
+      const [pd] = await h.sequelize.query('SELECT brand_menu_id b, display_order d FROM products WHERE restaurant_id = 38 AND brand_menu_id IN (?)', { replacements: [ids] });
+      const dOf = (id) => Number((pd.find(x => Number(x.b) === Number(id)) || {}).d);
+      const dry2 = await request('POST', '/brand-menus/push-pending', { brand_id: 17, dry_run: true }, h.bg);
+      const ok = ro.status === 200 && JSON.stringify(cs.map(x => x.sort_order)) === '[1,2]' && Number(cs[0].id) === Number(cRice)
+        && offSame && offReorder.status === 200 && onReorder.status === 409 && onReorder.body?.code === 'BRAND_ORDER_LOCKED'
+        && hasOrder && catStores.includes(38)
+        && top[0].name === 'Rice & Noodles' && top[0].displayOrder === 1 && top[1].name === 'Beverages' && top[1].displayOrder === 2
+        && dOf(ids[1]) === 1 && dOf(ids[0]) === 2
+        && (dry2.body?.data?.menu_count || 0) === 0 && (dry2.body?.data?.category_order_restaurant_ids || []).length === 0;
+      if (!ok) console.log(c.gray(`      (reorder ${ro.status} ${JSON.stringify(cs)} · OFF 불변 ${offSame} 재정렬 ${offReorder.status} · ON 재정렬 ${onReorder.status} ${onReorder.body?.code} · 미리 order ${hasOrder} 카테고리 ${JSON.stringify(catStores)} · 매장 ${top.slice(0, 3).map(x => x.name + '=' + x.displayOrder).join(',')} · 메뉴 ${dOf(ids[1])},${dOf(ids[0])} · 다시 ${dry2.body?.data?.menu_count}/${JSON.stringify(dry2.body?.data?.category_order_restaurant_ids)})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      await h.sequelize.query('UPDATE brands SET menu_settings = ? WHERE id = 17', { replacements: [orig.menu_settings == null ? null : JSON.stringify(orig.menu_settings)] }).catch(() => {});
+      await h.sequelize.query('UPDATE brand_menus SET lock_sort_order = ? WHERE brand_id = 17', { replacements: [orig.menu_settings && orig.menu_settings.enforce_menu_order === true ? 1 : 0] }).catch(() => {});
+      for (const r of catBak) await h.sequelize.query('UPDATE categories SET displayOrder = ? WHERE id = ?', { replacements: [r.displayOrder, r.id] }).catch(() => {});
+      await bmHcCleanup(h, ids, NAME);
+      for (const id of catIds.filter(Boolean)) await h.sequelize.query('DELETE FROM brand_menu_categories WHERE id = ? AND brand_id = 17', { replacements: [id] }).catch(() => {});
+      for (const r of bmcBak) await h.sequelize.query('UPDATE brand_menu_categories SET sort_order = ? WHERE id = ?', { replacements: [r.sort_order, r.id] }).catch(() => {});
+    }
+  });
+
   // 2026-09-30 K-DINE IPC 「메뉴 이미지가 자꾸 날아간다」 — 이미지 안 바꾸고 저장해도 파일이 지워지던 결함(03-03부터)
   //   + 브랜드 메뉴가 가리키는 매장 파일을 매장 교체가 지우던 것. 아무도 안 쓰는 옛 파일만 지운다.
   test('pos', '메뉴 저장이 쓰는 이미지 파일을 지우지 않는다 (같은 주소·브랜드 메뉴 참조) · 안 쓰는 옛 파일만 삭제', async () => {

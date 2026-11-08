@@ -115,17 +115,23 @@ router.put('/settings', authenticateToken, requireBGScope, async (req, res) => {
     const changedLockKeys = req.body.apply_locks_to_all === true
       ? lockKeys
       : lockKeys.filter(k => prev.default_locks[k] !== merged.default_locks[k]);
-    let locksApplied = null;
-    if (changedLockKeys.length) {
-      const { applyBrandLocksToMenus } = require('../services/brandMenuSyncService');
-      locksApplied = await applyBrandLocksToMenus({ brandId, locks: merged.default_locks, keys: changedLockKeys });
-    }
     // 브랜드 전체 순서 고정은 단일 source — 저장 시 산하 모든 메뉴의 lock_sort_order 를 일괄 동기화.
-    // 켜면 다음 push/sync 때 매장 메뉴가 브랜드 순서로 고정, 끄면 매장이 자유 정렬.
+    // 켜면 다음 push/sync 때 매장 메뉴·카테고리가 브랜드 순서로 고정, 끄면 매장이 자유 정렬.
     await BrandMenu.update(
       { lock_sort_order: merged.enforce_menu_order === true },
       { where: { brand_id: brandId } }
     );
+    // 순서 고정이 바뀌면 매장 잠금 스냅샷 sort_order 도 바로 (매장 순서 가드가 읽음 · 설계 2026-11-08d 결정 4).
+    // 순서 값 자체는 다음 푸시(Push All)로 간다.
+    const applyKeys = [...changedLockKeys];
+    if ((prev.enforce_menu_order === true) !== (merged.enforce_menu_order === true)) applyKeys.push('sort_order');
+    let locksApplied = null;
+    if (applyKeys.length) {
+      const { applyBrandLocksToMenus } = require('../services/brandMenuSyncService');
+      locksApplied = await applyBrandLocksToMenus({
+        brandId, locks: { ...merged.default_locks, sort_order: merged.enforce_menu_order === true }, keys: applyKeys
+      });
+    }
     res.json({ success: true, data: merged, locks_applied: locksApplied });
   } catch (e) {
     console.error('[brand-menus] settings PUT error:', e);

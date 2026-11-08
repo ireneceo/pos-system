@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Info, Lock as LockIcon, ArrowRight } from 'lucide-react';
 import SortDropdown, { SortKey, sortItems } from '../../components/Common/SortDropdown';
@@ -1358,6 +1358,11 @@ const MenuManagementPage: React.FC = () => {
   // 메뉴 순서 재정렬 (위/아래) — 'custom' 정렬 + 특정 카테고리 + 검색 없음일 때만 노출.
   // 현재 카테고리의 표시 순서를 1..N 으로 저장 → 모바일/POS 메뉴에 반영.
   const reorderInFlight = useRef(false);
+  // 브랜드가 «Lock menu order» 로 순서를 정한 메뉴가 이 카테고리에 있으면 매장은 순서를 못 바꾼다(서버 409 와 같은 기준)
+  const categoryOrderLockedByBrand = useMemo(
+    () => selectedCategory !== 'all' && menuItems.some(m => m.category === selectedCategory && !!(m as any).brand_menu_locks_snapshot?.sort_order),
+    [menuItems, selectedCategory]
+  );
   const handleMoveItem = async (item: MenuItemType, dir: 'up' | 'down') => {
     if (reorderInFlight.current) return;
     // 현재 카테고리 아이템을 custom 순서로
@@ -1386,7 +1391,12 @@ const MenuManagementPage: React.FC = () => {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ restaurant_id: restaurantId, order })
       });
-      if (!res.ok) { await reloadMenu(); }
+      if (!res.ok) {
+        if (res.status === 409) {
+          setInfoModal({ open: true, title: t('menu:menuManagement.orderLockedTitle', 'Order set by brand'), message: t('menu:menuManagement.orderLockedMessage', 'The brand sets the order of its menus. Ask the brand to change it.') });
+        }
+        await reloadMenu();
+      }
     } catch {
       await reloadMenu();
     } finally {
@@ -1876,7 +1886,10 @@ const MenuManagementPage: React.FC = () => {
                   )}
                   <MenuActions>
                     {/* 메뉴 순서 재정렬 — 'Menu order(manual)' 정렬 + 특정 카테고리 + 검색 없음일 때만 */}
-                    {sortKey === 'custom' && selectedCategory !== 'all' && !searchQuery.trim() && (
+                    {sortKey === 'custom' && selectedCategory !== 'all' && !searchQuery.trim() && categoryOrderLockedByBrand && (
+                      <span style={{ fontSize: 11, color: '#635BFF', whiteSpace: 'nowrap' }}>{t('menu:menuManagement.orderSetByBrand', 'Order set by brand')}</span>
+                    )}
+                    {sortKey === 'custom' && selectedCategory !== 'all' && !searchQuery.trim() && !categoryOrderLockedByBrand && (
                       <>
                         <IconButton onClick={() => handleMoveItem(item, 'up')} title={t('menu:menuManagementPage.moveUp', { defaultValue: 'Move up' })}>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>

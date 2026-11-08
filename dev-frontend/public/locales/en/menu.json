@@ -248,5 +248,8 @@
   "kioskView.guided": "Step by step",
   "menuManagementPage.removedFromBrand": "Removed from brand",
   "menuManagementPage.removedFromBrandHint": "The brand deleted this menu, so it was turned off. Delete it, or keep it as your own menu.",
-  "menuManagementPage.keepAsMyMenu": "Keep as my menu"
+  "menuManagementPage.keepAsMyMenu": "Keep as my menu",
+  "menuManagement.orderSetByBrand": "Order set by brand",
+  "menuManagement.orderLockedTitle": "Order set by brand",
+  "menuManagement.orderLockedMessage": "The brand sets the order of its menus. Ask the brand to change it."
 }

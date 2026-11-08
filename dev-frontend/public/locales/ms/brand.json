@@ -885,7 +885,15 @@
     "storeOwnOnSale": "Sedang dijual",
     "storeOwnOff": "Tidak dijual",
     "ownershipNote": "Senarai ini ialah sumber menu jenama. Menu hanya muncul di restoran selepas anda menghantarnya, dan restoran boleh menyimpan menu sendiri.",
-    "originStore": "dibuat oleh {{name}}"
+    "originStore": "dibuat oleh {{name}}",
+    "moveUp": "Naik",
+    "moveDown": "Turun",
+    "uncategorized": "Tiada kategori",
+    "reorderHintCategory": "Gunakan ▲▼ atau seret pemegang untuk menyusun. Kedai mengikut susunan ini apabila \"Kunci susunan menu\" dihidupkan dalam Tetapan.",
+    "reorderHintAll": "Dipaparkan mengikut susunan yang dilihat pelanggan. Pilih kategori untuk menyusun menunya.",
+    "reorderSwitchHint2": "Tukar susunan kepada \"Susunan menu\" untuk menyusun menu.",
+    "categoryOrderStores": "Susunan kategori → {{count}} kedai",
+    "enforceMenuOrderHint2": "Apabila HIDUP: setiap restoran memaparkan kategori dan menu mengikut susunan yang anda tetapkan di tab Kategori dan Menu, dan restoran tidak boleh menyusun semula menu jenama. Kategori kedai sendiri diletakkan selepas kategori jenama. Apabila MATI: setiap restoran menyusun sendiri."
   },
   "brandPaymentSettingsPage": {
     "deliveryTerms": "Terma penghantaran bagi pesanan restoran",
@@ -977,5 +985,11 @@
   "brandMenusPage.diffField.status": "kemas kini",
   "brandMenusPage.applyLocksToAll": "Gunakan kunci ini pada semua menu sekarang",
   "brandMenusPage.applyLocksBusy": "Sedang digunakan...",
-  "brandMenusPage.locksAppliedResult": "Digunakan pada {{menus}} menu dan {{products}} menu kedai."
+  "brandMenusPage.locksAppliedResult": "Digunakan pada {{menus}} menu dan {{products}} menu kedai.",
+  "brandMenuCategoriesPage": {
+    "reorderHint": "Gunakan ▲▼ untuk menetapkan susunan kategori. Kedai memaparkan kategori mengikut susunan ini apabila \"Kunci susunan menu\" dihidupkan dalam Tetapan.",
+    "reorderFailed": "Gagal menyimpan susunan kategori",
+    "moveUp": "Naik",
+    "moveDown": "Turun"
+  }
 }

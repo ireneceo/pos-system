@@ -1017,6 +1017,20 @@ router.put('/products/reorder', async (req, res) => {
     if (order.length === 0) {
       return res.status(400).json({ success: false, message: 'order array required' });
     }
+    // 브랜드가 «Lock menu order» 로 순서를 정한 메뉴가 끼어 있으면 아무것도 안 쓰고 409
+    // (설계 2026-11-08d 결정 4 — 잠금은 푸시 때 brand_menu_locks_snapshot.sort_order 로 들어옴).
+    const lockedRows = await Product.findAll({
+      where: { id: order, restaurant_id: restaurantId, brand_menu_id: { [Op.ne]: null } },
+      attributes: ['id', 'brand_menu_locks_snapshot']
+    });
+    const isOrderLocked = (snap) => {
+      let v = snap;
+      if (typeof v === 'string') { try { v = JSON.parse(v); } catch (_) { v = null; } }
+      return !!(v && v.sort_order === true);
+    };
+    if (lockedRows.some(p => isOrderLocked(p.brand_menu_locks_snapshot))) {
+      return res.status(409).json({ success: false, code: 'BRAND_ORDER_LOCKED', message: 'Menu order is set by the brand.' });
+    }
     let i = 1;
     for (const pid of order) {
       await Product.update({ display_order: i++ }, { where: { id: pid, restaurant_id: restaurantId } });

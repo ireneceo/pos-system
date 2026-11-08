@@ -885,7 +885,15 @@
     "storeOwnOnSale": "On sale",
     "storeOwnOff": "Not on sale",
     "ownershipNote": "This list is the brand's own menu source. A menu only appears at a restaurant after you send it, and restaurants may keep menus of their own.",
-    "originStore": "created by {{name}}"
+    "originStore": "created by {{name}}",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "uncategorized": "Uncategorized",
+    "reorderHintCategory": "Use ▲▼ or drag the handle to arrange. Stores follow this order when \"Lock menu order\" is on in Settings.",
+    "reorderHintAll": "Shown in the order customers see. Pick a category to arrange its menus.",
+    "reorderSwitchHint2": "Switch the sort to \"Menu order\" to arrange menus.",
+    "categoryOrderStores": "Category order → {{count}} stores",
+    "enforceMenuOrderHint2": "When ON: every restaurant shows categories and menus in the order you set under the Categories and Menus tabs, and restaurants cannot reorder brand menus. Store-own categories are placed after the brand's. When OFF: each restaurant arranges its own order."
   },
   "brandPaymentSettingsPage": {
     "deliveryTerms": "Delivery terms for restaurant orders",
@@ -977,5 +985,11 @@
   "brandMenusPage.diffField.status": "update",
   "brandMenusPage.applyLocksToAll": "Apply these locks to all menus now",
   "brandMenusPage.applyLocksBusy": "Applying...",
-  "brandMenusPage.locksAppliedResult": "Applied to {{menus}} menus and {{products}} store menus."
+  "brandMenusPage.locksAppliedResult": "Applied to {{menus}} menus and {{products}} store menus.",
+  "brandMenuCategoriesPage": {
+    "reorderHint": "Use ▲▼ to set the category order. Stores show categories in this order when \"Lock menu order\" is on in Settings.",
+    "reorderFailed": "Failed to save category order",
+    "moveUp": "Move up",
+    "moveDown": "Move down"
+  }
 }

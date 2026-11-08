@@ -248,5 +248,8 @@
   "kioskView.guided": "一步一步选",
   "menuManagementPage.removedFromBrand": "品牌已删除",
   "menuManagementPage.removedFromBrandHint": "品牌已删除此菜单,因此已停用。可以删除,或保留为本店菜单。",
-  "menuManagementPage.keepAsMyMenu": "保留为本店菜单"
+  "menuManagementPage.keepAsMyMenu": "保留为本店菜单",
+  "menuManagement.orderSetByBrand": "品牌设定的顺序",
+  "menuManagement.orderLockedTitle": "品牌设定的顺序",
+  "menuManagement.orderLockedMessage": "这些菜单的顺序由品牌设定。如需更改，请联系品牌。"
 }

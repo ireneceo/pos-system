@@ -885,7 +885,15 @@
     "storeOwnOnSale": "售卖中",
     "storeOwnOff": "未售卖",
     "ownershipNote": "此列表是品牌的菜单原本。需先下发，门店才会出现该菜单；门店也可保有自己的菜单。",
-    "originStore": "由 {{name}} 建立"
+    "originStore": "由 {{name}} 建立",
+    "moveUp": "上移",
+    "moveDown": "下移",
+    "uncategorized": "未分类",
+    "reorderHintCategory": "用 ▲▼ 或拖动手柄排列。设置中开启“锁定菜单顺序”时，门店按此顺序显示。",
+    "reorderHintAll": "按顾客看到的顺序显示。选择一个分类即可排列其中的菜单。",
+    "reorderSwitchHint2": "将排序切换为“菜单顺序”即可排列菜单。",
+    "categoryOrderStores": "分类顺序 → {{count}} 家门店",
+    "enforceMenuOrderHint2": "开启时：所有门店按你在“分类”和“菜单”标签中设定的顺序显示分类和菜单，门店不能调整品牌菜单的顺序。门店自建的分类排在品牌分类之后。关闭时：各门店自行安排顺序。"
   },
   "brandPaymentSettingsPage": {
     "deliveryTerms": "门店订货配送条件",
@@ -977,5 +985,11 @@
   "brandMenusPage.diffField.status": "更新",
   "brandMenusPage.applyLocksToAll": "立即将这些锁定应用到所有菜单",
   "brandMenusPage.applyLocksBusy": "正在应用...",
-  "brandMenusPage.locksAppliedResult": "已应用到 {{menus}} 个菜单和 {{products}} 个门店菜单。"
+  "brandMenusPage.locksAppliedResult": "已应用到 {{menus}} 个菜单和 {{products}} 个门店菜单。",
+  "brandMenuCategoriesPage": {
+    "reorderHint": "用 ▲▼ 设定分类顺序。设置中开启“锁定菜单顺序”时，门店按此顺序显示分类。",
+    "reorderFailed": "无法保存分类顺序",
+    "moveUp": "上移",
+    "moveDown": "下移"
+  }
 }

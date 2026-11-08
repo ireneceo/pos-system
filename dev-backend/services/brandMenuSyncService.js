@@ -12,6 +12,10 @@
  *   - soldOut / is_active / stock / kitchen station / store-own option groups are RA-owned.
  *   - Brand menu is_active=false → store product brand_scope_active=false (hidden, preserved);
  *     an inactive brand menu is never CREATED at a store.
+ *   - Order (설계 2026-11-08d): brand «Lock menu order»(enforce_menu_order → lock_sort_order) ON →
+ *     store Product.display_order ← brand sort_order (only when >0) AND store top-level category
+ *     displayOrder ← brand category order (services/brandCategoryOrder.js; store-own categories after).
+ *     OFF → store owns its order.
  *   - Brand menu_settings.push_frozen=true → nothing here writes store tables
  *     (assertBrandPushAllowed — BRAND_PUSH_FROZEN). Used for K-DINE IPC (brand 2).
  *
@@ -23,6 +27,7 @@
  */
 const { Op } = require('sequelize');
 const { findGroupCategoryByName } = require('../utils/menuCategoryTree');
+const { syncBrandCategoryOrderToRestaurant, diffBrandCategoryOrder } = require('./brandCategoryOrder');
 const {
   BrandMenu, BrandMenuCategory, BrandMenuOption, BrandMenuOptionGroup,
   BrandMenuOptionGroupLink, Restaurant, Product, OptionGroup, Option, Category,
@@ -202,6 +207,10 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
 
   const locks = buildLocksSnapshot(brandMenu);
   const { categoryName, categorySkipped } = await resolveSyncCategory(restaurantId, brandMenu.category_id, transaction);
+  // 브랜드 «Lock menu order» ON 이면 매장 카테고리 순서도 브랜드 순서로 (assert 뒤 — 멈춘 브랜드는 안 닿음 · 설계 2026-11-08d 결정 3)
+  if (locks.sort_order) {
+    await syncBrandCategoryOrderToRestaurant({ brandId: brandMenu.brand_id, restaurantId, transaction });
+  }
   const localOptionGroupIds = await ensureLocalOptionGroups(restaurantId, brandMenu.optionGroups || [], transaction);
 
   if (product) {
@@ -270,7 +279,8 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     // v2 set_groups — 구성품 brand_menu_id 를 매장 상품 id 로 변환해 미러
     updates.set_groups = await translateSetGroupsForRestaurant(brandMenu.set_groups, restaurantId, transaction);
     // 브랜드가 순서를 강제(lock_sort_order)하면 매장 상품 display_order 를 브랜드 sort_order 로 고정
-    if (locks.sort_order) updates.display_order = brandMenu.sort_order || 0;
+    // 브랜드가 순서를 정한 메뉴(sort_order>0)만 — 0(순서 안 정함)으로 매장 순서를 지우지 않는다 (설계 2026-11-08d 결정 3)
+    if (locks.sort_order && Number(brandMenu.sort_order) > 0) updates.display_order = brandMenu.sort_order;
     // set_only(세트 전용 — 단품 판매 안 함)는 브랜드 판매정책 → 버전 sync 마다 브랜드 값으로 갱신 (2026-06-12)
     updates.set_only = brandMenu.set_only === true;
     // 메뉴 코드 (2026-11-08) — 브랜드가 정한 코드가 있으면 매장 코드도 같게. 브랜드가 비어 있으면 매장 값 그대로.
@@ -539,7 +549,8 @@ async function bumpMenusUsingOptionGroup(optionGroupId, transaction) {
  *   keys: 적용할 잠금 칸(name/price/category/image/options). 보내기 멈춤이면 매장 표는 안 씀.
  */
 async function applyBrandLocksToMenus({ brandId, locks, keys }) {
-  const valid = ['name', 'price', 'category', 'image', 'options'].filter(k => keys.includes(k));
+  // sort_order = 브랜드 «Lock menu order»(enforce_menu_order) — 매장 순서 가드가 스냅샷으로 읽음 (설계 2026-11-08d 결정 4)
+  const valid = ['name', 'price', 'category', 'image', 'options', 'sort_order'].filter(k => keys.includes(k));
   if (!valid.length) return { menus: 0, products: 0, frozen: false };
   const upd = {};
   for (const k of valid) upd[`lock_${k}`] = !!locks[k];
@@ -691,5 +702,7 @@ module.exports = {
   bumpMenusUsingOptionGroup,
   softUnlinkProductsFromBrandMenu,
   applyBrandLocksToMenus,
+  syncBrandCategoryOrderToRestaurant,
+  diffBrandCategoryOrder,
   computeMenuDiff
 };

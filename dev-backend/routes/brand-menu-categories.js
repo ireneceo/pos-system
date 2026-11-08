@@ -117,7 +117,9 @@ router.put('/reorder/bulk', authenticateToken, requireBGScope, async (req, res) 
       return res.status(403).json({ success: false, message: 'Brand not owned' });
     }
     for (let i = 0; i < order.length; i++) {
-      await BrandMenuCategory.update({ sort_order: i }, { where: { id: order[i], brand_id }, transaction: t });
+      // 1부터 저장 — 0 = «아직 순서 안 정함»(메뉴 reorder 와 같은 약속 · 설계 2026-11-08d 결정 2).
+      // 매장 전달(syncBrandCategoryOrder)은 sort_order>0 인 카테고리만 보낸다.
+      await BrandMenuCategory.update({ sort_order: i + 1 }, { where: { id: order[i], brand_id }, transaction: t });
     }
     await t.commit();
     res.json({ success: true });

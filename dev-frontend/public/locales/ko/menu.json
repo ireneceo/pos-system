@@ -248,5 +248,8 @@
   "kioskView.guided": "한 화면에 하나씩",
   "menuManagementPage.removedFromBrand": "브랜드에서 삭제됨",
   "menuManagementPage.removedFromBrandHint": "브랜드가 이 메뉴를 지워서 꺼졌습니다. 지우거나, 우리 매장 메뉴로 남기세요.",
-  "menuManagementPage.keepAsMyMenu": "우리 메뉴로 남기기"
+  "menuManagementPage.keepAsMyMenu": "우리 메뉴로 남기기",
+  "menuManagement.orderSetByBrand": "브랜드가 정한 순서",
+  "menuManagement.orderLockedTitle": "브랜드가 정한 순서",
+  "menuManagement.orderLockedMessage": "이 메뉴들의 순서는 브랜드가 정합니다. 바꾸려면 브랜드에 요청하세요."
 }
