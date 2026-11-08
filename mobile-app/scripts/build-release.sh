@@ -36,6 +36,10 @@ VN=$(grep -oP 'versionName\s+"\K[^"]+' "$ROOT/android/app/build.gradle" | head -
 VC=$(grep -oP 'versionCode\s+\K\d+' "$ROOT/android/app/build.gradle" | head -1)
 echo "▶ PurplePOS $VN (versionCode $VC)"
 [ -f "$ROOT/android/keystore.properties" ] || { echo "✗ keystore.properties 없음 — 미서명 빌드는 올리지 않는다"; exit 1; }
+# 2026-11-08 (Fable fable-design-20261108-android-slowdraw.md §5-1): 프로세스 전체 «문서 전체 그리기» 호출 금지 — 주석 아닌 줄만 잡는다.
+if grep -rnE '^[[:space:]]*[^/*[:space:]].*enableSlowWholeDocumentDraw[[:space:]]*\(' "$ROOT/android/app/src"; then
+  echo "✗ WebView.enableSlowWholeDocumentDraw() 호출 발견 — POS 화면 전체가 1.5~2배 느려진다(2026-11-08 실측). 빼고 다시"; exit 1
+fi
 if [ "$PUBLISH_FEED" = 1 ]; then
   APK="$DEVAPPS/PurplePOS-$VN.apk"
   [ -f "$APK" ] || { echo "✗ $APK 없음 — 먼저 build-release.sh(인자 없이)로 이 버전을 빌드한다"; exit 1; }

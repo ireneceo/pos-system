@@ -135,7 +135,9 @@ const InboxDrawer: React.FC<Props> = ({ open, onClose, onItemRead }) => {
         </ToggleRow>
 
         <Body>
-          {loading ? (
+          {/* 닫힌 서랍(화면 밖)에서 반짝임 5개가 모든 관리 화면에서 끝없이 돌던 것(2026-11-08 실측: 가만히 있어도 30초 중
+              11~13초 CPU · 느린 안드로이드 태블릿 체감) — 열렸을 때만 그린다. */}
+          {loading && !open ? null : loading ? (
             <SkeletonList>
               {[0, 1, 2, 3, 4].map(i => <SkeletonCard key={i} />)}
             </SkeletonList>

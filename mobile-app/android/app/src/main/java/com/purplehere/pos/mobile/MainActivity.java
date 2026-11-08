@@ -22,10 +22,9 @@ import java.nio.charset.StandardCharsets;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
-        // 그림(한글·로고) 티켓 백지 수정 A-3 (2026-11-02, Fable 설계 .claude/fable-design-20261102-android-raster.md §3-2):
-        // 화면 안에 붙여도(A-2) 연속 인쇄 중 가끔 한 장이 백지였다(V3-2c 3장 중 1장, «tile memory limits exceeded»).
-        // 문서 전체를 그리게 하는 정적 설정 — 어느 WebView 도 만들어지기 전(super.onCreate 앞)에 1회만 유효.
-        WebView.enableSlowWholeDocumentDraw();
+        // 프로세스 전체 WebView 설정 금지 — WebView.enableSlowWholeDocumentDraw() 는 POS 메인 화면까지 «문서 전체를 매번
+        // 그리게» 해 2026-11-08 실측 1.5~2배 느려졌다(스크롤 10→7fps · POS 열기 2.5→4.4초). 백지 티켓은 렌더 뷰 쪽에서 막는다
+        // (OffscreenHtmlRenderer · Fable 설계 .claude/fable-design-20261108-android-slowdraw.md).
         // Register the custom native print plugin BEFORE the bridge initializes
         // so window.Capacitor.Plugins.NativePrint is available to the remote page
         // (design §7-5). nativePrintBridge.js then maps it onto __NATIVE_PRINT.

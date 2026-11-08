@@ -102,6 +102,7 @@ billPrint는 비-IP 주소를 `{kind:'os', printerName}` / `printHtml({printerNa
 ### 7-2. printHtml = WebView 오프스크린 → 비트맵 → ESC/POS 래스터 (한글 보존 경로)
 1. 메인스레드에서 새 WebView에 티켓 HTML 로드(loadDataWithBaseURL, UTF-8) → body 높이 측정.
 2. ⤷ **2026-11-02 정정(Fable `/var/www/.claude/fable-design-20261102-android-raster.md`)**: 창에 붙이지 않은 WebView 는 **흰 종이**를 그린다(Chromium 이 안 붙은 뷰에 타일 예산을 안 줌 — logcat «tile memory limits exceeded»; 높이는 맞는데 잉크 0%, 그런데 `{ok:true}`). → 측정 뒤 **액티비티 `android.R.id.content` 에 index 0 으로 붙이고(화면 안·메인 WebView 뒤 — 화면 바깥 translationX 는 한 장 걸러 백지였음(11-02 실측, Fable A-2); INVISIBLE/alpha 0 금지)** → `postVisualStateCallback` 을 기다려(5초 안 오면 `VISUAL_STATE_TIMEOUT`) → 폭 576px(58mm 384px) 비트맵에 draw → 떼고 destroy. 어두운 픽셀 < 0.2% 면 **`BLANK_RENDER` 실패**(백지를 «성공» 으로 내지 않는다 — 폴러가 재시도). 앱 0.4.1 부터.
+   ⤷ **2026-11-08 정정(Fable `/var/www/.claude/fable-design-20261108-android-slowdraw.md`)**: 0.4.1 의 `WebView.enableSlowWholeDocumentDraw()`(A-3)는 **프로세스 전체**(POS 메인 화면 포함)를 «문서 전체 그리기» 로 바꿔 에뮬 실측 스크롤 10→7fps · POS 열기 2.5→4.4초로 느려졌다 → **삭제·재도입 금지**(`run-v3.js`·`build-release.sh` 가 호출을 막는다). 대신 렌더 뷰를 **창 높이 이상으로** 붙이고(비트맵은 내용 높이만) **그린 뒤 비면 120ms 뒤 다시(최대 3회)** — 3회 모두 비면 `BLANK_RENDER`. 앱 0.4.2 부터.
 3. DantSu `EscPosPrinterCommands.bitmapToBytes` 로 **≤256px 스트립 분할** 래스터 변환 → 대상 전송(BT 또는 LAN) → 컷.
 4. 타임아웃 20초 → `{ok:false,error:'TIMEOUT'}`. WebView 는 **매 렌더 새로 만든다**(생성 수십 ms — 상태 잔존 위험 제거, 2026-11-02 정정).
 
@@ -321,4 +322,5 @@ Irene 요청: «상황판 링크가 앱이 설치돼 있으면 앱으로 열리�
 | 버전 | code | 커밋 | 날짜 | 트랙 | 심사 | 비고 |
 |---|---|---|---|---|---|---|
 | 0.4.0 | 8 | 9fe342be4 + 미커밋 작업(Play 등록 묶음, 커밋 전 빌드) | 2026-10-15 | 내부 테스트 → 프로덕션 | **제출 보류 → 0.4.1 로 대체** | Capacitor 8 · targetSdk 36 · minSdk 24 · 자가 업데이트 제거 · allowBackup=false · AAB sha256 2b55a5a9…7b95 |
-| 0.4.1 | 9 | bbbf3c838 + 미커밋(이 묶음 — /개발완료 커밋) | 2026-11-02 | 내부 테스트 → 프로덕션 | 빌드 완료 · 제출 전 — AAB sha256 61411e48…6be3 · 서명 b55813cf… (A-2+A-3 판 · A-2 만의 첫 빌드 f193331b… 는 제출 전에 지우고 다시 만듦) | 그림(한글·로고) 티켓 백지 수정 — 렌더 WebView 를 창에 붙이고 visual state 뒤 그림 + `BLANK_RENDER` 가드(Fable 설계 fable-design-20261102-android-raster.md). 0.4.0 은 같은 결함이라 제출하지 않는다 |
+| 0.4.1 | 9 | bbbf3c838 + 미커밋(이 묶음 — /개발완료 커밋) | 2026-11-02 | 내부 테스트 → 프로덕션 | **제출 안 함 → 0.4.2 로 대체**(A-3 `enableSlowWholeDocumentDraw` 가 앱 전체를 1.5~2배 느리게 — 2026-11-08 실측; dev-apps 에서 지움) · 옛 기록: AAB sha256 61411e48…6be3 · 서명 b55813cf… (A-2+A-3 판 · A-2 만의 첫 빌드 f193331b… 는 제출 전에 지우고 다시 만듦) | 그림(한글·로고) 티켓 백지 수정 — 렌더 WebView 를 창에 붙이고 visual state 뒤 그림 + `BLANK_RENDER` 가드(Fable 설계 fable-design-20261102-android-raster.md). 0.4.0 은 같은 결함이라 제출하지 않는다 |
+| 0.4.2 | 10 | (/개발완료 커밋) | 2026-11-08 | 내부 테스트 → 프로덕션 | 빌드 완료 · 제출 전 — AAB sha256 4ad55d5b…0a06 · 서명 b55813cf… · Fable 게이트 PASS(`/var/www/.claude/fable-verdict-20261108-android-slowdraw-gate.md` — V3 20/20 ×4(API 34×3·36) · V4 6/6 · 정상 티켓 다시 그리기 5/52) · 실기기 종이 확인 전 피드 게시 금지 | A-3 삭제(앱 전체 느려짐) · 렌더 뷰 창 높이 패딩 + 비면 다시 그리기 최대 3회(Fable 설계 fable-design-20261108-android-slowdraw.md) |

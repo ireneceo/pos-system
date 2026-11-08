@@ -43,6 +43,11 @@ import kotlin.math.roundToInt
  *     WebView (off-screen translationX still blanked every other ticket; never INVISIBLE/alpha 0),
  *     wait for postVisualStateCallback (Chromium's guarantee that
  *     the next draw contains this DOM), draw, detach, destroy.
+ *     2026-11-08 (Fable .claude/fable-design-20261108-android-slowdraw.md): attach at least WINDOW
+ *     height tall (short views sat on the tile-budget edge), crop the bitmap to the content height,
+ *     and if the draw is blank redraw 1–2 frames later, max 3 draws (visual state = DOM committed,
+ *     NOT tiles rastered). NEVER WebView.enableSlowWholeDocumentDraw() — it is process-wide and made
+ *     the whole POS screen 1.5–2× slower (scroll 10→7 fps, POS open 2.5→4.4 s, emulator).
  *  5. A bitmap with (almost) no dark pixels is a FAILURE (BLANK_RENDER), never paper.
  */
 object OffscreenHtmlRenderer {
@@ -152,7 +157,11 @@ object OffscreenHtmlRenderer {
         // A-2 (Fable 설계 §3-2 비상 단계, 2026-11-02 실측): 화면 왼쪽 바깥(translationX)에 두면 Chromium 이
         // 뷰포트 밖이라 타일을 다 그리지 않아(«tile memory limits exceeded») 한 장 걸러 백지가 났다(V3 1/3·2b).
         // → 화면 안, index 0 = 메인 WebView 뒤(메인 WebView 가 가린다). 크기·가시성은 정상(VISIBLE).
-        root.addView(view, 0, FrameLayout.LayoutParams(widthPx, h))
+        // 2026-11-08 ⓐ (Fable fable-design-20261108-android-slowdraw.md §3-2): 붙이는 뷰는 창 높이 이상으로 키운다 —
+        // 11-02 의 간헐 백지는 전부 «짧은» 티켓이었다(타일 예산은 뷰 크기에 비례, 타일은 격자라 짧은 뷰가 경계에 걸림).
+        // 종이(비트맵)는 내용 높이만 자른다 — 패딩만큼 흰 종이가 나가면 안 된다.
+        val padH = if (root.height > 0) maxOf(h, root.height) else h
+        root.addView(view, 0, FrameLayout.LayoutParams(widthPx, padH))
 
         var done = false
         val timeout = Runnable {
@@ -168,32 +177,79 @@ object OffscreenHtmlRenderer {
                 done = true
                 ui.removeCallbacks(timeout)
                 // One more frame so the attached view has been laid out by its parent.
-                ui.post {
-                    var result: Result
-                    try {
-                        val vh = if (view.height > 0) view.height else h
-                        if (vh != h) Log.i(TAG, "render: parent laid out height=$vh (measured $h)")
-                        val bmp = Bitmap.createBitmap(widthPx, vh, Bitmap.Config.ARGB_8888)
-                        val canvas = Canvas(bmp)
-                        canvas.drawColor(Color.WHITE)
-                        view.draw(canvas)
-                        val ink = inkRatio(bmp)
-                        result = if (ink < MIN_INK) {
-                            Log.w(TAG, "render blank: ink=${"%.4f".format(ink)} ${widthPx}x$vh")
-                            bmp.recycle()
-                            Result(null, "BLANK_RENDER")
-                        } else {
-                            Log.i(TAG, "render ok: ${widthPx}x$vh ink=${"%.3f".format(ink)}")
-                            Result(bmp, null)
-                        }
-                    } catch (e: Exception) {
-                        Log.w(TAG, "render draw failed: ${e.message}")
-                        result = Result(null, "RENDER_ERROR")
-                    }
-                    finish(root, view, ref, latch, result)
-                }
+                ui.post { drawOnce(root, view, widthPx, h, padH, ref, latch, 1) }
             }
         })
+    }
+
+    /**
+     * 그리고 잉크를 본다. 비었으면 1~2프레임 뒤 다시(최대 [MAX_DRAWS]회) — 2026-11-08 ⓑ (Fable §3-2):
+     * visual state 콜백은 «DOM 이 컴포지터에 반영됨» 의 보증이지 타일 래스터 완료의 보증이 아니다. 소프트웨어 draw 는
+     * 그 순간 있는 타일만 그린다. [MAX_DRAWS]회 모두 비면 BLANK_RENDER(종이 0 · 폴러가 새 WebView 로 다시 한다).
+     */
+    private fun drawOnce(
+        root: ViewGroup,
+        view: WebView,
+        widthPx: Int,
+        h: Int,
+        padH: Int,
+        ref: AtomicReference<Result?>,
+        latch: CountDownLatch,
+        n: Int
+    ) {
+        var bmp: Bitmap? = null
+        try {
+            // 종이 높이 = 붙이기 전에 잰 내용 높이 h. 붙인 뒤의 contentHeight 는 키운 뷰(창 높이)만큼 늘어나 쓰면 안 된다
+            // (2026-11-08 게이트 실측: 141px 티켓이 1432px 종이로 → 잉크가 묽어져 BLANK_RENDER 오판).
+            val laidOut = if (view.height > 0) view.height else padH
+            val bh = minOf(laidOut, h)
+            if (bh <= 0) { finish(root, view, ref, latch, Result(null, "RENDER_ERROR")); return }
+            if (n == 1 && bh != h) Log.i(TAG, "render: bitmap height=$bh (measured $h, view ${view.height})")
+            bmp = Bitmap.createBitmap(widthPx, bh, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bmp)
+            canvas.drawColor(Color.WHITE)
+            view.draw(canvas)
+            val ink = inkRatio(bmp)
+            if (ink >= MIN_INK) {
+                Log.i(TAG, "render ok: ${widthPx}x$bh ink=${"%.3f".format(ink)} draws=$n")
+                finish(root, view, ref, latch, Result(bmp, null))
+                return
+            }
+            bmp.recycle()
+            bmp = null
+            if (n >= MAX_DRAWS) {
+                Log.w(TAG, "render blank after $MAX_DRAWS draws: ink=${"%.4f".format(ink)} ${widthPx}x$bh")
+                finish(root, view, ref, latch, Result(null, "BLANK_RENDER"))
+                return
+            }
+            Log.i(TAG, "render retry $n ink=${"%.4f".format(ink)} ${widthPx}x$bh")
+            view.invalidate()
+            ui.postDelayed({
+                var fired = false
+                val fallback = Runnable {
+                    if (fired) return@Runnable
+                    fired = true
+                    drawOnce(root, view, widthPx, h, padH, ref, latch, n + 1)
+                }
+                ui.postDelayed(fallback, REDRAW_VISUAL_TIMEOUT_MS)
+                try {
+                    view.postVisualStateCallback((n + 1).toLong(), object : WebView.VisualStateCallback() {
+                        override fun onComplete(requestId: Long) {
+                            if (fired) return
+                            fired = true
+                            ui.removeCallbacks(fallback)
+                            ui.post { drawOnce(root, view, widthPx, h, padH, ref, latch, n + 1) }
+                        }
+                    })
+                } catch (e: Exception) {
+                    Log.w(TAG, "render retry visual state failed: ${e.message}") // fallback 이 그린다
+                }
+            }, REDRAW_DELAY_MS)
+        } catch (e: Exception) {
+            Log.w(TAG, "render draw failed: ${e.message}")
+            try { bmp?.recycle() } catch (x: Exception) { /* ignore */ }
+            finish(root, view, ref, latch, Result(null, "RENDER_ERROR"))
+        }
     }
 
     /** Detach (if attached) → destroy (after detach — WebView rule) → release the caller. */
@@ -226,4 +282,7 @@ object OffscreenHtmlRenderer {
     private const val RETRY_DELAY_MS = 100L
     private const val VISUAL_TIMEOUT_MS = 5000L // no visual state → window not visible → fail, poller retries
     private const val MIN_INK = 0.002           // < 0.2 % dark pixels = blank page
+    private const val MAX_DRAWS = 3             // 2026-11-08 ⓑ — 3번 그려도 비면 그 렌더는 못 믿는다(BLANK_RENDER)
+    private const val REDRAW_DELAY_MS = 120L    // 다시 그리기 전 1~2프레임
+    private const val REDRAW_VISUAL_TIMEOUT_MS = 2000L // 다시 그리기의 visual state 를 기다리는 한도(안 오면 그냥 그려 판정)
 }

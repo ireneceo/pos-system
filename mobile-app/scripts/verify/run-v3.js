@@ -121,9 +121,18 @@ function emulatorCmd() {
   return { cmd: EMULATOR, args };
 }
 
+// 주석이 아닌 줄에서 WebView.enableSlowWholeDocumentDraw( 호출이 있으면 실패(메인 POS 화면 1.5~2배 느려짐 · 2026-11-08 실측).
+function assertNoSlowWholeDocumentDraw() {
+  const src = path.join(ROOT, 'android/app/src');
+  const r = spawnSync('grep', ['-rnE', '^[[:space:]]*[^/*[:space:]].*enableSlowWholeDocumentDraw[[:space:]]*\\(', src], { encoding: 'utf8' });
+  if ((r.stdout || '').trim()) throw new Error(`enableSlowWholeDocumentDraw 호출 발견 — 금지(앱 전체가 느려짐):\n${r.stdout.trim()}`);
+}
+
 async function main() {
   console.log('\n=== V3 — Android 인쇄 게이트 (하드웨어 없이 바이트 판정) ===\n');
   if (!fs.existsSync(APK)) throw new Error(`APK 없음: ${APK} (먼저 ./gradlew assembleDebug)`);
+  // 2026-11-08 (Fable fable-design-20261108-android-slowdraw.md §5-1): 프로세스 전체 «문서 전체 그리기» 금지 — 기계가 막는다.
+  assertNoSlowWholeDocumentDraw();
   acquireLock();
   assertRoomForEmulator();
 
@@ -156,6 +165,7 @@ async function main() {
   sh(ADB, ['uninstall', PKG]);
   const inst = sh(ADB, ['install', '-r', APK]);
   if (!/Success/.test(inst.stdout || '')) throw new Error(`APK 설치 실패: ${(inst.stderr || inst.stdout || '').slice(0, 200)}`);
+  sh(ADB, ['logcat', '-c']);
   sh(ADB, ['shell', 'am', 'start', '-n', `${PKG}/com.purplehere.pos.mobile.MainActivity`]);
   console.log('  APK 설치·기동 — 원격 웹앱(dev) 로드 대기...');
 
@@ -370,6 +380,34 @@ async function main() {
   assert('V3-2e 긴 한글 티켓(≥3200px) — 전체 백지 아님 · 끝 25% 에도 글자',
     longRes.ok === true && !!longJob && longH >= 3200 && longInk > 0.02 && longInk < 0.6 && tailInk >= 0.01,
     longJob ? `${JSON.stringify(longRes)} 높이=${longH}px ink=${(longInk * 100).toFixed(1)}% 끝25%ink=${(tailInk * 100).toFixed(1)}%` : `${JSON.stringify(longRes)} 래스터 없음`);
+
+  // V3-2f (2026-11-08 Fable 설계 §5-2): 짧은 한글 티켓 6장 연속(11-02 간헐 백지는 전부 짧은 티켓) — 전부 ok · 잉크 2~60% · 서로 다른 그림.
+  // BAR 래스터 중 긴 티켓(2e) 바로 뒤 6장이 2f 다(V3-6 LANE_ISOLATION 은 그 뒤).
+  const shortRes = byLabel('V3-2f') || [];
+  const barR = B.filter((j) => j.hex.startsWith('1b40') && j.hex.includes('1d7630'));
+  const longIdx = longJob ? barR.indexOf(longJob) : -1;
+  const six = longIdx >= 0 ? barR.slice(longIdx + 1, longIdx + 7) : [];
+  const heightOf = (job) => { const b = Buffer.from(job.hex, 'hex'); let hh = 0; for (let k = b.indexOf(Buffer.from([0x1d, 0x76, 0x30])); k >= 0; k = b.indexOf(Buffer.from([0x1d, 0x76, 0x30]), k + 1)) hh += b[k + 6] + b[k + 7] * 256; return hh; };
+  const widthOf = (job) => { const b = Buffer.from(job.hex, 'hex'); const g = b.indexOf(Buffer.from([0x1d, 0x76, 0x30])); return g < 0 ? 0 : (b[g + 4] + b[g + 5] * 256) * 8; };
+  const sixInk = six.map(inkOf);
+  assert('V3-2f 짧은 한글 티켓 6장 연속 — 전부 ok · 백지 아님 · 서로 다른 그림 · 폭 576',
+    Array.isArray(shortRes) && shortRes.length === 6 && shortRes.every((r) => r && r.ok === true) && six.length === 6
+      && sixInk.every((x) => x > 0.02 && x < 0.6) && new Set(six.map((j) => j.hex)).size === 6 && six.every((j) => widthOf(j) === 576),
+    `응답=${JSON.stringify(shortRes.map((r) => r && (r.ok ? 'ok' : r.error)))} 래스터=${six.length}장 높이=${six.map(heightOf).join('/')}px ink=${sixInk.map((x) => (x * 100).toFixed(1) + '%').join('/')}`);
+
+  // 렌더 로그(logcat): 다시 그리기 비율 · 3번째 그리기까지 간 렌더 0 · 비트맵 높이 = 측정 높이 ±5% · tile 경고 수(기록만)
+  const lc = (sh(ADB, ['logcat', '-d', '-s', 'NativePrint:*', 'chromium:*', 'cr_*:*'], { timeout: 30000, maxBuffer: 64 * 1024 * 1024 }).stdout || '');
+  const okLines = lc.match(/render ok: .*draws=\d+/g) || [];
+  const retries = (lc.match(/render retry \d+/g) || []).length;
+  const third = okLines.filter((l) => /draws=3/.test(l)).length + (lc.match(/render blank after/g) || []).length;
+  const renders = okLines.length + (lc.match(/render blank after/g) || []).length;
+  const hLines = [...lc.matchAll(/bitmap height=(\d+) \(measured (\d+)/g)].map((m) => [+m[1], +m[2]]);
+  const hBad = hLines.filter(([bh, h]) => Math.abs(bh - h) / Math.max(1, h) > 0.05);
+  const tiles = (lc.match(/tile memory limits exceeded/g) || []).length;
+  console.log(`  [렌더 로그] 렌더 ${renders}건 · 다시 그리기 ${retries}건(${renders ? (retries / renders * 100).toFixed(1) : 0}%) · 3번째까지 ${third}건 · tile 경고 ${tiles}건 · 높이 차이 ${hLines.length}건`);
+  assert('V3-R 3번째 그리기까지 간 «정상 티켓» 렌더 0 (빈 HTML 2d 1건 제외)', third <= 1 && renders > 0, `3번째까지=${third}(2d 빈 화면 1 포함) · 렌더 ${renders}`);
+  assert('V3-H 비트맵 높이 = 측정 높이 ±5% (패딩만큼 흰 종이 없음)', hBad.length === 0, hBad.length ? JSON.stringify(hBad.slice(0, 5)) : `차이 기록 ${hLines.length}건 모두 5% 안`);
+  try { fs.writeFileSync(path.join(__dirname, `.v3-logcat-${Date.now()}.txt`), lc); } catch { /* 기록만 */ }
 
   // V3-6: THE regression this P0 fixes — a dead printer must not stall a healthy lane
   const iso = byLabel('V3-6') || {};

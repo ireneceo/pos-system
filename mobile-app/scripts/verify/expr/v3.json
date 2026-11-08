@@ -56,6 +56,10 @@
     "expression": "(async () => { let rows = ''; for (let n = 1; n <= 100; n++) rows += '<p style=\"margin:4px 0;font-size:22px\">' + n + '. 불고기 덮밥 x' + n + ' — 맵게 · 밥 많이</p>'; const html = '<html><body style=\"font-family:sans-serif\"><h2>긴 주방 티켓 LONG</h2>' + rows + '<h2>끝 END</h2></body></html>'; return await window.__NATIVE_PRINT.printHtml({ html, printerName: 'BAR', widthMm: 80, copies: 1 }); })()"
   },
   {
+    "label": "V3-2f six short Korean tickets in a row to BAR (11-08 short-ticket blank class)",
+    "expression": "(async () => { const np = window.__NATIVE_PRINT; const out = []; for (const [n, lines] of [[1,1],[2,2],[3,4],[4,7],[5,17],[6,35]]) { let rows = ''; for (let k = 1; k <= lines; k++) rows += '<p style=\"margin:4px 0;font-size:22px\">' + n + '-' + k + '. 비빔밥 x' + k + ' — 짧은 티켓</p>'; const html = '<html><body style=\"font-family:sans-serif;margin:0\">' + rows + '</body></html>'; const t0 = Date.now(); const r = await np.printHtml({ html, printerName: 'BAR', widthMm: 80, copies: 1 }); out.push({ n, lines, ok: r && r.ok, error: r && r.error, ms: Date.now() - t0 }); } return out; })()"
+  },
+  {
     "label": "V3-6 dead printer must NOT block a healthy one (lane isolation)",
     "expression": "(async () => { const np = window.__NATIVE_PRINT; const html = '<html><body><h3>LANE_ISOLATION</h3></body></html>'; const t0 = Date.now(); const dead = np.printHtml({ html, printerName: 'DEAD', widthMm: 80, copies: 1 }).then(r => ({ r, ms: Date.now() - t0 })); await new Promise(r => setTimeout(r, 100)); const t1 = Date.now(); const live = await np.printHtml({ html: '<html><body><h3>BAR_AFTER_DEAD</h3></body></html>', printerName: 'BAR', widthMm: 80, copies: 1 }); const liveMs = Date.now() - t1; const deadRes = await dead; return { live, liveMs, dead: deadRes }; })()"
   },
