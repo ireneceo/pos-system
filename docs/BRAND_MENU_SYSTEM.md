@@ -170,6 +170,7 @@ RA → DELETE product (brand_menu_id 있어도 허용) — 프론트가 "Unlink 
 | DELETE | `/api/brand-menus/:id` | 동일 — soft unlink |
 | POST | `/api/brand-menus/:id/copy` | 동일 — target_brand_id 검증 |
 | POST | `/api/brand-menus/:id/push` | 동일 — restaurant_ids 검증 |
+| POST | `/api/brand-menus/push-pending` | 동일 — `{brand_id, dry_run?}` · 브랜드 메뉴 전부 중 범위 안 «최신 아닌» 매장(상품 없음·in_sync 아님·버전 낮음·범위 숨김)에만 `/:id/push` 와 같은 `pushBrandMenuToRestaurants` 로 보냄 · 화면 «Push All Changes»(2026-11-08 `services/brandMenuBulkPush.js`) |
 | GET | `/api/brand-menus/:id/distribution` | 동일 |
 
 ### BG 측 (Categories)

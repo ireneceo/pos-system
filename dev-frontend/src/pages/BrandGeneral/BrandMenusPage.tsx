@@ -548,7 +548,7 @@ const DropdownItem = styled.div<{ $active?: boolean }>`
 interface Brand { id: number; name: string; }
 interface BrandMenu {
   id: number; brand_id: number; category_id: number | null;
-  name: string; description: string | null;
+  name: string; code?: string | null; description: string | null;
   image_url: string | null; emoji: string | null;
   recommended_price: number; currency: string;
   version: number; distribution_mode: 'auto' | 'manual';
@@ -608,6 +608,10 @@ const BrandMenusPage: React.FC = () => {
   const [scopePicker, setScopePicker] = useState<{ menuId: number; menuName: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ menuId: number; menuName: string } | null>(null);
   const [pushResult, setPushResult] = useState<{ menuId: number; pushed: number; created: number; updated: number } | null>(null);
+  // 바뀐 메뉴 한 번에 보내기 (2026-11-08) — 미리 세기(dry_run) → 확인 → 보내기 → 결과
+  const [bulkPlan, setBulkPlan] = useState<{ menu_count: number; push_count: number; names: string[] } | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ menus: number; pushed: number; created: number; updated: number; failed: number } | null>(null);
   const [copyTarget, setCopyTarget] = useState<{ menuId: number; menuName: string } | null>(null);
   const [copyToBrandId, setCopyToBrandId] = useState<number | null>(null);
   const [copyIncludeLocks, setCopyIncludeLocks] = useState(false);
@@ -750,6 +754,46 @@ const BrandMenusPage: React.FC = () => {
       loadMenus();
     } catch (e: any) {
       setError(e?.message || 'Failed to push');
+    }
+  };
+
+  const handleBulkPushClick = async () => {
+    if (!selectedBrandId || bulkBusy) return;
+    setBulkBusy(true);
+    try {
+      const r = await fetch('/api/brand-menus/push-pending', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ brand_id: selectedBrandId, dry_run: true })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.success) throw new Error(j.message || 'Failed to check menus');
+      const d = j.data || {};
+      setBulkPlan({ menu_count: d.menu_count || 0, push_count: d.push_count || 0, names: (d.menus || []).map((m: any) => m.name) });
+    } catch (e: any) {
+      setError(e?.message || 'Failed to check menus');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const confirmBulkPush = async () => {
+    if (!selectedBrandId || bulkBusy) return;
+    setBulkPlan(null);
+    setBulkBusy(true);
+    try {
+      const r = await fetch('/api/brand-menus/push-pending', {
+        method: 'POST', headers: authHeaders(),
+        body: JSON.stringify({ brand_id: selectedBrandId })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.success) throw new Error(j.message || 'Push failed');
+      const d = j.data || {};
+      setBulkResult({ menus: d.menus || 0, pushed: d.pushed || 0, created: d.created || 0, updated: d.updated || 0, failed: (d.failed || []).length });
+      loadMenus();
+    } catch (e: any) {
+      setError(e?.message || 'Failed to push');
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -909,6 +953,16 @@ const BrandMenusPage: React.FC = () => {
           )}
           <SortDropdown value={sortKey} onChange={setSortKey} options={['custom', 'newest', 'oldest', 'name_asc', 'name_desc', 'price_asc', 'price_desc', 'category']} />
           <div data-controls-trailing>
+            <ThemedButton
+              variant="outline"
+              onClick={handleBulkPushClick}
+              disabled={!selectedBrandId || bulkBusy}
+              title={t('brand:brandMenusPage.pushAllChangesHint', 'Send every changed menu to the stores that do not have the latest version yet') as string}
+              style={{ marginRight: 8 }}
+            >
+              <Send size={14} style={{ marginRight: 6, verticalAlign: '-2px' }} />
+              {bulkBusy ? t('brand:brandMenusPage.pushAllChangesBusy', 'Sending...') : t('brand:brandMenusPage.pushAllChanges', 'Push All Changes')}
+            </ThemedButton>
             <ThemedButton variant="primary" onClick={() => setShowAddModal(true)} disabled={!selectedBrandId}>
               {t('brand:brandMenusPage.addMenu', 'Add Brand Menu')}
             </ThemedButton>
@@ -985,7 +1039,15 @@ const BrandMenusPage: React.FC = () => {
                     : <UtensilsCrossed />)}
                 </CardImage>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                  <CardTitle>{m.name}</CardTitle>
+                  <CardTitle>
+                    {(m as any).code
+                      ? <span style={{ color: '#635BFF', marginRight: 6 }}>{(m as any).code}</span>
+                      : <span style={{ color: '#DC2626', fontSize: 12, fontWeight: 600, marginRight: 6 }}
+                          title={t('brand:brandMenusPage.noCodeHint', 'Open this menu and enter a menu code') as string}>
+                          {t('brand:brandMenusPage.noCode', 'No code')}
+                        </span>}
+                    {m.name}
+                  </CardTitle>
                   {lockCount(m) > 0 && (
                     <LockBadge title={t('brand:brandMenusPage.lockBadgeHint', { count: lockCount(m), defaultValue: `${lockCount(m)} field(s) locked — franchise restaurants cannot edit these` })}>
                       <Lock />{lockCount(m)}
@@ -1194,6 +1256,49 @@ const BrandMenusPage: React.FC = () => {
           </CommonModal>
         )}
 
+        {/* 바뀐 메뉴 한 번에 보내기 — 확인 / 보낼 것 없음 / 결과 */}
+        <ConfirmModal
+          isOpen={!!bulkPlan && bulkPlan.push_count > 0}
+          type="info"
+          title={t('brand:brandMenusPage.pushAllConfirmTitle', 'Push all changes')}
+          message={t('brand:brandMenusPage.pushAllConfirmMessage', {
+            menus: bulkPlan?.menu_count || 0,
+            stores: bulkPlan?.push_count || 0,
+            list: (bulkPlan?.names || []).slice(0, 10).join(', ') + ((bulkPlan?.names.length || 0) > 10 ? ' …' : ''),
+            defaultValue: `Send ${bulkPlan?.menu_count || 0} changed menus (${bulkPlan?.push_count || 0} store updates in total) to stores that do not have the latest version? Stores already up to date are not touched.`
+          })}
+          confirmText={t('brand:brandMenusPage.pushNow', 'Push Now')}
+          cancelText={t('common:button.cancel', 'Cancel')}
+          onConfirm={confirmBulkPush}
+          onCancel={() => setBulkPlan(null)}
+        />
+        <ConfirmModal
+          isOpen={!!bulkPlan && bulkPlan.push_count === 0}
+          type="info"
+          singleButton
+          title={t('brand:brandMenusPage.pushAllNothingTitle', 'Nothing to push')}
+          message={t('brand:brandMenusPage.pushAllNothingMessage', 'Every store in scope already has the latest version of every menu.')}
+          confirmText={t('common:button.ok', 'OK')}
+          onConfirm={() => setBulkPlan(null)}
+          onCancel={() => setBulkPlan(null)}
+        />
+        <ConfirmModal
+          isOpen={!!bulkResult}
+          type={bulkResult && bulkResult.failed > 0 ? 'warning' : 'info'}
+          singleButton
+          title={t('brand:brandMenusPage.pushResultTitle', 'Push complete')}
+          message={t('brand:brandMenusPage.pushAllResultMessage', {
+            menus: bulkResult?.menus || 0,
+            pushed: bulkResult?.pushed || 0,
+            created: bulkResult?.created || 0,
+            updated: bulkResult?.updated || 0,
+            failed: bulkResult?.failed || 0,
+            defaultValue: `${bulkResult?.menus || 0} menus sent — ${bulkResult?.pushed || 0} store updates (${bulkResult?.created || 0} new, ${bulkResult?.updated || 0} updated), ${bulkResult?.failed || 0} failed.`
+          })}
+          confirmText={t('common:button.ok', 'OK')}
+          onConfirm={() => setBulkResult(null)}
+          onCancel={() => setBulkResult(null)}
+        />
         <ConfirmModal
           isOpen={!!pushResult}
           type="info"
@@ -1355,6 +1460,7 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
   const { t } = useTranslation(['brand', 'common']);
   const isEdit = !!menu;
   const [name, setName] = useState(menu?.name || '');
+  const [code, setCode] = useState(menu?.code || '');
   const [description, setDescription] = useState(menu?.description || '');
   const [price, setPrice] = useState(String(menu?.recommended_price ?? '0'));
   const [emoji, setEmoji] = useState(menu?.emoji || '');
@@ -1455,12 +1561,13 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
 
   const handleSave = async () => {
     if (!name.trim()) { setSaveError(t('brand:brandMenusPage.errors.nameRequired', 'Name is required')); return; }
+    if (!code.trim()) { setSaveError(t('brand:brandMenusPage.errors.codeRequired', 'Menu code is required')); return; }
     if (!categoryId) { setSaveError(t('brand:brandMenusPage.errors.categoryRequired', 'Category is required')); return; }
     setSaving(true);
     setSaveError(null);
     try {
       const body: any = {
-        brand_id: brandId, name: name.trim(), description: description || null,
+        brand_id: brandId, name: name.trim(), code: code.trim(), description: description || null,
         emoji: emoji || null, image_url: imageUrl || null,
         recommended_price: parseFloat(price) || 0,
         category_id: categoryId ? parseInt(categoryId, 10) : null,
@@ -1484,7 +1591,11 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
       const method = isEdit ? 'PUT' : 'POST';
       const r = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(body) });
       const j = await r.json();
-      if (!r.ok || !j.success) throw new Error(j.message || 'Save failed');
+      if (!r.ok || !j.success) {
+        if (j.code === 'DUPLICATE_CODE') throw new Error(t('brand:brandMenusPage.errors.codeDuplicate', { code: code.trim(), defaultValue: `Menu code "${code.trim()}" is already used by another menu` }) as string);
+        if (j.code === 'CODE_REQUIRED') throw new Error(t('brand:brandMenusPage.errors.codeRequired', 'Menu code is required') as string);
+        throw new Error(j.message || 'Save failed');
+      }
       // #11c 크로스셀 — 메뉴 저장 성공 후 추천 연결 저장(가맹점 동기화는 백엔드가 처리). 세트메뉴는 추천 대상 아님.
       const savedId = isEdit ? menu!.id : (j.data?.id ?? j.data?.menu?.id);
       if (savedId && !isSetMenu) {
@@ -1530,6 +1641,15 @@ const BrandMenuEditModal: React.FC<ModalProps> = ({ brandId, brands, menu, onClo
           <span style={{ color: '#635BFF' }}>{t('brand:brandMenusPage.brandDefaultsHint', 'Field locks and push mode follow the brand defaults set in the Settings tab.')}</span>
         </div>
       )}
+
+      <UIFormGroup>
+        <FormLabel>{t('brand:brandMenusPage.code', 'Menu Code')} *</FormLabel>
+        <FormInput type="text" value={code} onChange={(e) => setCode(e.target.value)} maxLength={20}
+          placeholder={t('brand:brandMenusPage.codePlaceholder', 'e.g. A01') as string} />
+        <div style={{ fontSize: 12, color: '#6B7280', marginTop: 4 }}>
+          {t('brand:brandMenusPage.codeHint', 'Goes to the stores with this menu. Each menu in the brand needs its own code.')}
+        </div>
+      </UIFormGroup>
 
       <UIFormGroup>
         <FormLabel>{t('brand:brandMenusPage.name', 'Name')} *</FormLabel>

@@ -12,6 +12,7 @@
  *   DELETE /:id                         delete + soft-unlink linked Products
  *   POST   /:id/copy                    copy to another brand
  *   POST   /:id/push                    manual push to restaurant_ids (or all)
+ *   POST   /push-pending                bulk push: every menu's out-of-date in-scope restaurants (dry_run=preview)
  *   GET    /:id/distribution            sync status per restaurant
  */
 const express = require('express');
@@ -120,6 +121,27 @@ async function loadMenuWithIncludes(id) {
   });
 }
 
+// 메뉴 코드 (2026-11-08 Irene «메뉴들 다 코드가 있어야지»)
+//   빈 값 금지 · 20자(매장 products.code 크기) · 같은 브랜드 안에서 대소문자 무시하고 겹치지 않음.
+//   반환: { code } 또는 { status, body } (오류).
+async function validateBrandMenuCode(raw, brandId, selfId, transaction) {
+  const code = typeof raw === 'string' ? raw.trim() : (raw == null ? '' : String(raw).trim());
+  if (!code) return { status: 400, body: { success: false, code: 'CODE_REQUIRED', message: 'Menu code is required' } };
+  if (code.length > 20) return { status: 400, body: { success: false, code: 'CODE_TOO_LONG', message: 'Menu code must be 20 characters or less' } };
+  const where = { brand_id: brandId, [Op.and]: BrandMenu.sequelize.where(BrandMenu.sequelize.fn('UPPER', BrandMenu.sequelize.col('code')), code.toUpperCase()) };
+  if (selfId) where.id = { [Op.ne]: selfId };
+  const dup = await BrandMenu.findOne({ where, attributes: ['id', 'name'], transaction });
+  if (dup) return { status: 409, body: { success: false, code: 'DUPLICATE_CODE', message: `Menu code "${code}" is already used by "${dup.name}"` } };
+  return { code };
+}
+
+// 복제·복사 때: 원본 코드를 대상 브랜드에서 쓸 수 있으면 그대로, 겹치면 비움(다음 편집에서 새 코드 필수).
+async function carryableCode(code, brandId, transaction) {
+  if (!code) return null;
+  const r = await validateBrandMenuCode(code, brandId, null, transaction);
+  return r.code || null;
+}
+
 // GET /api/brand-menus?brand_id=X&category_id=Y&search=Z
 router.get('/', authenticateToken, requireBGScope, async (req, res) => {
   try {
@@ -133,7 +155,13 @@ router.get('/', authenticateToken, requireBGScope, async (req, res) => {
 
     const where = { brand_id: brandId };
     if (req.query.category_id) where.category_id = parseInt(req.query.category_id, 10);
-    if (req.query.search) where.name = { [Op.like]: `%${req.query.search}%` };
+    if (req.query.search) {
+      // 이름 또는 메뉴 코드로 찾기 (2026-11-08)
+      where[Op.or] = [
+        { name: { [Op.like]: `%${req.query.search}%` } },
+        { code: { [Op.like]: `%${req.query.search}%` } }
+      ];
+    }
 
     const menus = await BrandMenu.findAll({
       where,
@@ -324,7 +352,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
   const t = await BrandMenu.sequelize.transaction();
   try {
     const {
-      brand_id, category_id, recipe_id, name, description, image_url, emoji,
+      brand_id, category_id, recipe_id, name, code, description, image_url, emoji,
       recommended_price, currency, is_active, after_meal, set_only, sort_order, distribution_mode,
       option_group_ids, locks, is_set_menu, set_items, set_groups
     } = req.body;
@@ -344,6 +372,10 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       await t.rollback();
       return res.status(403).json({ success: false, message: 'Brand not owned' });
     }
+
+    // 메뉴 코드 필수 + 브랜드 안 중복 금지 (2026-11-08)
+    const codeCheck = await validateBrandMenuCode(code, parseInt(brand_id, 10), null, t);
+    if (!codeCheck.code) { await t.rollback(); return res.status(codeCheck.status).json(codeCheck.body); }
 
     // Linked Recipe(recipe_id)는 반드시 이 브랜드 소유 레시피여야 함 — FK 만으로는 타 브랜드
     // 레시피를 링크할 수 있어(IDOR·이름 노출) 명시 검증. null/미지정은 통과(해제).
@@ -392,7 +424,7 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
       // product_recipe_id 는 받지 않는다(2026-10-07 Fable 판정 A — 레거시 BOM 링크, 화면 쓰기 0·차감 미참조). «Linked Recipe» = recipe_id.
       product_recipe_id: null,
       recipe_id: recipe_id || null,
-      name: name.trim(), description: description || null,
+      name: name.trim(), code: codeCheck.code, description: description || null,
       image_url: ownedImage, emoji: emoji || null,
       recommended_price: recommended_price || 0, currency: currency || 'MYR',
       is_active: is_active !== false, after_meal: after_meal === true, set_only: set_only === true, sort_order: sort_order || 0,
@@ -465,13 +497,20 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
 
     const body = req.body || {};
     // product_recipe_id 제외(2026-10-07 Fable 판정 A — 쓰기 봉인)
-    const updatable = ['category_id', 'recipe_id', 'name', 'description', 'emoji',
+    const updatable = ['category_id', 'recipe_id', 'name', 'code', 'description', 'emoji',
       'recommended_price', 'currency', 'is_active', 'after_meal', 'set_only', 'sort_order', 'distribution_mode',
       'lock_name', 'lock_price', 'lock_category', 'lock_image', 'lock_options',
       'is_set_menu', 'set_items', 'set_groups', 'lock_set_items'];
       // lock_sort_order 는 PUT 에서 받지 않음 — 브랜드 전체 설정(enforce_menu_order)이 단일 source
     const update = {};
     for (const k of updatable) if (k in body) update[k] = body[k];
+
+    // 메뉴 코드: 보내면 비울 수 없고 브랜드 안에서 겹치면 안 됨 (2026-11-08). 안 보내면 그대로.
+    if ('code' in update) {
+      const codeCheck = await validateBrandMenuCode(update.code, menu.brand_id, menu.id, t);
+      if (!codeCheck.code) { await t.rollback(); return res.status(codeCheck.status).json(codeCheck.body); }
+      update.code = codeCheck.code;
+    }
 
     // Linked Recipe(recipe_id) 변경 시 이 브랜드 소유 레시피인지 검증(위 POST 와 동일 사유).
     // null(해제)은 통과.
@@ -598,6 +637,7 @@ router.post('/:id/copy', authenticateToken, requireBGScope, async (req, res) => 
       product_recipe_id: null, // recipe stays with original brand
       recipe_id: null,         // Recipe(brand-scoped) 는 원 브랜드 소유 — 다른 브랜드로 안 넘어감
       name: req.body.name || `${source.name} (Copy)`,
+      code: await carryableCode(source.code, targetBrandId, t), // 다른 브랜드 — 안 겹치면 그대로
       description: source.description, image_url: source.image_url, emoji: source.emoji,
       recommended_price: source.recommended_price, currency: source.currency,
       is_active: source.is_active, sort_order: 0,
@@ -640,6 +680,8 @@ router.post('/:id/duplicate', authenticateToken, requireBGScope, async (req, res
       product_recipe_id: source.product_recipe_id,
       recipe_id: source.recipe_id,           // 같은 브랜드 내 복제 — Linked Recipe 승계
       name: req.body.name || `${source.name} (Copy)`,
+      // 같은 브랜드 복제 — 코드는 겹치니 비워 둔다(요청에 새 코드가 오면 그것). 편집 화면이 코드 입력을 요구한다.
+      code: req.body.code ? await carryableCode(req.body.code, source.brand_id, t) : null,
       description: source.description, image_url: source.image_url, emoji: source.emoji,
       recommended_price: source.recommended_price, currency: source.currency,
       is_active: source.is_active, sort_order: 0,
@@ -662,6 +704,31 @@ router.post('/:id/duplicate', authenticateToken, requireBGScope, async (req, res
     try { await t.rollback(); } catch (_) {}
     console.error('[brand-menus] duplicate error:', e);
     res.status(500).json({ success: false, message: 'Failed to duplicate brand menu' });
+  }
+});
+
+// POST /api/brand-menus/push-pending  body: { brand_id, dry_run? }
+// 바뀐 메뉴 한 번에 보내기 (2026-11-08 Irene «한번에 푸시하는 기능 없어?»).
+// 메뉴별 «Push» 와 같은 쓰기(pushBrandMenuToRestaurants) — 범위 안 매장 중 최신이 아닌 곳만.
+router.post('/push-pending', authenticateToken, requireBGScope, async (req, res) => {
+  try {
+    const brandId = parseInt(req.body?.brand_id, 10);
+    if (!Number.isFinite(brandId)) {
+      return res.status(400).json({ success: false, message: 'brand_id is required' });
+    }
+    if (!(await assertBrandOwnership(req, brandId))) {
+      return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+    const { planBrandBulkPush, runBrandBulkPush } = require('../services/brandMenuBulkPush');
+    if (req.body?.dry_run === true) {
+      const plan = await planBrandBulkPush(brandId);
+      return res.json({ success: true, data: plan });
+    }
+    const result = await runBrandBulkPush(brandId);
+    res.json({ success: true, data: result });
+  } catch (e) {
+    console.error('[brand-menus] push-pending error:', e);
+    res.status(500).json({ success: false, message: 'Failed to push brand menus' });
   }
 });
 

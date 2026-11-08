@@ -19,6 +19,8 @@ const BrandMenu = sequelize.define('BrandMenu', {
   product_recipe_id: { type: DataTypes.INTEGER, allowNull: true, references: { model: 'product_recipes', key: 'id' }, comment: 'Legacy — product BOM link (not the "Linked Recipe" UI). Kept for backward-compat.' },
   recipe_id:         { type: DataTypes.INTEGER, allowNull: true, references: { model: 'recipes', key: 'id' }, comment: '"Linked Recipe" (Brand Recipe / Recipe model). Mirrors Restaurant Product.recipe_id — the field inventory deduction resolves. (2026-07-15)' },
   name:              { type: DataTypes.STRING(255), allowNull: false },
+  // 메뉴 코드 (2026-11-08) — 매장 products.code 와 같은 크기. 브랜드 안에서 겹치지 않음. 내려보낼 때 매장 code 로 복사.
+  code:              { type: DataTypes.STRING(20), allowNull: true, defaultValue: null },
   description:       { type: DataTypes.TEXT, allowNull: true },
   image_url:         { type: DataTypes.TEXT, allowNull: true },
   emoji:             { type: DataTypes.STRING(10), allowNull: true },

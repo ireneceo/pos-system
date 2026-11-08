@@ -12443,6 +12443,78 @@ function definePrintTests({ adminToken }) {
     return (await request('GET', '/brand/revenue-report')).status === 401;
   });
 
+  // 2026-11-08 Irene «브랜드 메뉴 넣을 때 왜 메뉴 코드입력하는 곳이 없어? 메뉴들 다 코드가 있어야지»
+  //   브랜드 메뉴 코드: 없으면 400 · 같은 브랜드 안 중복(대소문자 무시) 409 · 매장에 내려갈 때 products.code 로 복사.
+  test('pos', '브랜드 메뉴 코드 필수 · 브랜드 안 중복 409 · 내려보내면 매장 상품 코드로 복사', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const [[bg]] = await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' AND is_active = 1 LIMIT 1");
+    const [[st]] = await sequelize.query("SELECT r.id FROM restaurants r WHERE r.id = 39 AND r.is_demo = 1 AND r.brand_id = 10");
+    if (!bg || !st) { console.log(c.gray('      (건너뜀: 데모 브랜드 계정/매장 39 없음)')); return true; }
+    const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    const code = `HC${Date.now().toString(36).slice(-6).toUpperCase()}`;
+    const base = { brand_id: 10, name: 'ZZ-HC menu code', recommended_price: 1, distribution_mode: 'manual', scope_mode: 'selected', scope_restaurant_ids: [39] };
+    const ids = [];
+    try {
+      const r0 = await request('POST', '/brand-menus', base, auth);
+      if (r0.status === 201 && r0.body?.data?.menu?.id) ids.push(r0.body.data.menu.id);
+      const r1 = await request('POST', '/brand-menus', { ...base, code }, auth);
+      const id1 = r1.body?.data?.menu?.id; if (id1) ids.push(id1);
+      const r2 = await request('POST', '/brand-menus', { ...base, code: code.toLowerCase() }, auth);
+      if (r2.status === 201 && r2.body?.data?.menu?.id) ids.push(r2.body.data.menu.id);
+      const [[p]] = id1 ? await sequelize.query('SELECT code FROM products WHERE brand_menu_id = ? AND restaurant_id = 39', { replacements: [id1] }) : [[null]];
+      const ok = r0.status === 400 && r1.status === 201 && r2.status === 409 && p && p.code === code;
+      if (!ok) console.log(c.gray(`      (코드없음 ${r0.status} · 생성 ${r1.status} · 중복 ${r2.status} · 매장코드 ${p && p.code})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      if (ids.length) {
+        await sequelize.query('DELETE FROM products WHERE brand_menu_id IN (?) AND restaurant_id IN (38, 39)', { replacements: [ids] }).catch(() => {});
+        await sequelize.query('DELETE FROM brand_menu_restaurants WHERE brand_menu_id IN (?)', { replacements: [ids] }).catch(() => {});
+        await sequelize.query("DELETE FROM brand_menus WHERE id IN (?) AND brand_id = 10 AND name = 'ZZ-HC menu code'", { replacements: [ids] }).catch(() => {});
+      }
+    }
+  });
+
+  // 2026-11-08 Irene «브랜드 메뉴를 다 수정했는데 한번에 푸시하는 기능 없어?»
+  //   POST /brand-menus/push-pending — 범위 안 매장 중 최신 아닌 곳만 · 미리 세기(dry_run) · 남의 브랜드 403 · 익명 401.
+  test('pos', '브랜드 메뉴 한 번에 보내기 — 바뀐 메뉴만 · 보낸 뒤 0 · 익명 401 · 남의 브랜드 403', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const [[bg]] = await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' AND is_active = 1 LIMIT 1");
+    const [[st]] = await sequelize.query("SELECT r.id FROM restaurants r WHERE r.id = 39 AND r.is_demo = 1 AND r.brand_id = 10");
+    if (!bg || !st) { console.log(c.gray('      (건너뜀: 데모 브랜드 계정/매장 39 없음)')); return true; }
+    const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: bg.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    const code = `HB${Date.now().toString(36).slice(-6).toUpperCase()}`;
+    let id = null;
+    try {
+      const anon = await request('POST', '/brand-menus/push-pending', { brand_id: 10 });
+      const other = await request('POST', '/brand-menus/push-pending', { brand_id: 1, dry_run: true }, auth);
+      const r = await request('POST', '/brand-menus', { brand_id: 10, code, name: 'ZZ-HC bulk push', recommended_price: 1, distribution_mode: 'manual', scope_mode: 'selected', scope_restaurant_ids: [39] }, auth);
+      id = r.body?.data?.menu?.id;
+      if (!id) { console.log(c.gray(`      (메뉴 생성 실패 ${r.status})`)); return false; }
+      await request('PUT', `/brand-menus/${id}`, { name: 'ZZ-HC bulk push', recommended_price: 2 }, auth);
+      const d1 = await request('POST', '/brand-menus/push-pending', { brand_id: 10, dry_run: true }, auth);
+      const mine = (d1.body?.data?.menus || []).find(m => m.id === id);
+      const run = await request('POST', '/brand-menus/push-pending', { brand_id: 10 }, auth);
+      const d2 = await request('POST', '/brand-menus/push-pending', { brand_id: 10, dry_run: true }, auth);
+      const still = (d2.body?.data?.menus || []).find(m => m.id === id);
+      const [[p]] = await sequelize.query('SELECT brand_menu_link_status s, brand_menu_synced_version v FROM products WHERE brand_menu_id = ? AND restaurant_id = 39', { replacements: [id] });
+      const [[bm]] = await sequelize.query('SELECT version FROM brand_menus WHERE id = ?', { replacements: [id] });
+      const ok = anon.status === 401 && other.status === 403 && !!mine && JSON.stringify(mine.restaurant_ids) === '[39]'
+        && run.status === 200 && !still && p && p.s === 'in_sync' && Number(p.v) === Number(bm.version);
+      if (!ok) console.log(c.gray(`      (익명 ${anon.status} · 남의 ${other.status} · 미리 ${!!mine} · 보냄 ${run.status} · 남음 ${!!still} · 매장 ${p && p.s}/${p && p.v} vs ${bm && bm.version})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      if (id) {
+        await sequelize.query('DELETE FROM products WHERE brand_menu_id = ? AND restaurant_id IN (38, 39)', { replacements: [id] }).catch(() => {});
+        await sequelize.query('DELETE FROM brand_menu_restaurants WHERE brand_menu_id = ?', { replacements: [id] }).catch(() => {});
+        await sequelize.query("DELETE FROM brand_menus WHERE id = ? AND brand_id = 10 AND name = 'ZZ-HC bulk push'", { replacements: [id] }).catch(() => {});
+      }
+    }
+  });
+
   // 2026-09-30 K-DINE IPC 「메뉴 이미지가 자꾸 날아간다」 — 이미지 안 바꾸고 저장해도 파일이 지워지던 결함(03-03부터)
   //   + 브랜드 메뉴가 가리키는 매장 파일을 매장 교체가 지우던 것. 아무도 안 쓰는 옛 파일만 지운다.
   test('pos', '메뉴 저장이 쓰는 이미지 파일을 지우지 않는다 (같은 주소·브랜드 메뉴 참조) · 안 쓰는 옛 파일만 삭제', async () => {

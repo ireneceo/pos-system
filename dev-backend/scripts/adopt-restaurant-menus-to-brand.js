@@ -141,7 +141,8 @@ async function fixShared() {
         const catName = (restCatById.get(String(p.category))?.name || 'Uncategorized').trim();
         const bm = await BrandMenu.create({
           brand_id: BRAND_ID, category_id: brandCatByName.get(catName)?.id || src.category_id,
-          name: p.name, description: p.description || null, image_url: p.image || null, emoji: p.emoji || null,
+          name: p.name, code: p.code ? String(p.code).trim().slice(0, 20) || null : null, // 메뉴 코드 (2026-11-08)
+          description: p.description || null, image_url: p.image || null, emoji: p.emoji || null,
           recommended_price: p.price || 0, is_active: true,
           after_meal: p.after_meal === true, set_only: p.set_only === true,
           sort_order: p.display_order || 0, version: 1, distribution_mode: 'manual', scope_mode: 'selected',
@@ -580,7 +581,8 @@ async function lockAndSync() {
         bm = await BrandMenu.create({
           brand_id: BRAND_ID,
           category_id: catByName.get(catNameOf(p))?.id || null,
-          name, description: p.description || null,
+          name, code: p.code ? String(p.code).trim().slice(0, 20) || null : null, // 메뉴 코드 (2026-11-08)
+          description: p.description || null,
           image_url: p.image || null, emoji: p.emoji || null,
           recommended_price: p.price || 0,
           is_active: true,                       // 브랜드 쪽 템플릿은 활성 — 매장 활성여부는 건드리지 않는다

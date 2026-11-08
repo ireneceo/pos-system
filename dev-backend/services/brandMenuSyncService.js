@@ -240,6 +240,8 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     if (locks.sort_order) updates.display_order = brandMenu.sort_order || 0;
     // set_only(세트 전용 — 단품 판매 안 함)는 브랜드 판매정책 → 버전 sync 마다 브랜드 값으로 갱신 (2026-06-12)
     updates.set_only = brandMenu.set_only === true;
+    // 메뉴 코드 (2026-11-08) — 브랜드가 정한 코드가 있으면 매장 코드도 같게. 브랜드가 비어 있으면 매장 값 그대로.
+    if (brandMenu.code) updates.code = brandMenu.code;
     // emoji / description always refreshed (not in lock matrix per spec — informational)
     if (brandMenu.emoji) updates.emoji = brandMenu.emoji;
     if (brandMenu.description) updates.description = brandMenu.description;
@@ -258,6 +260,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
   product = await Product.create({
     restaurant_id: restaurantId,
     name: brandMenu.name,
+    code: brandMenu.code || null, // 메뉴 코드 (2026-11-08)
     price: brandMenu.recommended_price,
     category: categoryName || 'Uncategorized',
     description: brandMenu.description || null,
@@ -512,7 +515,8 @@ function computeMenuDiff(product, brandMenu, localCategoryName) {
     category: product.category,
     image: product.image,
     emoji: product.emoji,
-    description: product.description
+    description: product.description,
+    code: product.code
   } : null;
   const next = {
     name: brandMenu.name,
@@ -520,11 +524,14 @@ function computeMenuDiff(product, brandMenu, localCategoryName) {
     category: localCategoryName,
     image: brandMenu.image_url,
     emoji: brandMenu.emoji,
-    description: brandMenu.description
+    description: brandMenu.description,
+    code: brandMenu.code
   };
   if (!cur) return { fields: ['*new'], is_new_menu: true };
 
   const fieldKeys = ['name', 'price', 'category', 'image', 'emoji', 'description'];
+  // 코드는 브랜드에 값이 있을 때만 매장에 덮어쓰므로(위 sync), 차이도 그때만 보인다.
+  if (next.code) fieldKeys.push('code');
   for (const k of fieldKeys) {
     if ((cur[k] || null) !== (next[k] || null)) {
       fields.push({ field: k, old: cur[k], new: next[k], will_be_locked: !!(brandMenu[`lock_${k}`]) });
