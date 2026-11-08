@@ -30,7 +30,9 @@ import { getAuthToken } from '../../utils/auth';
 import PrintSelfDiagnosePanel from '../../components/Settings/PrintSelfDiagnosePanel';
 import MallSalesIntegrationSettings from './MallSalesIntegrationSettings';
 import CardTerminalSettings from './CardTerminalSettings';
-import { AndroidPrinterSetupCard, AndroidPrintGuide, AndroidPrintReadiness, NativeSetupBridge } from './AndroidPrinterSetup';
+import { AndroidPrinterSetupCard, AndroidPrintGuide, AndroidPrintReadiness, NativeSetupBridge, StdPrinterBlock } from './AndroidPrinterSetup';
+import { DeviceLine, SetupConnPicker, SetupSteps, RecommendAppBox, IpadBox, TwoPrintersBlock, Fold, saveDeviceOverride, useSetupConn } from './PrinterSetupGuide';
+import { detectSetupDevice } from '../../utils/printDiagnostics';
 import KioskDevicesCard from './KioskDevicesCard';
 import { Button as UIButton } from '../../components/UI/Button';
 import { methodOpenIn, splitKioskFromMobile, KIOSK_HIDDEN_METHODS } from '../../utils/paymentChannel';
@@ -963,10 +965,13 @@ const SettingsPage: React.FC = () => {
   const [qzDiagRunning, setQzDiagRunning] = useState(false);
   const [qzDiagSending, setQzDiagSending] = useState(false);
   const [qzDiagTicket, setQzDiagTicket] = useState<string | null>(null);
-  // 2026-05-27: printer-method guide tabs — Browser first (default), QZ Tray last.
-  // Replaces the QZ-Tray-only banner that hid the other two methods.
-  const [printerGuideTab, setPrinterGuideTab] = useState<'browser' | 'qztray' | 'rawbt'>('browser');
-  const [methodMatrixOpen, setMethodMatrixOpen] = useState(false);
+  // 2026-11-08 (Fable design .claude/fable-design-20261108-printer-setup-guide.md D1): the
+  // «Which method?» table + Browser/RawBT/QZ tabs are gone — the device decides the guide.
+  // Device kind is detected (app bridges / UA / PWA); browsers can correct it ("Not right?").
+  // Guide text only — never written to printer_settings.
+  const [setupDev, setSetupDev] = useState(() => detectSetupDevice());
+  const changeSetupDevice = useCallback((d: any) => { saveDeviceOverride(d); setSetupDev(detectSetupDevice()); }, []);
+  const [setupConn, setSetupConn] = useSetupConn();
   const [emergencyEffectOpen, setEmergencyEffectOpen] = useState(false);
   // 오프라인 메인 POS 지정 — 기기(브라우저) 단위 localStorage(DB 아님). 오프라인 중 이 기기 1대만 주문 접수.
   const [offlineMainPosOn, setOfflineMainPosOnState] = useState<boolean>(() => isOfflineMainPos());
@@ -981,7 +986,10 @@ const SettingsPage: React.FC = () => {
   const nativeSetup: NativeSetupBridge | null =
     typeof window !== 'undefined' ? ((window as any).__NATIVE_PRINT_SETUP || null) : null;
   // In the app there is only one way to print (the app itself) → always show that panel.
-  const guideTab = isNativePrint ? 'qztray' : printerGuideTab;
+  // Browsers: PC → QZ Tray steps · Android browser → RawBT · iPad → browser print.
+  const guideTab: 'browser' | 'qztray' | 'rawbt' = isNativePrint ? 'qztray'
+    : setupDev.device === 'android-browser' ? 'rawbt'
+    : setupDev.device === 'ipad-browser' ? 'browser' : 'qztray';
   // Native desktop: auto-load the OS printer list on mount (listPrinters() via the
   // bridge — no QZ Tray, no "Find Printers" click). Populates the per-printer
   // dropdowns below so a shop just picks each USB printer by name.
@@ -1016,8 +1024,6 @@ const SettingsPage: React.FC = () => {
     diagScrolledRef.current = true;
     document.getElementById('printer-sec-emergency')?.scrollIntoView({ block: 'start' });
   }, [activeTab, printerSettingsLoading]);
-  const [showQzGuide, setShowQzGuide] = useState(false);
-  const [qzScenario, setQzScenario] = useState<'migration' | 'fresh'>('migration');
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
 
   // Multi-POS: this device's bound workstation (localStorage-backed). Triggers UI re-render
@@ -6062,6 +6068,7 @@ const SettingsPage: React.FC = () => {
                   프린터 등록·자동 찾기 카드는 아래 «프린터 연결» 카드 안에 그대로. */}
               {!printerSettingsLoading && nativeSetup && (
                 <SettingsCard style={{ marginBottom: '24px' }}>
+                  <DeviceLine t={t} device={setupDev.device} detected={setupDev.detected} os={setupDev.os} standalone={setupDev.standalone} overridable={setupDev.overridable} onChange={changeSetupDevice} />
                   <AndroidPrintGuide t={t} />
                   <AndroidPrintReadiness
                     t={t}
@@ -6084,6 +6091,13 @@ const SettingsPage: React.FC = () => {
                       return !!ws && ws.billPrinter?.autoPrint !== false;
                     })()}
                   />
+                  <StdPrinterBlock t={t} variant="accordion" device={setupDev.device} />
+                  <TwoPrintersBlock
+                    t={t}
+                    workstations={(printerSettings.workstations || []) as any}
+                    activeWorkstationId={activeWorkstationId}
+                    kitchenAutoPrint={printerSettings.kitchenPrinter.enabled !== false && !!printerSettings.kitchenPrinter.autoPrint}
+                  />
                 </SettingsCard>
               )}
               {/* Printer methods guide — 3 tabs so Browser / QZ Tray / RawBT are
@@ -6091,101 +6105,17 @@ const SettingsPage: React.FC = () => {
                   pick it and shows its setup steps. The actual per-printer Method
                   select sits on every Workstation / Kitchen card below. */}
               <SettingsCard style={{ marginBottom: '24px' }}>
-                <CardTitle>{t('settings:printer.methodGuide.title')}</CardTitle>
-                {!isNativePrint && (<>
-                <p style={{ color: '#4B5563', marginBottom: '12px', fontSize: '14px' }}>
-                  {t('settings:printer.methodGuide.desc')}
-                </p>
-
-                {/* Decision matrix — accordion (collapsed by default). Opens
-                    when user actually needs to choose. Keeps the printer tab clean. */}
-                <div style={{ marginBottom: '16px', border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden' }}>
-                  <button
-                    type="button"
-                    onClick={() => setMethodMatrixOpen(v => !v)}
-                    aria-expanded={methodMatrixOpen}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '12px 16px', background: '#F9FAFB', border: 'none', cursor: 'pointer',
-                      fontSize: '13px', fontWeight: 600, color: '#1F2937', textAlign: 'left'
-                    }}
-                  >
-                    <span>{t('settings:printer.methodGuide.matrixTitle', 'Which method should I pick?')}</span>
-                    <span style={{ fontSize: '14px', color: '#6B7280', transform: methodMatrixOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
-                  </button>
-                  {methodMatrixOpen && (
-                  <div style={{ padding: '12px 16px', background: '#FFFFFF', borderTop: '1px solid #E5E7EB', overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', color: '#1F2937', minWidth: '480px' }}>
-                      <thead>
-                        <tr style={{ background: '#F1F4F8' }}>
-                          <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.methodGuide.matrixColEnv', 'Your environment')}</th>
-                          <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.methodGuide.matrixColPick', 'Pick')}</th>
-                          <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.methodGuide.matrixColWhy', 'Why')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow1Env', 'Windows POS + LAN/Wi-Fi kitchen printer(s)')}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', fontWeight: 600, color: '#635BFF' }}>{t('settings:printer.methodGuide.qzLabel')}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow1Why', 'Silent + auto-print to LAN printers. One-time cert install per device.')}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow2Env', 'Windows POS + USB cashier printer (small shop, no kitchen)')}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', fontWeight: 600, color: '#635BFF' }}>{t('settings:printer.methodGuide.browserLabel')}{t('settings:printer.methodGuide.matrixOr', ' or ')}{t('settings:printer.methodGuide.qzLabel')}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow2Why', 'Browser = simplest (OS default printer). QZ Tray if you need silent / auto-print.')}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow3Env', 'Android tablet POS + USB OTG / Bluetooth printer')}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', fontWeight: 600, color: '#635BFF' }}>{t('settings:printer.methodGuide.rawbtLabel')}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow3Why', 'QZ Tray does not run on Android. RawBT is silent + router-independent — best for emergency.')}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow4Env', 'iPad POS')}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', fontWeight: 600, color: '#635BFF' }}>{t('settings:printer.methodGuide.browserLabel')}</td>
-                          <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow4Why', 'AirPrint via OS print dialog. QZ Tray / RawBT not available on iOS.')}</td>
-                        </tr>
-                        <tr>
-                          <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow5Env', 'Mixed shop (Windows counter + Android kitchen tablet)')}</td>
-                          <td style={{ padding: '8px 10px', verticalAlign: 'top', fontWeight: 600, color: '#635BFF' }}>{t('settings:printer.methodGuide.matrixRow5Pick', 'Mix freely')}</td>
-                          <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>{t('settings:printer.methodGuide.matrixRow5Why', 'Each workstation / station card picks its own method. Windows → QZ Tray, Android → RawBT, anything else → Browser.')}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                  )}
-                </div>
+                {/* 2026-11-08 Fable design D2: this device (detected) → how the printer is connected → only those steps → action block.
+                    The Android app shows its own guide card above; this card keeps its registration card. */}
+                {!nativeSetup && (<>
+                  <DeviceLine t={t} device={setupDev.device} detected={setupDev.detected} os={setupDev.os} standalone={setupDev.standalone} overridable={setupDev.overridable} onChange={changeSetupDevice} />
+                  {setupDev.device === 'android-browser' && <RecommendAppBox t={t} />}
+                  {setupDev.device === 'ipad-browser' && <IpadBox t={t} />}
+                  {(setupDev.device === 'pc-browser' || setupDev.device === 'windows-app') && (<>
+                    <SetupConnPicker t={t} conn={setupConn} onChange={setSetupConn} />
+                    {setupConn && <SetupSteps t={t} device={setupDev.device} conn={setupConn} />}
+                  </>)}
                 </>)}
-
-                {/* Method tabs — not in the app: the app prints directly, so Browser/RawBT/QZ choices
-                    only confuse (2026-11-02: the Android printer setup was hidden behind the «QZ Tray» tab). */}
-                {!isNativePrint && (
-                <div style={{ display: 'flex', gap: '4px', marginBottom: '16px', borderBottom: '1px solid #E5E7EB' }}>
-                  {([
-                    { key: 'browser', label: t('settings:printer.methodGuide.browserLabel'), sub: t('settings:printer.methodGuide.browserSub') },
-                    { key: 'rawbt', label: t('settings:printer.methodGuide.rawbtLabel'), sub: t('settings:printer.methodGuide.rawbtSub') },
-                    { key: 'qztray', label: t('settings:printer.methodGuide.qzLabel'), sub: t('settings:printer.methodGuide.qzSub') }
-                  ] as const).map(tab => {
-                    const active = printerGuideTab === tab.key;
-                    return (
-                      <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setPrinterGuideTab(tab.key)}
-                        style={{
-                          padding: '10px 16px', fontSize: '13px', fontWeight: 600,
-                          border: 'none', borderBottom: active ? '2px solid #635BFF' : '2px solid transparent',
-                          background: 'transparent', color: active ? '#635BFF' : '#4B5563',
-                          cursor: 'pointer', marginBottom: '-1px',
-                          display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px'
-                        }}
-                      >
-                        <span>{tab.label}</span>
-                        <span style={{ fontSize: '11px', fontWeight: 400, color: '#6B7280' }}>{tab.sub}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                )}
 
                 {/* Browser Print panel */}
                 {guideTab === 'browser' && (
@@ -6411,6 +6341,7 @@ const SettingsPage: React.FC = () => {
 
                 {/* RawBT panel */}
                 {guideTab === 'rawbt' && (
+                  <Fold title={t('settings:printer.setupGuide.rawbtFold', 'Keep using the browser instead (RawBT app)')}>
                   <div>
                     <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, marginBottom: '12px' }}>
                       {t('settings:printer.methodGuide.rawbtDesc')}
@@ -6429,6 +6360,7 @@ const SettingsPage: React.FC = () => {
                       {t('settings:printer.methodGuide.rawbtNote')}
                     </p>
                   </div>
+                  </Fold>
                 )}
 
                 {/* The legacy mode radio is intentionally removed — each workstation / kitchen / station card below picks its own method. */}
@@ -6451,174 +6383,26 @@ const SettingsPage: React.FC = () => {
                     i18n'd 3-step guide above (Install → Check → Find printers) is now the
                     single source. */}
 
-                {/* QZ Tray Setup Guide Modal */}
-                {showQzGuide && (
-                  <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', zIndex: 9999,
-                    display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-                    padding: '40px 20px', overflowY: 'auto'
-                  }} onClick={(e) => { if (e.target === e.currentTarget) setShowQzGuide(false); }}>
-                    <div style={{
-                      background: '#fff', borderRadius: '12px', maxWidth: '600px', width: '100%',
-                      padding: '32px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)', flexShrink: 0
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                        <h2 style={{ margin: 0, fontSize: '20px', color: '#1F2937' }}>{t('settings:settingsPage.qzTraySetupGuide')}</h2>
-                        <button type="button" onClick={() => setShowQzGuide(false)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#4B5563', padding: '4px' }}>&times;</button>
-                      </div>
-
-                      {/* What is QZ Tray */}
-                      <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#1F2937', marginBottom: '8px' }}>{t('settings:settingsPage.whatIsQzTray')}</h3>
-                        <p style={{ fontSize: '14px', color: '#4B5563', lineHeight: '1.7', margin: 0 }}>
-                          {t('settings:settingsPage.whatIsQzTrayDesc')}
-                        </p>
-                      </div>
-
-                      {/* Where to install */}
-                      <div style={{ marginBottom: '24px', padding: '14px', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#92400E', marginBottom: '8px', marginTop: 0 }}>{t('settings:settingsPage.whereToInstall')}</h3>
-                        <p style={{ fontSize: '14px', color: '#92400E', lineHeight: '1.7', margin: 0 }}>
-                          {t('settings:settingsPage.whereToInstallDesc1')}
-                          <br /><br />
-                          {t('settings:settingsPage.whereToInstallDesc2')}
-                        </p>
-                      </div>
-
-                      {/* Scenario selector */}
-                      <div style={{ marginBottom: '20px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#1F2937', marginBottom: '10px' }}>{t('settings:settingsPage.qzChooseScenario')}</h3>
-                        <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                          {[
-                            { key: 'migration' as const, label: t('settings:settingsPage.qzScenarioMigration') },
-                            { key: 'fresh' as const, label: t('settings:settingsPage.qzScenarioFresh') },
-                          ].map(opt => {
-                            const active = qzScenario === opt.key;
-                            return (
-                              <button type="button"
-                                key={opt.key}
-                                type="button"
-                                aria-pressed={active}
-                                onClick={() => setQzScenario(opt.key)}
-                                style={{
-                                  flex: 1, padding: '12px 16px', fontSize: '13px', fontWeight: 600,
-                                  border: active ? '2px solid #635BFF' : '1px solid #6B7280', borderRadius: '8px',
-                                  background: active ? '#EEF2FF' : '#fff', color: active ? '#635BFF' : '#1F2937',
-                                  cursor: 'pointer', textAlign: 'left', lineHeight: 1.4
-                                }}
-                              >
-                                {opt.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        <p style={{ fontSize: '13px', color: '#4B5563', lineHeight: 1.6, margin: 0 }}>
-                          {qzScenario === 'migration'
-                            ? t('settings:settingsPage.qzScenarioMigrationDesc')
-                            : t('settings:settingsPage.qzScenarioFreshDesc')}
-                        </p>
-                      </div>
-
-                      {/* Step by step */}
-                      <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#1F2937', marginBottom: '12px' }}>{t('settings:settingsPage.setupSteps')}</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                          {(qzScenario === 'migration'
-                            ? [
-                                {
-                                  title: t('settings:settingsPage.qzMigStep1Title'),
-                                  desc: t('settings:settingsPage.qzMigStep1Desc'),
-                                  action: (
-                                    <>
-                                      <button type="button" onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>{t('settings:settingsPage.downloadQzTray')}</button>
-                                      <div style={{ marginTop: '6px', fontSize: '12px', color: '#10B981', fontStyle: 'italic' }}>
-                                        {t('settings:settingsPage.qzMigStep1AlreadyInstalledHint')}
-                                      </div>
-                                    </>
-                                  )
-                                },
-                                { title: t('settings:settingsPage.qzMigStep2Title'), desc: t('settings:settingsPage.qzMigStep2Desc') },
-                                { title: t('settings:settingsPage.qzCommonAllowBrowserTitle'), desc: t('settings:settingsPage.qzCommonAllowBrowserDesc') },
-                                { title: t('settings:settingsPage.qzMigStep3Title'), desc: t('settings:settingsPage.qzMigStep3Desc') },
-                              ]
-                            : [
-                                { title: t('settings:settingsPage.qzFreshStep1Title'), desc: t('settings:settingsPage.qzFreshStep1Desc') },
-                                { title: t('settings:settingsPage.qzFreshStep2Title'), desc: t('settings:settingsPage.qzFreshStep2Desc') },
-                                { title: t('settings:settingsPage.qzFreshStep3Title'), desc: t('settings:settingsPage.qzFreshStep3Desc') },
-                                {
-                                  title: t('settings:settingsPage.qzFreshStep4Title'),
-                                  desc: t('settings:settingsPage.qzFreshStep4Desc'),
-                                  action: <button type="button" onClick={() => window.open('https://qz.io/download/', '_blank')} style={{ marginTop: '8px', padding: '6px 16px', fontSize: '13px', border: '1px solid #635BFF', borderRadius: '6px', background: '#635BFF', color: '#fff', cursor: 'pointer' }}>{t('settings:settingsPage.downloadQzTray')}</button>
-                                },
-                                { title: t('settings:settingsPage.qzCommonAllowBrowserTitle'), desc: t('settings:settingsPage.qzCommonAllowBrowserDesc') },
-                                { title: t('settings:settingsPage.qzFreshStep5Title'), desc: t('settings:settingsPage.qzFreshStep5Desc') },
-                              ]
-                          ).map(({ title, desc, action }, idx) => (
-                            <div key={idx} style={{ display: 'flex', gap: '14px' }}>
-                              <div style={{
-                                width: '28px', height: '28px', borderRadius: '50%', background: '#635BFF', color: '#fff',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 600, flexShrink: 0
-                              }}>{idx + 1}</div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '14px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>{title}</div>
-                                <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: '1.6' }}>{desc}</div>
-                                {action}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Desktop app note */}
-                      <div style={{ marginBottom: '20px', padding: '12px 14px', background: '#F0F9FF', border: '1px solid #BAE6FD', borderRadius: '8px' }}>
-                        <p style={{ fontSize: '13px', color: '#075985', lineHeight: '1.7', margin: 0 }}>
-                          <strong>{t('settings:settingsPage.qzDesktopAppNoteTitle')}</strong>{' '}
-                          {t('settings:settingsPage.qzDesktopAppNoteDesc')}
-                        </p>
-                      </div>
-
-                      {/* Network diagram */}
-                      <div style={{ marginBottom: '24px', padding: '16px', background: '#F1F4F8', border: '1px solid #E2E8F0', borderRadius: '8px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#1F2937', marginBottom: '10px', marginTop: 0 }}>{t('settings:settingsPage.howItWorks')}</h3>
-                        <div style={{ fontSize: '13px', color: '#4B5563', fontFamily: 'monospace', lineHeight: '1.8', whiteSpace: 'pre', overflowX: 'auto' }}>
-{`${t('settings:settingsPage.qzDiagramPos')}
-    │
-    ▼
-${t('settings:settingsPage.qzDiagramBridge')}
-    │
-    ▼  ${t('settings:settingsPage.qzDiagramVia')}
-    │
-    ├── 192.168.x.x:9100 → ${t('settings:settingsPage.billPrinter')}
-    └── 192.168.x.x:9100 → ${t('settings:settingsPage.kitchenPrinter')}`}
-                        </div>
-                        <p style={{ fontSize: '12px', color: '#6B7280', margin: '10px 0 0 0' }}>
-                          {t('settings:settingsPage.qzDiagramFooter')}
-                        </p>
-                      </div>
-
-                      {/* Troubleshooting */}
-                      <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ fontSize: '15px', color: '#1F2937', marginBottom: '8px' }}>{t('settings:settingsPage.troubleshooting')}</h3>
-                        <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: '1.8' }}>
-                          <strong>{t('settings:settingsPage.qzTroubleNotConnectedLabel')}</strong> {t('settings:settingsPage.qzTroubleNotConnectedDesc')}<br />
-                          <strong>{t('settings:settingsPage.qzTroubleTestPrintLabel')}</strong> {t('settings:settingsPage.qzTroubleTestPrintDesc')}<br />
-                          <strong>{t('settings:settingsPage.qzTroubleNoPrintersLabel')}</strong> {t('settings:settingsPage.qzTroubleNoPrintersDesc')}
-                        </div>
-                      </div>
-
-                      <button type="button"
-                        onClick={() => setShowQzGuide(false)}
-                        style={{
-                          width: '100%', padding: '12px', fontSize: '15px', fontWeight: 600,
-                          border: 'none', borderRadius: '8px', background: '#635BFF', color: '#fff', cursor: 'pointer'
-                        }}
-                      >
-                        {t('settings:settingsPage.qzGotIt')}
-                      </button>
-                    </div>
-                  </div>
+                {/* PC browser: plain browser printing for shops that do not need silent / auto print. */}
+                {!isNativePrint && setupDev.device === 'pc-browser' && (
+                  <Fold title={t('settings:printer.setupGuide.browserFold', 'No auto-print needed? Print with the browser’s print window instead')}>
+                    <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, margin: '0 0 10px' }}>{t('settings:printer.methodGuide.browserDesc')}</p>
+                    <ol style={{ margin: '0 0 0 18px', padding: 0, fontSize: '12px', color: '#4B5563', lineHeight: 1.6 }}>
+                      <li>{t('settings:printer.methodGuide.browserStep1')}</li>
+                      <li>{t('settings:printer.methodGuide.browserStep2')}</li>
+                      <li>{t('settings:printer.methodGuide.browserStep3')}</li>
+                    </ol>
+                  </Fold>
                 )}
+                {!nativeSetup && (<>
+                  <StdPrinterBlock t={t} variant="accordion" device={setupDev.device} />
+                  <TwoPrintersBlock
+                    t={t}
+                    workstations={(printerSettings.workstations || []) as any}
+                    activeWorkstationId={activeWorkstationId}
+                    kitchenAutoPrint={printerSettings.kitchenPrinter.enabled !== false && !!printerSettings.kitchenPrinter.autoPrint}
+                  />
+                </>)}
               </SettingsCard>
 
               <div id="printer-sec-assign" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', margin: '32px 0 12px' }}>
@@ -6769,16 +6553,16 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               {!isNativePrint && (<>
                               {/* Method select */}
                               <div style={{ marginBottom: '10px' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>Connection Method</label>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>{t('settings:printer.assign.methodLabel', 'Connection method')}</label>
                                 <AutoSaveField onSave={handleSave} type="select">
                                 <select
                                   value={wsBillMethod}
                                   onChange={(e) => updateWs({ billPrinter: { method: e.target.value as any } })}
                                   style={{ width: '100%', padding: '7px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', background: '#fff' }}
                                 >
-                                  <option value="browser">USB / Browser print (OS default printer)</option>
-                                  <option value="qztray">Network / Local (via QZ Tray)</option>
-                                  <option value="rawbt">Android tablet (via RawBT)</option>
+                                  <option value="browser">{t('settings:printer.assign.optBrowser', 'Browser print window (this device’s default printer)')}</option>
+                                  <option value="qztray">{t('settings:printer.assign.optQz', 'Printer name or IP (PC print helper QZ Tray)')}</option>
+                                  <option value="rawbt">{t('settings:printer.assign.optRawbt', 'RawBT (Android browser)')}</option>
                                 </select>
                                 </AutoSaveField>
                               </div>
@@ -6792,7 +6576,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                       type="text"
                                       value={wsBillAddr}
                                       onChange={(e) => updateWs({ billPrinter: { address: e.target.value } })}
-                                      placeholder="Leave blank = OS default printer · or 192.168.1.100:9100"
+                                      placeholder={t('settings:printer.assign.wsAddrPlaceholder', 'Blank = this device’s default printer · or 192.168.1.100:9100')}
                                       style={{ width: '100%', padding: '7px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace', boxSizing: 'border-box' }}
                                     />
                                     </AutoSaveField>
@@ -6808,11 +6592,11 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                     >{t('settings:printer.stations.testBtn')}</button>
                                   </div>
                                   <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '6px' }}>
-                                    Tip: leave blank so each POS device uses its own OS default printer. Or enter IP:Port for a network printer.
+                                    {t('settings:printer.assign.wsAddrTip', 'Tip: leave blank so each POS device uses its own default printer — or type a printer name, or IP:9100 for a network printer.')}
                                   </div>
                                   {qzTrayPrinters.length > 0 && (
                                     <div>
-                                      <label style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px', display: 'block' }}>Or pick a detected printer (this device):</label>
+                                      <label style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px', display: 'block' }}>{t('settings:printer.assign.pickDetectedThis', 'Or pick a printer found on this device:')}</label>
                                       <AutoSaveField onSave={handleSave} type="select">
                                       <select
                                         value={wsBillAddr}
@@ -6831,10 +6615,10 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                               )}
 
                               {wsBillMethod === 'browser' && (
-                                <div style={{ fontSize: '11px', color: '#4B5563' }}>Uses the OS default printer on whichever device is bound to this workstation.</div>
+                                <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('settings:printer.assign.wsBrowserInfo', 'Uses the default printer of the device that tapped “Use on this device” for this POS place.')}</div>
                               )}
                               {wsBillMethod === 'rawbt' && (
-                                <div style={{ fontSize: '11px', color: '#4B5563' }}>Prints to the default printer configured inside RawBT on this Android device.</div>
+                                <div style={{ fontSize: '11px', color: '#4B5563' }}>{t('settings:printer.assign.wsRawbtInfo', 'Prints to the printer set inside the RawBT app on this Android device.')}</div>
                               )}
                               </>)}
 
@@ -7072,7 +6856,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                       {kitchenStations.length === 0 && !isNativePrint && (
                         <div style={{ marginTop: '16px' }}>
                           <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1F2937', marginBottom: '6px' }}>
-                            Connection Method
+                            {t('settings:printer.assign.methodLabel', 'Connection method')}
                           </label>
                           <AutoSaveField onSave={handleSave} type="select">
                           <select
@@ -7083,9 +6867,9 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                             }))}
                             style={{ width: '100%', padding: '8px 12px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '14px', background: '#fff' }}
                           >
-                            <option value="browser">USB / Browser print (OS default printer)</option>
-                            <option value="qztray">Network / Local (via QZ Tray)</option>
-                            <option value="rawbt">Android tablet (via RawBT)</option>
+                            <option value="browser">{t('settings:printer.assign.optBrowser', 'Browser print window (this device’s default printer)')}</option>
+                            <option value="qztray">{t('settings:printer.assign.optQz', 'Printer name or IP (PC print helper QZ Tray)')}</option>
+                            <option value="rawbt">{t('settings:printer.assign.optRawbt', 'RawBT (Android browser)')}</option>
                           </select>
                           </AutoSaveField>
                         </div>
@@ -7173,7 +6957,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                       {/* Web / QZ Tray path (unchanged) — method select. */}
                                       {!isNativePrint && (
                                       <div style={{ marginBottom: '8px' }}>
-                                        <label style={{ display: 'block', fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>Connection Method</label>
+                                        <label style={{ display: 'block', fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>{t('settings:printer.assign.methodLabel', 'Connection method')}</label>
                                         <AutoSaveField onSave={handleSave} type="select">
                                         <select
                                           value={spMethod}
@@ -7190,9 +6974,9 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                           }))}
                                           style={{ width: '100%', padding: '6px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', background: '#fff' }}
                                         >
-                                          <option value="browser">USB / Browser print (OS default)</option>
-                                          <option value="qztray">Network / Local (via QZ Tray)</option>
-                                          <option value="rawbt">Android tablet (via RawBT)</option>
+                                          <option value="browser">{t('settings:printer.assign.optBrowser', 'Browser print window (this device’s default printer)')}</option>
+                                          <option value="qztray">{t('settings:printer.assign.optQz', 'Printer name or IP (PC print helper QZ Tray)')}</option>
+                                          <option value="rawbt">{t('settings:printer.assign.optRawbt', 'RawBT (Android browser)')}</option>
                                         </select>
                                         </AutoSaveField>
                                       </div>
@@ -7269,12 +7053,12 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                                 background: '#fff', color: '#1F2937', cursor: 'pointer', whiteSpace: 'nowrap'
                                               }}
                                             >
-                                              Test
+                                              {t('settings:printer.stations.testBtn')}
                                             </button>
                                           </div>
                                           {qzTrayPrinters.length > 0 && (
                                             <div style={{ marginTop: '6px' }}>
-                                              <label style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px', display: 'block' }}>Or pick a detected printer:</label>
+                                              <label style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px', display: 'block' }}>{t('settings:printer.assign.pickDetected', 'Or pick a printer found on this device:')}</label>
                                               <AutoSaveField onSave={handleSave} type="select">
                                               <select
                                                 value={sp.address || ''}
@@ -7291,7 +7075,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                                 }))}
                                                 style={{ width: '100%', padding: '6px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '12px' }}
                                               >
-                                                <option value="">-- Select printer --</option>
+                                                <option value="">{t('settings:printer.assign.selectPrinter', '-- Select printer --')}</option>
                                                 {qzTrayPrinters.map(p => (
                                                   <option key={p} value={p}>{p}</option>
                                                 ))}
@@ -7304,12 +7088,12 @@ ${t('settings:settingsPage.qzDiagramBridge')}
 
                                       {spMethod === 'browser' && (
                                         <div style={{ fontSize: '11px', color: '#6B7280' }}>
-                                          Browser print uses the OS default printer. Set this device's default printer to {station.name}'s printer.
+                                          {t('settings:printer.assign.stBrowserInfo', { defaultValue: 'Uses this device’s default printer — set the default printer of the printing device to the {{station}} printer.', station: station.name })}
                                         </div>
                                       )}
                                       {spMethod === 'rawbt' && (
                                         <div style={{ fontSize: '11px', color: '#6B7280' }}>
-                                          RawBT prints to the default printer configured inside the RawBT Android app.
+                                          {t('settings:printer.assign.stRawbtInfo', 'Prints to the printer set inside the RawBT app on this Android device.')}
                                         </div>
                                       )}
                                       </>)}
@@ -7325,7 +7109,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                             /* Station 없을 때 단일 IP */
                             <>
                               <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#1F2937', marginBottom: '6px' }}>
-                                Printer Address
+                                {t('settings:printer.assign.addrLabel', 'Printer address')}
                               </label>
                               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                 <AutoSaveField onSave={handleSave} style={{ flex: '1 1 180px', minWidth: 0 }}>
@@ -7360,7 +7144,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                     background: '#fff', color: '#1F2937', cursor: 'pointer', whiteSpace: 'nowrap'
                                   }}
                                 >
-                                  Test Print
+                                  {t('settings:printer.assign.testPrint', 'Test Print')}
                                 </button>
                               </div>
                               <div style={{ fontSize: '11px', color: '#6B7280', marginTop: '4px' }}>
@@ -7370,7 +7154,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                           )}
                           {qzTrayPrinters.length > 0 && kitchenStations.length === 0 && (
                             <div style={{ marginTop: '8px' }}>
-                              <label style={{ fontSize: '12px', color: '#4B5563', marginBottom: '4px', display: 'block' }}>Or select detected printer:</label>
+                              <label style={{ fontSize: '12px', color: '#4B5563', marginBottom: '4px', display: 'block' }}>{t('settings:printer.assign.pickDetected', 'Or pick a printer found on this device:')}</label>
                               <AutoSaveField onSave={handleSave} type="select">
                               <select
                                 value={printerSettings.kitchenPrinter.address || ''}
@@ -7380,7 +7164,7 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                                 }))}
                                 style={{ width: '100%', padding: '6px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px' }}
                               >
-                                <option value="">-- Select printer --</option>
+                                <option value="">{t('settings:printer.assign.selectPrinter', '-- Select printer --')}</option>
                                 {qzTrayPrinters.map(p => (
                                   <option key={p} value={p}>{p}</option>
                                 ))}

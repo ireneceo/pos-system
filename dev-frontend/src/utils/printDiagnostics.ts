@@ -433,3 +433,37 @@ function testPrintCheck(): DiagCheck {
     evidence: {},
   });
 }
+
+// ─── Printer-setup guide: which device is this? (2026-11-08 Fable design
+//     .claude/fable-design-20261108-printer-setup-guide.md D1) ───
+// Guide text only — never affects printer_settings or the print path. Unlike
+// detectPlatform() (print mode), this reports the physical device + app shell.
+export type SetupDevice = 'android-app' | 'windows-app' | 'pc-browser' | 'android-browser' | 'ipad-browser';
+export type SetupOs = 'windows' | 'mac' | 'linux' | 'android' | 'ios' | 'other';
+export const SETUP_DEVICE_KEY = 'printer_setup_device';
+const BROWSER_DEVICES: SetupDevice[] = ['pc-browser', 'android-browser', 'ipad-browser'];
+
+export function detectSetupDevice(): { device: SetupDevice; detected: SetupDevice; os: SetupOs; standalone: boolean; overridable: boolean } {
+  const w: any = typeof window !== 'undefined' ? window : {};
+  const nav: any = typeof navigator !== 'undefined' ? navigator : {};
+  const ua: string = String(nav.userAgent || '');
+  let standalone = false;
+  try {
+    standalone = !!(w.matchMedia && w.matchMedia('(display-mode: standalone)').matches) || nav.standalone === true;
+  } catch { /* ignore */ }
+  if (w.__NATIVE_PRINT_SETUP) return { device: 'android-app', detected: 'android-app', os: 'android', standalone: false, overridable: false };
+  if (w.__NATIVE_PRINT) return { device: 'windows-app', detected: 'windows-app', os: 'windows', standalone: false, overridable: false };
+  let detected: SetupDevice = 'pc-browser';
+  let os: SetupOs = 'other';
+  if (/Android/i.test(ua)) { detected = 'android-browser'; os = 'android'; }
+  else if (/iPad|iPhone|iPod/i.test(ua) || (/Macintosh/i.test(ua) && Number(nav.maxTouchPoints || 0) > 1)) { detected = 'ipad-browser'; os = 'ios'; }
+  else if (/Windows/i.test(ua)) os = 'windows';
+  else if (/Macintosh|Mac OS X/i.test(ua)) os = 'mac';
+  else if (/Linux|X11|CrOS/i.test(ua)) os = 'linux';
+  let device: SetupDevice = detected;
+  try {
+    const v = localStorage.getItem(SETUP_DEVICE_KEY) as SetupDevice | null;
+    if (v && BROWSER_DEVICES.includes(v)) device = v;
+  } catch { /* ignore */ }
+  return { device, detected, os, standalone, overridable: true };
+}

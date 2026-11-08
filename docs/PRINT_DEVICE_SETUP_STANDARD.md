@@ -35,3 +35,15 @@ POS에서 넣은 주문은 2장, 모바일 주문은 1장. 모바일은 손님 �
 ## 6. 안전 (생명선)
 
 인쇄 코드는 매장 생명선. 구현은 보호규칙대로 — 자동검증 전부 + 실프린터 1회(방향 확인이 아니라 종이 출력 확인). 매장 JSON 손수정 0.
+
+## 7. 설정 안내 화면 (2026-11-08)
+
+설계 원문: `.claude/fable-design-20261108-printer-setup-guide.md` (Fable). 구현: `dev-frontend/src/pages/Settings/PrinterSetupGuide.tsx` · `AndroidPrinterSetup.tsx`(표준 프린터 블록) · `utils/printDiagnostics.ts detectSetupDevice()`.
+
+- **이 기기 자동 판정**(설정 › 프린터 §1 맨 위 한 줄): 안드로이드 앱(`__NATIVE_PRINT_SETUP`) · Windows 앱(`__NATIVE_PRINT`) · PC 브라우저 · 안드로이드 브라우저 · iPad, PWA 면 한 줄 덧붙임. 앱은 바꿀 수 없고 브라우저만 «아니에요?» 로 고침(이 기기 브라우저 저장 `printer_setup_device` — 매장 설정 아님).
+- **연결 방식 고르기**: 안드로이드 앱은 기존(`android_printer_conn`: wifi·lan·bluetooth·builtin) · PC/Windows 앱은 `printer_setup_conn`(wifi·lan·usb). 고른 방식의 번호 순서만 보인다. Wi-Fi 에 «추천 — PurpleHere 표준 프린터».
+- **«어느 방식을 고를까?» 표 · Browser/RawBT/QZ 3탭 없앰** — 기기가 정한다(PC=QZ 3단계 · 안드로이드 브라우저=앱 설치 권고 + RawBT 접힘 · iPad=인쇄 창 + 자동 인쇄 불가 안내 · PC 에 «인쇄 창으로» 접힘 한 줄).
+- **PurpleHere 표준 프린터**(셀프테스트 V6.22F · 80 mm · USB + Wi-Fi 2.4 GHz): 셀프테스트에 «WIFI distribution network method» 가 있으면 EspTouch(SmartConfig) 방식 — 설정 모드 = 전원 끄고 FEED 누른 채 켜서 삐 소리 멈출 때까지(약 10초) · 셀프테스트 = 2초만. 다른 기종은 제조사 앱 소목록. 모델명은 로케일 키 `printer.setupGuide.std.model` 하나(비우면 안 보임).
+- **PC 등록 두 길**: A 영어·말레이어 메뉴만 → IP 그대로(raw, 한글·로고 안 됨) / B 한글·중문·로고 → 제조사 드라이버 + TCP/IP 포트 + 이름 KITCHEN(권고 B).
+- **프린터 2대 · 기기 섞임 규칙**(접힘 상자, POS 자리 2개 이상이면 펼침): 인쇄 기기 1대가 두 프린터에 다 닿아야 · 영수증은 POS 자리마다 · Windows PC + 안드로이드 태블릿이면 PC 가 인쇄 기기 · **프린터 이름 = 자리 영문 대문자(COUNTER·KITCHEN·BAR), 인쇄 기기를 바꾸면 새 기기에 같은 이름** → 매장 설정 그대로 · 블루투스 1기기 1프린터 · «지금 이 기기» 읽기 줄.
+- 매장 설정(printer_settings) 모양·저장·자물쇠·🔒 인쇄 보호파일 무변경. §2 카드의 영어 하드코딩 글자만 번역 키로(저장 값 `browser|qztray|rawbt` 그대로).

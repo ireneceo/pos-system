@@ -167,6 +167,8 @@ billPrint는 비-IP 주소를 `{kind:'os', printerName}` / `printHtml({printerNa
 
 ### 8-2. 결정 ②: 계약 — §4 무확장, Android 전용 `__NATIVE_PRINT_SETUP`
 
+> 2026-11-08: 설정 화면의 와이파이 1단계 소목록 맨 위에 «PurpleHere 표준 프린터 — EspTouch» 항목, 셀프테스트 소목록 맨 위에 표준 프린터 항목 추가 · §1 위에 «이 기기» 줄 · 아래에 «추천 기종»·«프린터 2대» 상자(`docs/PRINT_DEVICE_SETUP_STANDARD.md` §7). 앱(APK)·브릿지 계약 변경 없음.
+
 `__NATIVE_PRINT`(7메서드 + available/version)는 **한 글자도 안 바뀐다.** billPrint.js는 SETUP 객체를 절대 읽지 않는다(읽는 곳 = SettingsPage뿐 — 비보호 파일). Windows는 이 객체를 주입하지 않으므로 Windows 앱/웹 동작은 바이트 동일.
 
 `nativePrintBridge.js` IIFE가 함께 주입하는 Android 전용 객체:

@@ -17,6 +17,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { NativeAppVersionRow } from '../../components/Common/NativeAppUpdateBanner';
 import { findWifiPrinters, PRINTER_PORT } from '../../utils/wifiPrinterDiscovery';
 import { parseVersion } from '../../utils/nativeAppUpdate';
+import type { SetupDevice } from '../../utils/printDiagnostics';
 
 export interface NativeSetupBridge {
   platform: string;
@@ -39,13 +40,13 @@ const suggestName = (host: string, taken: string[]) => {
   return name;
 };
 
-const btn = (primary = false): React.CSSProperties => ({
+export const btn = (primary = false): React.CSSProperties => ({
   padding: '8px 14px', fontSize: '13px', fontWeight: 600, borderRadius: '6px', cursor: 'pointer', whiteSpace: 'nowrap',
   border: primary ? '1px solid #635BFF' : '1px solid #6B7280',
   background: primary ? '#635BFF' : '#fff', color: primary ? '#fff' : '#1F2937',
 });
 const inputStyle: React.CSSProperties = { padding: '8px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', background: '#fff', boxSizing: 'border-box', minWidth: 0 };
-const stepNo = (n: number) => (
+export const stepNo = (n: number) => (
   <span style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#635BFF', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0 }}>{n}</span>
 );
 
@@ -132,6 +133,7 @@ export const AndroidConnPicker: React.FC<{ t: T; compact?: boolean }> = ({ t, co
                 border: on ? '2px solid #635BFF' : '1px solid #D1D5DB', background: on ? '#EEF2FF' : '#fff',
               }}>
               <div style={{ fontSize: '13px', fontWeight: 700, color: on ? '#312E81' : '#1F2937' }}>{on ? '● ' : '○ '}{connLabel(t, c)}</div>
+              {c === 'wifi' && <div style={{ fontSize: '11px', fontWeight: 600, color: '#065F46', marginTop: '2px' }}>{t('settings:printer.setupGuide.recommendTag', { defaultValue: 'Recommended — PurpleHere standard printer' })}</div>}
               {!compact && <div style={{ fontSize: '11px', color: '#6B7280', lineHeight: 1.4, marginTop: '2px' }}>{connSub(t, c)}</div>}
             </button>
           );
@@ -415,8 +417,8 @@ export const AndroidPrinterSetupCard: React.FC<CardProps> = ({ bridge, onRegistr
 //    와이파이 프린터는 «기종마다 방법대로 매장 와이파이에 붙이기» 가 1단계 — 기종별 방법을 그 단계 안에 바로 보인다.
 //    셀프테스트 종이(= 주소가 찍힌 종이) 보는 법은 와이파이 2단계·랜선 1단계 안에.
 // ─────────────────────────────────────────────────────────────────────────────
-type Sub = [string, string];
-const subList = (items: Sub[]) => (
+export type Sub = [string, string];
+export const subList = (items: Sub[]) => (
   <div style={{ marginTop: '6px', border: '1px solid #E5E7EB', borderRadius: '6px', background: '#fff' }}>
     {items.map(([m, how], i) => (
       <div key={m} style={{ padding: '7px 10px', borderTop: i ? '1px solid #F1F4F8' : 'none' }}>
@@ -427,22 +429,22 @@ const subList = (items: Sub[]) => (
   </div>
 );
 
-export const AndroidPrintGuide: React.FC<{ t: T }> = ({ t }) => {
-  const [conn] = useAndroidConn();
-  const [troubleOpen, setTroubleOpen] = useState(false);
-  const g = (k: string, d: string) => t(`settings:printer.androidGuide.${k}`, { defaultValue: d });
 
-  // 셀프테스트 종이 — 기종별(와이파이 2단계·랜선 1단계가 같이 씀)
-  const selfTest: Sub[] = [
-    [g('stGenericName', 'Most 80 mm receipt printers (Xprinter, Gprinter, Rongta, HPRT …)'),
-     g('stGenericHow', 'Switch the printer OFF. Hold the FEED button, switch it ON, release after 2 seconds. The page that comes out shows “IP Address”.')],
-    [g('stEpsonName', 'Epson TM series (TM-m30, TM-T82X …)'),
-     g('stEpsonHow', 'TM-m30: press the small button on the back once — a network sheet with the IP prints. Others: hold FEED while switching ON.')],
-    [g('stStarName', 'Star (TSP143, mC-Print …)'),
-     g('stStarHow', 'Hold FEED while switching ON — the self-test page shows the IP address.')],
-  ];
-  // 와이파이에 붙이기 — 기종마다(Irene «프린터 와이파이를 프린터마다 안내하는대로 … 순서에 들어가야지»)
-  const wifiJoin: Sub[] = [
+// ─────────────────────────────────────────────────────────────────────────────
+// PurpleHere 표준 프린터 — EspTouch 로 매장 Wi-Fi 에 붙이기 (2026-11-08 Fable 설계 D4)
+//   셀프테스트 종이(V6.22F)에 «WIFI distribution network method» 가 찍히는 프린터 = Espressif 모듈 SmartConfig.
+//   한 컴포넌트를 두 자리에서 쓴다: inline(와이파이 1단계 안) · accordion(§1 맨 아래 «추천 기종»).
+//   안내 글자만 — 설정 저장·인쇄 경로와 무관.
+// ─────────────────────────────────────────────────────────────────────────────
+// 공식 경로만(2026-11-08 Fable 결정 — Play 에는 Espressif 공식 EspTouch 가 없고, Play 검색 첫 결과는 다른 개발자 앱).
+// 버전이 바뀌면 여기 한 곳만 고친다. PrinterSetupGuide.tsx 가 다시 내보낸다.
+export const ESPTOUCH_IOS_URL = 'https://apps.apple.com/my/app/espressif-esptouch/id1071176700';
+export const ESPTOUCH_ANDROID_APK_URL = 'https://github.com/EspressifApp/EsptouchForAndroid/releases/download/v2.4.0/esptouch-v2.4.0.apk';
+
+/** 다른 기종(Epson·Star·기타·랜선) — 와이파이 1단계 소목록과 추천 기종 상자가 같이 쓴다. */
+export const wifiJoinOthers = (t: T): Sub[] => {
+  const g = (k: string, d: string) => t(`settings:printer.androidGuide.${k}`, { defaultValue: d });
+  return [
     [g('wjEpsonName', 'Epson TM (Wi-Fi models)'),
      g('wjEpsonHow', 'Install the Epson “TM Utility” app on a phone or this tablet → pick the printer → Network (Wi-Fi) settings → choose the shop Wi-Fi, type its password → save.')],
     [g('wjStarName', 'Star (Wi-Fi models)'),
@@ -452,11 +454,202 @@ export const AndroidPrintGuide: React.FC<{ t: T }> = ({ t }) => {
     [g('wjLanName', 'The printer also has a LAN port?'),
      g('wjLanHow', 'A cable to the router is easier and more stable than Wi-Fi — no Wi-Fi setup at all. Pick “LAN cable printer” above.')],
   ];
+};
+
+const stdText = (t: T) => {
+  const s = (k: string, d: string, o?: any) => t(`settings:printer.setupGuide.std.${k}`, { defaultValue: d, ...(o || {}) });
+  return { s };
+};
+
+/** 화면에 적을 모델명 — Irene 가 확정하면 로케일 키 하나만 채운다(비어 있으면 안 보임). */
+const stdModelName = (t: T): string => {
+  const v = t('settings:printer.setupGuide.std.model', { defaultValue: '' });
+  return v && v !== 'printer.setupGuide.std.model' && v !== 'settings:printer.setupGuide.std.model' ? v : '';
+};
+
+const accHead: React.CSSProperties = { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#F9FAFB', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#1F2937', textAlign: 'left' };
+export const accordionStyles = { head: accHead };
+
+const smallNo = (n: number) => (
+  <span style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#EEF2FF', color: '#312E81', border: '1px solid #C7D2FE', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, flexShrink: 0 }}>{n}</span>
+);
+
+/** EspTouch 5단계 + 안 될 때 — inline·accordion 공통 본문. */
+const EspTouchSteps: React.FC<{ t: T; short?: boolean }> = ({ t, short = false }) => {
+  const { s } = stdText(t);
+  const steps: Array<{ title: string; body: string; extra?: React.ReactNode }> = [
+    { title: s('e1Title', 'Install the EspTouch app (made by Espressif)'),
+      body: s('e1Body', 'iPhone or iPad at hand? That is easiest — App Store, “Espressif Esptouch”. Android phone or tablet: download the official file below, open it and install — Android asks once to “allow apps from this source” (same as when you got the Purple POS app). Free.'),
+      extra: (
+        <div>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+            <button type="button" onClick={() => window.open(ESPTOUCH_IOS_URL, '_blank', 'noopener')} style={{ ...btn(true), padding: '6px 12px', fontSize: '12px' }}>
+              {s('e1IosBtn', 'Open App Store (iPhone · iPad)')}
+            </button>
+            <button type="button" onClick={() => window.open(ESPTOUCH_ANDROID_APK_URL, '_blank', 'noopener')} style={{ ...btn(), padding: '6px 12px', fontSize: '12px' }}>
+              {s('e1ApkBtn', 'Download EspTouch (Android)')}
+            </button>
+          </div>
+          <div style={{ fontSize: '11px', color: '#92400E', lineHeight: 1.5, marginTop: '4px' }}>
+            {s('e1PlayNote', 'Google Play has no official Espressif EspTouch — the “EspTouch” you find by searching there is another developer’s app.')}
+          </div>
+        </div>
+      ) },
+    { title: s('e2Title', 'Put the printer in setup mode'),
+      body: s('e2Body', 'Switch the printer OFF. Press and HOLD the FEED button, switch it ON and keep holding until the beeping stops (about 10 seconds), then let go. The green light blinks = setup mode.') },
+    { title: s('e3Title', 'Send the Wi-Fi from EspTouch'),
+      body: s('e3Body', 'Open EspTouch → the “EspTouch” tab (not “EspTouch V2”) → check the shop Wi-Fi name is shown (not shown: put the phone on the shop 2.4 GHz Wi-Fi; on Android allow Location) → type the Wi-Fi password in “Password” → Device count 1 → tap “Confirm”. The app buttons are in English.') },
+    { title: s('e4Title', 'Wait up to 1 minute'),
+      body: s('e4Body', 'Success = the app shows 1 device with an IP address (192.168.x.x). The printer’s green light now blinks slowly = connected.') },
+    { title: s('e5Title', 'Check on paper — self-test page'),
+      body: s('e5Body', 'Switch OFF → hold FEED → switch ON → let go after about 2 seconds (holding until the beep stops puts it back in setup mode — then switch off and try again). The page shows “WIFI IP 192.168.x.x” = done. Keep this page: you need the IP if the search misses it.') },
+  ];
+  return (
+    <div>
+      <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6, padding: '8px 10px', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '6px', marginBottom: '8px' }}>
+        <strong>{s('prepTitle', 'Before you start:')}</strong>{' '}
+        {short
+          ? s('prepShort', 'Have the shop Wi-Fi password ready and connect the phone to that 2.4 GHz Wi-Fi first.')
+          : s('prepBody', 'the shop Wi-Fi name and password. It must be 2.4 GHz — if the router shows two names (“Shop” and “Shop-5G”), use the one without 5G. Not the guest Wi-Fi. Connect the phone to that Wi-Fi first.')}
+      </div>
+      <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {steps.map((st, i) => (
+          <li key={i} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+            {smallNo(i + 1)}
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#1F2937' }}>{st.title}</div>
+              <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6 }}>{st.body}</div>
+              {st.extra}
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div style={{ fontSize: '12px', color: '#92400E', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '6px', padding: '8px 10px', lineHeight: 1.6 }}>
+        <strong>{s('troubleTitle', 'Did not work?')}</strong>
+        <div>{s('trouble1', 'App says Timeout: the phone is on 5 GHz Wi-Fi · the printer is not in setup mode (do step 2 again) · wrong password · too far from the router — try closer.')}</div>
+        <div>{s('trouble2', 'Self-test page shows no IP: do steps 2–4 again.')}</div>
+        <div>{s('trouble3', 'The page shows an IP but Purple cannot find it: this device must be on the same Wi-Fi (not the guest Wi-Fi).')}</div>
+      </div>
+    </div>
+  );
+};
+
+/** 등록 — 기기별 한 문단(그 다음 Purple 에 넣기). */
+export const StdRegister: React.FC<{ t: T; device: SetupDevice }> = ({ t, device }) => {
+  const { s } = stdText(t);
+  const box: React.CSSProperties = { fontSize: '12px', color: '#1F2937', lineHeight: 1.6, padding: '8px 10px', background: '#fff', border: '1px solid #E5E7EB', borderRadius: '6px' };
+  if (device === 'android-app') {
+    return <div style={box}>{s('regAndroidApp', 'Then on this tablet: “Find printers automatically” → give the found address the name KITCHEN (or COUNTER) → Add. Not found? “Add by IP address” with the IP from the self-test page. Korean and Chinese menus print as they are.')}</div>;
+  }
+  if (device === 'android-browser') {
+    return <div style={box}>{s('regAndroidBrowser', 'Then in the RawBT app: Settings → Connection → Network → the IP from the self-test page. (Easier: install the Purple POS app — it finds the printer by itself.)')}</div>;
+  }
+  if (device === 'ipad-browser') {
+    return <div style={box}>{s('regIpad', 'An iPad cannot be the auto-print device. Set this printer up on the Windows PC or Android tablet that prints.')}</div>;
+  }
+  return (
+    <div style={box}>
+      <div style={{ fontWeight: 700, marginBottom: '4px' }}>{s('regPcTitle', 'Then add it to this PC — one of two ways:')}</div>
+      <div style={{ marginBottom: '4px' }}><strong>A.</strong> {s('regPcA', 'Menu only in English / Malay: in section 2 pick “Printer name or IP” and type the self-test IP, e.g. 192.168.0.104:9100. No driver needed. Korean, Chinese and logos will NOT print.')}</div>
+      <div style={{ marginBottom: '4px' }}><strong>B.</strong> {s('regPcB', 'Korean / Chinese menu or a logo: install the maker’s Windows driver (QR code or sheet in the box) → port type Network / TCP-IP, address = the self-test IP → name the printer KITCHEN → in Purple tap “Find Printers” → pick KITCHEN in section 2.')}</div>
+      <div style={{ color: '#065F46', fontWeight: 600 }}>{s('regPcRecommend', 'Recommended: B if your menu has any non-English letters.')}</div>
+    </div>
+  );
+};
+
+/** 표준 프린터 상자 — inline(와이파이 1단계 안, 펼쳐진 채) · accordion(§1 아래, 기본 접힘). */
+export const StdPrinterBlock: React.FC<{ t: T; variant: 'inline' | 'accordion'; device: SetupDevice }> = ({ t, variant, device }) => {
+  const { s } = stdText(t);
+  const [open, setOpen] = useState(false);
+  const [othersOpen, setOthersOpen] = useState(false);
+  const model = stdModelName(t);
+  const identify = (
+    <div style={{ fontSize: '12px', color: '#312E81', lineHeight: 1.6, padding: '8px 10px', background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: '6px', marginBottom: '8px' }}>
+      {s('identify', 'Is this my printer? Print the self-test page: if it says “WIFI distribution network method” and “Press and hold the paper feed button”, the steps below are right for it. Other printers (Epson, Star …) use their maker’s app — see “Other printers”.')}
+    </div>
+  );
+  if (variant === 'inline') {
+    return (
+      <div style={{ marginTop: '6px', padding: '10px', border: '1px solid #C7D2FE', borderRadius: '8px', background: '#FAFBFF' }}>
+        <div style={{ fontSize: '12px', fontWeight: 700, color: '#312E81', marginBottom: '6px' }}>
+          {s('inlineTitle', 'PurpleHere standard printer — join the Wi-Fi with EspTouch (once per printer)')}
+        </div>
+        <EspTouchSteps t={t} short />
+      </div>
+    );
+  }
+  return (
+    <div style={{ border: '1px solid #E5E7EB', borderRadius: '8px', overflow: 'hidden', marginTop: '12px' }}>
+      <button type="button" style={accHead} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span>{s('accTitle', 'PurpleHere standard printer — recommended model')}</span>
+        <span>{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div style={{ padding: '12px 14px', background: '#fff' }}>
+          <div style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.6, marginBottom: '8px' }}>
+            {model && <div style={{ fontWeight: 700 }}>{model}</div>}
+            {s('head', '80 mm receipt and kitchen printer · USB + Wi-Fi (2.4 GHz) · auto cutter · 200 mm/s. This is the model we put in our shop packages. One model works for the counter and the kitchen.')}
+          </div>
+          {identify}
+          <div style={{ fontSize: '13px', fontWeight: 700, color: '#1F2937', margin: '10px 0 6px' }}>{s('espTitle', 'Join the shop Wi-Fi with EspTouch — once, for each printer')}</div>
+          <EspTouchSteps t={t} />
+          <div style={{ fontSize: '13px', fontWeight: 700, color: '#1F2937', margin: '10px 0 6px' }}>{s('regTitle', 'Then register it in Purple')}</div>
+          <StdRegister t={t} device={device} />
+          <button type="button" onClick={() => setOthersOpen((o) => !o)} aria-expanded={othersOpen}
+            style={{ marginTop: '10px', padding: 0, border: 'none', background: 'none', color: '#4F46E5', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}>
+            {othersOpen ? s('othersHide', 'Hide other printers') : s('othersShow', 'Other printers (Epson, Star, others) — each maker does it differently')}
+          </button>
+          {othersOpen && subList(wifiJoinOthers(t))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/** 와이파이 1단계 소목록 맨 위 — 표준 프린터 한 줄 요약 + «자세히» 로 EspTouch 펼침. */
+const StdPrinterItem: React.FC<{ t: T; device: SetupDevice }> = ({ t, device }) => {
+  const { s } = stdText(t);
+  const [open, setOpen] = useState(true);
+  return (
+    <div style={{ marginTop: '6px', border: '1px solid #C7D2FE', borderRadius: '6px', background: '#FAFBFF', padding: '7px 10px' }}>
+      <div style={{ fontSize: '12px', fontWeight: 700, color: '#312E81' }}>{s('itemName', 'PurpleHere standard printer (self-test page says “WIFI distribution network method”)')}</div>
+      <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6 }}>{s('itemSummary', 'EspTouch app (Espressif) → hold FEED while switching on until the beep stops → in the app type the Wi-Fi password → Confirm → IP shows.')}</div>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
+        style={{ marginTop: '4px', padding: 0, border: 'none', background: 'none', color: '#4F46E5', fontSize: '12px', cursor: 'pointer', textDecoration: 'underline' }}>
+        {open ? s('itemHide', 'Hide steps') : s('itemShow', 'Show the steps')}
+      </button>
+      {open && <StdPrinterBlock t={t} variant="inline" device={device} />}
+    </div>
+  );
+};
+export { StdPrinterItem };
+
+/** 셀프테스트 종이 뽑는 법 — 기종별(안드로이드 와이파이 2단계·랜선 1단계 · PC 안내가 같이 씀). */
+export const selfTestList = (t: T): Sub[] => {
+  const g = (k: string, d: string) => t(`settings:printer.androidGuide.${k}`, { defaultValue: d });
+  return [
+    [t('settings:printer.setupGuide.std.stName', { defaultValue: 'PurpleHere standard printer' }),
+     t('settings:printer.setupGuide.std.stHow', { defaultValue: 'Switch OFF. Hold FEED, switch ON, let go after about 2 seconds — do not hold until the beep stops (that is Wi-Fi setup mode). Look for “WIFI IP”.' })],
+    [g('stGenericName', 'Most 80 mm receipt printers (Xprinter, Gprinter, Rongta, HPRT …)'),
+     g('stGenericHow', 'Switch the printer OFF. Hold the FEED button, switch it ON, release after 2 seconds. The page that comes out shows “IP Address”.')],
+    [g('stEpsonName', 'Epson TM series (TM-m30, TM-T82X …)'),
+     g('stEpsonHow', 'TM-m30: press the small button on the back once — a network sheet with the IP prints. Others: hold FEED while switching ON.')],
+    [g('stStarName', 'Star (TSP143, mC-Print …)'),
+     g('stStarHow', 'Hold FEED while switching ON — the self-test page shows the IP address.')],
+  ];
+};
+
+export const AndroidPrintGuide: React.FC<{ t: T }> = ({ t }) => {
+  const [conn] = useAndroidConn();
+  const [troubleOpen, setTroubleOpen] = useState(false);
+  const g = (k: string, d: string) => t(`settings:printer.androidGuide.${k}`, { defaultValue: d });
+
+  const selfTest: Sub[] = selfTestList(t);
 
   const STEPS: Record<StepKey, { title: string; body: string; extra?: React.ReactNode }> = {
     wifiJoin: { title: g('wifiJoinTitle', 'Join the printer to the shop Wi-Fi — the way your printer model does it'),
       body: g('wifiJoinBody', 'Do this once per printer. Use the Wi-Fi this tablet uses — not the guest Wi-Fi. Most Wi-Fi printers only see 2.4 GHz Wi-Fi: if the router has two names (e.g. “Shop” and “Shop-5G”), pick the one without 5G.'),
-      extra: subList(wifiJoin) },
+      extra: (<>{<StdPrinterItem t={t} device="android-app" />}{subList(wifiJoinOthers(t))}</>) },
     wifiCheck: { title: g('wifiCheckTitle', 'Check it joined — print the self-test page'),
       body: g('wifiCheckBody', 'An address like 192.168.x.x under “IP Address” = it is on the Wi-Fi. 0.0.0.0, 169.254.x.x or no IP = not yet — go back to step 1. Keep the page: the IP is useful if the search below misses it. Also check this tablet’s Android Wi-Fi shows the SAME Wi-Fi name.'),
       extra: subList(selfTest) },
