@@ -1006,6 +1006,16 @@ const SettingsPage: React.FC = () => {
     })();
     return () => { cancelled = true; };
   }, [isNativePrint, printerListNonce, nativeSetup]);
+  // 2026-11-08: the self-diagnose panel now sits in §4 «When printing fails» (bottom of the
+  // printer tab). The failure banner deep-links here with ?diag=1 and the panel auto-runs —
+  // scroll §4 into view once so the result isn't off-screen.
+  const diagScrolledRef = useRef(false);
+  useEffect(() => {
+    if (diagScrolledRef.current || activeTab !== 'printer' || printerSettingsLoading) return;
+    if (new URLSearchParams(window.location.search).get('diag') !== '1') return;
+    diagScrolledRef.current = true;
+    document.getElementById('printer-sec-emergency')?.scrollIntoView({ block: 'start' });
+  }, [activeTab, printerSettingsLoading]);
   const [showQzGuide, setShowQzGuide] = useState(false);
   const [qzScenario, setQzScenario] = useState<'migration' | 'fresh'>('migration');
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
@@ -6007,13 +6017,48 @@ const SettingsPage: React.FC = () => {
                   </button>
                 </div>
               )}
-              {/* Print Self-Diagnose (docs/PRINT_SELF_DIAGNOSE_DESIGN.md §5-1) —
-                  one button merges server checks + this device's checks into a plain
-                  list with causes, guides, safe recovery buttons and test prints. */}
-              {!printerSettingsLoading && (
-                <PrintSelfDiagnosePanel restaurantId={user?.restaurantId} />
+              {/* 2026-11-08 (Irene «프린터 설정하러 들어갔는데 맨 아래에 설정이 있으면 어쩌라는 거야?» · Fable 설계):
+                  탭을 일하는 순서 4절로 — §1 이 기기와 프린터 연결 → §2 자리마다 프린터 지정 → §3 인쇄물 내용 → §4 안 될 때.
+                  §1 «Find Printers» 결과(qzTrayPrinters)가 §2 드롭다운을 채우므로 §1 은 반드시 §2 위. 카드 안쪽은 그대로 옮기기만 함. */}
+              {!printerSettingsLoading && !!(printerSettings as any).emergencyMode && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', marginBottom: 16, borderRadius: 8, fontSize: 13, background: '#FEF2F2', border: '1px solid #FECACA', color: '#B42318' }}>
+                  <span>{t('settings:printer.sections.emergencyOnBanner', 'Emergency mode is ON — every ticket is printing at the counter (receipt) printer.')}</span>
+                  <UIButton variant="danger" size="small" onClick={() => document.getElementById('printer-sec-emergency')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                    {t('settings:printer.sections.emergencyOnGo', 'Open')}
+                  </UIButton>
+                </div>
               )}
-              {/* Android 앱: 따라 하기 5단계 + «자동 인쇄 준비» 점검을 탭 맨 위에(2026-11-02 — 아래쪽 카드 안에 있으면 못 찾는다).
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 8 }}>{t('settings:printer.sections.stripTitle', 'Set up in this order')}</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {([
+                    { n: 1, id: 'printer-sec-connect', label: t('settings:printer.sections.connect.title', 'Connect this device to the printers'), danger: false },
+                    { n: 2, id: 'printer-sec-assign', label: t('settings:printer.sections.assign.title', 'Choose a printer for each place'), danger: false },
+                    { n: 3, id: 'printer-sec-output', label: t('settings:printer.sections.output.title', 'What gets printed'), danger: false },
+                    { n: 4, id: 'printer-sec-emergency', label: t('settings:printer.sections.emergency.title', 'When printing fails'), danger: true },
+                  ] as const).map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                      style={{ flex: '1 1 180px', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: '#FAFBFF', border: '1px solid #E2E8F0', borderRadius: 10, cursor: 'pointer', textAlign: 'left' }}
+                    >
+                      <span style={{ flexShrink: 0, width: 24, height: 24, borderRadius: '50%', background: s.danger ? '#B42318' : '#635BFF', color: '#fff', fontWeight: 700, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>{s.n}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div id="printer-sec-connect" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', margin: '8px 0 12px' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: '#635BFF', color: '#fff', fontWeight: 700, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>1</span>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#0A2540' }}>{t('settings:printer.sections.connect.title', 'Connect this device to the printers')}</div>
+                    <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2 }}>{t('settings:printer.sections.connect.sub', 'Find the printers this device can reach')}</div>
+                  </div>
+                </div>
+              </div>
+              {/* Android 앱: 따라 하기 5단계 + «자동 인쇄 준비» 점검을 §1 첫 카드(2026-11-02 맨 위로 올림 · 2026-11-08 단계 절 §1 첫 카드).
                   프린터 등록·자동 찾기 카드는 아래 «프린터 연결» 카드 안에 그대로. */}
               {!printerSettingsLoading && nativeSetup && (
                 <SettingsCard style={{ marginBottom: '24px' }}>
@@ -6041,454 +6086,6 @@ const SettingsPage: React.FC = () => {
                   />
                 </SettingsCard>
               )}
-              {/* ★ Print Format — store-level. How tickets/receipts render on the
-                  printer. 'auto' works for most; 'text' rescues text-only / cheap USB
-                  printers that print blank with graphic mode. Additive setting saved
-                  through the normal printer_settings path (handleSave). */}
-              {!printerSettingsLoading && (
-                <SettingsCard style={{ marginBottom: '24px' }}>
-                  <CardTitle style={{ marginBottom: '10px' }}>
-                    {t('settings:printer.printFormat.title', 'Print Format')}
-                  </CardTitle>
-                  <FormGroup>
-                    <Label>{t('settings:printer.printFormat.label', 'Print format')}</Label>
-                    <AutoSaveField onSave={handleSave} type="select">
-                      <Select
-                        value={(printerSettings as any).printFormat || 'auto'}
-                        onChange={(e) => {
-                          const val = e.target.value as 'auto' | 'graphic' | 'text';
-                          setPrinterSettings(prev => ({ ...prev, printFormat: val } as any));
-                        }}
-                        disabled={!canEditPrinterSettings}
-                      >
-                        <option value="auto">{t('settings:printer.printFormat.optionAuto', 'Auto (recommended)')}</option>
-                        <option value="graphic">{t('settings:printer.printFormat.optionGraphic', 'Graphic')}</option>
-                        <option value="text">{t('settings:printer.printFormat.optionText', 'Text')}</option>
-                      </Select>
-                    </AutoSaveField>
-                    <HelpText>{t('settings:printer.printFormat.help', 'Auto: the system decides the best format for your printer — leave it here for most setups. Graphic: prints your logo and design as an image (for printers that can print images). Text: prints as plain text without a logo — choose this for text-only / cheap USB printers whose receipts come out blank; the logo is replaced by your store-name text.')}</HelpText>
-                  </FormGroup>
-                </SettingsCard>
-              )}
-              {/* ★ Offline Main POS — device-level designation (localStorage, not DB).
-                  When the internet is down, only the device marked here keeps taking
-                  orders + printing; every other device is locked (OfflineLockOverlay).
-                  No print-routing change — this only decides which one device is the
-                  hub while offline. Turn it ON for the counter POS wired to the printer. */}
-              {(() => {
-                const on = offlineMainPosOn;
-                const toggleMainPos = (next: boolean) => {
-                  setOfflineMainPos(next);
-                  setOfflineMainPosOnState(next);
-                  setInfoModal({
-                    open: true,
-                    title: next
-                      ? t('settings:printer.offlineMainPos.modalOnTitle', 'This device is now the Offline Main POS')
-                      : t('settings:printer.offlineMainPos.modalOffTitle', 'Offline Main POS turned off'),
-                    message: next
-                      ? t('settings:printer.offlineMainPos.modalOnMessage',
-                          'If the internet goes down, this device keeps taking orders and printing, and all other devices are paused so nothing is lost or duplicated. Set this ON for only ONE device — the counter POS connected to your printer.')
-                      : t('settings:printer.offlineMainPos.modalOffMessage',
-                          'This device will no longer act as the offline hub. Make sure another device is set as the Offline Main POS, or no device will take orders while offline.')
-                  });
-                };
-                return (
-                  <SettingsCard
-                    style={{
-                      marginBottom: '24px',
-                      background: on ? '#ECFDF5' : '#FFFFFF',
-                      border: on ? '2px solid #10B981' : '1px solid #C7CED6'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '10px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          width: '28px', height: '28px', borderRadius: '50%',
-                          background: on ? '#10B981' : '#9CA3AF', color: '#fff',
-                          fontSize: '15px', fontWeight: 700
-                        }} aria-hidden="true">●</span>
-                        <CardTitle style={{ margin: 0, color: on ? '#065F46' : '#0A2540' }}>
-                          {on
-                            ? t('settings:printer.offlineMainPos.titleOn', 'This device is the Offline Main POS')
-                            : t('settings:printer.offlineMainPos.titleOff', 'Offline Main POS (this device)')}
-                        </CardTitle>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => toggleMainPos(!on)}
-                        style={{
-                          padding: '10px 20px', fontSize: '14px', fontWeight: 700,
-                          border: 'none', borderRadius: '8px', cursor: 'pointer',
-                          background: on ? '#DC2626' : '#10B981', color: '#fff',
-                          minWidth: '140px'
-                        }}
-                      >
-                        {on
-                          ? t('settings:printer.offlineMainPos.turnOff', 'Turn OFF')
-                          : t('settings:printer.offlineMainPos.turnOn', 'Set this device')}
-                      </button>
-                    </div>
-                    <p style={{ fontSize: '13px', color: on ? '#065F46' : '#4B5563', lineHeight: 1.6, margin: 0 }}>
-                      {t('settings:printer.offlineMainPos.desc',
-                        'If the internet goes down, only ONE device — the Offline Main POS — keeps taking orders and printing all tickets; every other device is paused with an on-screen notice. Set this ON for the counter POS connected to your printer (one device only).')}
-                    </p>
-                  </SettingsCard>
-                );
-              })()}
-              {/* ★ Emergency Routing Mode — top of the printer tab so it's the
-                  first thing staff see when something breaks. Red when ON. The
-                  flag is a single boolean; print routing checks it at runtime and
-                  redirects every kitchen ticket to the active bill printer. We
-                  never mutate the original kitchen station routing data, so
-                  toggling OFF restores the normal flow instantly. */}
-              {(() => {
-                const isEm = !!(printerSettings as any).emergencyMode;
-                const enabledAt = (printerSettings as any).emergencyEnabledAt;
-                const minutesOn = enabledAt ? Math.max(0, Math.round((Date.now() - new Date(enabledAt).getTime()) / 60000)) : 0;
-
-                // Detect the active workstation's cashier printer config so we
-                // can pre-flight what the user will get when they toggle ON.
-                const wsList = (printerSettings as any).workstations || [];
-                const activeWs = wsList.find((w: any) => w.id === activeWorkstationId) || wsList[0];
-                const wsName = activeWs?.name || '—';
-                const cMethod: string = activeWs?.billPrinter?.method || 'browser';
-                const cAddress: string = (activeWs?.billPrinter?.address || '').trim();
-                // 실제 영수증(빌) 프린터 이름. "cashier" 추상어 대신 매장이 아는 진짜
-                // 이름(예: POS-80C)을 카드에 노출 — 비상시 어디로 나가는지 명확히.
-                const cName: string = (activeWs?.billPrinter?.name || '').trim();
-                const cPrinterLabel: string = cName
-                  || t('settings:printer.emergency.workstationReceiptPrinter', 'this workstation’s receipt printer');
-                // Crude "LAN-ish" heuristic: an IP-or-host:port suggests LAN/Wi-Fi.
-                const looksLan = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(cAddress) || /:\d+$/.test(cAddress);
-                let envBand: 'good' | 'ok' | 'partial' = 'good';
-                let envReadyKey = 'settings:printer.emergency.row2Ready';
-                let envBehaviourKey = 'settings:printer.emergency.row2Behaviour';
-                let envMethodLabel = '';
-                if (cMethod === 'rawbt') {
-                  envBand = 'good';
-                  envReadyKey = 'settings:printer.emergency.row4Ready';
-                  envBehaviourKey = 'settings:printer.emergency.row4Behaviour';
-                  envMethodLabel = t('settings:printer.emergency.row4Method');
-                } else if (cMethod === 'qztray') {
-                  if (looksLan) {
-                    envBand = 'partial';
-                    envReadyKey = 'settings:printer.emergency.row3Ready';
-                    envBehaviourKey = 'settings:printer.emergency.row3Behaviour';
-                    envMethodLabel = t('settings:printer.emergency.row3Method');
-                  } else {
-                    envBand = 'good';
-                    envReadyKey = 'settings:printer.emergency.row2Ready';
-                    envBehaviourKey = 'settings:printer.emergency.row2Behaviour';
-                    envMethodLabel = t('settings:printer.emergency.row2Method');
-                  }
-                } else {
-                  envBand = 'ok';
-                  envReadyKey = 'settings:printer.emergency.row1Ready';
-                  envBehaviourKey = 'settings:printer.emergency.row1Behaviour';
-                  envMethodLabel = t('settings:printer.emergency.row1Method');
-                }
-                const envBg = envBand === 'good' ? '#ECFDF5' : envBand === 'partial' ? '#FFFBEB' : '#F0F9FF';
-                const envBorder = envBand === 'good' ? '#A7F3D0' : envBand === 'partial' ? '#FDE68A' : '#BAE6FD';
-                const envFg = envBand === 'good' ? '#065F46' : envBand === 'partial' ? '#92400E' : '#075985';
-
-                const toggleEmergency = async (next: boolean) => {
-                  const nowIso = new Date().toISOString();
-                  const newPS = {
-                    ...printerSettings,
-                    emergencyMode: next,
-                    emergencyEnabledAt: next ? nowIso : null
-                  };
-                  setPrinterSettings(newPS as any);
-                  if (!user?.restaurantId) return;
-                  try {
-                    const token = getAuthToken();
-                    const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
-                      method: 'PUT',
-                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ printer_settings: newPS })
-                    });
-                    const d = await r.json();
-                    if (!d.success) throw new Error('save failed');
-                    // Inform the user — Setup Modal style, NOT alert/toast.
-                    setInfoModal({
-                      open: true,
-                      title: next
-                        ? t('settings:printer.emergency.modalOnTitle', 'Emergency Mode Enabled')
-                        : t('settings:printer.emergency.modalOffTitle', 'Emergency Mode Disabled'),
-                      message: next
-                        ? t('settings:printer.emergency.modalOnMessage',
-                            'All order tickets (POS and mobile) will print from {{printer}} — the receipt/bill printer on this workstation. Staff must hand-deliver tickets to each station.\n\nIf internet is down, connect this POS to a mobile hotspot. Old PCs without Wi-Fi: use a USB Wi-Fi dongle (TP-Link Nano / Mercusys / ASUS USB Adapter). Hotspot is for internet only — keep kitchen printers OFF the hotspot.',
-                            { printer: cPrinterLabel })
-                        : t('settings:printer.emergency.modalOffMessage',
-                            'Original printer routing restored. Each station prints to its own printer again.')
-                    });
-                  } catch {
-                    setInfoModal({ open: true, title: 'Save failed', message: 'Could not update emergency mode. Try again or check your connection.' });
-                  }
-                };
-
-                const testCashierPrint = async () => {
-                  try {
-                    const { printBillViaRawBT } = await import('../../utils/billPrint');
-                    const sample = {
-                      orderNumber: 'TEST-EM',
-                      items: [{ menuItem: { name: t('settings:printer.emergency.testItem', 'Cashier Printer Test') }, quantity: 1, price: 0 }],
-                      total: 0, subtotal: 0, tax: 0,
-                      paymentMethod: 'TEST'
-                    };
-                    await printBillViaRawBT(sample as any, { name: 'PurpleHere' } as any);
-                  } catch (e: any) {
-                    setInfoModal({ open: true, title: 'Test print failed', message: e?.message || 'Could not reach the cashier printer.' });
-                  }
-                };
-
-                return (
-                  <SettingsCard
-                    style={{
-                      marginBottom: '24px',
-                      background: isEm ? '#FEF2F2' : '#FFFFFF',
-                      border: isEm ? '2px solid #DC2626' : '1px solid #C7CED6'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                          width: '28px', height: '28px', borderRadius: '50%',
-                          background: isEm ? '#DC2626' : '#9CA3AF', color: '#fff',
-                          fontSize: '16px', fontWeight: 700
-                        }} aria-hidden="true">!</span>
-                        <CardTitle style={{ margin: 0, color: isEm ? '#7F1D1D' : '#0A2540' }}>
-                          {isEm
-                            ? t('settings:printer.emergency.titleOn', 'Emergency Mode — ALL ORDERS ROUTED TO CASHIER')
-                            : t('settings:printer.emergency.titleOff', 'Emergency Routing Mode')}
-                        </CardTitle>
-                        <button
-                          type="button"
-                          onClick={() => setShowPrinterTroubleshoot(true)}
-                          style={{
-                            padding: '4px 10px', fontSize: '11px', fontWeight: 600,
-                            border: '1px solid #C7CED6', borderRadius: '12px',
-                            background: '#fff', color: '#4B5563', cursor: 'pointer'
-                          }}
-                          title={t('settings:printer.troubleshoot.openTitle', 'Open the printer troubleshooting guide')}
-                        >
-                          {t('settings:printer.troubleshoot.openBtn', 'Troubleshooting guide ?')}
-                        </button>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        {!isEm && (
-                          <button
-                            type="button"
-                            onClick={testCashierPrint}
-                            style={{
-                              padding: '10px 16px', fontSize: '13px', fontWeight: 500,
-                              border: '1px solid #6B7280', borderRadius: '8px',
-                              background: '#fff', color: '#1F2937', cursor: 'pointer'
-                            }}
-                          >
-                            {t('settings:printer.emergency.testCashier', 'Test Cashier Printer')}
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => toggleEmergency(!isEm)}
-                          style={{
-                            padding: '10px 20px', fontSize: '14px', fontWeight: 700,
-                            border: 'none', borderRadius: '8px', cursor: 'pointer',
-                            background: isEm ? '#DC2626' : '#10B981', color: '#fff',
-                            minWidth: '140px'
-                          }}
-                        >
-                          {isEm
-                            ? t('settings:printer.emergency.turnOff', 'Turn OFF')
-                            : t('settings:printer.emergency.turnOn', 'Turn ON')}
-                        </button>
-                      </div>
-                    </div>
-
-                    <p style={{ fontSize: '13px', color: isEm ? '#7F1D1D' : '#4B5563', lineHeight: 1.6, margin: '0 0 12px' }}>
-                      {isEm
-                        ? t('settings:printer.emergency.descOn',
-                            'Every order ticket — POS and mobile — is printing from {{printer}} (the receipt/bill printer on this workstation) regardless of station mapping. Staff must hand-deliver tickets to each station. Click "Turn OFF" once your kitchen printers / network are back to normal.',
-                            { printer: cPrinterLabel })
-                        : t('settings:printer.emergency.descOff',
-                            'One-click escape hatch for kitchen printer or network failures. Activating reroutes every order ticket (POS and mobile) to {{printer}} — the receipt/bill printer on this workstation. Original station routing is preserved — turning OFF restores it instantly. No manual reconfiguration.',
-                            { printer: cPrinterLabel })}
-                    </p>
-
-                    {/* "How it works + recommended setup" — combined accordion.
-                        Merges the old "effect by method" table and the old prereq
-                        bullets into a single collapsed-by-default block, with the
-                        core idea + recommendation up front so most users don't
-                        need to expand the table at all. */}
-                    <div style={{ border: '1px solid #FDE68A', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
-                      <button
-                        type="button"
-                        onClick={() => setEmergencyEffectOpen(v => !v)}
-                        aria-expanded={emergencyEffectOpen}
-                        style={{
-                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '12px 16px', background: '#FFFBEB', border: 'none', cursor: 'pointer',
-                          fontSize: '13px', fontWeight: 600, color: '#92400E', textAlign: 'left'
-                        }}
-                      >
-                        <span>{t('settings:printer.emergency.howItWorksTitle', 'How emergency mode works + recommended cashier setup')}</span>
-                        <span style={{ fontSize: '14px', color: '#92400E', transform: emergencyEffectOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
-                      </button>
-                      {emergencyEffectOpen && (
-                        <div style={{ padding: '14px 16px', background: '#FFFFFF', borderTop: '1px solid #FDE68A' }}>
-                          <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.7, margin: '0 0 10px' }}>
-                            <strong>{t('settings:printer.emergency.coreIdea', 'Core idea: emergency mode just redirects EVERY ticket to the cashier printer. So how reliable it is depends entirely on how the cashier printer is connected.')}</strong>
-                          </p>
-                          <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.7, margin: '0 0 14px' }}>
-                            {t('settings:printer.emergency.coreRecommendation', '👉 Recommended: connect the cashier printer directly via USB or Bluetooth (router-independent). Keep kitchen printers on LAN as normal. This way, even if the router or kitchen printers die, the cashier alone keeps the shop running.')}
-                          </p>
-
-                          <div style={{ fontSize: '12px', fontWeight: 600, color: '#4B5563', marginBottom: '6px' }}>
-                            {t('settings:printer.emergency.effectByMethodTitle', 'Behaviour by cashier method')}
-                          </div>
-                          <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', color: '#1F2937', minWidth: '480px' }}>
-                              <thead>
-                                <tr style={{ background: '#F9FAFB' }}>
-                                  <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.emergency.colCashierMethod', 'Cashier printer method')}</th>
-                                  <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.emergency.colBehaviour', 'Behaviour during emergency')}</th>
-                                  <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.emergency.colReady', 'Emergency-ready?')}</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                <tr>
-                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row1Method')}</td>
-                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row1Behaviour')}</td>
-                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row1Ready')}</td>
-                                </tr>
-                                <tr>
-                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row2Method')}</td>
-                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row2Behaviour')}</td>
-                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', color: '#047857', fontWeight: 600 }}>{t('settings:printer.emergency.row2Ready')}</td>
-                                </tr>
-                                <tr>
-                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row3Method')}</td>
-                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row3Behaviour')}</td>
-                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', color: '#92400E', fontWeight: 600 }}>{t('settings:printer.emergency.row3Ready')}</td>
-                                </tr>
-                                <tr>
-                                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>{t('settings:printer.emergency.row4Method')}</td>
-                                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>{t('settings:printer.emergency.row4Behaviour')}</td>
-                                  <td style={{ padding: '8px 10px', verticalAlign: 'top', color: '#047857', fontWeight: 600 }}>{t('settings:printer.emergency.row4Ready')}</td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Live comparison — two columns showing "now" vs "ON" */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '10px', alignItems: 'stretch', marginBottom: '12px' }}>
-                      {/* LEFT — Current / Normal routing */}
-                      <div style={{
-                        padding: '12px 14px',
-                        background: isEm ? '#F9FAFB' : '#F1F4F8',
-                        border: '1px solid #D1D5DB',
-                        borderRadius: '8px',
-                        opacity: isEm ? 0.6 : 1
-                      }}>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#4B5563', marginBottom: '8px', letterSpacing: '0.4px' }}>
-                          {isEm
-                            ? t('settings:printer.emergency.leftLabelOn', 'NORMAL (PAUSED)')
-                            : t('settings:printer.emergency.leftLabelOff', 'NOW — NORMAL')}
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#1F2937', lineHeight: 1.7 }}>
-                          <div>
-                            <strong>{t('settings:printer.emergency.activeWorkstation', 'Active workstation')}:</strong> {wsName}
-                          </div>
-                          <div>
-                            <strong>{t('settings:printer.emergency.cashierMethodLabel', 'Cashier method')}:</strong> {envMethodLabel}{cAddress ? ` · ${cAddress}` : ''}
-                          </div>
-                          <div>
-                            <strong>{t('settings:printer.emergency.routing', 'Routing')}:</strong> {t('settings:printer.emergency.routingNormal', 'Each station → its own printer (bar / kitchen / dessert separate)')}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Arrow */}
-                      <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', color: isEm ? '#DC2626' : '#9CA3AF', fontWeight: 700 }}>
-                        →
-                      </div>
-
-                      {/* RIGHT — Emergency routing */}
-                      <div style={{
-                        padding: '12px 14px',
-                        background: isEm ? '#FEE2E2' : envBg,
-                        border: `${isEm ? '2px' : '1px'} solid ${isEm ? '#DC2626' : envBorder}`,
-                        borderRadius: '8px'
-                      }}>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: isEm ? '#7F1D1D' : envFg, marginBottom: '8px', letterSpacing: '0.4px' }}>
-                          {isEm
-                            ? t('settings:printer.emergency.rightLabelOn', '🟢 RIGHT NOW — EMERGENCY ACTIVE')
-                            : t('settings:printer.emergency.rightLabelOff', '⚡ IF YOU TURN ON')}
-                        </div>
-                        <div style={{ fontSize: '12px', color: isEm ? '#7F1D1D' : envFg, lineHeight: 1.7 }}>
-                          <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '2px' }}>
-                            → {cPrinterLabel}
-                          </div>
-                          <div style={{ fontSize: '11px', opacity: 0.85, marginBottom: '6px' }}>
-                            {t('settings:printer.emergency.destinationHint', 'Receipt (bill) printer on workstation “{{ws}}”', { ws: wsName })}
-                          </div>
-                          <div>
-                            <strong>{t('settings:printer.emergency.routing', 'Routing')}:</strong> {t('settings:printer.emergency.routingEmergency2', 'Every order ticket (all stations) prints here', {})}
-                          </div>
-                          <div>
-                            <strong>{isEm
-                              ? t('settings:printer.emergency.currentBehaviour', 'Behaviour now')
-                              : t('settings:printer.emergency.expectedBehaviour', 'If turned ON')}:</strong> {t(envBehaviourKey)}
-                          </div>
-                          <div>
-                            <strong>{t('settings:printer.emergency.fitness', 'Emergency fitness')}:</strong> {t(envReadyKey)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {isEm && enabledAt && (
-                      <div style={{ fontSize: '12px', color: '#7F1D1D', marginBottom: '10px' }}>
-                        {t('settings:printer.emergency.enabledFor', 'Active for {{minutes}} minute(s)', { minutes: minutesOn })} · {new Date(enabledAt).toLocaleString('en-MY', { timeZone: getRestaurantTimezone(operationSettings) })}
-                      </div>
-                    )}
-
-                  </SettingsCard>
-                );
-              })()}
-
-              {/* Auto-Print Preview button — opens a modal showing the LAST 10
-                  orders with per-station breakdown of what would print. Uses
-                  the same bucketing logic as the actual auto-print path so the
-                  preview is faithful. Catches the "station configured in DB
-                  but no printer assigned → items silently merge into first
-                  station" trap that has hit the store multiple times. Preview
-                  only — no actual print. */}
-              <div style={{ margin: '12px 0 16px 0', display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setAutoPrintPreviewOpen(true)}
-                  style={{
-                    padding: '10px 18px',
-                    borderRadius: 8,
-                    border: '1px solid #635BFF',
-                    background: '#F0EFFF',
-                    color: '#635BFF',
-                    fontWeight: 600,
-                    fontSize: 14,
-                    cursor: 'pointer'
-                  }}
-                >
-                  {t('settings:autoPrintPreview.title')}
-                </button>
-              </div>
-
               {/* Printer methods guide — 3 tabs so Browser / QZ Tray / RawBT are
                   presented as equally valid options. Each tab explains when to
                   pick it and shows its setup steps. The actual per-printer Method
@@ -7024,6 +6621,32 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                 )}
               </SettingsCard>
 
+              <div id="printer-sec-assign" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', margin: '32px 0 12px' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: '#635BFF', color: '#fff', fontWeight: 700, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>2</span>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#0A2540' }}>{t('settings:printer.sections.assign.title', 'Choose a printer for each place')}</div>
+                    <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2 }}>{t('settings:printer.sections.assign.sub', 'Bill printer per POS · kitchen and station printers · test print · auto-print')}</div>
+                  </div>
+                </div>
+                {/* Auto-Print Preview — opens the LAST 10 orders' per-station breakdown (preview only, no print). Moved 2026-11-08 to the §2 header. */}
+                <button
+                  type="button"
+                  onClick={() => setAutoPrintPreviewOpen(true)}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: 8,
+                    border: '1px solid #635BFF',
+                    background: '#F0EFFF',
+                    color: '#635BFF',
+                    fontWeight: 600,
+                    fontSize: 14,
+                    cursor: 'pointer'
+                  }}
+                >
+                  {t('settings:autoPrintPreview.title')}
+                </button>
+              </div>
               {!printerSettingsLoading && (
               <SettingsGrid>
                 {/* Workstations Section — multi-POS bill printers (replaces single Bill Printer card).
@@ -7800,6 +7423,44 @@ ${t('settings:settingsPage.qzDiagramBridge')}
               </SettingsGrid>
               )}
 
+              <div id="printer-sec-output" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', margin: '32px 0 12px' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: '#635BFF', color: '#fff', fontWeight: 700, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#0A2540' }}>{t('settings:printer.sections.output.title', 'What gets printed')}</div>
+                    <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2 }}>{t('settings:printer.sections.output.sub', 'Print format · kitchen ticket options · receipt design')}</div>
+                  </div>
+                </div>
+              </div>
+              {/* ★ Print Format — store-level. How tickets/receipts render on the
+                  printer. 'auto' works for most; 'text' rescues text-only / cheap USB
+                  printers that print blank with graphic mode. Additive setting saved
+                  through the normal printer_settings path (handleSave). */}
+              {!printerSettingsLoading && (
+                <SettingsCard style={{ marginBottom: '24px' }}>
+                  <CardTitle style={{ marginBottom: '10px' }}>
+                    {t('settings:printer.printFormat.title', 'Print Format')}
+                  </CardTitle>
+                  <FormGroup>
+                    <Label>{t('settings:printer.printFormat.label', 'Print format')}</Label>
+                    <AutoSaveField onSave={handleSave} type="select">
+                      <Select
+                        value={(printerSettings as any).printFormat || 'auto'}
+                        onChange={(e) => {
+                          const val = e.target.value as 'auto' | 'graphic' | 'text';
+                          setPrinterSettings(prev => ({ ...prev, printFormat: val } as any));
+                        }}
+                        disabled={!canEditPrinterSettings}
+                      >
+                        <option value="auto">{t('settings:printer.printFormat.optionAuto', 'Auto (recommended)')}</option>
+                        <option value="graphic">{t('settings:printer.printFormat.optionGraphic', 'Graphic')}</option>
+                        <option value="text">{t('settings:printer.printFormat.optionText', 'Text')}</option>
+                      </Select>
+                    </AutoSaveField>
+                    <HelpText>{t('settings:printer.printFormat.help', 'Auto: the system decides the best format for your printer — leave it here for most setups. Graphic: prints your logo and design as an image (for printers that can print images). Text: prints as plain text without a logo — choose this for text-only / cheap USB printers whose receipts come out blank; the logo is replaced by your store-name text.')}</HelpText>
+                  </FormGroup>
+                </SettingsCard>
+              )}
               {/* Kitchen Ticket Options - Always visible regardless of printer mode */}
               {!printerSettingsLoading && (
                 <SettingsCard style={{ marginTop: '24px' }}>
@@ -7937,6 +7598,414 @@ ${t('settings:settingsPage.qzDiagramBridge')}
                   }
                 `}</style>
               </SettingsCard>
+
+              <div id="printer-sec-emergency" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', margin: '32px 0 12px' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: '#B42318', color: '#fff', fontWeight: 700, fontSize: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>4</span>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#0A2540' }}>{t('settings:printer.sections.emergency.title', 'When printing fails')}</div>
+                    <div style={{ fontSize: 13, color: '#4B5563', marginTop: 2 }}>{t('settings:printer.sections.emergency.sub', 'Run a check · switch on emergency routing · set the offline main POS')}</div>
+                  </div>
+                </div>
+              </div>
+              {/* Print Self-Diagnose (docs/PRINT_SELF_DIAGNOSE_DESIGN.md §5-1) —
+                  one button merges server checks + this device's checks into a plain
+                  list with causes, guides, safe recovery buttons and test prints. */}
+              {!printerSettingsLoading && (
+                <PrintSelfDiagnosePanel restaurantId={user?.restaurantId} />
+              )}
+              {/* ★ Emergency Routing Mode — §4 «When printing fails» (2026-11-08 — its ON state shows as the red strip at the top of the tab). Formerly the top of the tab so it was the
+                  first thing staff see when something breaks. Red when ON. The
+                  flag is a single boolean; print routing checks it at runtime and
+                  redirects every kitchen ticket to the active bill printer. We
+                  never mutate the original kitchen station routing data, so
+                  toggling OFF restores the normal flow instantly. */}
+              {(() => {
+                const isEm = !!(printerSettings as any).emergencyMode;
+                const enabledAt = (printerSettings as any).emergencyEnabledAt;
+                const minutesOn = enabledAt ? Math.max(0, Math.round((Date.now() - new Date(enabledAt).getTime()) / 60000)) : 0;
+
+                // Detect the active workstation's cashier printer config so we
+                // can pre-flight what the user will get when they toggle ON.
+                const wsList = (printerSettings as any).workstations || [];
+                const activeWs = wsList.find((w: any) => w.id === activeWorkstationId) || wsList[0];
+                const wsName = activeWs?.name || '—';
+                const cMethod: string = activeWs?.billPrinter?.method || 'browser';
+                const cAddress: string = (activeWs?.billPrinter?.address || '').trim();
+                // 실제 영수증(빌) 프린터 이름. "cashier" 추상어 대신 매장이 아는 진짜
+                // 이름(예: POS-80C)을 카드에 노출 — 비상시 어디로 나가는지 명확히.
+                const cName: string = (activeWs?.billPrinter?.name || '').trim();
+                const cPrinterLabel: string = cName
+                  || t('settings:printer.emergency.workstationReceiptPrinter', 'this workstation’s receipt printer');
+                // Crude "LAN-ish" heuristic: an IP-or-host:port suggests LAN/Wi-Fi.
+                const looksLan = /^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/.test(cAddress) || /:\d+$/.test(cAddress);
+                let envBand: 'good' | 'ok' | 'partial' = 'good';
+                let envReadyKey = 'settings:printer.emergency.row2Ready';
+                let envBehaviourKey = 'settings:printer.emergency.row2Behaviour';
+                let envMethodLabel = '';
+                if (cMethod === 'rawbt') {
+                  envBand = 'good';
+                  envReadyKey = 'settings:printer.emergency.row4Ready';
+                  envBehaviourKey = 'settings:printer.emergency.row4Behaviour';
+                  envMethodLabel = t('settings:printer.emergency.row4Method');
+                } else if (cMethod === 'qztray') {
+                  if (looksLan) {
+                    envBand = 'partial';
+                    envReadyKey = 'settings:printer.emergency.row3Ready';
+                    envBehaviourKey = 'settings:printer.emergency.row3Behaviour';
+                    envMethodLabel = t('settings:printer.emergency.row3Method');
+                  } else {
+                    envBand = 'good';
+                    envReadyKey = 'settings:printer.emergency.row2Ready';
+                    envBehaviourKey = 'settings:printer.emergency.row2Behaviour';
+                    envMethodLabel = t('settings:printer.emergency.row2Method');
+                  }
+                } else {
+                  envBand = 'ok';
+                  envReadyKey = 'settings:printer.emergency.row1Ready';
+                  envBehaviourKey = 'settings:printer.emergency.row1Behaviour';
+                  envMethodLabel = t('settings:printer.emergency.row1Method');
+                }
+                const envBg = envBand === 'good' ? '#ECFDF5' : envBand === 'partial' ? '#FFFBEB' : '#F0F9FF';
+                const envBorder = envBand === 'good' ? '#A7F3D0' : envBand === 'partial' ? '#FDE68A' : '#BAE6FD';
+                const envFg = envBand === 'good' ? '#065F46' : envBand === 'partial' ? '#92400E' : '#075985';
+
+                const toggleEmergency = async (next: boolean) => {
+                  const nowIso = new Date().toISOString();
+                  const newPS = {
+                    ...printerSettings,
+                    emergencyMode: next,
+                    emergencyEnabledAt: next ? nowIso : null
+                  };
+                  setPrinterSettings(newPS as any);
+                  if (!user?.restaurantId) return;
+                  try {
+                    const token = getAuthToken();
+                    const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
+                      method: 'PUT',
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ printer_settings: newPS })
+                    });
+                    const d = await r.json();
+                    if (!d.success) throw new Error('save failed');
+                    // Inform the user — Setup Modal style, NOT alert/toast.
+                    setInfoModal({
+                      open: true,
+                      title: next
+                        ? t('settings:printer.emergency.modalOnTitle', 'Emergency Mode Enabled')
+                        : t('settings:printer.emergency.modalOffTitle', 'Emergency Mode Disabled'),
+                      message: next
+                        ? t('settings:printer.emergency.modalOnMessage',
+                            'All order tickets (POS and mobile) will print from {{printer}} — the receipt/bill printer on this workstation. Staff must hand-deliver tickets to each station.\n\nIf internet is down, connect this POS to a mobile hotspot. Old PCs without Wi-Fi: use a USB Wi-Fi dongle (TP-Link Nano / Mercusys / ASUS USB Adapter). Hotspot is for internet only — keep kitchen printers OFF the hotspot.',
+                            { printer: cPrinterLabel })
+                        : t('settings:printer.emergency.modalOffMessage',
+                            'Original printer routing restored. Each station prints to its own printer again.')
+                    });
+                  } catch {
+                    setInfoModal({ open: true, title: 'Save failed', message: 'Could not update emergency mode. Try again or check your connection.' });
+                  }
+                };
+
+                const testCashierPrint = async () => {
+                  try {
+                    const { printBillViaRawBT } = await import('../../utils/billPrint');
+                    const sample = {
+                      orderNumber: 'TEST-EM',
+                      items: [{ menuItem: { name: t('settings:printer.emergency.testItem', 'Cashier Printer Test') }, quantity: 1, price: 0 }],
+                      total: 0, subtotal: 0, tax: 0,
+                      paymentMethod: 'TEST'
+                    };
+                    await printBillViaRawBT(sample as any, { name: 'PurpleHere' } as any);
+                  } catch (e: any) {
+                    setInfoModal({ open: true, title: 'Test print failed', message: e?.message || 'Could not reach the cashier printer.' });
+                  }
+                };
+
+                return (
+                  <SettingsCard
+                    style={{
+                      marginBottom: '24px',
+                      background: isEm ? '#FEF2F2' : '#FFFFFF',
+                      border: isEm ? '2px solid #DC2626' : '1px solid #C7CED6'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: '28px', height: '28px', borderRadius: '50%',
+                          background: isEm ? '#DC2626' : '#9CA3AF', color: '#fff',
+                          fontSize: '16px', fontWeight: 700
+                        }} aria-hidden="true">!</span>
+                        <CardTitle style={{ margin: 0, color: isEm ? '#7F1D1D' : '#0A2540' }}>
+                          {isEm
+                            ? t('settings:printer.emergency.titleOn', 'Emergency Mode — ALL ORDERS ROUTED TO CASHIER')
+                            : t('settings:printer.emergency.titleOff', 'Emergency Routing Mode')}
+                        </CardTitle>
+                        <button
+                          type="button"
+                          onClick={() => setShowPrinterTroubleshoot(true)}
+                          style={{
+                            padding: '4px 10px', fontSize: '11px', fontWeight: 600,
+                            border: '1px solid #C7CED6', borderRadius: '12px',
+                            background: '#fff', color: '#4B5563', cursor: 'pointer'
+                          }}
+                          title={t('settings:printer.troubleshoot.openTitle', 'Open the printer troubleshooting guide')}
+                        >
+                          {t('settings:printer.troubleshoot.openBtn', 'Troubleshooting guide ?')}
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {!isEm && (
+                          <button
+                            type="button"
+                            onClick={testCashierPrint}
+                            style={{
+                              padding: '10px 16px', fontSize: '13px', fontWeight: 500,
+                              border: '1px solid #6B7280', borderRadius: '8px',
+                              background: '#fff', color: '#1F2937', cursor: 'pointer'
+                            }}
+                          >
+                            {t('settings:printer.emergency.testCashier', 'Test Cashier Printer')}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => toggleEmergency(!isEm)}
+                          style={{
+                            padding: '10px 20px', fontSize: '14px', fontWeight: 700,
+                            border: 'none', borderRadius: '8px', cursor: 'pointer',
+                            background: isEm ? '#DC2626' : '#10B981', color: '#fff',
+                            minWidth: '140px'
+                          }}
+                        >
+                          {isEm
+                            ? t('settings:printer.emergency.turnOff', 'Turn OFF')
+                            : t('settings:printer.emergency.turnOn', 'Turn ON')}
+                        </button>
+                      </div>
+                    </div>
+
+                    <p style={{ fontSize: '13px', color: isEm ? '#7F1D1D' : '#4B5563', lineHeight: 1.6, margin: '0 0 12px' }}>
+                      {isEm
+                        ? t('settings:printer.emergency.descOn',
+                            'Every order ticket — POS and mobile — is printing from {{printer}} (the receipt/bill printer on this workstation) regardless of station mapping. Staff must hand-deliver tickets to each station. Click "Turn OFF" once your kitchen printers / network are back to normal.',
+                            { printer: cPrinterLabel })
+                        : t('settings:printer.emergency.descOff',
+                            'One-click escape hatch for kitchen printer or network failures. Activating reroutes every order ticket (POS and mobile) to {{printer}} — the receipt/bill printer on this workstation. Original station routing is preserved — turning OFF restores it instantly. No manual reconfiguration.',
+                            { printer: cPrinterLabel })}
+                    </p>
+
+                    {/* "How it works + recommended setup" — combined accordion.
+                        Merges the old "effect by method" table and the old prereq
+                        bullets into a single collapsed-by-default block, with the
+                        core idea + recommendation up front so most users don't
+                        need to expand the table at all. */}
+                    <div style={{ border: '1px solid #FDE68A', borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setEmergencyEffectOpen(v => !v)}
+                        aria-expanded={emergencyEffectOpen}
+                        style={{
+                          width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          padding: '12px 16px', background: '#FFFBEB', border: 'none', cursor: 'pointer',
+                          fontSize: '13px', fontWeight: 600, color: '#92400E', textAlign: 'left'
+                        }}
+                      >
+                        <span>{t('settings:printer.emergency.howItWorksTitle', 'How emergency mode works + recommended cashier setup')}</span>
+                        <span style={{ fontSize: '14px', color: '#92400E', transform: emergencyEffectOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>▾</span>
+                      </button>
+                      {emergencyEffectOpen && (
+                        <div style={{ padding: '14px 16px', background: '#FFFFFF', borderTop: '1px solid #FDE68A' }}>
+                          <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.7, margin: '0 0 10px' }}>
+                            <strong>{t('settings:printer.emergency.coreIdea', 'Core idea: emergency mode just redirects EVERY ticket to the cashier printer. So how reliable it is depends entirely on how the cashier printer is connected.')}</strong>
+                          </p>
+                          <p style={{ fontSize: '13px', color: '#1F2937', lineHeight: 1.7, margin: '0 0 14px' }}>
+                            {t('settings:printer.emergency.coreRecommendation', '👉 Recommended: connect the cashier printer directly via USB or Bluetooth (router-independent). Keep kitchen printers on LAN as normal. This way, even if the router or kitchen printers die, the cashier alone keeps the shop running.')}
+                          </p>
+
+                          <div style={{ fontSize: '12px', fontWeight: 600, color: '#4B5563', marginBottom: '6px' }}>
+                            {t('settings:printer.emergency.effectByMethodTitle', 'Behaviour by cashier method')}
+                          </div>
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', color: '#1F2937', minWidth: '480px' }}>
+                              <thead>
+                                <tr style={{ background: '#F9FAFB' }}>
+                                  <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.emergency.colCashierMethod', 'Cashier printer method')}</th>
+                                  <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.emergency.colBehaviour', 'Behaviour during emergency')}</th>
+                                  <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E5E7EB' }}>{t('settings:printer.emergency.colReady', 'Emergency-ready?')}</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <tr>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row1Method')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row1Behaviour')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row1Ready')}</td>
+                                </tr>
+                                <tr>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row2Method')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row2Behaviour')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', color: '#047857', fontWeight: 600 }}>{t('settings:printer.emergency.row2Ready')}</td>
+                                </tr>
+                                <tr>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row3Method')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top' }}>{t('settings:printer.emergency.row3Behaviour')}</td>
+                                  <td style={{ padding: '8px 10px', borderBottom: '1px solid #F1F4F8', verticalAlign: 'top', color: '#92400E', fontWeight: 600 }}>{t('settings:printer.emergency.row3Ready')}</td>
+                                </tr>
+                                <tr>
+                                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>{t('settings:printer.emergency.row4Method')}</td>
+                                  <td style={{ padding: '8px 10px', verticalAlign: 'top' }}>{t('settings:printer.emergency.row4Behaviour')}</td>
+                                  <td style={{ padding: '8px 10px', verticalAlign: 'top', color: '#047857', fontWeight: 600 }}>{t('settings:printer.emergency.row4Ready')}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Live comparison — two columns showing "now" vs "ON" */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: '10px', alignItems: 'stretch', marginBottom: '12px' }}>
+                      {/* LEFT — Current / Normal routing */}
+                      <div style={{
+                        padding: '12px 14px',
+                        background: isEm ? '#F9FAFB' : '#F1F4F8',
+                        border: '1px solid #D1D5DB',
+                        borderRadius: '8px',
+                        opacity: isEm ? 0.6 : 1
+                      }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#4B5563', marginBottom: '8px', letterSpacing: '0.4px' }}>
+                          {isEm
+                            ? t('settings:printer.emergency.leftLabelOn', 'NORMAL (PAUSED)')
+                            : t('settings:printer.emergency.leftLabelOff', 'NOW — NORMAL')}
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#1F2937', lineHeight: 1.7 }}>
+                          <div>
+                            <strong>{t('settings:printer.emergency.activeWorkstation', 'Active workstation')}:</strong> {wsName}
+                          </div>
+                          <div>
+                            <strong>{t('settings:printer.emergency.cashierMethodLabel', 'Cashier method')}:</strong> {envMethodLabel}{cAddress ? ` · ${cAddress}` : ''}
+                          </div>
+                          <div>
+                            <strong>{t('settings:printer.emergency.routing', 'Routing')}:</strong> {t('settings:printer.emergency.routingNormal', 'Each station → its own printer (bar / kitchen / dessert separate)')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Arrow */}
+                      <div aria-hidden="true" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', color: isEm ? '#DC2626' : '#9CA3AF', fontWeight: 700 }}>
+                        →
+                      </div>
+
+                      {/* RIGHT — Emergency routing */}
+                      <div style={{
+                        padding: '12px 14px',
+                        background: isEm ? '#FEE2E2' : envBg,
+                        border: `${isEm ? '2px' : '1px'} solid ${isEm ? '#DC2626' : envBorder}`,
+                        borderRadius: '8px'
+                      }}>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: isEm ? '#7F1D1D' : envFg, marginBottom: '8px', letterSpacing: '0.4px' }}>
+                          {isEm
+                            ? t('settings:printer.emergency.rightLabelOn', '🟢 RIGHT NOW — EMERGENCY ACTIVE')
+                            : t('settings:printer.emergency.rightLabelOff', '⚡ IF YOU TURN ON')}
+                        </div>
+                        <div style={{ fontSize: '12px', color: isEm ? '#7F1D1D' : envFg, lineHeight: 1.7 }}>
+                          <div style={{ fontSize: '13px', fontWeight: 700, marginBottom: '2px' }}>
+                            → {cPrinterLabel}
+                          </div>
+                          <div style={{ fontSize: '11px', opacity: 0.85, marginBottom: '6px' }}>
+                            {t('settings:printer.emergency.destinationHint', 'Receipt (bill) printer on workstation “{{ws}}”', { ws: wsName })}
+                          </div>
+                          <div>
+                            <strong>{t('settings:printer.emergency.routing', 'Routing')}:</strong> {t('settings:printer.emergency.routingEmergency2', 'Every order ticket (all stations) prints here', {})}
+                          </div>
+                          <div>
+                            <strong>{isEm
+                              ? t('settings:printer.emergency.currentBehaviour', 'Behaviour now')
+                              : t('settings:printer.emergency.expectedBehaviour', 'If turned ON')}:</strong> {t(envBehaviourKey)}
+                          </div>
+                          <div>
+                            <strong>{t('settings:printer.emergency.fitness', 'Emergency fitness')}:</strong> {t(envReadyKey)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isEm && enabledAt && (
+                      <div style={{ fontSize: '12px', color: '#7F1D1D', marginBottom: '10px' }}>
+                        {t('settings:printer.emergency.enabledFor', 'Active for {{minutes}} minute(s)', { minutes: minutesOn })} · {new Date(enabledAt).toLocaleString('en-MY', { timeZone: getRestaurantTimezone(operationSettings) })}
+                      </div>
+                    )}
+
+                  </SettingsCard>
+                );
+              })()}
+              {/* ★ Offline Main POS — device-level designation (localStorage, not DB).
+                  When the internet is down, only the device marked here keeps taking
+                  orders + printing; every other device is locked (OfflineLockOverlay).
+                  No print-routing change — this only decides which one device is the
+                  hub while offline. Turn it ON for the counter POS wired to the printer. */}
+              {(() => {
+                const on = offlineMainPosOn;
+                const toggleMainPos = (next: boolean) => {
+                  setOfflineMainPos(next);
+                  setOfflineMainPosOnState(next);
+                  setInfoModal({
+                    open: true,
+                    title: next
+                      ? t('settings:printer.offlineMainPos.modalOnTitle', 'This device is now the Offline Main POS')
+                      : t('settings:printer.offlineMainPos.modalOffTitle', 'Offline Main POS turned off'),
+                    message: next
+                      ? t('settings:printer.offlineMainPos.modalOnMessage',
+                          'If the internet goes down, this device keeps taking orders and printing, and all other devices are paused so nothing is lost or duplicated. Set this ON for only ONE device — the counter POS connected to your printer.')
+                      : t('settings:printer.offlineMainPos.modalOffMessage',
+                          'This device will no longer act as the offline hub. Make sure another device is set as the Offline Main POS, or no device will take orders while offline.')
+                  });
+                };
+                return (
+                  <SettingsCard
+                    style={{
+                      marginBottom: '24px',
+                      background: on ? '#ECFDF5' : '#FFFFFF',
+                      border: on ? '2px solid #10B981' : '1px solid #C7CED6'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: '28px', height: '28px', borderRadius: '50%',
+                          background: on ? '#10B981' : '#9CA3AF', color: '#fff',
+                          fontSize: '15px', fontWeight: 700
+                        }} aria-hidden="true">●</span>
+                        <CardTitle style={{ margin: 0, color: on ? '#065F46' : '#0A2540' }}>
+                          {on
+                            ? t('settings:printer.offlineMainPos.titleOn', 'This device is the Offline Main POS')
+                            : t('settings:printer.offlineMainPos.titleOff', 'Offline Main POS (this device)')}
+                        </CardTitle>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleMainPos(!on)}
+                        style={{
+                          padding: '10px 20px', fontSize: '14px', fontWeight: 700,
+                          border: 'none', borderRadius: '8px', cursor: 'pointer',
+                          background: on ? '#DC2626' : '#10B981', color: '#fff',
+                          minWidth: '140px'
+                        }}
+                      >
+                        {on
+                          ? t('settings:printer.offlineMainPos.turnOff', 'Turn OFF')
+                          : t('settings:printer.offlineMainPos.turnOn', 'Set this device')}
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '13px', color: on ? '#065F46' : '#4B5563', lineHeight: 1.6, margin: 0 }}>
+                      {t('settings:printer.offlineMainPos.desc',
+                        'If the internet goes down, only ONE device — the Offline Main POS — keeps taking orders and printing all tickets; every other device is paused with an on-screen notice. Set this ON for the counter POS connected to your printer (one device only).')}
+                    </p>
+                  </SettingsCard>
+                );
+              })()}
 
               {/* Auto-print preview modal — opened from the button at the top of
                   the printer tab. Shows the actual bucketing of last orders by

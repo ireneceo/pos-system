@@ -1529,5 +1529,16 @@
   "settingsPage.kioskTab.menuModeBrowse": "둘러보기(기본)",
   "settingsPage.kioskTab.menuModeGuided": "한 화면에 하나씩",
   "settingsPage.kioskTab.menuModeBrowseHint": "옆에 카테고리, 한 화면에 메뉴 목록과 장바구니.",
-  "settingsPage.kioskTab.menuModeGuidedHint": "큰 카테고리 타일부터 화면마다 하나씩: 카테고리 › 하위 카테고리 › 메뉴 › 옵션 하나씩 › 최종 금액."
+  "settingsPage.kioskTab.menuModeGuidedHint": "큰 카테고리 타일부터 화면마다 하나씩: 카테고리 › 하위 카테고리 › 메뉴 › 옵션 하나씩 › 최종 금액.",
+  "printer.sections.stripTitle": "이 순서로 설정하세요",
+  "printer.sections.connect.title": "이 기기와 프린터 연결",
+  "printer.sections.connect.sub": "이 기기에서 쓸 프린터를 찾습니다",
+  "printer.sections.assign.title": "자리마다 프린터 지정",
+  "printer.sections.assign.sub": "POS마다 영수증 프린터 · 주방·스테이션 프린터 · 시험 인쇄 · 자동 인쇄",
+  "printer.sections.output.title": "인쇄물 내용",
+  "printer.sections.output.sub": "인쇄 형식 · 주방 티켓 옵션 · 영수증 디자인",
+  "printer.sections.emergency.title": "인쇄가 안 될 때",
+  "printer.sections.emergency.sub": "점검 실행 · 비상 모드 켜기 · 오프라인 메인 POS 지정",
+  "printer.sections.emergencyOnBanner": "비상 모드가 켜져 있습니다 — 모든 티켓이 카운터(영수증) 프린터에서 나옵니다.",
+  "printer.sections.emergencyOnGo": "보기"
 }

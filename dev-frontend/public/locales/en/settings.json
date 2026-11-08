@@ -1529,5 +1529,16 @@
   "settingsPage.kioskTab.menuModeBrowse": "Browse (default)",
   "settingsPage.kioskTab.menuModeGuided": "One step at a time",
   "settingsPage.kioskTab.menuModeBrowseHint": "Categories on the side, menu grid and cart on one screen.",
-  "settingsPage.kioskTab.menuModeGuidedHint": "Big category tiles, then one choice per screen: category › subcategory › item › each option › final price."
+  "settingsPage.kioskTab.menuModeGuidedHint": "Big category tiles, then one choice per screen: category › subcategory › item › each option › final price.",
+  "printer.sections.stripTitle": "Set up in this order",
+  "printer.sections.connect.title": "Connect this device to the printers",
+  "printer.sections.connect.sub": "Find the printers this device can reach",
+  "printer.sections.assign.title": "Choose a printer for each place",
+  "printer.sections.assign.sub": "Bill printer per POS · kitchen and station printers · test print · auto-print",
+  "printer.sections.output.title": "What gets printed",
+  "printer.sections.output.sub": "Print format · kitchen ticket options · receipt design",
+  "printer.sections.emergency.title": "When printing fails",
+  "printer.sections.emergency.sub": "Run a check · switch on emergency routing · set the offline main POS",
+  "printer.sections.emergencyOnBanner": "Emergency mode is ON — every ticket is printing at the counter (receipt) printer.",
+  "printer.sections.emergencyOnGo": "Open"
 }

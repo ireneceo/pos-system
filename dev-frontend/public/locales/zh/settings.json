@@ -1529,5 +1529,16 @@
   "settingsPage.kioskTab.menuModeBrowse": "浏览（默认）",
   "settingsPage.kioskTab.menuModeGuided": "一步一步选",
   "settingsPage.kioskTab.menuModeBrowseHint": "侧边显示分类，菜单和购物车在同一屏。",
-  "settingsPage.kioskTab.menuModeGuidedHint": "先是大分类卡片，然后每屏只选一项：分类 › 子分类 › 菜品 › 逐个选项 › 最终金额。"
+  "settingsPage.kioskTab.menuModeGuidedHint": "先是大分类卡片，然后每屏只选一项：分类 › 子分类 › 菜品 › 逐个选项 › 最终金额。",
+  "printer.sections.stripTitle": "按此顺序设置",
+  "printer.sections.connect.title": "将本设备连接到打印机",
+  "printer.sections.connect.sub": "找到本设备可使用的打印机",
+  "printer.sections.assign.title": "为每个位置选择打印机",
+  "printer.sections.assign.sub": "每台 POS 的账单打印机 · 厨房与工位打印机 · 测试打印 · 自动打印",
+  "printer.sections.output.title": "打印内容",
+  "printer.sections.output.sub": "打印格式 · 厨房小票选项 · 收据设计",
+  "printer.sections.emergency.title": "打印失败时",
+  "printer.sections.emergency.sub": "运行检查 · 开启应急模式 · 指定离线主 POS",
+  "printer.sections.emergencyOnBanner": "应急模式已开启 — 所有小票都在柜台（收据）打印机打印。",
+  "printer.sections.emergencyOnGo": "查看"
 }

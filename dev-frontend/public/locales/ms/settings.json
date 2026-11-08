@@ -1529,5 +1529,16 @@
   "settingsPage.kioskTab.menuModeBrowse": "Semak imbas (lalai)",
   "settingsPage.kioskTab.menuModeGuided": "Satu langkah demi satu",
   "settingsPage.kioskTab.menuModeBrowseHint": "Kategori di tepi, grid menu dan troli dalam satu skrin.",
-  "settingsPage.kioskTab.menuModeGuidedHint": "Jubin kategori besar, kemudian satu pilihan setiap skrin: kategori › subkategori › item › setiap pilihan › harga akhir."
+  "settingsPage.kioskTab.menuModeGuidedHint": "Jubin kategori besar, kemudian satu pilihan setiap skrin: kategori › subkategori › item › setiap pilihan › harga akhir.",
+  "printer.sections.stripTitle": "Tetapkan mengikut urutan ini",
+  "printer.sections.connect.title": "Sambungkan peranti ini ke pencetak",
+  "printer.sections.connect.sub": "Cari pencetak yang boleh dicapai peranti ini",
+  "printer.sections.assign.title": "Pilih pencetak untuk setiap tempat",
+  "printer.sections.assign.sub": "Pencetak bil setiap POS · pencetak dapur dan stesen · cetakan ujian · auto-cetak",
+  "printer.sections.output.title": "Apa yang dicetak",
+  "printer.sections.output.sub": "Format cetakan · pilihan tiket dapur · reka bentuk resit",
+  "printer.sections.emergency.title": "Apabila cetakan gagal",
+  "printer.sections.emergency.sub": "Jalankan semakan · hidupkan mod kecemasan · tetapkan POS utama luar talian",
+  "printer.sections.emergencyOnBanner": "Mod kecemasan HIDUP — semua tiket dicetak di pencetak kaunter (resit).",
+  "printer.sections.emergencyOnGo": "Buka"
 }
