@@ -26,8 +26,11 @@ module.exports = {
       name: 'production-backend',
       script: './server.js',
       cwd: '/var/www/production-backend',
-      instances: 2,
-      exec_mode: 'cluster',
+      // 2026-11-08 현재 운영 실제값 = fork 1개(pm2 jlist 실측). 프로세스를 늘리려면 먼저:
+      //   ① 스케줄러 주인 가드(utils/schedulerOwner) ② 소켓 Redis 어댑터(services/socketService)
+      //   ③ 요청 제한 저장소 공유(rate-limit 메모리 → Redis) ④ DB pool 20×N + planq < max_connections
+      instances: 1,
+      exec_mode: 'fork',
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',

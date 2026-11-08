@@ -752,42 +752,50 @@ async function startServer() {
       console.warn('⚠️ Order 알림 훅 등록 실패(주문 처리에는 영향 없음):', e.message);
     }
 
-    // Start invoice scheduler
-    invoiceScheduler.start();
+    // 정기 작업은 주인 프로세스 1개에서만 — 여러 프로세스면 청구서·SOA·발주가 두 번 생긴다(utils/schedulerOwner).
+    const { isSchedulerOwner } = require('./utils/schedulerOwner');
+    const SCHEDULER_OWNER = isSchedulerOwner();
+    if (SCHEDULER_OWNER) {
+      console.log(`✓ 스케줄러 주인: instance ${process.env.NODE_APP_INSTANCE ?? '-'} (SCHEDULER_OWNER=${process.env.SCHEDULER_OWNER ?? '-'})`);
+      // Start invoice scheduler
+      invoiceScheduler.start();
 
-    // Start subscription scheduler (Trial/Unpaid/Suspended transitions)
-    subscriptionScheduler.start();
+      // Start subscription scheduler (Trial/Unpaid/Suspended transitions)
+      subscriptionScheduler.start();
 
-    // Start demo data reset scheduler (daily at midnight, site timezone)
-    demoResetScheduler.start();
+      // Start demo data reset scheduler (daily at midnight, site timezone)
+      demoResetScheduler.start();
 
-    // Start monthly SOA scheduler (Sprint 4) — runs at 00:30 on the 1st of each month
-    startSoaCron();
+      // Start monthly SOA scheduler (Sprint 4) — runs at 00:30 on the 1st of each month
+      startSoaCron();
 
-    // Start daily stats aggregation scheduler — runs daily at 00:30 SGT (UTC+8)
-    dailyStatsScheduler.start();
+      // Start daily stats aggregation scheduler — runs daily at 00:30 SGT (UTC+8)
+      dailyStatsScheduler.start();
 
-    // Start mall sales reporting scheduler — daily 02:00 MYT, uploads 24 hourly
-    // records per restaurant (last 7 days upsert) to the mall's POS sales API.
-    mallSalesScheduler.start();
+      // Start mall sales reporting scheduler — daily 02:00 MYT, uploads 24 hourly
+      // records per restaurant (last 7 days upsert) to the mall's POS sales API.
+      mallSalesScheduler.start();
 
-    // Start invoice overdue scheduler — runs daily at 02:30 UTC, transitions
-    // non-subscription invoices past due_date to 'overdue' status.
-    invoiceOverdueScheduler.start();
+      // Start invoice overdue scheduler — runs daily at 02:30 UTC, transitions
+      // non-subscription invoices past due_date to 'overdue' status.
+      invoiceOverdueScheduler.start();
 
-    // Start reservation scheduler — runs hourly (24h/2h reminders + no_show auto)
-    reservationScheduler.start();
+      // Start reservation scheduler — runs hourly (24h/2h reminders + no_show auto)
+      reservationScheduler.start();
 
-    // Start standing-order (정기 발주) scheduler — hourly, buyer-local 07:00 (2026-10-22 recurring-po)
-    recurringPoScheduler.start(io);
-    require('./services/brandStockAlertScheduler').start(io);   // 아침 재고 알림(브랜드) — 2026-11-03 phase2 §5-4
+      // Start standing-order (정기 발주) scheduler — hourly, buyer-local 07:00 (2026-10-22 recurring-po)
+      recurringPoScheduler.start(io);
+      require('./services/brandStockAlertScheduler').start(io);   // 아침 재고 알림(브랜드) — 2026-11-03 phase2 §5-4
 
-    // Start PO auto-receive scheduler — hourly, delivered + 72h → received (2026-10-30 po-auto-complete)
-    require('./services/poAutoReceiveScheduler').start(io);
+      // Start PO auto-receive scheduler — hourly, delivered + 72h → received (2026-10-30 po-auto-complete)
+      require('./services/poAutoReceiveScheduler').start(io);
 
-    // Start base64 image sweep — weekly Sunday 04:00 UTC, detects inline base64
-    // images in DB columns and alerts System Admins (v3.30 perf incident guard).
-    base64ImageSweep.start();
+      // Start base64 image sweep — weekly Sunday 04:00 UTC, detects inline base64
+      // images in DB columns and alerts System Admins (v3.30 perf incident guard).
+      base64ImageSweep.start();
+    } else {
+      console.log(`· 스케줄러 안 켬 — 이 프로세스는 주인이 아님 (NODE_APP_INSTANCE=${process.env.NODE_APP_INSTANCE ?? '-'}, SCHEDULER_OWNER=${process.env.SCHEDULER_OWNER ?? '-'})`);
+    }
 
     // 포트 충돌 체크 - PM2 환경에서는 더 유연하게 처리
     // 개발은 127.0.0.1 로만 듣는다(nginx 만 들어오게 — 상황판 개발 사이트 로그인 관문 우회 차단).
@@ -796,8 +804,10 @@ async function startServer() {
     server.listen(PORT, LISTEN_HOST, () => {
       console.log(`✓ Server is running on port ${PORT}`);
       console.log(`✓ Server bound to ${LISTEN_HOST}:${PORT}`);
-      console.log('✓ Invoice scheduler is running');
-      console.log('✓ Subscription scheduler is running');
+      if (SCHEDULER_OWNER) {
+        console.log('✓ Invoice scheduler is running');
+        console.log('✓ Subscription scheduler is running');
+      }
       console.log('✓ Socket.IO is running on all namespaces');
       console.log(`✓ Health check: http://localhost:${PORT}/api/health`);
     });

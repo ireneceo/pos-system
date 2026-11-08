@@ -4,6 +4,29 @@ const { createClient } = require('redis');
 const jwt = require('jsonwebtoken');
 const { userCanAccessRestaurant } = require('../middleware/auth');
 
+// Socket.IO Redis 어댑터용 클라이언트 2개 — 옵션 생성·error 리스너 등록만(테스트: tests/socket-redis-options.test.js).
+function buildRedisClients(createClientFn, env = process.env) {
+  const options = {
+    url: env.REDIS_URL || 'redis://127.0.0.1:6379',
+    socket: {
+      reconnectStrategy: (retries) => (retries > 10 ? new Error('redis unreachable') : Math.min(retries * 100, 3000)),
+    },
+  };
+  const pubClient = createClientFn(options);
+  const subClient = pubClient.duplicate();
+  const lastLogged = {};
+  const onError = (name) => (err) => {
+    const key = `${name}:${err && err.message}`;
+    const now = Date.now();
+    if (lastLogged[key] && now - lastLogged[key] < 60 * 1000) return; // 같은 오류 1분 1회
+    lastLogged[key] = now;
+    console.error(`[Socket.IO] Redis ${name} error:`, err && err.message);
+  };
+  pubClient.on('error', onError('pub'));
+  subClient.on('error', onError('sub'));
+  return { pubClient, subClient, options };
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Socket Auth Hardening — Phase B (docs/SOCKET_AUTH_HARDENING.md §3)
 // 라이브 주문 소켓(/orders·/checkout-display·/kitchen·/display)에 JWT 인증 + room 검증.
@@ -202,23 +225,19 @@ function initSocketServer(server) {
   const isPM2Cluster = process.env.pm_id !== undefined && process.env.exec_mode === 'cluster_mode';
 
   if (isPM2Cluster) {
-    const pubClient = createClient({
-      host: 'localhost',
-      port: 6379,
-      retry_strategy: (options) => {
-        if (options.attempt > 10) {
-          console.error('[Socket.IO] Redis connection failed after 10 attempts');
-          return undefined;
-        }
-        return Math.min(options.attempt * 100, 3000);
-      }
-    });
-    const subClient = pubClient.duplicate();
-
+    // 2026-11-08: redis v5 형식(url · socket.reconnectStrategy) + error 리스너(없으면 끊길 때 프로세스가 죽음)
+    //   + 연결 실패 시 System Admin 로그 — 어댑터 없이 돌면 소켓이 프로세스 사이에 안 퍼지는 «조용한 반쪽» 상태.
+    //   프로세스는 계속 띄운다(재시작 루프가 더 나쁨 · 인쇄는 폴링이 안전망).
+    const { pubClient, subClient } = buildRedisClients(createClient);
     Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
       io.adapter(createAdapter(pubClient, subClient));
+      console.log('✓ Socket.IO Redis adapter');
     }).catch((err) => {
       console.error('[Socket.IO] Redis adapter connection failed:', err.message);
+      try {
+        require('../utils/systemLogger').critical('system', 'socket-redis',
+          'Redis 어댑터 연결 실패 — cluster 인데 소켓이 프로세스 간 공유되지 않음', { error: err.message });
+      } catch (_) { /* 로그 실패는 무시 */ }
     });
   }
 
@@ -437,4 +456,4 @@ function initSocketServer(server) {
   return io;
 }
 
-module.exports = { initSocketServer, getSocketAuthStats };
+module.exports = { initSocketServer, getSocketAuthStats, buildRedisClients };
