@@ -605,7 +605,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                     {(formatAddress(b, 'short', (i18n.language as AppLocale) || 'en') || b.address) && <div className="addr">{formatAddress(b, 'short', (i18n.language as AppLocale) || 'en') || b.address}</div>}
                     <div style={{ fontSize: 11, color: '#4B5563', marginTop: 4 }}>
                       <b style={{ color: '#0A2540' }}>{b.unit_stats.total}</b> {t('map.units', 'units')}
-                      {b.latitude == null && <span style={{ color: '#EF4444', marginLeft: 6 }}>no coords</span>}
+                      {b.latitude == null && <span style={{ color: '#B45309', marginLeft: 6 }}>{t('map.noLocation', 'No map location — add an address')}</span>}
                     </div>
                     <StatsPillRow>
                       {(['active', 'setup', 'contracting', 'proposal', 'vacant', 'expired'] as const).map(k => {

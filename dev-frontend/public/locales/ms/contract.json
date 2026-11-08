@@ -177,7 +177,9 @@
       "vacant": "Kosong",
       "type": "Jenis",
       "sales30d": "Jualan 30 hari"
-    }
+    },
+    "noLocation": "Tiada lokasi peta — tambah alamat",
+    "salesAmount30d": "Jualan 30 hari: {{n}}"
   },
   "franchiseTabs": {
     "contracts": "Kontrak",

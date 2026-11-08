@@ -177,7 +177,9 @@
       "vacant": "공실",
       "type": "유형",
       "sales30d": "30일 매출"
-    }
+    },
+    "noLocation": "지도 위치 없음 — 주소를 넣어 주세요",
+    "salesAmount30d": "30일 매출 {{n}}"
   },
   "franchiseTabs": {
     "contracts": "계약",

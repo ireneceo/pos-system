@@ -509,7 +509,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                   key={r.id}
                   $selected={isSelected}
                   onClick={() => hasCoords ? setSelectedId(isSelected ? null : r.id) : undefined}
-                  style={!hasCoords ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                  style={!hasCoords ? { cursor: 'default' } : {}}
                 >
                   <h4>
                     {typeMark && <span className="type-mark" title={typeTitle}>{typeMark}</span>}
@@ -522,8 +522,8 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                   })()}
                   <div className="stats">
                     {r.contract_type && <span><b>{r.contract_type}</b></span>}
-                    {r.sales_30d != null && <span>{r.sales_30d.toLocaleString()} sales 30d</span>}
-                    {!hasCoords && <span style={{ color: '#EF4444' }}>no coords</span>}
+                    {r.sales_30d != null && <span>{t('map.salesAmount30d', '{{n}} sales 30d', { n: r.sales_30d.toLocaleString('en-US') })}</span>}
+                    {!hasCoords && <span style={{ color: '#B45309' }}>{t('map.noLocation', 'No map location — add an address')}</span>}
                   </div>
                 </RestaurantCard>
               );

@@ -177,7 +177,9 @@
       "vacant": "Vacant",
       "type": "Type",
       "sales30d": "Sales 30d"
-    }
+    },
+    "noLocation": "No map location — add an address",
+    "salesAmount30d": "{{n}} sales 30d"
   },
   "franchiseTabs": {
     "contracts": "Contracts",

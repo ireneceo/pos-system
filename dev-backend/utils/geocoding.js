@@ -26,11 +26,34 @@ const buildQuery = (parts) => {
 const MAX_RETRY = 3;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 주소 맨 앞의 호수·층·필지 칸(«Unit 2-15» · «No. 18» · «LG1.36A» · «12») 은 Nominatim 이 몰라서
+// 주소 전체가 «못 찾음» 이 된다(2026-11-08 운영 실측: 좌표 없는 매장 12곳 대부분이 이 꼴 · 매장 27).
+// 첫 칸이 짧고 숫자가 들어 있고 길 이름(Jalan·Lorong·Persiaran…)이 아니면 떼고 다시 찾는다 — 최대 2칸.
+const STREET_WORD = /\b(jalan|jln|lorong|persiaran|lebuh|lebuhraya|road|street|avenue|ave|st|rd)\b/i;
+function isUnitSegment(seg) {
+  const s = String(seg || '').trim();
+  return !!s && s.length <= 15 && /\d/.test(s) && !STREET_WORD.test(s);
+}
+
 async function geocodeAddress(parts) {
-  const q = buildQuery(parts || {});
+  const p = parts || {};
+  // 나라는 ISO 2글자(MY)로 저장된다. 글자 «MY» 를 주소 끝에 붙이면 Nominatim 이 못 알아듣고
+  // 다른 나라 같은 이름을 잡는다(실측: «12» → 영국 벨파스트). 2글자면 검색 범위(countrycodes)로 넘긴다.
+  const cc = /^[A-Za-z]{2}$/.test(String(p.country || '').trim()) ? String(p.country).trim().toLowerCase() : null;
+  const q = buildQuery(cc ? { ...p, country: null } : p);
   if (!q) return null;
 
-  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
+  let segs = q.split(',').map(x => x.trim()).filter(Boolean);
+  let hit = await queryNominatim(q, cc);
+  for (let drop = 0; !hit && drop < 2 && segs.length > 2 && isUnitSegment(segs[0]); drop += 1) {
+    segs = segs.slice(1);
+    hit = await queryNominatim(segs.join(', '), cc);
+  }
+  return hit;
+}
+
+async function queryNominatim(q, cc) {
+  const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}${cc ? `&countrycodes=${cc}` : ''}`;
 
   for (let attempt = 1; attempt <= MAX_RETRY; attempt += 1) {
     await throttle();
@@ -75,4 +98,4 @@ function addressChanged(oldValues, newValues) {
   return false;
 }
 
-module.exports = { geocodeAddress, addressChanged };
+module.exports = { geocodeAddress, addressChanged, isUnitSegment };

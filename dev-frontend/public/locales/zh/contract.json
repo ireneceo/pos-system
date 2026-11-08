@@ -177,7 +177,9 @@
       "vacant": "空置",
       "type": "类型",
       "sales30d": "30日销售"
-    }
+    },
+    "noLocation": "无地图位置 — 请填写地址",
+    "salesAmount30d": "近30天销售 {{n}}"
   },
   "franchiseTabs": {
     "contracts": "合约",
