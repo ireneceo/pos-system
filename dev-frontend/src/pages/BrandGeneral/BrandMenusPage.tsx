@@ -39,6 +39,8 @@ interface MenuSettings {
   default_scope: 'all' | 'selected';
   // 브랜드 전체 — 켜면 산하 모든 매장이 브랜드 메뉴 순서를 따르고 매장이 못 바꿈 (메뉴별 토글 대체)
   enforce_menu_order: boolean;
+  // 브랜드 «매장으로 보내기 멈춤» — 켜면 푸시·자동분배·매장 받기·삭제가 매장 메뉴를 쓰지 않음 (2026-11-08 설계 c 1-b)
+  push_frozen?: boolean;
 }
 
 const OriginTag = styled.div`
@@ -492,6 +494,7 @@ const IconBtn = styled.button`
   min-width: 0;
   white-space: nowrap;
   &:hover { border-color: #635BFF; color: #635BFF; }
+  &:disabled { opacity: 0.45; cursor: not-allowed; border-color: #C7CED6; color: #4B5563; }
   svg { width: 14px; height: 14px; flex-shrink: 0; }
 `;
 
@@ -609,7 +612,7 @@ const BrandMenusPage: React.FC = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<{ menuId: number; menuName: string } | null>(null);
   const [pushResult, setPushResult] = useState<{ menuId: number; pushed: number; created: number; updated: number } | null>(null);
   // 바뀐 메뉴 한 번에 보내기 (2026-11-08) — 미리 세기(dry_run) → 확인 → 보내기 → 결과
-  const [bulkPlan, setBulkPlan] = useState<{ menu_count: number; push_count: number; names: string[] } | null>(null);
+  const [bulkPlan, setBulkPlan] = useState<{ menu_count: number; push_count: number; names: string[]; lines: string[] } | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkResult, setBulkResult] = useState<{ menus: number; pushed: number; created: number; updated: number; failed: number } | null>(null);
   const [copyTarget, setCopyTarget] = useState<{ menuId: number; menuName: string } | null>(null);
@@ -724,7 +727,8 @@ const BrandMenusPage: React.FC = () => {
         if (r.ok && j.success) setMenuSettings(j.data);
       } catch { /* silent — fallback to 'all' */ }
     })();
-  }, [selectedBrandId]);
+  }, [selectedBrandId, tab]);  // tab: 설정 탭에서 «보내기 멈춤» 을 바꾸고 돌아오면 다시 읽음
+  const pushFrozen = menuSettings?.push_frozen === true;
 
   const handleBrandChange = (id: number) => {
     setSelectedBrandId(id);
@@ -768,7 +772,14 @@ const BrandMenusPage: React.FC = () => {
       const j = await r.json();
       if (!r.ok || !j.success) throw new Error(j.message || 'Failed to check menus');
       const d = j.data || {};
-      setBulkPlan({ menu_count: d.menu_count || 0, push_count: d.push_count || 0, names: (d.menus || []).map((m: any) => m.name) });
+      // 메뉴마다 «무엇이 다른지» 를 한 줄로 (예: «Bibimbap — photo, name»)
+      const fieldLabel = (f: string) => t(`brand:brandMenusPage.diffField.${f}`, f) as string;
+      const lines = (d.menus || []).map((m: any) => {
+        const fs: string[] = [];
+        for (const c of (m.changes || [])) for (const f of (c.fields || [])) if (!fs.includes(f)) fs.push(f);
+        return fs.length ? `${m.name} — ${fs.map(fieldLabel).join(', ')}` : m.name;
+      });
+      setBulkPlan({ menu_count: d.menu_count || 0, push_count: d.push_count || 0, names: (d.menus || []).map((m: any) => m.name), lines });
     } catch (e: any) {
       setError(e?.message || 'Failed to check menus');
     } finally {
@@ -956,7 +967,7 @@ const BrandMenusPage: React.FC = () => {
             <ThemedButton
               variant="outline"
               onClick={handleBulkPushClick}
-              disabled={!selectedBrandId || bulkBusy}
+              disabled={!selectedBrandId || bulkBusy || pushFrozen}
               title={t('brand:brandMenusPage.pushAllChangesHint', 'Send every changed menu to the stores that do not have the latest version yet') as string}
               style={{ marginRight: 8 }}
             >
@@ -968,6 +979,12 @@ const BrandMenusPage: React.FC = () => {
             </ThemedButton>
           </div>
         </ListControlsBar>
+
+        {pushFrozen && (
+          <div role="status" style={{ padding: 12, background: '#FFF7ED', color: '#9A3412', border: '1px solid #FED7AA', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
+            {t('brand:brandMenusPage.pushFrozenBanner', 'Sending to stores is paused for this brand. You can edit brand menus, but nothing is pushed to store menus and menus cannot be deleted. Change it in Settings.')}
+          </div>
+        )}
 
         {error && (
           <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>{error}</div>
@@ -1117,7 +1134,7 @@ const BrandMenusPage: React.FC = () => {
                       ? t('brand:brandMenusPage.scopeSelected', 'Scope: Selected')
                       : t('brand:brandMenusPage.scopeAll', 'Scope: All')}
                   </IconBtn>
-                  <IconBtn type="button" onClick={() => handlePushClick(m)} title={t('brand:brandMenusPage.pushToAllNow', 'Push to All Now')}>
+                  <IconBtn type="button" onClick={() => handlePushClick(m)} disabled={pushFrozen} title={t('brand:brandMenusPage.pushToAllNow', 'Push to All Now')}>
                     <Send /> {t('brand:brandMenusPage.push', 'Push')}
                   </IconBtn>
                   <IconBtn type="button" onClick={() => setCopyTarget({ menuId: m.id, menuName: m.name })} title={t('brand:brandMenusPage.copyToBrand', 'Copy to another brand')}>
@@ -1195,7 +1212,7 @@ const BrandMenusPage: React.FC = () => {
           title={t('brand:brandMenusPage.confirmDeleteTitle', 'Delete brand menu')}
           message={t('brand:brandMenusPage.confirmDelete', {
             name: deleteConfirm?.menuName || '',
-            defaultValue: `Delete "${deleteConfirm?.menuName}"? Linked restaurant products will be soft-unlinked but preserved.`
+            defaultValue: `Delete "${deleteConfirm?.menuName}"? Each store's copy is turned off and marked "Removed from brand" — the store can delete it or keep it as its own menu.`
           })}
           confirmText={t('common:button.delete', 'Delete')}
           cancelText={t('common:button.cancel', 'Cancel')}
@@ -1264,8 +1281,8 @@ const BrandMenusPage: React.FC = () => {
           message={t('brand:brandMenusPage.pushAllConfirmMessage', {
             menus: bulkPlan?.menu_count || 0,
             stores: bulkPlan?.push_count || 0,
-            list: (bulkPlan?.names || []).slice(0, 10).join(', ') + ((bulkPlan?.names.length || 0) > 10 ? ' …' : ''),
-            defaultValue: `Send ${bulkPlan?.menu_count || 0} changed menus (${bulkPlan?.push_count || 0} store updates in total) to stores that do not have the latest version? Stores already up to date are not touched.`
+            list: (bulkPlan?.lines || []).slice(0, 12).join('\n') + ((bulkPlan?.lines.length || 0) > 12 ? '\n…' : ''),
+            defaultValue: `Send ${bulkPlan?.menu_count || 0} menus (${bulkPlan?.push_count || 0} store updates in total) to stores whose menu differs from the brand? Stores already the same are not touched.`
           })}
           confirmText={t('brand:brandMenusPage.pushNow', 'Push Now')}
           cancelText={t('common:button.cancel', 'Cancel')}
@@ -2043,9 +2060,27 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
           <dt>{t('brand:brandMenusPage.glossarySyncTerm', 'Sync')}</dt>
           <dd>{t('brand:brandMenusPage.glossarySyncDef', 'After a push, the restaurant menu mirrors the brand version. "Synced v3" means the restaurant has the latest version 3.')}</dd>
           <dt>{t('brand:brandMenusPage.glossaryLockTerm', 'Lock')}</dt>
-          <dd>{t('brand:brandMenusPage.glossaryLockDef', 'Restaurant admins cannot edit locked fields after sync. Useful for prices, brand name, and brand photos.')}</dd>
+          <dd>{t('brand:brandMenusPage.glossaryLockDef', 'Restaurant admins cannot edit locked fields. A push always sends every field; an unlocked field a store changed is replaced on the next push.')}</dd>
         </Glossary>
       </IntroCard>
+
+      <SettingsCard>
+        <SettingsSectionTitle>{t('brand:brandMenusPage.settingsPushFrozenTitle', 'Sending to stores')}</SettingsSectionTitle>
+        <SettingsSectionHint>
+          {t('brand:brandMenusPage.settingsPushFrozenHint', 'A push sends everything you set for a menu — name, price, photo, category, options. Locks only stop stores from editing those fields afterwards.')}
+        </SettingsSectionHint>
+        <ToggleRow>
+          <ToggleInfo>
+            <strong>{t('brand:brandMenusPage.pushFrozen', 'Pause sending to stores')}</strong>
+            <div>{t('brand:brandMenusPage.pushFrozenHint', 'While paused, pushes, auto-distribution, store-side updates and menu deletion do not write to store menus. Brand menus can still be edited here.')}</div>
+          </ToggleInfo>
+          <AutoSaveField onSave={persist} type="toggle">
+            <Switch type="checkbox" role="switch" aria-checked={settings.push_frozen === true}
+              checked={settings.push_frozen === true}
+              onChange={(e) => setSettings({ ...settings, push_frozen: e.target.checked })} />
+          </AutoSaveField>
+        </ToggleRow>
+      </SettingsCard>
 
       <SettingsCard>
         <SettingsSectionTitle>{t('brand:brandMenusPage.settingsDistributionTitle', 'How changes reach restaurants')}</SettingsSectionTitle>

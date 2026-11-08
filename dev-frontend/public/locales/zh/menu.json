@@ -245,5 +245,8 @@
   "guided.itemCount_other": "{{count}} 个菜品",
   "kioskView.label": "显示方式",
   "kioskView.browse": "浏览",
-  "kioskView.guided": "一步一步选"
+  "kioskView.guided": "一步一步选",
+  "menuManagementPage.removedFromBrand": "品牌已删除",
+  "menuManagementPage.removedFromBrandHint": "品牌已删除此菜单,因此已停用。可以删除,或保留为本店菜单。",
+  "menuManagementPage.keepAsMyMenu": "保留为本店菜单"
 }

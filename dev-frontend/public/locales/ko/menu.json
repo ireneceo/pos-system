@@ -245,5 +245,8 @@
   "guided.itemCount_other": "메뉴 {{count}}개",
   "kioskView.label": "보기",
   "kioskView.browse": "둘러보기",
-  "kioskView.guided": "한 화면에 하나씩"
+  "kioskView.guided": "한 화면에 하나씩",
+  "menuManagementPage.removedFromBrand": "브랜드에서 삭제됨",
+  "menuManagementPage.removedFromBrandHint": "브랜드가 이 메뉴를 지워서 꺼졌습니다. 지우거나, 우리 매장 메뉴로 남기세요.",
+  "menuManagementPage.keepAsMyMenu": "우리 메뉴로 남기기"
 }

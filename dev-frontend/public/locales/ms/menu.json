@@ -245,5 +245,8 @@
   "guided.itemCount_other": "{{count}} item",
   "kioskView.label": "Paparan",
   "kioskView.browse": "Semak imbas",
-  "kioskView.guided": "Langkah demi langkah"
+  "kioskView.guided": "Langkah demi langkah",
+  "menuManagementPage.removedFromBrand": "Dibuang oleh jenama",
+  "menuManagementPage.removedFromBrandHint": "Jenama telah memadam menu ini, jadi ia dimatikan. Padamkannya, atau simpan sebagai menu anda sendiri.",
+  "menuManagementPage.keepAsMyMenu": "Simpan sebagai menu saya"
 }

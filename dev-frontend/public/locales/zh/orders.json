@@ -176,5 +176,7 @@
   "orderCancel.cardVoidNotice": "此订单的刷卡付款 RM {{amount}} 也会在终端上一并取消。",
   "orderCancel.cardVoidNoAnswer": "刷卡终端无响应，订单未取消。请检查终端屏幕后再按取消 — 如已取消会继续。",
   "orderCancel.cardVoidFailed": "无法在终端上取消刷卡付款，订单未取消。",
-  "orderCancel.cardVoidNoBridge": "刷卡 RM {{amount}} 未在此取消。请在刷卡终端上作废（Void）。"
+  "orderCancel.cardVoidNoBridge": "刷卡 RM {{amount}} 未在此取消。请在刷卡终端上作废（Void）。",
+  "brandMenuUpdatesPage.unlockedReplacedNote": "即使修改了未锁定的字段,品牌再次推送时也会被替换为品牌的值。",
+  "brandMenuUpdatesPage.brandPaused": "品牌已暂停向门店发送更新。在品牌重新开启之前,这里无法应用。"
 }

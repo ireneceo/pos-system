@@ -1304,6 +1304,28 @@ const MenuManagementPage: React.FC = () => {
     }
   };
 
+  // «Removed from brand» 상품을 매장 자기 메뉴로 남김 — 꼬리표만 뗀다 (2026-11-08 Fable 설계 c 결정 2)
+  const handleKeepRemovedFromBrand = async (item: MenuItemType) => {
+    try {
+      const pathParts = window.location.pathname.split('/');
+      const restaurantIndex = pathParts.indexOf('restaurant');
+      const restaurantId = restaurantIndex >= 0 ? pathParts[restaurantIndex + 1] : '';
+      const token = getAuthToken();
+      const response = await fetch(`/api/restaurant/${restaurantId}/brand-menus/unlinked/${item.id}/keep`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        await reloadMenu();  // updateMenuItem 은 상품 PUT 을 다시 보내므로 쓰지 않는다 — 목록만 다시 읽음
+      } else {
+        setInfoModal({ open: true, title: t('menu:menuManagement.toggleFailedTitle', 'Update Failed'), message: data.message || 'Failed to update' });
+      }
+    } catch (error) {
+      setInfoModal({ open: true, title: t('menu:menuManagement.toggleFailedTitle', 'Update Failed'), message: 'Failed to update' });
+    }
+  };
+
   // Toggle menu item active status
   const handleToggleActive = async (item: MenuItemType) => {
     try {
@@ -1759,6 +1781,11 @@ const MenuManagementPage: React.FC = () => {
                       `recipe_id` 가 있으면 레시피, 둘 다 없으면 미연결(브랜드 쪽과 동일한 판정).
                       미연결은 회색이 아니라 주황 — 팔려도 재고가 안 빠지는 상태라 골라낼 수 있어야 한다. */}
                   <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {!item.brand_menu_id && item.brand_menu_status === 'unlinked' && (
+                      <StatusBadge status="error" size="small">
+                        {t('menu:menuManagementPage.removedFromBrand', { defaultValue: 'Removed from brand' })}
+                      </StatusBadge>
+                    )}
                     {(!item.price || Number(item.price) === 0) && (
                       <StatusBadge status="error" size="small">
                         {t('menu:badges.noPrice', { defaultValue: 'No price' })}
@@ -1825,6 +1852,17 @@ const MenuManagementPage: React.FC = () => {
                     }
                     return null;
                   })()}
+                  {/* 브랜드가 지운 메뉴 — 꺼져 있음. 지우거나(아래 Delete) 내 메뉴로 남기기 (2026-11-08 설계 c 결정 2) */}
+                  {!item.brand_menu_id && item.brand_menu_status === 'unlinked' && (
+                    <div style={{ marginTop: 8, padding: '8px 10px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '11.5px', color: '#991B1B', fontWeight: 500, flex: 1, minWidth: 150 }}>
+                        {t('menu:menuManagementPage.removedFromBrandHint', { defaultValue: 'The brand deleted this menu, so it was turned off. Delete it, or keep it as your own menu.' })}
+                      </span>
+                      <ActionButton onClick={(e: any) => { e.stopPropagation(); handleKeepRemovedFromBrand(item); }} style={{ padding: '6px 12px', fontSize: '12px' }}>
+                        {t('menu:menuManagementPage.keepAsMyMenu', { defaultValue: 'Keep as my menu' })}
+                      </ActionButton>
+                    </div>
+                  )}
                   {/* 브랜드에서 푸시된 메뉴는 비활성으로 도착 → 활성화해야 모바일 노출됨을 명확히 안내 */}
                   {item.brand_menu_id && item.is_active === false && (
                     <div style={{ marginTop: 8, padding: '8px 10px', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

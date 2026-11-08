@@ -47,7 +47,10 @@ const DEFAULT_MENU_SETTINGS = {
   default_scope: 'all',  // 새 메뉴의 기본 적용범위 (브랜드별 철학: 균일='all' / 직영실험형='selected') §14
   // 브랜드 전체 순서 고정 — 켜면 산하 모든 매장이 브랜드 메뉴 순서를 따르고 매장이 못 바꿈.
   // (구 per-menu lock_sort_order 토글 대체 — 순서는 목록 전체 개념이라 메뉴별 토글이 혼동을 줬음)
-  enforce_menu_order: false
+  enforce_menu_order: false,
+  // 브랜드 «매장으로 보내기 멈춤» — 켜면 푸시·자동분배·매장 받기·메뉴 삭제가 매장 메뉴를 쓰지 않는다
+  // (브랜드 쪽 편집은 그대로). K-DINE IPC 보호용 (2026-11-08 Fable 설계 c 1-b · 판정 isBrandPushFrozen 한 곳)
+  push_frozen: false
 };
 
 function mergeMenuSettings(stored) {
@@ -63,7 +66,8 @@ function mergeMenuSettings(stored) {
     },
     default_push_target: s.default_push_target === 'selected' ? 'selected' : 'all',
     default_scope: s.default_scope === 'selected' ? 'selected' : 'all',
-    enforce_menu_order: !!(s.enforce_menu_order)
+    enforce_menu_order: !!(s.enforce_menu_order),
+    push_frozen: s.push_frozen === true
   };
 }
 
@@ -92,7 +96,14 @@ router.put('/settings', authenticateToken, requireBGScope, async (req, res) => {
     }
     const brand = await Brand.findByPk(brandId);
     if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
-    const merged = mergeMenuSettings(req.body.settings);
+    const incoming = { ...(req.body.settings || {}) };
+    // 화면이 push_frozen 을 안 보내면(옛 화면·다른 칸만 저장) 저장된 값을 그대로 둔다 — 멈춤이 조용히 풀리지 않게
+    if (!('push_frozen' in incoming)) {
+      let stored = brand.menu_settings;
+      if (typeof stored === 'string') { try { stored = JSON.parse(stored); } catch (_) { stored = null; } }
+      incoming.push_frozen = !!(stored && stored.push_frozen === true);
+    }
+    const merged = mergeMenuSettings(incoming);
     await brand.update({ menu_settings: merged });
     // 브랜드 전체 순서 고정은 단일 source — 저장 시 산하 모든 메뉴의 lock_sort_order 를 일괄 동기화.
     // 켜면 다음 push/sync 때 매장 메뉴가 브랜드 순서로 고정, 끄면 매장이 자유 정렬.
@@ -472,7 +483,8 @@ router.post('/', authenticateToken, requireBGScope, async (req, res) => {
         refreshMode: menu.distribution_mode === 'auto' ? 'sync' : 'membership'
       });
     } catch (e) {
-      console.error('[brand-menus] create scope reconcile error:', e.message);
+      if (e.code === 'BRAND_PUSH_FROZEN') scopeResult = { frozen: true };
+      else console.error('[brand-menus] create scope reconcile error:', e.message);
     }
 
     res.status(201).json({ success: true, data: { menu, push: scopeResult, scope: scopeResult } });
@@ -581,7 +593,8 @@ router.put('/:id', authenticateToken, requireBGScope, async (req, res) => {
         await markPendingForBrandMenu(menu.id);
       }
     } catch (e) {
-      console.error('[brand-menus] update scope reconcile error:', e.message);
+      if (e.code === 'BRAND_PUSH_FROZEN') scopeResult = { frozen: true };
+      else console.error('[brand-menus] update scope reconcile error:', e.message);
     }
 
     return res.json({ success: true, data: { menu, push: scopeResult, scope: scopeResult } });
@@ -609,6 +622,9 @@ router.delete('/:id', authenticateToken, requireBGScope, async (req, res) => {
     res.json({ success: true, data: { unlinkedProducts: unlinked } });
   } catch (e) {
     try { await t.rollback(); } catch (_) {}
+    if (e.code === 'BRAND_PUSH_FROZEN') {
+      return res.status(409).json({ success: false, code: e.code, message: 'Sending to stores is paused for this brand, so menus cannot be deleted. Turn it off in Settings first.' });
+    }
     console.error('[brand-menus] delete error:', e);
     res.status(500).json({ success: false, message: 'Failed to delete brand menu' });
   }
@@ -720,6 +736,10 @@ router.post('/push-pending', authenticateToken, requireBGScope, async (req, res)
       return res.status(403).json({ success: false, message: 'Brand not owned' });
     }
     const { planBrandBulkPush, runBrandBulkPush } = require('../services/brandMenuBulkPush');
+    const { isBrandPushFrozen } = require('../services/brandMenuSyncService');
+    if (await isBrandPushFrozen(brandId)) {
+      return res.status(409).json({ success: false, code: 'BRAND_PUSH_FROZEN', message: 'Sending to stores is paused for this brand' });
+    }
     if (req.body?.dry_run === true) {
       const plan = await planBrandBulkPush(brandId);
       return res.json({ success: true, data: plan });
@@ -739,6 +759,10 @@ router.post('/:id/push', authenticateToken, requireBGScope, async (req, res) => 
     if (!menu) return res.status(404).json({ success: false, message: 'Brand menu not found' });
     if (!(await assertBrandOwnership(req, menu.brand_id))) {
       return res.status(403).json({ success: false, message: 'Brand not owned' });
+    }
+
+    if (await require('../services/brandMenuSyncService').isBrandPushFrozen(menu.brand_id)) {
+      return res.status(409).json({ success: false, code: 'BRAND_PUSH_FROZEN', message: 'Sending to stores is paused for this brand' });
     }
 
     // push 대상은 적용범위(scope) 안으로 제한 — 범위 밖 매장엔 푸시 불가(범위에 먼저 추가). §14
@@ -843,6 +867,9 @@ router.put('/:id/scope', authenticateToken, requireBGScope, async (req, res) => 
     const result = await setBrandMenuScope({ brandMenuId: menu.id, scopeMode, restaurantIds, refreshMode });
     res.json({ success: true, data: result });
   } catch (e) {
+    if (e.code === 'BRAND_PUSH_FROZEN') {
+      return res.status(409).json({ success: false, code: e.code, message: 'Sending to stores is paused for this brand' });
+    }
     console.error('[brand-menus] scope PUT error:', e);
     res.status(500).json({ success: false, message: 'Failed to set scope' });
   }

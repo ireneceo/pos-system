@@ -12515,6 +12515,206 @@ function definePrintTests({ adminToken }) {
     }
   });
 
+  // 2026-11-08 Fable 설계 c (.claude/fable-design-20261108c-brand-menu-push-all.md) — Irene «수정가능한거랑 푸시할 때 다 보내는 건 다른 거잖아»
+  //   ① 푸시 = 브랜드 내용 전부(잠금 무관) ② 브랜드 끄기 → 매장 숨김 ③ 삭제 → 끄기 + «Removed from brand» + Keep
+  //   ④ Push All 은 내용이 달라도 잡음 ⑤ 브랜드 «보내기 멈춤» → 매장 표 쓰기 전 경로 거절 + 지문 그대로.
+  //   데모 브랜드 17 · 매장 38(RA demo-restaurant) · 메뉴 이름 ZZ-HC.
+  const bmHc = async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const [[bg]] = await sequelize.query("SELECT id FROM users WHERE email = 'demo-brand@purplehere.com' AND is_active = 1 LIMIT 1");
+    const [[ra]] = await sequelize.query("SELECT id FROM users WHERE email = 'demo-restaurant@purplehere.com' AND is_active = 1 LIMIT 1");
+    const [[st]] = await sequelize.query('SELECT id FROM restaurants WHERE id = 38 AND is_demo = 1 AND brand_id = 17');
+    if (!bg || !ra || !st) return null;
+    const tok = (id) => ({ Authorization: `Bearer ${jwtLib.sign({ userId: id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+    const imgDir = '/var/www/uploads/brand-menus';
+    const fs = require('fs');
+    const src = fs.existsSync(imgDir) && fs.readdirSync(imgDir).find(f => f.endsWith('.jpg'));
+    return { sequelize, bg: tok(bg.id), ra: tok(ra.id), img: src ? `/uploads/brand-menus/${src}` : null };
+  };
+  const bmHcMake = async (h, name, extra = {}) => {
+    const code = `HZ${Date.now().toString(36).slice(-5).toUpperCase()}${Math.random().toString(36).slice(2, 4).toUpperCase()}`;
+    const r = await request('POST', '/brand-menus', { brand_id: 17, code, name, recommended_price: 5, distribution_mode: 'manual', scope_mode: 'selected', scope_restaurant_ids: [38], ...extra }, h.bg);
+    return r.body?.data?.menu?.id || null;
+  };
+  const bmHcCleanup = async (h, ids, name) => {
+    for (const id of ids.filter(Boolean)) {
+      await h.sequelize.query('DELETE FROM brand_menu_restaurants WHERE brand_menu_id = ?', { replacements: [id] }).catch(() => {});
+      await h.sequelize.query('DELETE FROM brand_menus WHERE id = ? AND brand_id = 17 AND name LIKE ?', { replacements: [id, 'ZZ-HC%'] }).catch(() => {});
+    }
+    await h.sequelize.query("DELETE FROM products WHERE restaurant_id = 38 AND name LIKE ?", { replacements: [name + '%'] }).catch(() => {});
+  };
+
+  test('pos', '브랜드 푸시 = 브랜드 내용 전부(잠금 0) · 매장 소유 칸 그대로 · 브랜드 사진 비면 매장 사진 유지', async () => {
+    const h = await bmHc(); if (!h) { console.log(c.gray('      (건너뜀: 데모 계정/매장 38 없음)')); return true; }
+    const NAME = 'ZZ-HC pushall'; let id = null;
+    try {
+      id = await bmHcMake(h, NAME);
+      if (!id) return false;
+      await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const [[p0]] = await h.sequelize.query('SELECT id FROM products WHERE brand_menu_id = ? AND restaurant_id = 38', { replacements: [id] });
+      // 매장이 잠기지 않은 칸을 고치고 켬
+      await h.sequelize.query("UPDATE products SET name = ?, price = 9.99, image = '/uploads/products/zz-store.jpg', is_active = 1, soldOut = 1 WHERE id = ?", { replacements: [NAME + ' store', p0.id] });
+      await request('PUT', `/brand-menus/${id}`, { name: NAME + ' v2', recommended_price: 7, ...(h.img ? { image_url: h.img } : {}) }, h.bg);
+      const push = await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const [[p1]] = await h.sequelize.query('SELECT name, price, image, is_active, soldOut FROM products WHERE id = ?', { replacements: [p0.id] });
+      const [[bm]] = await h.sequelize.query('SELECT image_url FROM brand_menus WHERE id = ?', { replacements: [id] });
+      // 브랜드 사진 비우고 다시 푸시 → 매장 사진 유지
+      await h.sequelize.query("UPDATE products SET image = '/uploads/products/zz-store2.jpg' WHERE id = ?", { replacements: [p0.id] });
+      await request('PUT', `/brand-menus/${id}`, { image_url: null }, h.bg);
+      await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const [[p2]] = await h.sequelize.query('SELECT image FROM products WHERE id = ?', { replacements: [p0.id] });
+      const ok = push.status === 200 && p1.name === NAME + ' v2' && Number(p1.price) === 7
+        && (!h.img || p1.image === bm.image_url) && Number(p1.is_active) === 1 && Number(p1.soldOut) === 1
+        && p2.image === '/uploads/products/zz-store2.jpg';
+      if (!ok) console.log(c.gray(`      (push ${push.status} · ${p1.name} · ${p1.price} · img ${p1.image} vs ${bm.image_url} · act ${p1.is_active} · sold ${p1.soldOut} · 비운 뒤 ${p2.image})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await bmHcCleanup(h, [id], NAME); }
+  });
+
+  test('pos', '브랜드 메뉴 끄기 → 매장 숨김(brand_scope_active=0 · is_active 그대로) · 다시 켜면 보임 · 꺼진 메뉴는 매장에 안 만듦', async () => {
+    const h = await bmHc(); if (!h) { console.log(c.gray('      (건너뜀)')); return true; }
+    const NAME = 'ZZ-HC offon'; let id = null, id2 = null;
+    try {
+      id = await bmHcMake(h, NAME);
+      await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      await h.sequelize.query('UPDATE products SET is_active = 1 WHERE brand_menu_id = ? AND restaurant_id = 38', { replacements: [id] });
+      await request('PUT', `/brand-menus/${id}`, { is_active: false }, h.bg);
+      const plan = await request('POST', '/brand-menus/push-pending', { brand_id: 17, dry_run: true }, h.bg);
+      const inPlan = (plan.body?.data?.menus || []).find(m => m.id === id);
+      await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const [[off]] = await h.sequelize.query('SELECT id, brand_scope_active s, is_active a FROM products WHERE brand_menu_id = ? AND restaurant_id = 38', { replacements: [id] });
+      const menu = await request('GET', '/menu?restaurantId=38', null, h.ra);
+      const listed = JSON.stringify(menu.body?.data || {}).includes(`"id":${off.id},`);
+      await request('PUT', `/brand-menus/${id}`, { is_active: true }, h.bg);
+      await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const [[on]] = await h.sequelize.query('SELECT brand_scope_active s, is_active a FROM products WHERE id = ?', { replacements: [off.id] });
+      // 꺼진 채 만든 메뉴 → 매장에 생성 0
+      id2 = await bmHcMake(h, NAME + ' never', { is_active: false });
+      const p2 = await request('POST', `/brand-menus/${id2}/push`, { restaurant_ids: [38] }, h.bg);
+      const [[cnt]] = await h.sequelize.query('SELECT COUNT(*) n FROM products WHERE brand_menu_id = ?', { replacements: [id2] });
+      const ok = !!inPlan && inPlan.changes?.[0]?.fields?.includes('visibility') && Number(off.s) === 0 && Number(off.a) === 1 && !listed
+        && Number(on.s) === 1 && Number(on.a) === 1 && p2.status === 200 && Number(cnt.n) === 0;
+      if (!ok) console.log(c.gray(`      (계획 ${JSON.stringify(inPlan?.changes)} · 끔 s${off.s}/a${off.a} 목록 ${listed} · 켬 s${on.s}/a${on.a} · 꺼진 새 메뉴 ${p2.status}/${cnt.n})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await bmHcCleanup(h, [id, id2], NAME); }
+  });
+
+  test('pos', '브랜드 메뉴 삭제 → 매장 상품 꺼짐 + «Removed from brand»(unlinked) · 손님 메뉴 안 보임 · Keep → 꼬리표 없음 · 남의 상품 404', async () => {
+    const h = await bmHc(); if (!h) { console.log(c.gray('      (건너뜀)')); return true; }
+    const NAME = 'ZZ-HC removed'; let id = null;
+    try {
+      id = await bmHcMake(h, NAME);
+      await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const [[p]] = await h.sequelize.query('SELECT id FROM products WHERE brand_menu_id = ? AND restaurant_id = 38', { replacements: [id] });
+      await h.sequelize.query('UPDATE products SET is_active = 1 WHERE id = ?', { replacements: [p.id] });
+      const del = await request('DELETE', `/brand-menus/${id}`, null, h.bg);
+      const [[a]] = await h.sequelize.query('SELECT is_active, brand_menu_link_status s, brand_menu_id, brand_scope_active sc FROM products WHERE id = ?', { replacements: [p.id] });
+      const menu = await request('GET', '/menu?restaurantId=38', null, h.ra);
+      const item = (menu.body?.data?.items || []).find(x => Number(x.id) === p.id);
+      const [[slug]] = await h.sequelize.query('SELECT slug FROM restaurants WHERE id = 38');
+      const mob = slug?.slug ? await request('GET', `/mobile/menu/${slug.slug}`) : { body: {} };
+      const onMobile = JSON.stringify(mob.body || {}).includes(`"id":${p.id},`);
+      const [[other]] = await h.sequelize.query('SELECT id FROM products WHERE restaurant_id <> 38 LIMIT 1');
+      const keepOther = await request('POST', `/restaurant/38/brand-menus/unlinked/${other.id}/keep`, {}, h.ra);
+      const keep = await request('POST', `/restaurant/38/brand-menus/unlinked/${p.id}/keep`, {}, h.ra);
+      const keepAgain = await request('POST', `/restaurant/38/brand-menus/unlinked/${p.id}/keep`, {}, h.ra);
+      const [[b]] = await h.sequelize.query('SELECT brand_menu_link_status s, is_active FROM products WHERE id = ?', { replacements: [p.id] });
+      const ok = del.status === 200 && Number(a.is_active) === 0 && a.s === 'unlinked' && a.brand_menu_id == null && Number(a.sc) === 1
+        && item && item.brand_menu_status === 'unlinked' && !onMobile
+        && keepOther.status === 404 && keep.status === 200 && keepAgain.status === 404 && b.s == null && Number(b.is_active) === 0;
+      if (!ok) console.log(c.gray(`      (삭제 ${del.status} · a${a.is_active} ${a.s} sc${a.sc} · 목록 ${item && item.brand_menu_status} · 손님 ${onMobile} · 남의 ${keepOther.status} · keep ${keep.status}/${keepAgain.status} · 뒤 ${b.s})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await bmHcCleanup(h, [id], NAME); }
+  });
+
+  test('pos', 'Push All 은 버전이 같아도 내용이 다르면 잡음 · 보낸 뒤 0 · 다시 보내도 쓰기 0', async () => {
+    const h = await bmHc(); if (!h) { console.log(c.gray('      (건너뜀)')); return true; }
+    const NAME = 'ZZ-HC contentdiff'; let id = null;
+    try {
+      id = await bmHcMake(h, NAME);
+      await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const [[p]] = await h.sequelize.query('SELECT id FROM products WHERE brand_menu_id = ? AND restaurant_id = 38', { replacements: [id] });
+      const d0 = await request('POST', '/brand-menus/push-pending', { brand_id: 17, dry_run: true }, h.bg);
+      const before = (d0.body?.data?.menus || []).find(m => m.id === id);
+      await h.sequelize.query('UPDATE products SET name = ? WHERE id = ?', { replacements: [NAME + ' local', p.id] });
+      const d1 = await request('POST', '/brand-menus/push-pending', { brand_id: 17, dry_run: true }, h.bg);
+      const mine = (d1.body?.data?.menus || []).find(m => m.id === id);
+      const run = await request('POST', '/brand-menus/push-pending', { brand_id: 17 }, h.bg);
+      const [[after]] = await h.sequelize.query('SELECT name, updatedAt u FROM products WHERE id = ?', { replacements: [p.id] });
+      const d2 = await request('POST', '/brand-menus/push-pending', { brand_id: 17, dry_run: true }, h.bg);
+      const still = (d2.body?.data?.menus || []).find(m => m.id === id);
+      await new Promise(r => setTimeout(r, 1100));
+      await request('POST', '/brand-menus/push-pending', { brand_id: 17 }, h.bg);
+      const [[again]] = await h.sequelize.query('SELECT updatedAt u FROM products WHERE id = ?', { replacements: [p.id] });
+      const ok = !before && !!mine && JSON.stringify(mine.changes?.[0]?.fields) === '["name"]' && run.status === 200
+        && after.name === NAME && !still && String(again.u) === String(after.u);
+      if (!ok) console.log(c.gray(`      (처음 ${!!before} · 계획 ${JSON.stringify(mine?.changes)} · 실행 ${run.status} · 뒤 ${after.name} · 남음 ${!!still} · 재실행 ${again.u} vs ${after.u})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally { await bmHcCleanup(h, [id], NAME); }
+  });
+
+  test('pos', '브랜드 «보내기 멈춤»(push_frozen) → 푸시·Push All·PUT(auto)·범위·옵션그룹·매장 받기/모두/건너뛰기/끊기·삭제 전부 거절 · 매장 표 지문 그대로', async () => {
+    const h = await bmHc(); if (!h) { console.log(c.gray('      (건너뜀)')); return true; }
+    const NAME = 'ZZ-HC frozen'; let id = null, og = null;
+    const [[orig]] = await h.sequelize.query('SELECT menu_settings FROM brands WHERE id = 17');
+    const fp = async () => {
+      const [[a]] = await h.sequelize.query("SELECT COUNT(*) n, COALESCE(SUM(CRC32(CONCAT_WS('|', id, name, price, COALESCE(image,''), is_active, brand_scope_active, COALESCE(brand_menu_id,''), COALESCE(brand_menu_link_status,''), COALESCE(brand_menu_synced_version,''), COALESCE(category,''), COALESCE(CAST(optionGroups AS CHAR),''), updatedAt))),0) s FROM products WHERE restaurant_id = 38");
+      const [[b]] = await h.sequelize.query("SELECT COUNT(*) n, COALESCE(SUM(CRC32(CONCAT_WS('|', id, name, isActive, COALESCE(brand_menu_option_group_id,''), COALESCE(brand_menu_synced_version,''), updated_at))),0) s FROM option_groups WHERE restaurant_id = 38");
+      const [[o]] = await h.sequelize.query("SELECT COUNT(*) n, COALESCE(SUM(CRC32(CONCAT_WS('|', o.id, o.name, o.price, o.isActive, o.updated_at))),0) s FROM options o JOIN option_groups g ON g.id = o.option_group_id WHERE g.restaurant_id = 38");
+      return `${a.n}:${a.s}/${b.n}:${b.s}/${o.n}:${o.s}`;
+    };
+    try {
+      id = await bmHcMake(h, NAME, { distribution_mode: 'auto' });
+      await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const ogr = await request('POST', '/brand-menu-option-groups', { brand_id: 17, name: 'ZZ-HC frozen og', options: [{ name: 'A', extra_price: 1 }] }, h.bg);
+      og = ogr.body?.data?.id || ogr.body?.data?.group?.id || null;
+      if (og) await request('PUT', `/brand-menus/${id}`, { option_group_ids: [og] }, h.bg);
+      await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const sets = await request('PUT', '/brand-menus/settings', { brand_id: 17, settings: { ...(orig.menu_settings || {}), push_frozen: true } }, h.bg);
+      await h.sequelize.query('UPDATE brand_menus SET version = version + 1 WHERE id = ?', { replacements: [id] });
+      const f0 = await fp();
+      const r = {
+        push: (await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg)).status,
+        all: (await request('POST', '/brand-menus/push-pending', { brand_id: 17 }, h.bg)).status,
+        put: (await request('PUT', `/brand-menus/${id}`, { name: NAME + ' x', recommended_price: 99 }, h.bg)).status,
+        scope: (await request('PUT', `/brand-menus/${id}/scope`, { scope_mode: 'selected', restaurant_ids: [] }, h.bg)).status,
+        og: og ? (await request('PUT', `/brand-menu-option-groups/${og}`, { name: 'ZZ-HC frozen og2', options: [{ name: 'B', extra_price: 2 }] }, h.bg)).status : 0,
+        sync: (await request('POST', `/restaurant/38/brand-menus/${id}/sync`, {}, h.ra)).status,
+        syncAll: (await request('POST', '/restaurant/38/brand-menus/sync-all', {}, h.ra)).status,
+        skip: (await request('POST', `/restaurant/38/brand-menus/${id}/skip-version`, {}, h.ra)).status,
+        unlink: (await request('DELETE', `/restaurant/38/brand-menus/${id}/unlink`, null, h.ra)).status,
+        del: (await request('DELETE', `/brand-menus/${id}`, null, h.bg)).status
+      };
+      const upd = await request('GET', '/restaurant/38/brand-menus/updates', null, h.ra);
+      const f1 = await fp();
+      const [[still]] = await h.sequelize.query('SELECT id FROM brand_menus WHERE id = ?', { replacements: [id] });
+      const ok = sets.status === 200 && r.push === 409 && r.all === 409 && r.put === 200 && r.scope === 409 && (og ? r.og === 200 : true)
+        && r.sync === 409 && r.syncAll === 409 && r.skip === 409 && r.unlink === 409 && r.del === 409
+        && upd.body?.data?.push_frozen === true && f0 === f1 && !!still;
+      if (!ok) console.log(c.gray(`      (설정 ${sets.status} · ${JSON.stringify(r)} · updates ${upd.body?.data?.push_frozen} · 지문 ${f0 === f1 ? '같음' : f0 + ' → ' + f1} · 메뉴 남음 ${!!still})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      await h.sequelize.query('UPDATE brands SET menu_settings = ? WHERE id = 17', { replacements: [orig.menu_settings == null ? null : JSON.stringify(orig.menu_settings)] }).catch(() => {});
+      if (og) {
+        const [gs] = await h.sequelize.query('SELECT id FROM option_groups WHERE restaurant_id = 38 AND brand_menu_option_group_id = ?', { replacements: [og] }).catch(() => [[]]);
+        for (const g of gs) {
+          await h.sequelize.query('DELETE FROM options WHERE option_group_id = ?', { replacements: [g.id] }).catch(() => {});
+          await h.sequelize.query('DELETE FROM option_groups WHERE id = ?', { replacements: [g.id] }).catch(() => {});
+        }
+        await h.sequelize.query('DELETE FROM brand_menu_option_group_links WHERE option_group_id = ?', { replacements: [og] }).catch(() => {});
+        await h.sequelize.query('DELETE FROM brand_menu_options WHERE group_id = ?', { replacements: [og] }).catch(() => {});
+        await h.sequelize.query("DELETE FROM brand_menu_option_groups WHERE id = ? AND brand_id = 17 AND name LIKE 'ZZ-HC%'", { replacements: [og] }).catch(() => {});
+      }
+      await bmHcCleanup(h, [id], NAME);
+    }
+  });
+
   // 2026-09-30 K-DINE IPC 「메뉴 이미지가 자꾸 날아간다」 — 이미지 안 바꾸고 저장해도 파일이 지워지던 결함(03-03부터)
   //   + 브랜드 메뉴가 가리키는 매장 파일을 매장 교체가 지우던 것. 아무도 안 쓰는 옛 파일만 지운다.
   test('pos', '메뉴 저장이 쓰는 이미지 파일을 지우지 않는다 (같은 주소·브랜드 메뉴 참조) · 안 쓰는 옛 파일만 삭제', async () => {

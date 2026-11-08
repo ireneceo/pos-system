@@ -245,5 +245,8 @@
   "guided.itemCount_other": "{{count}} items",
   "kioskView.label": "View",
   "kioskView.browse": "Browse",
-  "kioskView.guided": "Step by step"
+  "kioskView.guided": "Step by step",
+  "menuManagementPage.removedFromBrand": "Removed from brand",
+  "menuManagementPage.removedFromBrandHint": "The brand deleted this menu, so it was turned off. Delete it, or keep it as your own menu.",
+  "menuManagementPage.keepAsMyMenu": "Keep as my menu"
 }

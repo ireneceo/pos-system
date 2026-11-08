@@ -4,11 +4,16 @@
  * Encapsulates the BG → Restaurant push and Restaurant pull flows so that
  * routes share a single transactional implementation. Idempotent.
  *
- * Lock rules:
- *   - Locked fields are forced to BG value (overwrites RA changes).
- *   - Non-locked fields are populated from BG on first sync, but RA can
- *     subsequently edit them without losing the link.
- *   - soldOut / is_active / stock are always RA-owned (not part of sync).
+ * Push rules (2026-11-08 Fable 설계 c — Irene «수정가능한거랑 푸시할 때 다 보내는 건 다른 거잖아»):
+ *   - A push sends EVERYTHING the brand defines: name · price always; image · category
+ *     whenever the brand has a value (brand blank → store value kept, like description/code).
+ *   - Locks only mean "the store may not edit this field" (routes/menu.js guard). An unlocked
+ *     field the store edited survives only until the brand pushes again.
+ *   - soldOut / is_active / stock / kitchen station / store-own option groups are RA-owned.
+ *   - Brand menu is_active=false → store product brand_scope_active=false (hidden, preserved);
+ *     an inactive brand menu is never CREATED at a store.
+ *   - Brand menu_settings.push_frozen=true → nothing here writes store tables
+ *     (assertBrandPushAllowed — BRAND_PUSH_FROZEN). Used for K-DINE IPC (brand 2).
  *
  * Option groups:
  *   - Each BG option group mirrors into Restaurant.option_groups via
@@ -25,6 +30,26 @@ const {
 } = require('../models');
 
 const LOCK_FIELDS = ['name', 'price', 'category', 'image', 'options'];
+
+/**
+ * 브랜드 «매장으로 보내기 멈춤»(menu_settings.push_frozen) 판정 — 한 곳 (2026-11-08 Fable 설계 c 1-b).
+ * 매장 표(products·option_groups·options)를 쓰는 서비스 함수는 쓰기 전에 반드시 이걸 부른다.
+ */
+async function isBrandPushFrozen(brandId, transaction) {
+  const { Brand } = require('../models');
+  const brand = brandId ? await Brand.findByPk(brandId, { attributes: ['id', 'menu_settings'], transaction }) : null;
+  let settings = brand && brand.menu_settings;
+  if (typeof settings === 'string') { try { settings = JSON.parse(settings); } catch (_) { settings = null; } }
+  return !!(settings && settings.push_frozen === true);
+}
+
+async function assertBrandPushAllowed(brandId, transaction) {
+  if (await isBrandPushFrozen(brandId, transaction)) {
+    const e = new Error('This brand has paused sending menus to stores');
+    e.code = 'BRAND_PUSH_FROZEN';
+    throw e;
+  }
+}
 
 function buildLocksSnapshot(brandMenu) {
   return {
@@ -161,9 +186,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     throw e;
   }
 
-  const locks = buildLocksSnapshot(brandMenu);
-  const { categoryName, categorySkipped } = await resolveSyncCategory(restaurantId, brandMenu.category_id, transaction);
-  const localOptionGroupIds = await ensureLocalOptionGroups(restaurantId, brandMenu.optionGroups || [], transaction);
+  await assertBrandPushAllowed(brandMenu.brand_id, transaction);
 
   // Find existing linked Product
   let product = await Product.findOne({
@@ -171,8 +194,18 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     transaction
   });
 
+  // 브랜드가 꺼 둔 메뉴: 매장에 없으면 만들지 않는다 / 있으면 숨김(brand_scope_active=false)만 (설계 c 결정 3)
+  const brandActive = brandMenu.is_active !== false;
+  if (!product && !brandActive) {
+    return { product: null, created: false, skipped: 'inactive', categorySkipped: null };
+  }
+
+  const locks = buildLocksSnapshot(brandMenu);
+  const { categoryName, categorySkipped } = await resolveSyncCategory(restaurantId, brandMenu.category_id, transaction);
+  const localOptionGroupIds = await ensureLocalOptionGroups(restaurantId, brandMenu.optionGroups || [], transaction);
+
   if (product) {
-    // Update — locked fields forced, non-locked fields refreshed from BG (RA can override after)
+    // Update — 브랜드 내용 전부(잠금 무관). 잠금은 매장 편집 금지 뜻만 (설계 c 결정 1)
     const updates = {
       brand_menu_synced_version: brandMenu.version,
       brand_menu_synced_at: new Date(),
@@ -180,15 +213,15 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
       brand_menu_link_status: 'in_sync',
       // 범위에 (다시) 들어온 매장은 가시성 복원 — retract 됐던 상품도 살아남(숨김+보존)
       // RA 로컬 편집/주문이력 보존된 채 다시 노출. (2026-06-15 §14)
-      brand_scope_active: true
+      // 브랜드가 꺼 둔 메뉴면 숨김(매장 is_active 는 안 건드림) — 설계 c 결정 3
+      brand_scope_active: brandActive
     };
-    if (locks.name || !product.name) updates.name = brandMenu.name;
-    if (locks.price) updates.price = brandMenu.recommended_price;
-    // Category: forced when locked, otherwise seed if the restaurant hasn't set a real one.
-    if ((locks.category || !product.category || product.category === 'Uncategorized') && categoryName) {
-      updates.category = categoryName;
-    }
-    if (locks.image) updates.image = brandMenu.image_url;
+    updates.name = brandMenu.name;
+    updates.price = brandMenu.recommended_price;
+    // Category: 브랜드 카테고리가 있으면 항상. 매장에서 같은 이름이 묶음 칸이면(categorySkipped) 매장 값 유지.
+    if (categoryName) updates.category = categoryName;
+    // Image: 브랜드 사진이 있으면 항상. 브랜드가 비어 있으면 매장 사진 유지.
+    if (brandMenu.image_url) updates.image = brandMenu.image_url;
     // Options: when locked, BG fully controls. When unlocked, the BG-defined options
     // STILL carry over to the restaurant — merge the BG mirror groups with whatever
     // option groups the restaurant added on its own (own groups preserved). This is
@@ -277,6 +310,7 @@ async function syncBrandMenuToRestaurant({ brandMenuId, restaurantId, transactio
     set_only: brandMenu.set_only === true, // 세트 전용(단품 판매 안 함) — 브랜드 판매정책이므로 sync 에서도 항상 갱신 (2026-06-12)
     display_order: locks.sort_order ? (brandMenu.sort_order || 0) : 0, // 순서 강제 시 브랜드 순서 상속
     soldOut: false,
+    brand_scope_active: true,
     // Sync tracking
     brand_menu_id: brandMenu.id,
     brand_menu_synced_version: brandMenu.version,
@@ -300,8 +334,9 @@ async function pushBrandMenuToRestaurants({ brandMenuId, restaurantIds }) {
   for (const rid of restaurantIds) {
     const t = await Product.sequelize.transaction();
     try {
-      const { created, categorySkipped } = await syncBrandMenuToRestaurant({ brandMenuId, restaurantId: rid, transaction: t });
+      const { created, skipped, categorySkipped } = await syncBrandMenuToRestaurant({ brandMenuId, restaurantId: rid, transaction: t });
       await t.commit();
+      if (skipped) { result.skipped = (result.skipped || 0) + 1; continue; }
       result.pushed++;
       created ? result.created++ : result.updated++;
       if (categorySkipped) result.category_skipped.push({ restaurant_id: rid, category: categorySkipped, message: `Category "${categorySkipped}" has subcategories, so the menu was not placed in it` });
@@ -357,6 +392,7 @@ async function applyScopeToBrandMenu({ brandMenuId, refreshMode = 'membership' }
   const brandMenu = await BrandMenu.findByPk(brandMenuId);
   if (!brandMenu) throw new Error(`BrandMenu ${brandMenuId} not found`);
 
+  await assertBrandPushAllowed(brandMenu.brand_id);
   const targetIds = await resolveScopeTargetIds(brandMenu);
   const result = { targets: targetIds.length, created: 0, restored: 0, refreshed: 0, retracted: 0, failed: [] };
 
@@ -370,8 +406,9 @@ async function applyScopeToBrandMenu({ brandMenuId, refreshMode = 'membership' }
       const isRetracted = before && before.brand_scope_active === false;
       const needsContent = !before || isRetracted || refreshMode === 'sync';
       if (needsContent) {
-        const { created } = await syncBrandMenuToRestaurant({ brandMenuId, restaurantId: rid, transaction: t });
-        if (created) result.created++;
+        const { created, skipped } = await syncBrandMenuToRestaurant({ brandMenuId, restaurantId: rid, transaction: t });
+        if (skipped) { /* 브랜드가 꺼 둔 메뉴 — 만들지 않음 */ }
+        else if (created) result.created++;
         else if (isRetracted) result.restored++;
         else result.refreshed++;
       }
@@ -460,6 +497,8 @@ async function syncAllScopedMenusToNewRestaurant({ restaurantId, brandId }) {
  * Used when BG edits a menu or option group with distribution_mode='manual'.
  */
 async function markPendingForBrandMenu(brandMenuId, transaction) {
+  const bm = await BrandMenu.findByPk(brandMenuId, { attributes: ['id', 'brand_id'], transaction });
+  if (bm) await assertBrandPushAllowed(bm.brand_id, transaction);
   await Product.update(
     { brand_menu_link_status: 'pending_update' },
     { where: { brand_menu_id: brandMenuId, brand_menu_link_status: { [Op.in]: ['in_sync', null] } }, transaction }
@@ -483,6 +522,9 @@ async function bumpMenusUsingOptionGroup(optionGroupId, transaction) {
     { version: BrandMenu.sequelize.literal('version + 1') },
     { where: { id: { [Op.in]: menuIds } }, transaction }
   );
+  // 매장 표 쓰기 전 멈춤 판정 — 브랜드 표(version)는 위에서 그대로 올라감(브랜드 쪽 편집은 막지 않음)
+  const og = await BrandMenuOptionGroup.findByPk(optionGroupId, { attributes: ['id', 'brand_id'], transaction });
+  if (og && await isBrandPushFrozen(og.brand_id, transaction)) return { menus: menuIds.length, frozen: true };
   await Product.update(
     { brand_menu_link_status: 'pending_update' },
     { where: { brand_menu_id: { [Op.in]: menuIds }, brand_menu_link_status: { [Op.in]: ['in_sync', null] } }, transaction }
@@ -495,10 +537,15 @@ async function bumpMenusUsingOptionGroup(optionGroupId, transaction) {
  * Products survive (operationally critical), they just become independent.
  */
 async function softUnlinkProductsFromBrandMenu(brandMenuId, transaction) {
+  const bm = await BrandMenu.findByPk(brandMenuId, { attributes: ['id', 'brand_id'], transaction });
+  if (bm) await assertBrandPushAllowed(bm.brand_id, transaction);
+  // 2026-11-08 설계 c 결정 2: 끄고(손님·POS 에서 즉시 사라짐) «Removed from brand» 표시(unlinked).
+  // 지우기/남기기는 매장이 고른다 — 이력 있는 행을 기계가 지우지 않는다. brand_scope_active 는 그대로(목록에 보여야 표시가 됨).
   const [affected] = await Product.update({
     brand_menu_id: null,
     brand_menu_locks_snapshot: null,
-    brand_menu_link_status: 'unlinked'
+    brand_menu_link_status: 'unlinked',
+    is_active: false
   }, { where: { brand_menu_id: brandMenuId }, transaction });
   return { unlinked: affected };
 }
@@ -605,6 +652,8 @@ async function syncBrandRecommendationsToAllRestaurants({ brandId }) {
 module.exports = {
   LOCK_FIELDS,
   buildLocksSnapshot,
+  assertBrandPushAllowed,
+  isBrandPushFrozen,
   syncBrandMenuToRestaurant,
   syncBrandRecommendationsToRestaurant,
   syncBrandRecommendationsToAllRestaurants,

@@ -67,7 +67,7 @@ interface UpdateItem {
   diff: { fields: DiffField[]; is_new_menu: boolean };
   locks: { name: boolean; price: boolean; category: boolean; image: boolean; options: boolean };
 }
-interface UpdatesData { brand: { id: number; name: string; logo_url: string | null } | null; pending_count: number; items: UpdateItem[]; }
+interface UpdatesData { brand: { id: number; name: string; logo_url: string | null } | null; push_frozen?: boolean; pending_count: number; items: UpdateItem[]; }
 
 const authHeaders = () => {
   const t = getAuthToken();
@@ -164,12 +164,23 @@ const BrandMenuUpdatesPage: React.FC = () => {
             ) : t('orders:brandMenuUpdatesPage.noBrand', 'This restaurant is not linked to a brand.')}
           </Summary>
           {data && data.items.length > 0 && (
-            <ThemedButton variant="primary" onClick={syncAll} disabled={loading}>
+            <ThemedButton variant="primary" onClick={syncAll} disabled={loading || data.push_frozen === true}>
               <RefreshCw style={{ width: 14, height: 14, marginRight: 4 }} />
               {t('orders:brandMenuUpdatesPage.syncAllNow', 'Sync All Now')}
             </ThemedButton>
           )}
         </ActionRow>
+
+        {data?.brand && (
+          <div style={{ fontSize: 12.5, color: '#4B5563', marginBottom: 12 }}>
+            {t('orders:brandMenuUpdatesPage.unlockedReplacedNote', 'Unlocked fields you edited are replaced when the brand pushes again.')}
+          </div>
+        )}
+        {data?.push_frozen && (
+          <div role="status" style={{ padding: 12, background: '#FFF7ED', color: '#9A3412', border: '1px solid #FED7AA', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
+            {t('orders:brandMenuUpdatesPage.brandPaused', 'The brand has paused updates to stores. Nothing here can be applied until the brand turns it back on.')}
+          </div>
+        )}
 
         {error && (
           <div style={{ padding: 12, background: '#FEE2E2', color: '#DC2626', borderRadius: 8, marginBottom: 16, fontSize: 13 }}>{error}</div>

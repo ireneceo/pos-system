@@ -8,6 +8,9 @@
  *   POST   /sync-all                      sync everything pending + add all new menus
  *   POST   /:bmid/skip-version            mark current BG version as skipped
  *   DELETE /:bmid/unlink                  unlink this product from its brand menu (RA becomes independent)
+ *   POST   /unlinked/:productId/keep      «Removed from brand» 상품을 매장 자기 메뉴로 남김 (2026-11-08 설계 c 결정 2)
+ *
+ * 브랜드가 «매장으로 보내기 멈춤»(push_frozen)이면 쓰기 라우트는 409 BRAND_PUSH_FROZEN (설계 c 1-b).
  *
  * All endpoints require authenticateToken + checkRestaurantAccess via :restaurantId.
  */
@@ -19,8 +22,16 @@ const {
   Restaurant, Brand, BrandMenu, BrandMenuCategory, Product
 } = require('../models');
 const {
-  syncBrandMenuToRestaurant, computeMenuDiff
+  syncBrandMenuToRestaurant, computeMenuDiff, isBrandPushFrozen
 } = require('../services/brandMenuSyncService');
+
+const FROZEN_BODY = { success: false, code: 'BRAND_PUSH_FROZEN', message: 'The brand has paused menu updates to stores' };
+
+// 이 매장 브랜드가 «보내기 멈춤» 인지 — 쓰기 라우트 앞에서 쓴다
+async function storeBrandFrozen(restaurantId) {
+  const r = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'brand_id'] });
+  return !!(r && r.brand_id && await isBrandPushFrozen(r.brand_id));
+}
 
 // GET /api/restaurant/:rid/brand-menus/updates
 router.get('/updates', authenticateToken, async (req, res) => {
@@ -79,6 +90,7 @@ router.get('/updates', authenticateToken, async (req, res) => {
       success: true,
       data: {
         brand: brand ? { id: brand.id, name: brand.name, logo_url: brand.logo_url } : null,
+        push_frozen: await isBrandPushFrozen(restaurant.brand_id),
         pending_count: items.length,
         items
       }
@@ -99,14 +111,15 @@ router.post('/:bmid/sync', authenticateToken, async (req, res) => {
     if (res.headersSent) { await t.rollback(); return; }
 
     const bmid = parseInt(req.params.bmid, 10);
-    const { product, created } = await syncBrandMenuToRestaurant({ brandMenuId: bmid, restaurantId, transaction: t });
+    const { product, created, skipped } = await syncBrandMenuToRestaurant({ brandMenuId: bmid, restaurantId, transaction: t });
     await t.commit();
-    res.json({ success: true, data: { product, created } });
+    res.json({ success: true, data: { product, created, skipped: skipped || null } });
   } catch (e) {
     try { await t.rollback(); } catch (_) {}
     if (e.code === 'BRAND_MISMATCH') {
       return res.status(403).json({ success: false, message: e.message, code: e.code });
     }
+    if (e.code === 'BRAND_PUSH_FROZEN') return res.status(409).json(FROZEN_BODY);
     console.error('[restaurant-brand-menus] sync error:', e);
     res.status(500).json({ success: false, message: 'Failed to sync brand menu' });
   }
@@ -122,6 +135,7 @@ router.post('/sync-all', authenticateToken, async (req, res) => {
 
     const restaurant = await Restaurant.findByPk(restaurantId, { attributes: ['id', 'brand_id'] });
     if (!restaurant?.brand_id) return res.json({ success: true, data: { synced: 0, failed: [] } });
+    if (await isBrandPushFrozen(restaurant.brand_id)) return res.status(409).json(FROZEN_BODY);
 
     const brandMenus = await BrandMenu.findAll({ where: { brand_id: restaurant.brand_id, is_active: true } });
     const result = { synced: 0, created: 0, updated: 0, failed: [] };
@@ -158,6 +172,7 @@ router.post('/:bmid/skip-version', authenticateToken, async (req, res) => {
     const bmid = parseInt(req.params.bmid, 10);
     const bm = await BrandMenu.findByPk(bmid, { attributes: ['version', 'brand_id'] });
     if (!bm) return res.status(404).json({ success: false, message: 'Brand menu not found' });
+    if (await storeBrandFrozen(restaurantId)) return res.status(409).json(FROZEN_BODY);
     const product = await Product.findOne({ where: { restaurant_id: restaurantId, brand_menu_id: bmid } });
     if (!product) {
       // For new menus — skip means "don't add this version" → no row to create; nothing persisted.
@@ -183,16 +198,41 @@ router.delete('/:bmid/unlink', authenticateToken, async (req, res) => {
     const bmid = parseInt(req.params.bmid, 10);
     const product = await Product.findOne({ where: { restaurant_id: restaurantId, brand_menu_id: bmid } });
     if (!product) return res.status(404).json({ success: false, message: 'Linked product not found' });
+    if (await storeBrandFrozen(restaurantId)) return res.status(409).json(FROZEN_BODY);
 
+    // 매장이 스스로 끊음 = 매장 자기 메뉴(link_status null). 'unlinked' 는 «브랜드에서 삭제됨» 표시 전용 (2026-11-08 설계 c 결정 2)
     await product.update({
       brand_menu_id: null,
       brand_menu_locks_snapshot: null,
-      brand_menu_link_status: 'unlinked'
+      brand_menu_link_status: null
     });
     res.json({ success: true, data: { unlinked_product_id: product.id } });
   } catch (e) {
     console.error('[restaurant-brand-menus] unlink error:', e);
     res.status(500).json({ success: false, message: 'Failed to unlink' });
+  }
+});
+
+// POST /unlinked/:productId/keep — «Removed from brand» 상품을 매장 자기 메뉴로 남김 (꼬리표만 떼어 냄)
+router.post('/unlinked/:productId/keep', authenticateToken, async (req, res) => {
+  try {
+    const restaurantId = parseInt(req.params.restaurantId, 10);
+    req.params.restaurantId = restaurantId;
+    await new Promise((resolve, reject) => checkRestaurantAccess(req, res, (err) => err ? reject(err) : resolve())).catch(() => null);
+    if (res.headersSent) return;
+
+    const productId = parseInt(req.params.productId, 10);
+    if (!Number.isFinite(productId)) return res.status(404).json({ success: false, message: 'Product not found' });
+    const product = await Product.findOne({
+      where: { id: productId, restaurant_id: restaurantId, brand_menu_link_status: 'unlinked', brand_menu_id: null }
+    });
+    if (!product) return res.status(404).json({ success: false, message: 'Product not found' });
+    if (await storeBrandFrozen(restaurantId)) return res.status(409).json(FROZEN_BODY);
+    await product.update({ brand_menu_link_status: null });
+    res.json({ success: true, data: { product_id: product.id, brand_menu_status: null } });
+  } catch (e) {
+    console.error('[restaurant-brand-menus] keep error:', e);
+    res.status(500).json({ success: false, message: 'Failed to keep product' });
   }
 });
 

@@ -767,3 +767,16 @@ K-DINE IPC(운영 매장8)의 메뉴 105개가 **브랜드와 연결되지 않�
 ## 접근 관문 — 소유자 ∪ 브랜드 관리자 (2026-10-04)
 메뉴·카테고리·옵션 화면 = **브랜드 소유자 ∪ Brand Manager**(네이티브·모자). 판정은 `middleware/brandScope.userCanManageBrand` 한 곳(→ `utils/managerBrandScope.brandIdsForUser`). 형제 브랜드는 열리지 않는다.
 배경: 09-29 판정 D1′=A(브랜드 원본 잠금)·D1″(다중 관리자) — Irene 2026-10-04 「권고대로 해」. 부여는 SA 화면(Staff Management › 매장·브랜드 접근 권한). 설계 `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §5.5.
+
+## 푸시 = 브랜드 그대로 · 삭제 표시 · 보내기 멈춤 (2026-11-08 · Fable 설계 c + 게이트 PASS)
+
+> Irene «수정가능한거랑 푸시할 때 다 보내는 건 다른 거잖아» · «IPC는 건드리지 말고 케이다인누들만 다 보내게 해줘. 그리고 브랜드 제너럴에서 지웠다고 표시 해야지»
+> 설계 `.claude/fable-design-20261108c-brand-menu-push-all.md` · 판정 `.claude/fable-verdict-20261108c-brand-menu-push-all-gate.md`. 위 §13 «Lock rules» 의 «안 잠긴 칸은 처음만» 은 이 절로 대체됨.
+
+- **푸시 = 브랜드 내용 전부** (`syncBrandMenuToRestaurant`): 이름·가격 항상 · 사진·카테고리는 브랜드 값이 있으면 항상(비면 매장 값 유지) · 옵션·세트·설명·코드는 전과 같음. **잠금은 «매장 편집 금지» 뜻만**(routes/menu.js 가드). 매장 소유: is_active·soldOut·재고·주방·매장 자체 옵션그룹.
+- **브랜드 메뉴 끄기** → 매장 `brand_scope_active=false`(숨김·보존, 매장 is_active 안 건드림). 꺼진 메뉴는 매장에 새로 만들지 않음.
+- **브랜드 메뉴 삭제** → 매장 상품 `is_active=false` + `brand_menu_link_status='unlinked'` = 매장 화면 «Removed from brand» 꼬리표. 매장이 Delete 또는 «Keep as my menu»(`POST /api/restaurant/:rid/brand-menus/unlinked/:pid/keep` → 상태 null). 자동 삭제 없음. 매장 스스로 «연결 끊기»는 이제 상태 null(꼬리표와 안 섞임).
+- **Push All Changes** (`planBrandBulkPush`): 버전·상태 외에 이름·가격·사진·카테고리·켜짐이 다르면 대상. dry_run 응답 `menus[].changes[{restaurant_id, fields}]`.
+- **보내기 멈춤** `brands.menu_settings.push_frozen` — 판정 한 곳 `isBrandPushFrozen`/`assertBrandPushAllowed`. 멈추면 푸시·Push All·자동분배·범위 반영·매장 sync/sync-all/skip/unlink·브랜드 메뉴 삭제가 409 `BRAND_PUSH_FROZEN` · 옵션그룹 수정은 브랜드 쪽만 저장. 브랜드 쪽 편집은 그대로. 운영 브랜드 2(K-DINE with MIN → 매장 8 IPC)는 배포 마이그 `migrate-brand-menu-push-frozen-ipc.js` 로 켬(칸이 없을 때만 · 사람이 끈 값은 안 되돌림).
+- 상시 검사: health-check pos 5건(①~⑤ · ⑤ 고장주입 반증).
+- 남은 것(배포 막지 않음): scope PUT 이 멈춤이어도 브랜드 범위를 먼저 저장한 뒤 409 — 라우트 앞 검사 한 줄 추가.
