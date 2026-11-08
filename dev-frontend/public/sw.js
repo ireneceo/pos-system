@@ -100,6 +100,12 @@ self.addEventListener('fetch', (event) => {
   //   통째로 지워지므로 매 배포 재다운로드). 대조 화면에서만 쓰는 자산이라 그 값이 안 나온다.
   if (url.pathname.startsWith('/tesseract/')) return;
 
+  // 계산대 앱 설치 파일(/desktop/*.apk·.exe · /dev-apps/*)은 **SW 가 손대지 않는다** — 브라우저 다운로드 관리자가 직접 받게.
+  //   예전엔 «이동»(location.href·assign)으로 받으면 isNav 로 잡혀 networkFirst 가 파일 전체를 캐시에 다 넣은 뒤에야
+  //   넘겼다(3MB·윈도우 설치본 78MB) — 안드로이드 크롬에서 «받기가 안 끝나고 계속 받는 중» (2026-11-08 Irene 보고).
+  //   SW 를 거친 다운로드는 다운로드 관리자가 이어받기·다시 받기도 못 한다. 설치 파일은 오프라인 셸에 필요 없다.
+  if (url.pathname.startsWith('/desktop/') || url.pathname.startsWith('/dev-apps/') || /\.(apk|aab|exe|blockmap)$/i.test(url.pathname)) return;
+
   const isNav = req.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html');
   const isStatic = url.pathname.startsWith('/static/');
   const isApiCacheable = url.pathname.startsWith('/api/') && API_CACHE_PATTERNS.some((re) => re.test(url.pathname + url.search));
