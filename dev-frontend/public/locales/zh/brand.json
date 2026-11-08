@@ -674,7 +674,7 @@
   "brandMenusPage.distributionAutoHint": "每次保存立即更新所有关联门店。无需手动推送。",
   "brandMenusPage.distributionAutoWarning": "注意:每次保存都会立即同步到所有加盟店。需要确认步骤请使用手动。",
   "brandMenusPage.settingsLocksTitle": "加盟店不能更改的内容",
-  "brandMenusPage.settingsLocksHint": "预先勾选应在所有门店保持一致的字段。它们将成为新菜单的初始锁定。每个菜单仍可单独覆盖。",
+  "brandMenusPage.settingsLocksHint": "在此开启的字段在所有门店保持一致,门店无法修改。切换开关会立即应用到本品牌的所有菜单和门店。如需单个菜单不同,请在该菜单的编辑窗口中修改。",
   "brandMenusPage.lockLabelName": "菜单名称",
   "brandMenusPage.lockLabelPrice": "建议价格",
   "brandMenusPage.lockLabelCategory": "分类",
@@ -974,5 +974,8 @@
   "brandMenusPage.diffField.category": "分类",
   "brandMenusPage.diffField.visibility": "开/关",
   "brandMenusPage.diffField.version": "更新",
-  "brandMenusPage.diffField.status": "更新"
+  "brandMenusPage.diffField.status": "更新",
+  "brandMenusPage.applyLocksToAll": "立即将这些锁定应用到所有菜单",
+  "brandMenusPage.applyLocksBusy": "正在应用...",
+  "brandMenusPage.locksAppliedResult": "已应用到 {{menus}} 个菜单和 {{products}} 个门店菜单。"
 }

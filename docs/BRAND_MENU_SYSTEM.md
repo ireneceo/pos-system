@@ -780,3 +780,4 @@ K-DINE IPC(운영 매장8)의 메뉴 105개가 **브랜드와 연결되지 않�
 - **보내기 멈춤** `brands.menu_settings.push_frozen` — 판정 한 곳 `isBrandPushFrozen`/`assertBrandPushAllowed`. 멈추면 푸시·Push All·자동분배·범위 반영·매장 sync/sync-all/skip/unlink·브랜드 메뉴 삭제가 409 `BRAND_PUSH_FROZEN` · 옵션그룹 수정은 브랜드 쪽만 저장. 브랜드 쪽 편집은 그대로. 운영 브랜드 2(K-DINE with MIN → 매장 8 IPC)는 배포 마이그 `migrate-brand-menu-push-frozen-ipc.js` 로 켬(칸이 없을 때만 · 사람이 끈 값은 안 되돌림).
 - 상시 검사: health-check pos 5건(①~⑤ · ⑤ 고장주입 반증).
 - 남은 것(배포 막지 않음): scope PUT 이 멈춤이어도 브랜드 범위를 먼저 저장한 뒤 409 — 라우트 앞 검사 한 줄 추가.
+- **잠금 설정 = 브랜드 전체 (2026-11-08 d · Fable 게이트 PASS)**: 설정 «What franchises cannot change»(default_locks)를 바꾸면 바뀐 칸만 그 브랜드 기존 메뉴 전부(`brand_menus.lock_*`)와 매장 잠금 스냅샷(`products.brand_menu_locks_snapshot`)에 바로 적용(`applyBrandLocksToMenus`). «Apply these locks to all menus now»(`apply_locks_to_all`)는 다섯 칸 모두. 내용 칸은 안 바꿈 · 보내기 멈춤이면 매장 표 안 씀. 전에는 새 메뉴 기본값으로만 쓰여 운영 브랜드 13 은 설정 켬 + 메뉴 39개 잠금 0 이었다. scope PUT 도 멈춤이면 저장 전 409.

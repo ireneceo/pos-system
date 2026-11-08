@@ -2006,6 +2006,31 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
     })();
   }, [brandId]);
 
+  // 잠금 설정을 기존 메뉴 전부·매장 잠금에 지금 바로 맞춤 (2026-11-08 Irene «설정에서 못 바꾸게 했는데 레스토랑이 다 바꿀 수 있어»)
+  const [applyingLocks, setApplyingLocks] = useState(false);
+  const [locksAppliedMsg, setLocksAppliedMsg] = useState<string | null>(null);
+  const applyLocksToAll = async () => {
+    if (!brandId || !settingsRef.current || applyingLocks) return;
+    setApplyingLocks(true); setLocksAppliedMsg(null);
+    try {
+      const r = await fetch(`/api/brand-menus/settings`, {
+        method: 'PUT', headers: authHeaders(),
+        body: JSON.stringify({ brand_id: brandId, settings: settingsRef.current, apply_locks_to_all: true })
+      });
+      const j = await r.json();
+      if (!r.ok || !j.success) throw new Error(j.message || 'Save failed');
+      const a = j.locks_applied || {};
+      setLocksAppliedMsg(t('brand:brandMenusPage.locksAppliedResult', {
+        menus: a.menus || 0, products: a.products || 0,
+        defaultValue: `Applied to ${a.menus || 0} menus and ${a.products || 0} store menus.`
+      }) as string);
+    } catch (e: any) {
+      setErr(e?.message || 'Save failed');
+    } finally {
+      setApplyingLocks(false);
+    }
+  };
+
   const persist = useCallback(async () => {
     if (!brandId || !settingsRef.current) return;
     const r = await fetch(`/api/brand-menus/settings`, {
@@ -2119,7 +2144,7 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
       <SettingsCard>
         <SettingsSectionTitle>{t('brand:brandMenusPage.settingsLocksTitle', 'What franchises cannot change')}</SettingsSectionTitle>
         <SettingsSectionHint>
-          {t('brand:brandMenusPage.settingsLocksHint', 'Pre-check the fields that should stay identical across every restaurant. These become the starting locks for any new menu — you can still override per menu later.')}
+          {t('brand:brandMenusPage.settingsLocksHint', 'Fields switched on here stay identical at every restaurant — restaurants cannot edit them. Changing a switch applies it to every menu of this brand and to the restaurants right away. You can still change one menu in its edit dialog.')}
         </SettingsSectionHint>
         {lockKeys.map(k => (
           <ToggleRow key={k}>
@@ -2134,6 +2159,14 @@ const MenuSettingsTab: React.FC<{ brandId: number | null; brandName: string }> =
             </AutoSaveField>
           </ToggleRow>
         ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
+          <ThemedButton variant="outline" onClick={applyLocksToAll} disabled={applyingLocks}>
+            {applyingLocks
+              ? t('brand:brandMenusPage.applyLocksBusy', 'Applying...')
+              : t('brand:brandMenusPage.applyLocksToAll', 'Apply these locks to all menus now')}
+          </ThemedButton>
+          {locksAppliedMsg && <span role="status" style={{ fontSize: 13, color: '#047857' }}>{locksAppliedMsg}</span>}
+        </div>
       </SettingsCard>
 
       <SettingsCard>

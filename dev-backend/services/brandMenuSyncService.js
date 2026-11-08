@@ -533,6 +533,31 @@ async function bumpMenusUsingOptionGroup(optionGroupId, transaction) {
 }
 
 /**
+ * 브랜드 설정 «What franchises cannot change»(default_locks) 를 그 브랜드의 기존 메뉴 전부에 적용하고,
+ * 매장 상품의 잠금 스냅샷(매장 편집 가드가 읽는 칸)도 같이 맞춘다 — 내용(이름·가격 등)은 건드리지 않는다.
+ * (2026-11-08 Irene «브랜드 메뉴 설정에서 메뉴명이랑 가격 등 못 바꾸게 했는데 레스토랑이 다 바꿀 수 있어»)
+ *   keys: 적용할 잠금 칸(name/price/category/image/options). 보내기 멈춤이면 매장 표는 안 씀.
+ */
+async function applyBrandLocksToMenus({ brandId, locks, keys }) {
+  const valid = ['name', 'price', 'category', 'image', 'options'].filter(k => keys.includes(k));
+  if (!valid.length) return { menus: 0, products: 0, frozen: false };
+  const upd = {};
+  for (const k of valid) upd[`lock_${k}`] = !!locks[k];
+  const [menusUpdated] = await BrandMenu.update(upd, { where: { brand_id: brandId } });
+  if (await isBrandPushFrozen(brandId)) return { menus: menusUpdated, products: 0, frozen: true };
+  const menus = await BrandMenu.findAll({ where: { brand_id: brandId } });
+  let products = 0;
+  for (const m of menus) {
+    const [n] = await Product.update(
+      { brand_menu_locks_snapshot: buildLocksSnapshot(m) },
+      { where: { brand_menu_id: m.id } }
+    );
+    products += n;
+  }
+  return { menus: menusUpdated, products, frozen: false };
+}
+
+/**
  * Soft-unlink all Restaurant Products from a deleted BrandMenu.
  * Products survive (operationally critical), they just become independent.
  */
@@ -665,5 +690,6 @@ module.exports = {
   markPendingForBrandMenu,
   bumpMenusUsingOptionGroup,
   softUnlinkProductsFromBrandMenu,
+  applyBrandLocksToMenus,
   computeMenuDiff
 };

@@ -104,14 +104,29 @@ router.put('/settings', authenticateToken, requireBGScope, async (req, res) => {
       incoming.push_frozen = !!(stored && stored.push_frozen === true);
     }
     const merged = mergeMenuSettings(incoming);
+    let storedPrev = brand.menu_settings;
+    if (typeof storedPrev === 'string') { try { storedPrev = JSON.parse(storedPrev); } catch (_) { storedPrev = null; } }
+    const prev = mergeMenuSettings(storedPrev);
     await brand.update({ menu_settings: merged });
+    // 잠금 설정은 브랜드 전체에 적용 — 바뀐 칸만 기존 메뉴 전부와 매장 잠금에 반영(메뉴별로 따로 바꾼 다른 칸은 그대로).
+    // apply_locks_to_all=true 면 다섯 칸 모두 지금 설정대로 맞춤(«Apply to all menus now» 버튼).
+    // (2026-11-08 Irene «설정에서 메뉴명이랑 가격 등 못 바꾸게 했는데 레스토랑이 다 바꿀 수 있어»)
+    const lockKeys = ['name', 'price', 'category', 'image', 'options'];
+    const changedLockKeys = req.body.apply_locks_to_all === true
+      ? lockKeys
+      : lockKeys.filter(k => prev.default_locks[k] !== merged.default_locks[k]);
+    let locksApplied = null;
+    if (changedLockKeys.length) {
+      const { applyBrandLocksToMenus } = require('../services/brandMenuSyncService');
+      locksApplied = await applyBrandLocksToMenus({ brandId, locks: merged.default_locks, keys: changedLockKeys });
+    }
     // 브랜드 전체 순서 고정은 단일 source — 저장 시 산하 모든 메뉴의 lock_sort_order 를 일괄 동기화.
     // 켜면 다음 push/sync 때 매장 메뉴가 브랜드 순서로 고정, 끄면 매장이 자유 정렬.
     await BrandMenu.update(
       { lock_sort_order: merged.enforce_menu_order === true },
       { where: { brand_id: brandId } }
     );
-    res.json({ success: true, data: merged });
+    res.json({ success: true, data: merged, locks_applied: locksApplied });
   } catch (e) {
     console.error('[brand-menus] settings PUT error:', e);
     res.status(500).json({ success: false, message: 'Failed to save settings' });
@@ -861,7 +876,11 @@ router.put('/:id/scope', authenticateToken, requireBGScope, async (req, res) => 
     if (!(await assertBrandOwnership(req, menu.brand_id))) {
       return res.status(403).json({ success: false, message: 'Brand not owned' });
     }
-    const scopeMode = req.body.scope_mode === 'selected' ? 'selected' : 'all';
+    // 보내기 멈춤이면 브랜드 범위도 저장하기 전에 거절 (Fable 게이트 c 후속 ①)
+    if (await require('../services/brandMenuSyncService').isBrandPushFrozen(menu.brand_id)) {
+      return res.status(409).json({ success: false, code: 'BRAND_PUSH_FROZEN', message: 'Sending to stores is paused for this brand' });
+    }
+        const scopeMode = req.body.scope_mode === 'selected' ? 'selected' : 'all';
     const restaurantIds = Array.isArray(req.body.restaurant_ids) ? req.body.restaurant_ids : [];
     const refreshMode = menu.distribution_mode === 'auto' ? 'sync' : 'membership';
     const result = await setBrandMenuScope({ brandMenuId: menu.id, scopeMode, restaurantIds, refreshMode });

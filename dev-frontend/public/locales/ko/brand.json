@@ -674,7 +674,7 @@
   "brandMenusPage.distributionAutoHint": "저장할 때마다 연결된 모든 매장으로 즉시 적용됩니다. 수동 푸시 불필요.",
   "brandMenusPage.distributionAutoWarning": "주의: 저장 즉시 모든 가맹점 매장에 반영됩니다. 확인 단계를 원하면 수동을 사용하세요.",
   "brandMenusPage.settingsLocksTitle": "가맹점이 변경할 수 없는 항목",
-  "brandMenusPage.settingsLocksHint": "모든 매장에서 동일하게 유지해야 하는 필드를 미리 체크하세요. 새로 만드는 메뉴의 기본 잠금이 됩니다. 메뉴별로 나중에 변경 가능.",
+  "brandMenusPage.settingsLocksHint": "여기서 켠 칸은 모든 매장에서 똑같이 유지되고 매장이 고칠 수 없습니다. 스위치를 바꾸면 이 브랜드의 모든 메뉴와 매장에 바로 적용됩니다. 메뉴 하나만 다르게 하려면 그 메뉴의 수정 창에서 바꾸세요.",
   "brandMenusPage.lockLabelName": "메뉴 이름",
   "brandMenusPage.lockLabelPrice": "권장 가격",
   "brandMenusPage.lockLabelCategory": "카테고리",
@@ -974,5 +974,8 @@
   "brandMenusPage.diffField.category": "카테고리",
   "brandMenusPage.diffField.visibility": "켜짐/꺼짐",
   "brandMenusPage.diffField.version": "업데이트",
-  "brandMenusPage.diffField.status": "업데이트"
+  "brandMenusPage.diffField.status": "업데이트",
+  "brandMenusPage.applyLocksToAll": "이 잠금을 모든 메뉴에 지금 적용",
+  "brandMenusPage.applyLocksBusy": "적용 중...",
+  "brandMenusPage.locksAppliedResult": "메뉴 {{menus}}개와 매장 메뉴 {{products}}개에 적용했습니다."
 }

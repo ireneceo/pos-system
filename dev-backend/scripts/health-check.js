@@ -12715,6 +12715,49 @@ function definePrintTests({ adminToken }) {
     }
   });
 
+  test('pos', '브랜드 설정 잠금(이름·가격) → 기존 메뉴 전부·매장 잠금에 적용 · 매장 이름 수정 400 · 끄면 200 · 멈춤이면 매장 잠금 안 바뀜 · 멈춤이면 범위 저장 전 409', async () => {
+    const h = await bmHc(); if (!h) { console.log(c.gray('      (건너뜀)')); return true; }
+    // 이 검사는 브랜드 17 메뉴 전부의 잠금을 바꾼다 — 시험용(ZZ-HC) 말고 다른 메뉴가 있으면 건너뜀
+    const [[others]] = await h.sequelize.query("SELECT COUNT(*) n FROM brand_menus WHERE brand_id = 17 AND name NOT LIKE 'ZZ-HC%'");
+    if (Number(others.n) > 0) { console.log(c.gray('      (건너뜀: 브랜드 17 에 시험용 아닌 메뉴가 있음)')); return true; }
+    const NAME = 'ZZ-HC locks'; let id = null;
+    const [[orig]] = await h.sequelize.query('SELECT menu_settings FROM brands WHERE id = 17');
+    const base = { ...(orig.menu_settings || {}) };
+    const locksOff = { name: false, price: false, category: false, image: false, options: false };
+    const put = (s, extra = {}) => request('PUT', '/brand-menus/settings', { brand_id: 17, settings: s, ...extra }, h.bg);
+    try {
+      await put({ ...base, push_frozen: false, default_locks: locksOff });
+      id = await bmHcMake(h, NAME);
+      await h.sequelize.query('UPDATE brand_menus SET lock_name = 0, lock_price = 0 WHERE id = ?', { replacements: [id] });
+      await request('POST', `/brand-menus/${id}/push`, { restaurant_ids: [38] }, h.bg);
+      const [[p]] = await h.sequelize.query('SELECT id, name, price FROM products WHERE brand_menu_id = ? AND restaurant_id = 38', { replacements: [id] });
+      const on = await put({ ...base, push_frozen: false, default_locks: { ...locksOff, name: true, price: true } });
+      const [[bm]] = await h.sequelize.query('SELECT lock_name n, lock_price pr FROM brand_menus WHERE id = ?', { replacements: [id] });
+      const [[snap]] = await h.sequelize.query('SELECT CAST(brand_menu_locks_snapshot AS CHAR) s FROM products WHERE id = ?', { replacements: [p.id] });
+      const edit = await request('PUT', `/menu/product/${p.id}?restaurantId=38`, { name: NAME + ' store' }, h.ra);
+      const off = await put({ ...base, push_frozen: false, default_locks: locksOff });
+      const edit2 = await request('PUT', `/menu/product/${p.id}?restaurantId=38`, { name: NAME + ' store' }, h.ra);
+      // 멈춤: 브랜드 메뉴 잠금은 바뀌지만 매장 잠금은 그대로 + 범위 저장 전 409
+      await put({ ...base, push_frozen: true, default_locks: locksOff });
+      const [[snapBefore]] = await h.sequelize.query('SELECT CAST(brand_menu_locks_snapshot AS CHAR) s FROM products WHERE id = ?', { replacements: [p.id] });
+      const fr = await put({ ...base, push_frozen: true, default_locks: locksOff }, { apply_locks_to_all: true });
+      const [[snapAfter]] = await h.sequelize.query('SELECT CAST(brand_menu_locks_snapshot AS CHAR) s FROM products WHERE id = ?', { replacements: [p.id] });
+      const [[sm0]] = await h.sequelize.query('SELECT scope_mode m FROM brand_menus WHERE id = ?', { replacements: [id] });
+      const sc = await request('PUT', `/brand-menus/${id}/scope`, { scope_mode: sm0.m === 'all' ? 'selected' : 'all', restaurant_ids: [38] }, h.bg);
+      const [[sm1]] = await h.sequelize.query('SELECT scope_mode m FROM brand_menus WHERE id = ?', { replacements: [id] });
+      const sj = JSON.parse(snap.s || '{}');
+      const ok = on.status === 200 && on.body?.locks_applied?.products >= 1 && Number(bm.n) === 1 && Number(bm.pr) === 1
+        && sj.name === true && sj.price === true && edit.status === 400 && off.status === 200 && edit2.status === 200
+        && fr.body?.locks_applied?.frozen === true && snapBefore.s === snapAfter.s && sc.status === 409 && sm0.m === sm1.m;
+      if (!ok) console.log(c.gray(`      (켬 ${on.status} ${JSON.stringify(on.body?.locks_applied)} · 메뉴 n${bm.n} p${bm.pr} · 매장 ${snap.s} · 매장수정 ${edit.status} · 끔 ${off.status} → ${edit2.status} · 멈춤 ${JSON.stringify(fr.body?.locks_applied)} 스냅샷같음 ${snapBefore.s === snapAfter.s} · 범위 ${sc.status} ${sm0.m}→${sm1.m})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      await h.sequelize.query('UPDATE brands SET menu_settings = ? WHERE id = 17', { replacements: [orig.menu_settings == null ? null : JSON.stringify(orig.menu_settings)] }).catch(() => {});
+      await bmHcCleanup(h, [id], NAME);
+    }
+  });
+
   // 2026-09-30 K-DINE IPC 「메뉴 이미지가 자꾸 날아간다」 — 이미지 안 바꾸고 저장해도 파일이 지워지던 결함(03-03부터)
   //   + 브랜드 메뉴가 가리키는 매장 파일을 매장 교체가 지우던 것. 아무도 안 쓰는 옛 파일만 지운다.
   test('pos', '메뉴 저장이 쓰는 이미지 파일을 지우지 않는다 (같은 주소·브랜드 메뉴 참조) · 안 쓰는 옛 파일만 삭제', async () => {

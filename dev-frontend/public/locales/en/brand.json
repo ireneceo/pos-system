@@ -674,7 +674,7 @@
   "brandMenusPage.distributionAutoHint": "Every save instantly updates all linked restaurants. No manual push needed.",
   "brandMenusPage.distributionAutoWarning": "Heads up: every edit reaches all your franchise restaurants the moment you click Save. Use Manual if you want a confirmation step.",
   "brandMenusPage.settingsLocksTitle": "What franchises cannot change",
-  "brandMenusPage.settingsLocksHint": "Pre-check the fields that should stay identical across every restaurant. These become the starting locks for any new menu — you can still override per menu later.",
+  "brandMenusPage.settingsLocksHint": "Fields switched on here stay identical at every restaurant — restaurants cannot edit them. Changing a switch applies it to every menu of this brand and to the restaurants right away. You can still change one menu in its edit dialog.",
   "brandMenusPage.lockLabelName": "Menu name",
   "brandMenusPage.lockLabelPrice": "Recommended price",
   "brandMenusPage.lockLabelCategory": "Category",
@@ -974,5 +974,8 @@
   "brandMenusPage.diffField.category": "category",
   "brandMenusPage.diffField.visibility": "on/off",
   "brandMenusPage.diffField.version": "update",
-  "brandMenusPage.diffField.status": "update"
+  "brandMenusPage.diffField.status": "update",
+  "brandMenusPage.applyLocksToAll": "Apply these locks to all menus now",
+  "brandMenusPage.applyLocksBusy": "Applying...",
+  "brandMenusPage.locksAppliedResult": "Applied to {{menus}} menus and {{products}} store menus."
 }

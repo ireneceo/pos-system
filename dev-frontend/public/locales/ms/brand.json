@@ -674,7 +674,7 @@
   "brandMenusPage.distributionAutoHint": "Setiap simpan mengemas kini semua restoran terpaut serta-merta. Tiada hantar manual diperlukan.",
   "brandMenusPage.distributionAutoWarning": "Awas: setiap suntingan sampai kepada semua restoran francais anda sebaik anda klik Simpan. Gunakan Manual jika anda mahukan langkah pengesahan.",
   "brandMenusPage.settingsLocksTitle": "Apa yang francais tidak boleh ubah",
-  "brandMenusPage.settingsLocksHint": "Tandakan terlebih dahulu medan yang harus kekal sama di setiap restoran. Ini menjadi kunci permulaan untuk menu baru — masih boleh dioverride per menu kemudian.",
+  "brandMenusPage.settingsLocksHint": "Medan yang dihidupkan di sini kekal sama di setiap restoran — restoran tidak boleh mengeditnya. Menukar suis terus terpakai pada setiap menu jenama ini dan restoran. Anda masih boleh menukar satu menu dalam dialog suntingannya.",
   "brandMenusPage.lockLabelName": "Nama menu",
   "brandMenusPage.lockLabelPrice": "Harga disyorkan",
   "brandMenusPage.lockLabelCategory": "Kategori",
@@ -974,5 +974,8 @@
   "brandMenusPage.diffField.category": "kategori",
   "brandMenusPage.diffField.visibility": "hidup/mati",
   "brandMenusPage.diffField.version": "kemas kini",
-  "brandMenusPage.diffField.status": "kemas kini"
+  "brandMenusPage.diffField.status": "kemas kini",
+  "brandMenusPage.applyLocksToAll": "Gunakan kunci ini pada semua menu sekarang",
+  "brandMenusPage.applyLocksBusy": "Sedang digunakan...",
+  "brandMenusPage.locksAppliedResult": "Digunakan pada {{menus}} menu dan {{products}} menu kedai."
 }
