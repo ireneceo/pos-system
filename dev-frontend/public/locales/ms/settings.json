@@ -997,7 +997,7 @@
     },
     "cardTerminal": {
       "title": "Integrasi terminal kad",
-      "hint": "Hantar jumlah ke terminal kad GHL secara automatik dan rekod keputusannya. Berfungsi pada aplikasi desktop atau Android PurpleHere POS.",
+      "hint": "Menghantar jumlah ke terminal kad GHL dan merekod bayaran hanya apabila diluluskan — kad, QR e-dompet dan DuitNow QR. Berfungsi dalam aplikasi PurpleHere POS (Android atau Windows).",
       "host": "Alamat IP terminal",
       "port": "Port",
       "transport": "Jenis sambungan",
@@ -1024,7 +1024,15 @@
       "manualHost": "Alamat terminal (hanya jika carian automatik tidak berfungsi)",
       "autoUpdated": "Alamat terminal berubah — ditemui semula di {{host}} dan disimpan",
       "duitnow": "DuitNow QR pada terminal",
-      "duitnowHint": "Menambah pilihan «DuitNow QR pada terminal» pada skrin bayaran: terminal memaparkan QR DuitNow untuk diimbas pelanggan. Hidupkan hanya jika DuitNow diaktifkan pada terminal anda (tanya GHL)."
+      "duitnowHint": "Menambah pilihan «DuitNow QR pada terminal» pada skrin bayaran: terminal memaparkan QR DuitNow untuk diimbas pelanggan. Hidupkan hanya jika DuitNow diaktifkan pada terminal anda (tanya GHL).",
+      "getStarted": {
+        "title": "Apa yang anda perlukan",
+        "step1": "Terminal kad GHL yang menjalankan PayHere Direct, pada Wi-Fi yang sama dengan peranti kaunter ini.",
+        "step2": "Aplikasi PurpleHere POS pada peranti ini (tablet Android atau PC Windows) — purplehere.com/download.",
+        "step3": "Mohon terminal melalui PurpleHere. Terminal GHL berbeza mengikut model dan versi perisian, jadi kami sahkan unit yang serasi dan sediakannya untuk outlet anda. Terminal yang diperoleh melalui saluran lain mungkin tidak dapat disambungkan.",
+        "request": "Mohon terminal kad",
+        "after": "Apabila ia tiba, hidupkan ini — aplikasi akan mencari terminal di Wi-Fi ini dengan sendirinya."
+      }
     }
   },
   "printer.emergency.workstationReceiptPrinter": "pencetak resit stesen kerja ini",

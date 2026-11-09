@@ -8,7 +8,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { LandingLayout } from '../../components/Landing';
+import { LandingLayout, CounterSetupStrip } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
 import { Button } from '../../components/UI/Button';
 import { QRCodeSVG } from 'qrcode.react';
@@ -73,7 +73,7 @@ const DownloadPage: React.FC = () => {
           <Card>
             <Glyph aria-hidden="true">▭</Glyph>
             <H2>{t('download.windows.title', 'Windows PC')}</H2>
-            <P>{t('download.windows.desc', 'For counter PCs. Prints to your USB and network printers directly from the POS.')}</P>
+            <P>{t('download.windows.desc', 'For counter PCs. Prints to your USB and network printers and connects to the card terminal on the same Wi-Fi.')}</P>
             <div><Button variant="primary" onClick={() => go('/desktop/PurplePOS-Setup.exe')}>{t('download.windows.button', 'Download for Windows')}</Button></div>
             <Small>{t('download.windows.note', 'If Windows shows a warning the first time, choose "More info" → "Run anyway".')}</Small>
           </Card>
@@ -113,6 +113,8 @@ const DownloadPage: React.FC = () => {
             </QrRow>
           </WideCard>
         </Grid>
+        {/* 2026-11-09 «태블릿+프린터+카드단말기면 끝» — 앱을 받는 이유가 이 셋의 자동 연결(Fable 설계 §3-5) */}
+        <div style={{ marginTop: 24 }}><CounterSetupStrip hideDownload /></div>
       </Wrap>
     </LandingLayout>
   );

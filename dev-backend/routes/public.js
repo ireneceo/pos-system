@@ -77,7 +77,7 @@ router.post('/contact', async (req, res) => {
         <div style="background:#F8FAFC;padding:16px;border-radius:8px;margin:20px 0;border-left:4px solid #635BFF;">
           <p style="color:#6B7280;font-size:13px;margin:0 0 8px;"><strong>Your message:</strong></p>
           <p style="color:#374151;font-size:14px;margin:0;white-space:pre-wrap;">${message.length > 500 ? message.substring(0, 500) + '...' : message}</p>
-        </div>${inquiry_type === 'free_trial' ? '<div style="background:#EEF2FF;padding:16px;border-radius:8px;margin:20px 0;"><p style="color:#4338CA;font-size:14px;margin:0;"><strong>Free Trial Request</strong> — We will set up your account and get back to you with login details.</p></div>' : ''}`;
+        </div>${inquiry_type === 'free_trial' ? '<div style="background:#EEF2FF;padding:16px;border-radius:8px;margin:20px 0;"><p style="color:#4338CA;font-size:14px;margin:0;"><strong>Free Trial Request</strong> — We will set up your account and get back to you with login details.</p></div>' : ''}${inquiry_type === 'card_terminal' ? '<div style="background:#F5F3FF;padding:16px;border-radius:8px;margin:20px 0;"><p style="color:#5B21B6;font-size:14px;margin:0;"><strong>Card terminal request</strong> — We will contact you about a GHL card terminal for your outlet and the set-up steps. Please have your outlet name, address and number of counters ready.</p></div>' : ''}`;
 
       await sendPlatformEmail({
         to: email,
@@ -101,7 +101,8 @@ router.post('/contact', async (req, res) => {
             ${phone ? `<tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;">Phone</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${phone}</td></tr>` : ''}
             ${company_name ? `<tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;">Company</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${company_name}</td></tr>` : ''}
             <tr><td style="padding:10px 16px;font-size:14px;color:#6B7280;border-bottom:1px solid #E5E7EB;">Type</td><td style="padding:10px 16px;font-size:14px;color:#111827;border-bottom:1px solid #E5E7EB;">${inquiry_type || 'other'}</td></tr>
-          </table>
+          </table>${inquiry_type === 'card_terminal' ? `
+          <div style="background:#F5F3FF;padding:16px;border-radius:8px;margin:16px 0;"><p style="color:#5B21B6;font-size:14px;margin:0;"><strong>Card terminal lead</strong> — Reply with the GHL application steps and confirm the terminal model before it ships.</p></div>` : ''}
           <div style="background:#F8FAFC;padding:16px;border-radius:8px;margin:16px 0;border-left:4px solid #635BFF;">
             <p style="color:#6B7280;font-size:13px;margin:0 0 8px;"><strong>Message:</strong></p>
             <p style="color:#374151;font-size:14px;margin:0;white-space:pre-wrap;">${message.length > 1000 ? message.substring(0, 1000) + '...' : message}</p>

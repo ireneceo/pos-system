@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { LandingLayout } from '../../components/Landing';
+import { LandingLayout, CounterSetupStrip } from '../../components/Landing';
 import SEOHead, { generateHowToSchema, generateBreadcrumbSchema } from '../../components/Common/SEOHead';
 import { useTranslation } from 'react-i18next';
 
@@ -496,7 +496,7 @@ const ROLE_TABS: RoleTab[] = [
       { code: 'floor_plan', points: 5, category: 'advanced', images: getImages('floor_plan', 4) },
       { code: 'mobile_ordering', points: 5, category: 'advanced', images: getImages('mobile_ordering', 6) },
       { code: 'kiosk_mode', points: 4, category: 'advanced', images: getImages('kiosk_mode', 0) },
-      { code: 'card_terminal', points: 3, category: 'advanced', images: getImages('card_terminal', 0) },
+      { code: 'card_terminal', points: 5, category: 'advanced', images: getImages('card_terminal', 0) },
       { code: 'reservations', points: 6, category: 'advanced', images: getImages('reservations', 0) },
       { code: 'recipe_management', points: 4, category: 'advanced', images: getImages('recipe_management', 3) },
       { code: 'ingredients', points: 4, category: 'advanced', images: getImages('ingredients', 1) },
@@ -768,6 +768,11 @@ const FeaturesPage: React.FC = () => {
                 {advancedFeatures.map(renderFeatureCard)}
               </FeaturesGrid>
             </>
+          )}
+
+          {/* 2026-11-09 «태블릿+프린터+카드단말기면 끝» — 매장 탭에만(Fable 설계 §3-3) */}
+          {activeRole.key === 'restaurant' && (
+            <div style={{ marginTop: 32 }}><CounterSetupStrip /></div>
           )}
 
           <CTASection>

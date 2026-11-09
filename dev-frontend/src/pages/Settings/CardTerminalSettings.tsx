@@ -123,6 +123,25 @@ const CardTerminalSettings: React.FC<Props> = ({ value, restaurantId, onChange, 
         {toggle(!!v.enabled, (on) => set({ enabled: on }, true))}
       </div>
 
+      {/* 2026-11-09 Irene «GHL 가입은 꼭 우리 문의로» — 꺼져 있을 때만 «필요한 것» 3줄 + 신청 버튼(Fable 설계 §3-1 · 상자 없음).
+          새 탭: 자동 저장 중인 설정 화면을 떠나지 않게. 새 탭엔 state 가 안 넘어가 주소 ?type= 로 넘긴다. */}
+      {!v.enabled && (
+        <div style={{ marginTop: '12px' }} data-testid="card-terminal-get-started">
+          <div style={title}>{t('settingsPage.cardTerminal.getStarted.title')}</div>
+          <ol style={{ margin: '6px 0 0', paddingLeft: '18px', fontSize: '13px', color: '#425466', lineHeight: 1.6 }}>
+            <li>{t('settingsPage.cardTerminal.getStarted.step1')}</li>
+            <li>{t('settingsPage.cardTerminal.getStarted.step2')}</li>
+            <li>{t('settingsPage.cardTerminal.getStarted.step3')}</li>
+          </ol>
+          <div style={{ marginTop: '10px' }}>
+            <Button variant="secondary" onClick={() => { window.open('/contact?type=card_terminal', '_blank', 'noopener'); }}>
+              {t('settingsPage.cardTerminal.getStarted.request')}
+            </Button>
+          </div>
+          <div style={{ ...hint, marginTop: '8px' }}>{t('settingsPage.cardTerminal.getStarted.after')}</div>
+        </div>
+      )}
+
       {v.enabled && (
         <div style={{ marginTop: '12px' }}>
           <div style={title}>{t('settingsPage.cardTerminal.host')}</div>

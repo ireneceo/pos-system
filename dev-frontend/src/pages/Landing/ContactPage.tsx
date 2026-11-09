@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, useSearchParams, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { LandingLayout } from '../../components/Landing';
 import SEOHead from '../../components/Common/SEOHead';
@@ -309,17 +309,22 @@ interface CompanyInfo {
 }
 
 const ContactPage: React.FC = () => {
-  const { t } = useTranslation('landing');
+  const { t, ready: i18nReady } = useTranslation('landing');
   const location = useLocation();
   const navState = location.state as { inquiry_type?: string; interested_plan?: string } | null;
+  // 2026-11-09 카드단말기 신청 길(Fable 설계 §3-2) — state 또는 주소 ?type= 둘 다 받는다(설정 화면은 새 탭이라 state 가 안 넘어감).
+  //   허용 목록에 있는 종류만. 옛 «체험 신청»(free_trial) 은 문의 종류에서 빠졌다 — 들어와도 빈 선택으로.
+  const [searchParams] = useSearchParams();
+  const ALLOWED_TYPES = ['pricing', 'card_terminal', 'demo', 'support', 'partnership', 'other'];
+  const wantedType = navState?.inquiry_type || searchParams.get('type') || '';
+  const initialType = ALLOWED_TYPES.includes(wantedType) ? wantedType : '';
 
   const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',
     phone: '',
     company_name: '',
-    // 옛 «체험 신청»(free_trial) 은 문의 종류에서 빠졌다 — 들어와도 빈 선택으로.
-    inquiry_type: navState?.inquiry_type && navState.inquiry_type !== 'free_trial' ? navState.inquiry_type : '',
+    inquiry_type: initialType,
     interested_plan: navState?.interested_plan || '',
     preferred_username: '',
     message: ''
@@ -328,6 +333,13 @@ const ContactPage: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
+
+  // 카드단말기 신청으로 들어왔으면 본문 틀을 미리 채운다(지우고 써도 됨) — 문구 파일이 다 읽힌 뒤, 본문이 비어 있을 때만.
+  useEffect(() => {
+    if (!i18nReady || initialType !== 'card_terminal') return;
+    setFormData(prev => (prev.message ? prev : { ...prev, message: t('landing:contactPage.cardTerminalPrefill') }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i18nReady]);
 
   useEffect(() => {
     fetch('/api/site-settings')
@@ -472,11 +484,17 @@ const ContactPage: React.FC = () => {
                     >
                       <option value="">{t('landing:contactPage.selectInquiryType')}</option>
                       <option value="pricing">{t('landing:contactPage.pricingInquiry')}</option>
+                      <option value="card_terminal">{t('landing:contactPage.cardTerminalInquiry')}</option>
                       <option value="demo">{t('landing:contactPage.requestDemo')}</option>
                       <option value="support">{t('landing:contactPage.technicalSupport')}</option>
                       <option value="partnership">{t('landing:contactPage.partnership')}</option>
                       <option value="other">{t('landing:contactPage.other')}</option>
                     </Select>
+                    {formData.inquiry_type === 'card_terminal' && (
+                      <p style={{ fontSize: '13px', color: '#6B7C93', margin: '8px 0 0', lineHeight: 1.55 }} data-testid="contact-card-terminal-help">
+                        {t('landing:contactPage.cardTerminalHelp')}
+                      </p>
+                    )}
                   </FormGroup>
 
                   {formData.inquiry_type && (

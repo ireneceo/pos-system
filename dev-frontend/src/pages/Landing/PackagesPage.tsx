@@ -1400,6 +1400,11 @@ const PackagesPage: React.FC = () => {
               {t('landing:packagesPage.noHardwareNote')}{' '}
               <Link to="/pricing">{t('landing:packagesPage.viewPlans')} &rarr;</Link>
             </SoftwareNote>
+            {/* 2026-11-09 카드단말기는 패키지에 없음 → GHL 단말기는 문의로 신청(Fable 설계 §3-7) */}
+            <SoftwareNote style={{ textAlign: 'center', marginTop: '4px' }}>
+              {t('landing:packagesPage.cardTerminalNote')}{' '}
+              <Link to="/contact?type=card_terminal">{t('landing:packagesPage.cardTerminalLink')} &rarr;</Link>
+            </SoftwareNote>
           </CountriesBanner>
         )}
 

@@ -997,7 +997,7 @@
     },
     "cardTerminal": {
       "title": "刷卡机对接",
-      "hint": "自动将金额发送到 GHL 刷卡机并记录结果。适用于 PurpleHere POS 桌面版或安卓应用。",
+      "hint": "将金额发送到 GHL 刷卡机，仅在批准时记录付款 — 银行卡、电子钱包 QR 和 DuitNow QR 都一样。在 PurpleHere 收银应用（Android 或 Windows）中使用。",
       "host": "刷卡机 IP 地址",
       "port": "端口",
       "transport": "连接方式",
@@ -1024,7 +1024,15 @@
       "manualHost": "终端地址（仅在自动查找无效时）",
       "autoUpdated": "终端地址已变更 — 已在 {{host}} 重新找到并保存",
       "duitnow": "刷卡机屏幕 DuitNow QR",
-      "duitnowHint": "在付款界面增加「刷卡机屏幕 DuitNow QR」选项：刷卡机显示 DuitNow QR 供顾客扫描。仅在刷卡机已开通 DuitNow 时开启（请向 GHL 确认）。"
+      "duitnowHint": "在付款界面增加「刷卡机屏幕 DuitNow QR」选项：刷卡机显示 DuitNow QR 供顾客扫描。仅在刷卡机已开通 DuitNow 时开启（请向 GHL 确认）。",
+      "getStarted": {
+        "title": "您需要",
+        "step1": "一台安装 PayHere Direct 的 GHL 刷卡机，与这台收银设备连接同一 Wi-Fi。",
+        "step2": "在这台设备上安装 PurpleHere 收银应用（Android 平板或 Windows 电脑）— purplehere.com/download。",
+        "step3": "请通过 PurpleHere 申请刷卡机。GHL 刷卡机因型号和软件版本不同存在很多变数，我们会确认兼容型号并为您的门店准备好。通过其他渠道取得的刷卡机不保证能够连接。",
+        "request": "申请刷卡机",
+        "after": "收到刷卡机后开启此开关 — 应用会在此 Wi-Fi 中自动找到刷卡机。"
+      }
     }
   },
   "printer.emergency.workstationReceiptPrinter": "本工位的收据打印机",

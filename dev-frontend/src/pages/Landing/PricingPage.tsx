@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import { Check, Minus } from 'lucide-react';
 import { LandingLayout } from '../../components/Landing';
@@ -882,6 +882,11 @@ const PricingPage: React.FC = () => {
           <CTATitle>{t('landing:pricingPage.needPosHardware')}</CTATitle>
           <CTASubtitle>
             {t('landing:pricingPage.chooseFromReadymadeHardwarePackagesWithE')}
+          </CTASubtitle>
+          {/* 2026-11-09 카드단말기 자동연결은 모든 플랜 · 단말기는 GHL 을 우리 통해 신청(Fable 설계 §3-8) */}
+          <CTASubtitle style={{ fontSize: '14px' }}>
+            {t('landing:pricingPage.cardTerminalNote')}{' '}
+            <Link to="/contact?type=card_terminal" style={{ color: '#fff', fontWeight: 600, textDecoration: 'underline' }}>{t('landing:pricingPage.cardTerminalLink')} &rarr;</Link>
           </CTASubtitle>
           <CTAButton onClick={() => navigate('/packages')}>
             {t('landing:pricingPage.viewHardwarePackages')}

@@ -26,9 +26,9 @@ ContactInquiry.init({
     allowNull: true
   },
   inquiry_type: {
-    type: DataTypes.ENUM('free_trial', 'pricing', 'demo', 'support', 'partnership', 'other'),
+    type: DataTypes.ENUM('free_trial', 'pricing', 'demo', 'support', 'partnership', 'other', 'card_terminal'),
     defaultValue: 'other',
-    comment: 'Type of inquiry: free_trial, pricing, demo, support, partnership, other'
+    comment: 'Type of inquiry: free_trial, pricing, demo, support, partnership, other, card_terminal (GHL card terminal request)'
   },
   interested_plan: {
     type: DataTypes.STRING(100),

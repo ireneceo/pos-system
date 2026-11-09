@@ -14,7 +14,7 @@ interface ContactInquiry {
   email: string;
   phone?: string;
   company_name?: string;
-  inquiry_type?: 'free_trial' | 'pricing' | 'demo' | 'support' | 'partnership' | 'other';
+  inquiry_type?: 'free_trial' | 'pricing' | 'demo' | 'support' | 'partnership' | 'other' | 'card_terminal';
   interested_plan?: string;
   preferred_username?: string;
   message: string;
@@ -238,6 +238,7 @@ const InquiryTypeBadge = styled.span<{ type?: string }>`
       case 'demo': return '#DBEAFE';
       case 'support': return '#FEE2E2';
       case 'partnership': return '#F3E8FF';
+      case 'card_terminal': return '#EEF2FF';
       default: return '#F1F4F8';
     }
   }};
@@ -248,6 +249,7 @@ const InquiryTypeBadge = styled.span<{ type?: string }>`
       case 'demo': return '#1E40AF';
       case 'support': return '#DC2626';
       case 'partnership': return '#7C3AED';
+      case 'card_terminal': return '#4338CA';
       default: return '#4B5563';
     }
   }};
@@ -661,6 +663,7 @@ const ContactInquiriesPage: React.FC = () => {
       demo: 'Demo',
       support: 'Support',
       partnership: 'Partnership',
+      card_terminal: 'Card terminal',
       other: 'Other'
     };
     return labels[type] || type;

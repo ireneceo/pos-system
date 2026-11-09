@@ -997,7 +997,7 @@
     },
     "cardTerminal": {
       "title": "Card terminal integration",
-      "hint": "Send the amount to the GHL card terminal automatically and record the result. Works on the PurpleHere POS desktop or Android app.",
+      "hint": "Sends the amount to the GHL card terminal and records the payment only when it is approved — card, e-wallet QR and DuitNow QR alike. Works in the PurpleHere POS app (Android or Windows).",
       "host": "Terminal IP address",
       "port": "Port",
       "transport": "Connection type",
@@ -1024,7 +1024,15 @@
       "manualHost": "Terminal address (only if automatic search does not work)",
       "autoUpdated": "Terminal address changed — found again at {{host}} and saved",
       "duitnow": "DuitNow QR on the terminal",
-      "duitnowHint": "Adds a «DuitNow QR on terminal» choice to the payment screen: the terminal shows a DuitNow QR for the customer to scan. Turn on only if DuitNow is activated on your terminal (ask GHL)."
+      "duitnowHint": "Adds a «DuitNow QR on terminal» choice to the payment screen: the terminal shows a DuitNow QR for the customer to scan. Turn on only if DuitNow is activated on your terminal (ask GHL).",
+      "getStarted": {
+        "title": "What you need",
+        "step1": "A GHL card terminal running PayHere Direct, on the same Wi-Fi as this counter device.",
+        "step2": "The PurpleHere POS app on this device (Android tablet or Windows PC) — purplehere.com/download.",
+        "step3": "Apply for the terminal through PurpleHere. GHL terminals differ by model and software version, so we confirm a compatible unit and get it set up for your outlet. A terminal arranged elsewhere may not connect.",
+        "request": "Request a card terminal",
+        "after": "Once it arrives, turn this on — the app finds the terminal on this Wi-Fi by itself."
+      }
     }
   },
   "printer.emergency.workstationReceiptPrinter": "this workstation’s receipt printer",

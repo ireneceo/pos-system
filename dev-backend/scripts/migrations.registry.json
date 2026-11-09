@@ -138,7 +138,9 @@
     "migrate-po-approval-exemptions.js",
     "migrate-customer-reset-token.js",
     "migrate-import-history-recipes.js",
-    "migrate-brand-menu-push-frozen-ipc.js"
+    "migrate-brand-menu-push-frozen-ipc.js",
+    "migrate-contact-inquiry-type-card-terminal.js",
+    "migrate-faq-card-terminal-20261109.js"
   ],
   "manual": {
     "fix-ingredient-data-debt-20260917.js": "일회성 — 고아 셀러매핑 정리 · 코드 중복 재채번(2026-09-17 Fable 판정 ②④). 드라이런 기본 · --apply · --undo.",
