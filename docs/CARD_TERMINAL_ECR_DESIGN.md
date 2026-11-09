@@ -95,6 +95,11 @@ void 자식: sent ─00─▶ approved(부모 voided) · C5 → declined(부모 
 - **직불 D007(Account Type)**: 규격 §5.3 «Mandatory for Debit transaction if use Payhere Direct» (값 Saving 0x10 / Current 0x20). 계산대는 카드를 대기 **전에** 직불인지 알 수 없다 → 구현 보류. 2026-10-05 VISA 승인 2건은 D007 없이 났다. MyDebit 카드 1건 실측(근무시간) 또는 GHL 답(«D007 없이 MyDebit 을 대면 단말기가 계좌 종류를 묻는가/거절하는가») 뒤에 정한다.
 - **UAT 근무시간**: UAT 단말기는 근무시간(평일)에만 은행 테스트 서버에 연결된다 — 실측은 평일 낮에.
 
+## 4-3. 가입 안내·문의 유도 (2026-11-09, 개발서버 · 커밋 883971140)
+- GHL 가입은 **PurpleHere 문의로만** 받는다(기종마다 설정이 달라 변수 많음) — 문의 종류 `card_terminal`(expandEnum 마이그) · `/contact?type=card_terminal` 미리 채움.
+- 노출: 설정 › 결제 › 카드 꺼짐 안내 + 신청 버튼 · 홈/기능/다운로드 «태블릿 + 프린터 + 카드단말기면 끝» · FAQ 2문항×4언어(마이그) · 관리자 문의 목록 배지.
+- 설계·판정: `.claude/fable-design-20261109-ghl-terminal-promo.md` · `.claude/fable-verdict-20261109-ghl-terminal-promo-gate.md`(PASS). 단말기 통신(ECR) 코드는 무접촉.
+
 ## 5. 남은 것
 
 - **2026-10-07 키오스크 단말기 결제(운영 SW 5.89)**: 등록된 키오스크 태블릿(기기 토큰)이 같은 `/api/terminal` 을 5개 호출(설정·판매·응답·복구·상태조회)만 쓴다 — 수동 기록·Void·찾기는 403, 자기 기기 거래만(`device_label` 머리 `kiosk#<id> `), 판매는 키오스크 주문만, 기기별 단말기 주소 override. 결제 기록은 `POST /orders/:id/payments {terminal_transaction_id}` 가 승인 거래에서 금액·수단을 읽는다. 상세 `docs/KIOSK_MODE.md` §5. **실기(앱 기기 + 실단말기)는 GHL 파일럿 날.**
