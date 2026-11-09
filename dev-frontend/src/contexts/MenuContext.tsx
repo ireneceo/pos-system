@@ -304,6 +304,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             preparationTime: item.preparationTime || 15,
             is_set_menu: item.is_set_menu || false,
             set_only: item.set_only === true,  // 세트 구성 전용 단품 — 주문 화면 숨김 (2026-06-12)
+            is_active: item.is_active !== false,  // 매장 «꺼짐» — POS 주문 화면에서 숨김 (2026-11-09, BRAND_MENU_SYSTEM §14.2)
             set_items: item.set_items || undefined,
             set_groups: (() => {
               // Defensive parse — set_groups can arrive as a (double-)encoded JSON
@@ -493,6 +494,7 @@ export const MenuProvider: React.FC<MenuProviderProps> = ({ children }) => {
             preparationTime: item.preparationTime || 15,
             is_set_menu: item.is_set_menu || false,
             set_only: item.set_only === true,  // 세트 구성 전용 단품 — 주문 화면 숨김 (2026-06-12)
+            is_active: item.is_active !== false,  // 매장 «꺼짐» — POS 주문 화면에서 숨김 (2026-11-09, BRAND_MENU_SYSTEM §14.2)
             set_items: item.set_items || undefined,
             set_groups: (() => {
               // Defensive parse — set_groups can arrive as a (double-)encoded JSON

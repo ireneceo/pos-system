@@ -1337,7 +1337,8 @@ const POSTerminalPage: React.FC = () => {
   const categories = allCategories.filter(cat => {
     if (cat.isActive === false) return false;
     const catItems = menuItems.filter((i: any) => String(i.category) === String(cat.id));
-    return catItems.length === 0 || catItems.some((i: any) => !i.set_only);
+    // 2026-11-09: 매장이 끈 메뉴(is_active=false)도 주문 가능 단품이 아님 — 전부 꺼진 카테고리는 탭째 숨김(모바일과 같음)
+    return catItems.length === 0 || catItems.some((i: any) => !i.set_only && i.is_active !== false);
   });
   const {
     updateCustomerOrderStats,
@@ -1916,7 +1917,7 @@ const POSTerminalPage: React.FC = () => {
       );
     } else if (selectedCategory === 'all') {
       // All 탭: 모든 활성 카테고리 메뉴 합치기
-      items = menuItems.filter(item => !item.isInactive);
+      items = menuItems.slice();
     } else if (selectedCategory) {
       // 일반 모드: 선택된 카테고리 메뉴만 표시
       items = getItemsByCategory(selectedCategory);
@@ -1925,6 +1926,9 @@ const POSTerminalPage: React.FC = () => {
     // 세트 구성 전용 단품(set_only)은 단품 주문 불가 — POS 그리드에서 숨김 (2026-06-12).
     // 세트 구성으로는 POSSetModal(set_groups_resolved)이 product_id 로 직접 resolve 하므로 무관.
     items = items.filter((item: any) => !item.set_only);
+    // 매장이 끈 메뉴(is_active=false)는 POS 주문 화면에서 숨김 — 검색·전체·카테고리 모두 (2026-11-09 Irene 승인,
+    // BRAND_MENU_SYSTEM §14.2 «POS/모바일 노출 = brand_scope_active AND is_active»). 예전 isInactive 거르기는 채워지는 칸이 없어 무효였음.
+    items = items.filter((item: any) => item.is_active !== false);
 
     // 정렬 적용 — 모든 카테고리 / 검색 / All 결과에 일관 적용.
     // mutate 회피 위해 slice() 로 카피.
