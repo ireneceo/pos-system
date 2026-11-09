@@ -47,3 +47,15 @@ POS에서 넣은 주문은 2장, 모바일 주문은 1장. 모바일은 손님 �
 - **PC 등록 두 길**: A 영어·말레이어 메뉴만 → IP 그대로(raw, 한글·로고 안 됨) / B 한글·중문·로고 → 제조사 드라이버 + TCP/IP 포트 + 이름 KITCHEN(권고 B).
 - **프린터 2대 · 기기 섞임 규칙**(접힘 상자, POS 자리 2개 이상이면 펼침): 인쇄 기기 1대가 두 프린터에 다 닿아야 · 영수증은 POS 자리마다 · Windows PC + 안드로이드 태블릿이면 PC 가 인쇄 기기 · **프린터 이름 = 자리 영문 대문자(COUNTER·KITCHEN·BAR), 인쇄 기기를 바꾸면 새 기기에 같은 이름** → 매장 설정 그대로 · 블루투스 1기기 1프린터 · «지금 이 기기» 읽기 줄.
 - 매장 설정(printer_settings) 모양·저장·자물쇠·🔒 인쇄 보호파일 무변경. §2 카드의 영어 하드코딩 글자만 번역 키로(저장 값 `browser|qztray|rawbt` 그대로).
+
+- **설정 앱 = Espressif 공식 EspBluFi (2026-11-09 · EspTouch 대체):** Irene «왜 다른 걸 다운받게 해? 공식 안드로이드 다운로드 앱 있어. EspBluFi 라고 있단말야. 제대로 안내 해». 블루투스로 Wi-Fi 이름·비밀번호를 보내는 방식(폰이 2.4 GHz 에 붙어 있을 필요 없음). 안드로이드 = Espressif GitHub 릴리즈 APK `EspBlufiForAndroid v1.7.1`(Google Play 에는 EspBluFi 없음 — Play 의 «BluFi» 는 다른 개발자 앱, 2026-11-09 실측) · iPhone = App Store «EspBlufi» id1450614082. 순서: 설치 → 설정 모드(FEED 10초, 그대로) → EspBluFi: 아래로 당겨 찾기 → 프린터 → Connect → Configure → Station → Select Wi-Fi(2.4 GHz) → 비밀번호 → OK → 셀프테스트로 IP. 버튼 이름은 앱 원문(strings.xml). 목록에 안 뜨면 앱 Settings «BLE devices filter» 비우기. 코드 `printerGuideKit.tsx` `BLUFI_*` · 로케일 `printer.setupGuide.std.e1*·e3*·trouble1`.
+
+### 7-b. 상자 없는 안내 + 설정 매칭 점검 (2026-11-08 b)
+
+설계·판정 원문: `.claude/fable-design-20261108b-printer-guide-ux-audit.md` (Irene «박스 안에 박스 … 가독성 엉망» · «기능 문제 없는지 … 매칭 … 테스트» · «배포해도 기존 레스토랑들 설정 바뀌는 일 없는지»).
+
+- **틀:** §1 안내 안 테두리 상자 0개 — 기기 줄 → 고르기 두 줄(연결 방식 · **내 프린터 기종** std/Epson/Star/기타, 이 기기 저장 `printer_setup_model`) → 번호 목록 하나(폭 760) → 글 접힘(«프린터 2대», PC 는 «브라우저 인쇄 창»). 공용 틀 = `dev-frontend/src/pages/Settings/printerGuideKit.tsx`(Seg · StepList · TroubleLink · TextFold · ModelPicker · 안내 데이터).
+- **단계 수:** PC/Windows 앱 Wi-Fi+표준 9(EspBluFi 4단계가 목록 안에 평면) · Wi-Fi+다른 기종 7 · LAN 7 · USB 5 / 안드로이드 앱 Wi-Fi+표준 8 · Wi-Fi+다른 기종 6. QZ Tray 설치·연결 확인·프린터 찾기는 «인쇄 도우미» 단계의 버튼 줄(핸들러 그대로). «추천 기종» 접힘 · 녹색 «Direct printing» 띠 · 안드로이드 둘째 카드의 중복 연결 방식 고르기 없앰.
+- **매칭 고침:** M1 Windows 앱 등록 문구 = 앱 드롭다운 글자 · **M3 설정 불러올 때 `billPrinter.method`·`kitchenPrinter.method` 를 버리던 기존 결함**(화면은 qztray 로 보이고 다음 저장 때 method 가 빠져 서버가 옛 printerMode 로 되돌림) → 서버 값이 있을 때만 그대로 · M4 POS 자리 ≥2 면 «결제 후 자동인쇄» 토글 아래 «이 스위치가 주방 티켓 찍는 기기도 정함» · M5 이름 다르면 Test 실패 · M6 스테이션 Test 빈 주소 안내 · **스테이션 칸 채우기 저장이 설정 불러오기 전에 돌던 경합** → 불러온 뒤에만.
+- **배포 안전 증명(데모 38, 실브라우저 56/56):** 모양 3가지(지금 값 · 옛 모양(method 없음) · 섞인 모양) × «불러오기 → 저장 → 다시 불러오기» 동일(읽는 쪽 동치 기본값 채움 제외) · 열기만 했을 때 쓰기 0(기기 6종 + 원본 5회) · §2 표시 = 저장값 · 반증(method 뺀 저장은 검사가 잡음) · 원본 바이트 복원.
+- **알고 둔 기존 동작(이번에 안 고침 · Fable §9):** 매장 JSON 에 `receiptSettings` 가 없으면 설정에서 아무 저장 1회에 화면 기본값(결제 후 영수증 2장)이 들어감 — 읽는 쪽은 없을 때 1장. 2026-05-26 부터 · 운영 동일. 운영 해당 매장 수는 `scripts/report-printer-settings-fp.js` 의 `rcpt_missing_autoOn`(배포 방·정기 점검이 배포 전·후 실행 · 0 이면 끝, >0 이면 Irene 결정).
