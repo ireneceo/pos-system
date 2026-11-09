@@ -10,7 +10,7 @@
  * 매장 설정(printer_settings)을 읽기만 하며 저장하지 않는다. 🔒 인쇄 경로(billPrint 등)는 부르지 않는다.
  */
 import React, { useCallback, useState } from 'react';
-import { Seg, SubLine, StepList, TextFold, ModelPicker, useSetupModel, espTouchSteps, makerJoin, selfTestLine, registerLines, hairline } from './printerGuideKit';
+import { Seg, SubLine, StepList, TextFold, GuideFold, ModelPicker, useSetupModel, espTouchSteps, makerJoin, selfTestLine, registerLines, hairline } from './printerGuideKit';
 import type { Step, SetupModel, T } from './printerGuideKit';
 import { SETUP_DEVICE_KEY, type SetupDevice, type SetupOs } from '../../utils/printDiagnostics';
 
@@ -162,7 +162,7 @@ export const IpadBox: React.FC<{ t: T }> = ({ t }) => (
   </div>
 );
 
-export { TextFold };
+export { TextFold, GuideFold };
 
 // ─── 프린터 2대 · 기기 여러 대 — 글 접힘(POS 자리 2개 이상이면 펼침) ──────────
 export const TwoPrintersBlock: React.FC<{
@@ -185,7 +185,7 @@ export const TwoPrintersBlock: React.FC<{
       })
     : k(t, 'two.nowNone', 'This device has not picked a POS place yet — in section 2 tap “Use on this device” on its place.');
   return (
-    <TextFold testId="setup-two-printers" title={k(t, 'two.title', 'Two printers (counter + kitchen) · more than one device')} defaultOpen={workstations.length >= 2}>
+    <TextFold testId="setup-two-printers" title={k(t, 'two.title', 'Two printers (counter + kitchen) · more than one device')}>
       <ol style={{ margin: 0, padding: '0 0 0 20px', maxWidth: 760 }}>
         {lines.map((x, i) => <li key={i} style={{ fontSize: '12px', color: '#374151', lineHeight: 1.6, marginBottom: '6px' }}>{x}</li>)}
         <li style={{ fontSize: '12px', color: '#312E81', fontWeight: 600, lineHeight: 1.6 }} data-testid="setup-two-now">

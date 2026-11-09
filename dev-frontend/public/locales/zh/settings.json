@@ -1372,6 +1372,8 @@
       "rawbtFold": "继续用浏览器（RawBT 应用）",
       "browserFold": "不需要自动打印？用浏览器打印窗口",
       "trouble": "不成功？",
+      "foldTitle": "设置方法 — 分步查看",
+      "foldSub": "步骤因打印机和连接方式而异 — 需要时再展开。",
       "model": {
         "std": "PurpleHere 标准",
         "epson": "Epson TM",

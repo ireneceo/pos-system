@@ -1372,6 +1372,8 @@
       "rawbtFold": "Keep using the browser instead (RawBT app)",
       "browserFold": "No auto-print needed? Print with the browser’s print window instead",
       "trouble": "Did not work?",
+      "foldTitle": "How to set up — step by step",
+      "foldSub": "Steps differ by printer and connection — open only if you need them.",
       "model": {
         "std": "PurpleHere standard",
         "epson": "Epson TM",

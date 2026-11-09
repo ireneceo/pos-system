@@ -31,7 +31,7 @@ import PrintSelfDiagnosePanel from '../../components/Settings/PrintSelfDiagnoseP
 import MallSalesIntegrationSettings from './MallSalesIntegrationSettings';
 import CardTerminalSettings from './CardTerminalSettings';
 import { AndroidPrinterSetupCard, AndroidPrintGuide, AndroidPrintReadiness, NativeSetupBridge } from './AndroidPrinterSetup';
-import { DeviceLine, SetupConnPicker, SetupSteps, RecommendAppBox, IpadBox, TwoPrintersBlock, TextFold, saveDeviceOverride, useSetupConn } from './PrinterSetupGuide';
+import { DeviceLine, SetupConnPicker, SetupSteps, RecommendAppBox, IpadBox, TwoPrintersBlock, TextFold, GuideFold, saveDeviceOverride, useSetupConn } from './PrinterSetupGuide';
 import { detectSetupDevice } from '../../utils/printDiagnostics';
 import KioskDevicesCard from './KioskDevicesCard';
 import { Button as UIButton } from '../../components/UI/Button';
@@ -6127,6 +6127,7 @@ const SettingsPage: React.FC = () => {
                   </>)}
                   {setupDev.device === 'ipad-browser' && (<>
                     <IpadBox t={t} />
+                    <GuideFold t={t} testId="ipad-guide-fold">
                     <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.6, maxWidth: 760 }}>
                       <div style={{ marginBottom: '6px' }}>{t('settings:printer.methodGuide.browserDesc')}</div>
                       <ol style={{ margin: '0 0 0 18px', padding: 0 }}>
@@ -6135,15 +6136,10 @@ const SettingsPage: React.FC = () => {
                         <li>{t('settings:printer.methodGuide.browserStep3')}</li>
                       </ol>
                     </div>
+                    </GuideFold>
                   </>)}
                   {(setupDev.device === 'pc-browser' || setupDev.device === 'windows-app') && (<>
-                    <SetupConnPicker t={t} conn={setupConn} onChange={setSetupConn} />
-                    {setupConn && (
-                      <SetupSteps
-                        t={t}
-                        device={setupDev.device}
-                        conn={setupConn}
-                        helper={(
+                    {/* 2026-11-09 Irene «접혀있게 해. 보고 싶은 사람만»: 도구 줄(설치·연결 확인·프린터 찾기)은 늘 보이고, 단계별 설정 방법만 접힘 */}
                           <div data-testid="setup-helper-row">
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
                               {!isNativePrint && (<>
@@ -6263,9 +6259,12 @@ const SettingsPage: React.FC = () => {
                               </div>
                             )}
                           </div>
-                        )}
-                      />
-                    )}
+                    <GuideFold t={t} testId="setup-guide-fold">
+                      <SetupConnPicker t={t} conn={setupConn} onChange={setSetupConn} />
+                      {setupConn && (
+                        <SetupSteps t={t} device={setupDev.device} conn={setupConn} />
+                      )}
+                    </GuideFold>
                   </>)}
                   {setupDev.device === 'pc-browser' && (
                     <TextFold title={t('settings:printer.setupGuide.browserFold', 'No auto-print needed? Print with the browser’s print window instead')}>

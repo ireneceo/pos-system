@@ -1372,6 +1372,8 @@
       "rawbtFold": "Terus guna pelayar (aplikasi RawBT)",
       "browserFold": "Tidak perlu cetak automatik? Cetak dengan tetingkap cetak pelayar",
       "trouble": "Tidak berjaya?",
+      "foldTitle": "Cara menyediakan — langkah demi langkah",
+      "foldSub": "Langkah berbeza ikut pencetak dan sambungan — buka hanya jika perlu.",
       "model": {
         "std": "Standard PurpleHere",
         "epson": "Epson TM",

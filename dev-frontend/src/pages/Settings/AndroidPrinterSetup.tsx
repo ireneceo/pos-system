@@ -17,7 +17,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { NativeAppVersionRow } from '../../components/Common/NativeAppUpdateBanner';
 import { findWifiPrinters, PRINTER_PORT } from '../../utils/wifiPrinterDiscovery';
 import { parseVersion } from '../../utils/nativeAppUpdate';
-import { btn, stepNo, Seg, SubLine, StepList, TroubleLink, ModelPicker, useSetupModel, espTouchSteps, makerJoin, selfTestLine } from './printerGuideKit';
+import { btn, stepNo, Seg, SubLine, StepList, TroubleLink, GuideFold, ModelPicker, useSetupModel, espTouchSteps, makerJoin, selfTestLine } from './printerGuideKit';
 import type { Step, SetupModel, T } from './printerGuideKit';
 
 export interface NativeSetupBridge {
@@ -457,13 +457,14 @@ export const AndroidPrintGuide: React.FC<{ t: T }> = ({ t }) => {
           ? t('settings:printer.androidGuide.titleConn', { defaultValue: 'Set up printing on this tablet — {{conn}}, {{n}} steps', conn: connLabel(t, conn), n: plan.length })
           : t('settings:printer.androidGuide.titlePick', { defaultValue: 'Set up printing on this tablet' })}
       </div>
+      {/* 연결 방식 고르기는 아래 등록 칸이 따라 바뀌어 늘 보이고, 단계별 설정 방법만 접힘 (2026-11-09 Irene «접혀있게 해. 보고 싶은 사람만») */}
       <AndroidConnPicker t={t} />
-      {isNetConn(conn) && <ModelPicker t={t} />}
       {conn && (
-        <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '12px' }}>
+        <GuideFold t={t} testId="android-guide-fold">
+          {isNetConn(conn) && <ModelPicker t={t} />}
           <StepList t={t} testId="android-steps" steps={plan.map((k) => STEPS[k])} />
           <TroubleLink t={t} lines={trouble} label={t('settings:printer.androidGuide.troubleTitle', { defaultValue: 'Not printing? Check in this order' })} />
-        </div>
+        </GuideFold>
       )}
     </div>
   );

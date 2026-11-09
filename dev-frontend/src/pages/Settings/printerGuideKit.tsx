@@ -91,6 +91,28 @@ export const StepList: React.FC<{ t: T; steps: Step[]; maxWidth?: number; testId
   </ol>
 );
 
+// ─── 설정 방법 접힘 (2026-11-09 Irene «접혀있게 해. 보고 싶은 사람만 봐야지 … 프린트마다 다른데») ─────────
+// 단계별 설정 방법은 기본 접힘. 연 사람은 이 기기에서 다음에도 열린 채(기기마다 기억 — 없어도 접힘으로 정상 동작).
+const GUIDE_OPEN_KEY = 'printer_setup_guide_open';
+export const GuideFold: React.FC<{ t: T; children: React.ReactNode; testId?: string }> = ({ t, children, testId }) => {
+  const [open, setOpen] = useState<boolean>(() => { try { return localStorage.getItem(GUIDE_OPEN_KEY) === '1'; } catch { return false; } });
+  const toggle = () => setOpen((o) => { const n = !o; try { localStorage.setItem(GUIDE_OPEN_KEY, n ? '1' : '0'); } catch { /* 기억 못 해도 동작 */ } return n; });
+  return (
+    <div data-testid={testId} style={{ borderTop: '1px solid #E5E7EB', paddingTop: '10px', marginTop: '10px', maxWidth: 760 }}>
+      <button type="button" aria-expanded={open} onClick={toggle}
+        style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 600, color: '#1F2937', textAlign: 'left' }}>
+        {open ? '▾ ' : '▸ '}{t('settings:printer.setupGuide.foldTitle', { defaultValue: 'How to set up — step by step' })}
+      </button>
+      {!open && (
+        <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px' }}>
+          {t('settings:printer.setupGuide.foldSub', { defaultValue: 'Steps differ by printer and connection — open only if you need them.' })}
+        </div>
+      )}
+      {open && <div style={{ marginTop: '10px' }}>{children}</div>}
+    </div>
+  );
+};
+
 // ─── 글 접힘 ─────────────────────────────────────────────────────────────────
 export const TextFold: React.FC<{ title: string; defaultOpen?: boolean; children: React.ReactNode; testId?: string }> = ({ title, defaultOpen = false, children, testId }) => {
   const [open, setOpen] = useState(defaultOpen);

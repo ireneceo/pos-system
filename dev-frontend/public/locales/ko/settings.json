@@ -1372,6 +1372,8 @@
       "rawbtFold": "브라우저 그대로 쓰기(RawBT 앱)",
       "browserFold": "자동 인쇄가 필요 없나요? 브라우저 인쇄 창으로 찍기",
       "trouble": "안 될 때",
+      "foldTitle": "설정 방법 — 단계별 보기",
+      "foldSub": "프린터와 연결 방식마다 달라요 — 필요할 때만 펼쳐 보세요.",
       "model": {
         "std": "PurpleHere 표준",
         "epson": "Epson TM",
