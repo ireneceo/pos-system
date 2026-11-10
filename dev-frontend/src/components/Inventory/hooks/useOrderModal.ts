@@ -25,7 +25,7 @@ export function useOrderModal({ mode }: { mode: InventoryMode }) {
   const [selectedSellerId, setSelectedSellerId] = useState<number | null>(null);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
-  const [lastOrderResult, setLastOrderResult] = useState<{ po_number: string; ingredient_name: string } | null>(null);
+  const [lastOrderResult, setLastOrderResult] = useState<{ ingredient_name: string; qty: number; merged: boolean } | null>(null);
 
   const open = useCallback(async (item: UnifiedStockItem) => {
     setOrderItem(item);
@@ -95,44 +95,32 @@ export function useOrderModal({ mode }: { mode: InventoryMode }) {
       const itemRef = mode === 'brand'
         ? { product_ingredient_id: orderItem.id }
         : { ingredient_id: orderItem.id };
+      // 2026-11-10 Fable 설계(.claude/fable-design-20261110-stock-order-to-staging.md §1-1):
+      //   재고 화면은 바로 보내지 않는다 — 발주 대기(초안)에만 담는다. 판매자에게 나가는 곳은 발주 대기 화면 Submit 하나.
+      //   group 1개짜리 bulk + source:'stock' → 같은 판매자 초안에 합쳐지고 «재고에서 담음» 기록이 남는다. auto_submit 보내지 않음.
       const body = {
-        seller_type: seller.seller_type,
-        seller_entity_id: seller.seller_entity_id,
-        items: [{
-          ...itemRef,
-          ingredient_seller_product_id: seller.id,
-          quantity_ordered: qty,
-          unit_price: parseFloat(String(seller.unit_price)) || 0
+        source: 'stock',
+        groups: [{
+          seller_type: seller.seller_type,
+          seller_entity_id: seller.seller_entity_id,
+          items: [{
+            ...itemRef,
+            ingredient_seller_product_id: seller.id,
+            quantity_ordered: qty,
+            unit_price: parseFloat(String(seller.unit_price)) || 0
+          }]
         }]
       };
-      const createRes = await fetch('/api/purchase-orders', { method: 'POST', headers, body: JSON.stringify(body) });
-      const createData = await createRes.json();
-      if (!createRes.ok || !createData.success) {
-        setOrderError(createData?.message || 'Failed to create purchase order');
+      const res = await fetch('/api/purchase-orders/bulk', { method: 'POST', headers, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setOrderError(data?.message || 'Failed to add to Pending POs');
         setOrderSubmitting(false);
         return;
       }
-      const newId = createData.data?.id;
-      const poNumber = createData.data?.po_number || '';
-      // Auto-submit
-      if (newId) {
-        const subRes = await fetch(`/api/purchase-orders/${newId}/submit`, { method: 'POST', headers });
-        const subData = await subRes.json();
-        if (!subRes.ok || !subData.success) {
-          setOrderError(subData?.message || 'Order created (draft) but submit failed');
-          setOrderSubmitting(false);
-          return;
-        }
-      }
-      setLastOrderResult({ po_number: poNumber, ingredient_name: orderItem.name });
-      // Close after brief moment so user sees confirmation banner inside the modal
-      setTimeout(() => {
-        setShowOrderModal(false);
-        setOrderItem(null);
-        setOrderQuantity('');
-        setOrderSellers([]);
-        setSelectedSellerId(null);
-      }, 1200);
+      const po = (data.data?.orders || [])[0] || null;
+      // 결과는 창 안에 둔다(자동 닫힘 없음) — «Review & Send» 로 발주 대기 화면, «Keep Working» 으로 닫기
+      setLastOrderResult({ ingredient_name: orderItem.name, qty, merged: !!po?.merged });
     } catch (err) {
       console.error('Order send failed:', err);
       setOrderError('Network error sending order');

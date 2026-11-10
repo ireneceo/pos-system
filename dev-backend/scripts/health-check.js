@@ -8699,6 +8699,97 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   });
 
   // ══════════════════════════════════════════════════════════════════
+  // 재고 화면 발주 = 발주 대기에만 담김 (2026-11-10 Fable 설계 .claude/fable-design-20261110-stock-order-to-staging.md §4)
+  //   Irene «스톡에서 발주하면 바로 발주되면 안돼. PO로 보내야 하는 거 아니야? 그리고 스톡에서 보냈다고 알게도 확인하고.»
+  //   K1 bulk {source:'stock'} → draft 그대로 · submitted_at 없음 · 판매자 목록에 없음
+  //   K2 그 초안 events 에 source:'stock' 1건 · lines 품목·수량 = 보낸 값 / 같은 품목 두 번 → 줄 1(수량 합) + 이벤트 2
+  //   K3 suggestions: in_staging_order_qty = 초안 수량 · status·on_order 는 담기 전과 같음
+  // ══════════════════════════════════════════════════════════════════
+  test('po', '재고 화면 발주는 발주 대기(초안)에만 담기고 «재고에서 담음» 기록이 남는다 (K1~K3)', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const { BrandProduct, Ingredient, IngredientSellerProduct, PurchaseOrder, PurchaseOrderItem, User } = require('../models');
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const fx = (await q(`SELECT r.id rid, b.id bid, u.id uid FROM restaurants r
+        JOIN brands b ON b.id = r.brand_id JOIN users u ON u.id = b.owner_id
+       WHERE r.is_demo = 1 AND u.email = 'demo-brand@purplehere.com' ORDER BY r.id LIMIT 1`))[0];
+    const ra = fx && await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: fx.rid } });
+    if (!fx || !ra) { console.log(c.gray('      (건너뜀: 데모 매장/BG/RA 픽스처 불가)')); return true; }
+    const bgAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.uid }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const raAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const tag = 'ZZ-HC-STOCK2STG-' + Date.now();
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    let bp = null, ing = null, map = null; const touchedPo = new Set();
+    try {
+      bp = await BrandProduct.create({ owner_user_id: fx.uid, is_active: true, distribution_mode: 'all', product_kind: 'stock',
+        current_stock: 100, order_mode: 'pack', sku: 'ZZS-' + Math.random().toString(36).slice(2, 9),
+        name: tag, unit: 'pack', base_quantity: 1, unit_price: 2, min_order_quantity: 1 });
+      const c1 = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`, { brand_product_id: bp.id }, raAuth);
+      ing = c1.body?.data?.ingredient; map = c1.body?.data?.mapping;
+      if (c1.status !== 201 || !ing?.id || !map?.id) return fail(`준비 연결 ${c1.status}`);
+      await Ingredient.update({ current_stock: 0, min_stock: 10, track_stock: true }, { where: { id: ing.id } });
+      const sug = async () => {
+        const r = await request('GET', '/purchase-orders/suggestions', null, raAuth);
+        for (const g of (r.body?.data?.groups || [])) for (const it of (g.items || [])) if (Number(it.ingredient?.id) === Number(ing.id)) return it;
+        return null;
+      };
+      const before = await sug();
+      if (!before) return fail('K3 담기 전 제안에 시험 품목이 없음(품절이어야 함)');
+      const grp = (qty) => ({ seller_type: 'brand', seller_entity_id: fx.bid,
+        items: [{ ingredient_id: ing.id, ingredient_seller_product_id: map.id, quantity_ordered: qty, unit_price: 2 }] });
+      const b1 = await request('POST', '/purchase-orders/bulk', { source: 'stock', groups: [grp(3)] }, raAuth);
+      const poId = b1.body?.data?.orders?.[0]?.id;
+      if (poId) touchedPo.add(poId);
+      if (b1.status !== 201 || !poId) return fail(`K1 bulk ${b1.status} ${JSON.stringify(b1.body).slice(0, 160)}`);
+      const po = await PurchaseOrder.findByPk(poId);
+      if (po.status !== 'draft' || po.submitted_at) return fail(`K1 상태 ${po.status} submitted_at=${po.submitted_at} (기대 draft·없음)`);
+      const sl = await request('GET', '/seller-orders?limit=200', null, bgAuth);
+      if ((sl.body?.data || []).some(o => Number(o.id) === Number(poId))) return fail('K1 판매자 목록에 초안이 보임');
+      const evs = () => ((po.tracking_info && po.tracking_info.events) || []).filter(e => e.source === 'stock' && (e.lines || []).some(l => Number(l.ingredient_id) === Number(ing.id)));
+      let mine = evs();
+      if (mine.length !== 1 || Number(mine[0].lines[0].qty) !== 3 || mine[0].buyer_only !== true) return fail(`K2 이벤트 ${JSON.stringify(mine).slice(0, 200)}`);
+      const b2 = await request('POST', '/purchase-orders/bulk', { source: 'stock', groups: [grp(2)] }, raAuth);
+      if (b2.status !== 201 || Number(b2.body?.data?.orders?.[0]?.id) !== Number(poId)) return fail(`K2 두 번째 담기 ${b2.status} po=${b2.body?.data?.orders?.[0]?.id}`);
+      await po.reload();
+      mine = evs();
+      const lines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: poId, ingredient_id: ing.id } });
+      if (lines.length !== 1 || Number(lines[0].quantity_ordered) !== 5 || mine.length !== 2) return fail(`K2 줄 ${lines.length}·수량 ${lines[0]?.quantity_ordered}·이벤트 ${mine.length} (기대 1·5·2)`);
+      if (po.status !== 'draft') return fail('K2 두 번째 담기 뒤 draft 아님');
+      const after = await sug();
+      if (!after || Number(after.in_staging_order_qty) !== 5) return fail(`K3 in_staging_order_qty ${after?.in_staging_order_qty} (기대 5)`);
+      if (after.status !== before.status || Number(after.on_order) !== Number(before.on_order)) return fail(`K3 상태/오는 중 바뀜 ${before.status}/${before.on_order} → ${after.status}/${after.on_order}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try {
+        for (const id of touchedPo) {
+          const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: id } });
+          const others = items.filter(it => !ing || Number(it.ingredient_id) !== Number(ing.id));
+          if (!others.length) { await hcCleanupPurchaseOrders([id]); continue; }
+          // 남의 초안에 합쳐졌으면 내 줄·내 기록만 지운다
+          if (ing) await PurchaseOrderItem.destroy({ where: { purchase_order_id: id, ingredient_id: ing.id } });
+          const p = await PurchaseOrder.findByPk(id);
+          if (p && p.tracking_info && Array.isArray(p.tracking_info.events)) {
+            const events = p.tracking_info.events.filter(e => !(e.source === 'stock' && (e.lines || []).some(l => ing && Number(l.ingredient_id) === Number(ing.id))));
+            await p.update({ tracking_info: { ...p.tracking_info, events } });
+          }
+        }
+      } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+      try {
+        if (bp) {
+          await IngredientSellerProduct.destroy({ where: { seller_type: 'brand', seller_product_id: bp.id }, force: true });
+          if (ing?.id) {
+            for (const tb of ['restaurant_ingredient_costs', 'stock_alerts', 'inventory_transactions', 'inventory_batches'])
+              try { await sequelize.query(`DELETE FROM ${tb} WHERE ingredient_id = :a`, { replacements: { a: ing.id } }); } catch {}
+            await Ingredient.destroy({ where: { id: ing.id }, force: true });
+          }
+          await BrandProduct.destroy({ where: { id: bp.id }, force: true });
+        }
+      } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
   // 판매 중지 상품은 구매자가 발주할 수 없다 (2026-10-09 Irene «권고대로» · utils/poSellerProductActive.js)
   //   그전: 판매자가 상품을 끄면 카탈로그에서만 빠지고, 매장 재료에 붙은 연결로는 발주가 만들어지고 제출됐다.
   //   S1 켜진 동안 초안 201 → S2 BG 끔 → 재고 목록 seller_product_active=false

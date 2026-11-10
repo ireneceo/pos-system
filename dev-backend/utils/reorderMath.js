@@ -82,6 +82,43 @@ async function onOrderQty(restaurantId, ingredientIds) {
   return out;
 }
 
+/**
+ * «발주 대기» 양 — 아직 보내지 않은 초안(draft) 줄 합. onOrderQty 와 같은 SQL·같은 범위, 상태만 draft.
+ *   표시 전용(2026-11-10 Fable 설계 .claude/fable-design-20261110-stock-order-to-staging.md §1-3) —
+ *   classify·on_order·제안 수량에는 넣지 않는다(초안은 아직 안 보낸 것이라 «지금 발주» 가 맞다).
+ *   반환: Map(id → { stock: 재고 단위 합, order: 주문 단위 합 })
+ */
+async function stagingQty(restaurantId, ingredientIds) {
+  const out = new Map();
+  if (!ingredientIds.length) return out;
+  const { sequelize } = require('../config/database');
+  const rows = await sequelize.query(
+    `SELECT i.ingredient_id id, SUM(i.quantity_ordered * COALESCE(NULLIF(i.unit_conversion, 0), 1)) s, SUM(i.quantity_ordered) o
+       FROM purchase_order_items i JOIN purchase_orders p ON p.id = i.purchase_order_id
+      WHERE p.entity_type = 'restaurant' AND p.entity_id = :rid AND p.status = 'draft' AND p.deleted_at IS NULL
+        AND i.ingredient_id IN (:ids)
+      GROUP BY i.ingredient_id`,
+    { replacements: { rid: restaurantId, ids: ingredientIds }, type: sequelize.QueryTypes.SELECT });
+  rows.forEach(r => out.set(Number(r.id), { stock: Number(r.s) || 0, order: Number(r.o) || 0 }));
+  return out;
+}
+
+/** 브랜드(BG) «발주 대기» 양 — onOrderQtyBrand 와 같은 범위, 상태만 draft */
+async function stagingQtyBrand(piIds) {
+  const out = new Map();
+  if (!piIds.length) return out;
+  const { sequelize } = require('../config/database');
+  const rows = await sequelize.query(
+    `SELECT i.product_ingredient_id id, SUM(i.quantity_ordered * COALESCE(NULLIF(i.unit_conversion, 0), 1)) s, SUM(i.quantity_ordered) o
+       FROM purchase_order_items i JOIN purchase_orders p ON p.id = i.purchase_order_id
+      WHERE p.entity_type = 'brand' AND p.status = 'draft' AND p.deleted_at IS NULL
+        AND i.product_ingredient_id IN (:ids)
+      GROUP BY i.product_ingredient_id`,
+    { replacements: { ids: piIds }, type: sequelize.QueryTypes.SELECT });
+  rows.forEach(r => out.set(Number(r.id), { stock: Number(r.s) || 0, order: Number(r.o) || 0 }));
+  return out;
+}
+
 const r1 = (n) => Math.round((Number(n) || 0) * 10) / 10;
 
 /**
@@ -189,5 +226,5 @@ function preferredLinkMap(links, keyOf, visible) {
 
 module.exports = {
   compute, pickDailyUsage, ledgerUsage, onOrderQty, MIN_DAYS, WINDOW_DAYS, COVER_DAYS,
-  classify, orderQtyFor, leadTimeFor, ledgerUsageBrand, onOrderQtyBrand, committedOutboundBrand, preferredLinkMap,
+  classify, orderQtyFor, leadTimeFor, ledgerUsageBrand, onOrderQtyBrand, stagingQty, stagingQtyBrand, committedOutboundBrand, preferredLinkMap,
 };

@@ -15370,3 +15370,10 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 - ✅ Fable 설계 + 게이트 PASS(092e1c6d5d5b) · 마이그 0 · 미배포
 - ✅ 후속: 설정 창 미리보기 «곧 부족» 반영 · «지금 발주» 필터에서 «오는 중» 빼기
 - ⬜ 후속: 브랜드 목록 «오는 중» 배지(서버 칸) · verify-all 안 health 흔들림 조사
+
+## ✅ 완료: 재고 화면 발주 → 발주 대기에 담기 (2026-11-10) [Claude Code] 작업방 50a53562
+- ✅ Irene «스톡에서 발주하면 바로 발주되면 안돼. PO로 보내야 … 스톡에서 보냈다고 알게도»
+- ✅ 서버: bulk source:'stock' → 초안만 + tracking_info.events «Added from Stock» 1건 · 합치기 때 기록 이동 · 제안에 in_staging 두 칸(계산 무변경)
+- ✅ 화면: 단건·일괄 «Add to Pending POs» · 결과 «Review & Send» · 발주 대기 «From Stock» · 재고 목록 «In Pending POs · n» · 판매자 타임라인 숨김 · 행 Order 버튼 «0.00» 버그 · 4개 언어
+- ✅ 검증: health-check K1~K3 + 고장주입 · consolidate·BG 실호출 · 실브라우저 흐름 · verify-all --full 23/24(deploy-ready 만 — 배포 때) · Fable 설계 .claude/fable-design-20261110-stock-order-to-staging.md · 게이트 .claude/fable-gate-20261110-stock-order-to-staging.md
+- 운영 반영 전: SW 버전 올리기 + 배포 기록(안 올리면 매장 브라우저가 옛 «바로 보내기» 번들을 씀)

@@ -656,7 +656,9 @@
       "desc": "This draft PO will be permanently removed. It has not been sent to the supplier."
     },
     "discarding": "Discarding…",
-    "belowMinRetry": "Remove this line and add it again from the order screen."
+    "belowMinRetry": "Remove this line and add it again from the order screen.",
+    "fromStock": "From Stock",
+    "fromStockHint": "Added from Stock by {{name}} · {{when}} · {{qty}} {{unit}}"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",

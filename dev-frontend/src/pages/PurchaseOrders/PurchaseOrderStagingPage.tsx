@@ -46,6 +46,30 @@ interface POItem {
   seller_product_sku?: string | null;
   product_name?: string | null;
   ingredient_name?: string | null;
+  product_ingredient_id?: number | null;
+  ingredient_seller_product_id?: number | null;
+}
+
+/**
+ * «재고에서 담음» 표시 — 초안의 tracking_info.events 중 source:'stock' 의 lines 와 맞는 줄
+ *   (2026-11-10 Fable 설계 .claude/fable-design-20261110-stock-order-to-staging.md §2-4). 칸을 새로 만들지 않았다.
+ *   키 = ingredient_id | product_ingredient_id | ingredient_seller_product_id. 같은 줄을 여러 번 담았으면 마지막 기록 + 횟수.
+ */
+type StockMark = { by: string | null; at: string | null; qty: number; unit: string | null; times: number };
+const stockKey = (x: { ingredient_id?: number | null; product_ingredient_id?: number | null; ingredient_seller_product_id?: number | null }) =>
+  [x.ingredient_id ?? 'n', x.product_ingredient_id ?? 'n', x.ingredient_seller_product_id ?? 'n'].join('|');
+function stockMarksOf(po: { tracking_info?: any }): Map<string, StockMark> {
+  const out = new Map<string, StockMark>();
+  const events = Array.isArray(po?.tracking_info?.events) ? po.tracking_info.events : [];
+  for (const ev of events) {
+    if (!ev || ev.source !== 'stock' || !Array.isArray(ev.lines)) continue;
+    for (const ln of ev.lines) {
+      const k = stockKey(ln);
+      const prev = out.get(k);
+      out.set(k, { by: ev.by_name || null, at: ev.at || null, qty: (prev?.qty || 0) + (Number(ln.qty) || 0), unit: ln.unit || null, times: (prev?.times || 0) + 1 });
+    }
+  }
+  return out;
 }
 
 /**
@@ -80,6 +104,8 @@ interface POStaging {
   // 2026-08-30 Irene: "담은 날짜가 안 보인다" — 스키마에 이미 있던 값을 표시만 한다(신설 없음).
   created_at?: string | null;
   items?: POItem[];
+  /** 진행 기록 — 재고 화면에서 담은 기록(source:'stock')을 줄 꼬리표로 보여 준다 */
+  tracking_info?: any;
   // 결제 (P4) — 목록에서 "냈는지"가 보여야 두 번 내지 않는다
   payment_status?: 'unpaid' | 'paid' | 'refunded' | null;
   payment_method?: string | null;
@@ -604,10 +630,18 @@ const PurchaseOrderStagingPage: React.FC = () => {
 
       {(po.items || []).length > 0 && (
         <ItemsBlock>
-          {(po.items || []).map(it => (
+          {(() => { const marks = stockMarksOf(po); return (po.items || []).map(it => { const mk = marks.get(stockKey(it)); return (
             <div key={it.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
               <span>
                 · <strong>{itemLabel(it)}</strong>
+                {mk && (
+                  <span
+                    title={t('staging.fromStockHint', { defaultValue: 'Added from Stock by {{name}} · {{when}} · {{qty}} {{unit}}', name: mk.by || '—', when: mk.at ? formatDateTime(mk.at, storeTimeZone) : '—', qty: mk.qty, unit: mk.unit || '' }) as string}
+                    style={{ marginLeft: 6, fontSize: 11, fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: '#F1F4F8', color: '#4B5563', border: '1px solid #C7CED6', whiteSpace: 'nowrap' }}
+                  >
+                    {t('staging.fromStock', 'From Stock')}
+                  </span>
+                )}
                 {/* 공급업체 실제 품목코드만 — 우리 자동채번(SP-…)은 받는 쪽이 모르는 번호라 숨긴다.
                     판정은 단일 소스 utils/poShare.isRealSupplierSku (왓츠앱·메일과 같은 규칙). */}
                 {isRealSupplierSku(it.seller_product_sku) && (
@@ -620,7 +654,7 @@ const PurchaseOrderStagingPage: React.FC = () => {
               <button type="button" onClick={() => removeItem(po.id, it.id)} title={t('staging.removeItem', 'Remove item') as string}
                 style={{ border: 'none', background: 'transparent', color: '#9CA3AF', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '0 4px' }}>×</button>
             </div>
-          ))}
+          ); }); })()}
         </ItemsBlock>
       )}
 

@@ -462,7 +462,7 @@ router.get('/purchase-orders', async (req, res) => {
  * subjects: [{ id, name, unit, on_hand, min_stock, manual_daily_usage, lead_time_days, safety_stock_percent,
  *              min_order, owner_type, is_brand_shared, product_ingredient_id? }]
  */
-async function buildSuggestionRows({ subjects, usage, onOrder, committed, links, req }) {
+async function buildSuggestionRows({ subjects, usage, onOrder, committed, links, req, staging = new Map() }) {
   const reorderMath = require('../utils/reorderMath');
   const { minOrderRulesByMapping } = require('../utils/poMinOrder');
   const { sellerOrderLine } = require('../utils/poLineSpec');
@@ -556,6 +556,9 @@ async function buildSuggestionRows({ subjects, usage, onOrder, committed, links,
       lead_time_days: r.lead_time_days,
       reorder_point: r.reorder_point,
       on_order: Math.round(oo * 100) / 100,
+      // «발주 대기»(아직 안 보낸 초안) 양 — 표시 전용, 위 상태·제안 계산엔 안 들어간다(2026-11-10 Fable §1-3)
+      in_staging: Math.round(((staging.get(Number(sub.id)) || {}).stock || 0) * 100) / 100,
+      in_staging_order_qty: Math.round(((staging.get(Number(sub.id)) || {}).order || 0) * 100) / 100,
       committed: comm,
       available,
       suggested_stock_qty: r.suggested_qty,                 // 재고 취급단위
@@ -601,14 +604,15 @@ async function brandStockItemSuggestionsFor(brandId) {
   const items = await ProductIngredient.findAll({ where: { owner_user_id: ownerUserId, is_active: true } });
   const ids = items.map(pi => Number(pi.id));
   const brandIds = (await Brand.findAll({ where: { owner_id: ownerUserId }, attributes: ['id'] })).map(x => Number(x.id));
-  const [usage, onOrder, committed, linkRows] = await Promise.all([
+  const [usage, onOrder, committed, linkRows, staging] = await Promise.all([
     reorderMath.ledgerUsageBrand(ids),
     reorderMath.onOrderQtyBrand(ids),
     reorderMath.committedOutboundBrand(brandIds, ids),
     ids.length ? IngredientSellerProduct.findAll({
       where: { product_ingredient_id: { [Op.in]: ids }, is_active: true },
       order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
-    }) : []
+    }) : [],
+    reorderMath.stagingQtyBrand(ids)
   ]);
   const links = preferredLinkMap(linkRows, s => Number(s.product_ingredient_id), () => true);
   const subjects = items.map(pi => ({
@@ -623,7 +627,7 @@ async function brandStockItemSuggestionsFor(brandId) {
     is_brand_shared: false,
     product_ingredient_id: Number(pi.id)
   }));
-  return buildSuggestionRows({ subjects, usage, onOrder, committed, links });
+  return buildSuggestionRows({ subjects, usage, onOrder, committed, links, staging });
 }
 
 // ============================================
@@ -667,13 +671,14 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
     const sugOverlay = await overlayMapFor(rid, ingredients.filter(i => i.owner_type === 'brand').map(i => i.id));
     const reorderMath = require('../utils/reorderMath');
     const ids = ingredients.map(i => Number(i.id));
-    const [usage, onOrder, linkRows] = await Promise.all([
+    const [usage, onOrder, linkRows, staging] = await Promise.all([
       reorderMath.ledgerUsage(rid, ids),
       reorderMath.onOrderQty(rid, ids),
       ids.length ? IngredientSellerProduct.findAll({
         where: { ingredient_id: { [Op.in]: ids }, is_active: true },
         order: [['is_preferred', 'DESC'], ['unit_price', 'ASC']]
-      }) : []
+      }) : [],
+      reorderMath.stagingQty(rid, ids)
     ]);
     // 이 구매자 눈에 보이는 연결만(2026-10-04 — 형제 매장 연결 제외). 같은 순서면
     // 매장이 직접 붙인 연결을 공용 연결보다 먼저 고른다 — 매장이 정한 거래처가 그 매장의 답이다.
@@ -697,7 +702,7 @@ router.get('/purchase-orders/suggestions', async (req, res) => {
         is_brand_shared: isBrandShared
       };
     });
-    const data = await buildSuggestionRows({ subjects, usage, onOrder, committed: new Map(), links, req });
+    const data = await buildSuggestionRows({ subjects, usage, onOrder, committed: new Map(), links, req, staging });
     res.json({ success: true, data });
   } catch (err) {
     console.error('GET /api/purchase-orders/suggestions error:', err);
@@ -1442,6 +1447,8 @@ router.post('/purchase-orders/bulk', async (req, res) => {
 
     const created = [];
     const mergedIds = new Set();
+    // 출처 꼬리표 — 'stock' 만 인정(그 밖은 무시). 재고 화면은 auto_submit 을 보내지 않는다(초안에만 담김).
+    const stockSource = req.body?.source === 'stock';
     for (let i = 0; i < groups.length; i++) {
       const g = groups[i];
       const result = await createPurchaseOrderCore({
@@ -1453,6 +1460,36 @@ router.post('/purchase-orders/bulk', async (req, res) => {
       }
       created.push(result.po);
       if (result.merged) mergedIds.add(result.po.id);   // 같은 판매자 초안에 합쳐짐 — 화면이 알려 준다(2026-11-03 §5-3)
+      // 재고 화면에서 담았다는 기록 — 새 칸 없이 tracking_info.events 한 건(2026-11-10 Fable 설계
+      //   .claude/fable-design-20261110-stock-order-to-staging.md §1-2). 줄이 카트 줄과 합쳐져도 «그때 재고에서 n 담음» 은 참이다.
+      if (stockSource) {
+        const poRow = await PurchaseOrder.findByPk(result.po.id, { transaction: t, lock: t.LOCK.UPDATE });
+        const poLines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: poRow.id }, transaction: t });
+        const keyOf = (x) => [x.ingredient_id ?? 'n', x.product_ingredient_id ?? 'n', x.ingredient_seller_product_id ?? 'n'].join('|');
+        const byKey = new Map(poLines.map(l => [keyOf(l), l]));
+        const lines = (Array.isArray(g.items) ? g.items : []).map(it => {
+          const k = keyOf({
+            ingredient_id: it.ingredient_id != null ? Number(it.ingredient_id) : null,
+            product_ingredient_id: it.product_ingredient_id != null ? Number(it.product_ingredient_id) : null,
+            ingredient_seller_product_id: it.ingredient_seller_product_id != null ? Number(it.ingredient_seller_product_id) : null
+          });
+          const hit = byKey.get(k);
+          return {
+            ingredient_id: it.ingredient_id != null ? Number(it.ingredient_id) : null,
+            product_ingredient_id: it.product_ingredient_id != null ? Number(it.product_ingredient_id) : null,
+            ingredient_seller_product_id: it.ingredient_seller_product_id != null ? Number(it.ingredient_seller_product_id) : null,
+            name: hit?.description || null,
+            qty: Number(it.quantity_ordered) || 0,
+            unit: hit?.unit || null
+          };
+        });
+        const tracking = appendTrackingEvent(poRow, 'draft', `Added from Stock: ${lines.length} item(s)`, null, {
+          source: 'stock', buyer_only: true,
+          by_user_id: req.user?.id || null, by_name: req.user?.full_name || req.user?.name || null,
+          lines
+        });
+        await poRow.update({ tracking_info: tracking }, { transaction: t });
+      }
     }
 
     await t.commit();

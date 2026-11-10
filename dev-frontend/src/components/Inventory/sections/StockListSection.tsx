@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   Button,
   Table,
@@ -435,7 +436,8 @@ const StockListSection: React.FC<Props> = ({
                       placeholder={String(item.min_order || 1)}
                     />
                     <OrderButton onClick={() => {
-                      const qty = orderQuantities[`gs_${item.id}`] || String(item.min_order || 1);
+                      // min_order 는 «0.00» 같은 글자로 와서 String(... || 1) 이 «0.00» 이 됐다 → 눌러도 아무 일 없음(2026-11-10 실브라우저 실측)
+                      const qty = orderQuantities[`gs_${item.id}`] || (parseFloat(String(item.min_order)) > 0 ? String(item.min_order) : '1');
                       if (qty && parseFloat(qty) > 0) {
                         onOrder({
                           id: item.id,
@@ -615,6 +617,16 @@ const StockListSection: React.FC<Props> = ({
                     <MobileValue>
                       <MobileLabel>Status</MobileLabel>
                       <VerdictBadge verdict={verdictOfIngredient(item)} days={sugg && sugg.status === 'soon' ? sugg.days_of_cover : null} />
+                      {/* 이미 발주 대기(안 보낸 초안)에 담긴 양 — 상태는 그대로, 중립색 링크만 (2026-11-10 Fable §2-3) */}
+                      {sugg && (sugg.in_staging_order_qty || 0) > 0 && (
+                        <Link
+                          to="/pos/purchase-orders/staging"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ display: 'block', marginTop: 4, fontSize: 12, color: '#6B7280', textDecoration: 'underline', whiteSpace: 'nowrap' }}
+                        >
+                          {t('inventory:toStaging.rowChip', { defaultValue: 'In Pending POs · {{qty}} {{unit}}', qty: formatStock(sugg.in_staging_order_qty || 0), unit: sugg.order_unit || '' })}
+                        </Link>
+                      )}
                     </MobileValue>
                     <MobileValue>
                       <MobileLabel>Current Stock</MobileLabel>
@@ -755,7 +767,10 @@ const StockListSection: React.FC<Props> = ({
                       placeholder={String(item.min_order || 1)}
                     />
                     <OrderButton onClick={() => {
-                      const qty = orderQuantities[item.id] || String(item.min_order || 1);
+                      // 칸에 보이는 숫자(직접 고친 값 → 제안 수량 → 최소 주문 → 1)를 그대로 쓴다.
+                      //   예전엔 제안 수량이 칸에 보이는데도 min_order «0.00»(글자) 을 읽어 눌러도 아무 일이 없었다(2026-11-10 실브라우저 실측).
+                      const shown = orderQuantities[item.id] || (sugg && Number(sugg.suggested_qty) > 0 ? String(sugg.suggested_qty) : '');
+                      const qty = shown || (parseFloat(String(item.min_order)) > 0 ? String(item.min_order) : '1');
                       if (qty && parseFloat(qty) > 0) {
                         onOrder({
                           id: item.id,

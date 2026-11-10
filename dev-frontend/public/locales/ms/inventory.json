@@ -260,5 +260,22 @@
     "saving": "Menyimpan…",
     "cancel": "Batal"
   },
-  "gsReorderLevel": "Pesan apabila stok pada atau bawah"
+  "gsReorderLevel": "Pesan apabila stok pada atau bawah",
+  "toStaging": {
+    "add": "Tambah ke PO Menunggu",
+    "adding": "Menambah…",
+    "review": "Semak & Hantar",
+    "keepWorking": "Teruskan Kerja",
+    "supplier": "Pembekal",
+    "addedTitle": "Ditambah ke PO Menunggu — belum dihantar",
+    "addedHint": "Pembekal hanya menerimanya selepas anda tekan Hantar di PO Menunggu.",
+    "already": "Sudah ada dalam PO Menunggu: {{qty}} {{unit}}. Menambah akan meningkatkannya.",
+    "bulkAddedTitle": "Ditambah ke PO Menunggu",
+    "bulkAddedCount_one": "{{count}} item ditambah ke PO Menunggu — belum dihantar",
+    "bulkAddedCount_other": "{{count}} item ditambah ke PO Menunggu — belum dihantar",
+    "alreadyTitle": "Sudah dalam PO Menunggu ({{count}})",
+    "alreadyHint": "Item ini sudah menunggu dalam PO Menunggu, jadi tidak ditambah lagi. Ubah kuantiti di sana.",
+    "inStaging": "PO Menunggu",
+    "rowChip": "PO Menunggu · {{qty}} {{unit}}"
+  }
 }

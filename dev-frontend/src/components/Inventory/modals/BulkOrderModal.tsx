@@ -15,7 +15,7 @@ interface Props {
   currency: string;
   submitting: boolean;
   error: string | null;
-  resultPos: Array<{ id: number; po_number: string; seller_name: string | null; status: string; merged?: boolean }> | null;
+  resultPos: Array<{ id: number; po_number: string; seller_name: string | null; status: string; merged?: boolean; item_count?: number }> | null;
   /** «연결 필요» — 판매처가 없어 보내지 않는 필요 품목(소리 없이 빼지 않는다) */
   unlinkedItems?: SuggestionRow[];
   /** 서버 400 BELOW_MIN_ORDER 줄 목록 */
@@ -27,6 +27,10 @@ interface Props {
   onSend: () => void;
   /** «발주 담기» 로 열었을 때만 — 맨 위 «7일 안에 부족해질 n개도 같이 담기» (2026-11-10 §2-6) */
   soonToggle?: { count: number; checked: boolean; onChange: (on: boolean) => void } | null;
+  /** 이미 발주 대기에 담겨 이번에 더 담을 게 없는 줄 (2026-11-10 Fable §2-2) */
+  stagedItems?: SuggestionRow[];
+  /** 결과 «Review & Send» → 발주 대기 화면 */
+  onReview?: () => void;
 }
 
 const SELLER_TYPE_LABEL: Record<string, string> = {
@@ -38,7 +42,8 @@ const SELLER_TYPE_LABEL: Record<string, string> = {
 
 const BulkOrderModal: React.FC<Props> = ({
   isOpen, onClose, items, currency, submitting, error, resultPos,
-  onUpdateItem, onRemoveItem, onSend, unlinkedItems = [], errorViolations = null, storeTz, soonToggle = null
+  onUpdateItem, onRemoveItem, onSend, unlinkedItems = [], errorViolations = null, storeTz, soonToggle = null,
+  stagedItems = [], onReview
 }) => {
   const { t, i18n } = useTranslation(['inventory', 'purchaseOrders']);
   const tPo = (key: string, opts?: any) => t(`purchaseOrders:${key}`, opts);
@@ -70,19 +75,23 @@ const BulkOrderModal: React.FC<Props> = ({
       isOpen={isOpen}
       onClose={onClose}
       title={showResult
-        ? t('bulkOrder.successTitle', 'Orders sent successfully')
+        ? t('toStaging.bulkAddedTitle', 'Added to Pending POs')
         : t('bulkOrder.title', 'Bulk Order — by Seller')}
       size="large"
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose} disabled={submitting}>
-            {showResult ? t('bulkOrder.close', 'Close') : t('bulkOrder.cancel', 'Cancel')}
+            {showResult ? t('toStaging.keepWorking', 'Keep Working') : t('bulkOrder.cancel', 'Cancel')}
           </ModalButton>
-          {!showResult && (
+          {showResult ? (
+            <ModalButton variant="primary" onClick={onReview}>
+              {t('toStaging.review', 'Review & Send')}
+            </ModalButton>
+          ) : (
             <ModalButton variant="primary" onClick={onSend} disabled={submitting || items.length === 0}>
               {submitting
-                ? t('bulkOrder.sending', 'Sending…')
-                : t('bulkOrder.sendAll', `Send ${groups.length} Order${groups.length === 1 ? '' : 's'}`)}
+                ? t('toStaging.adding', 'Adding…')
+                : t('toStaging.add', 'Add to Pending POs')}
             </ModalButton>
           )}
         </>
@@ -92,10 +101,10 @@ const BulkOrderModal: React.FC<Props> = ({
         <div>
           <div style={{ marginBottom: 12, padding: 12, background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8 }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: '#065F46' }}>
-              {t('bulkOrder.successCount', { count: resultPos!.length, defaultValue: `${resultPos!.length} purchase order(s) submitted` })}
+              {t('toStaging.bulkAddedCount', { count: items.length, defaultValue: '{{count}} item(s) added to Pending POs — not sent yet' })}
             </div>
             <div style={{ fontSize: 12, color: '#047857', marginTop: 4 }}>
-              {t('bulkOrder.successHint', 'Sellers will receive a real-time notification.')}
+              {t('toStaging.addedHint', 'The supplier receives it only after you press Submit on Pending POs.')}
             </div>
           </div>
           <div style={{ display: 'grid', gap: 8 }}>
@@ -105,18 +114,12 @@ const BulkOrderModal: React.FC<Props> = ({
                 justifyContent: 'space-between', alignItems: 'center', gap: 12
               }}>
                 <div>
-                  <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>{po.po_number}</div>
+                  <div style={{ fontWeight: 600, color: '#0A2540', fontSize: 14 }}>{po.seller_name || '—'}</div>
                   <div style={{ fontSize: 12, color: '#4B5563' }}>
-                    {po.seller_name || '—'}
+                    {po.item_count ? t('bulkOrder.itemsCount', { count: po.item_count, defaultValue: `${po.item_count} item(s)` }) : null}
                     {po.merged && <> · {t('bulkOrder.merged', 'added to your existing draft for this seller')}</>}
                   </div>
                 </div>
-                <span style={{
-                  fontSize: 11, fontWeight: 600, padding: '4px 10px',
-                  background: '#FEF3C7', color: '#92400E', borderRadius: 999
-                }}>
-                  {t(`purchaseOrders:status.${po.status}`, { defaultValue: po.status })}
-                </span>
               </div>
             ))}
           </div>
@@ -144,7 +147,7 @@ const BulkOrderModal: React.FC<Props> = ({
               {t('foresight.includeSoonModal', { count: soonToggle.count, defaultValue: 'Also add {{count}} items that will run low within 7 days' })}
             </label>
           )}
-          {items.length === 0 && unlinkedItems.length === 0 ? (
+          {items.length === 0 && unlinkedItems.length === 0 && stagedItems.length === 0 ? (
             <div style={{ padding: 32, textAlign: 'center', color: '#4B5563' }}>
               {t('bulkOrder.empty', 'No items selected. Pick low-stock ingredients with a preferred seller mapping first.')}
             </div>
@@ -291,6 +294,21 @@ const BulkOrderModal: React.FC<Props> = ({
                     <div key={u.ingredient_id} style={{ fontSize: 13, color: '#4B5563', padding: '4px 0', borderTop: '1px dashed #E5E7EB' }}>
                       {u.ingredient_name} — {t('bulkOrder.stockShort', 'Current')} {fq(u.available ?? u.current_stock)} {u.unit}
                       {u.suggested_stock_qty ? <> · {t('bulkOrder.needQty', { defaultValue: 'need about {{qty}} {{unit}}', qty: fq(u.suggested_stock_qty), unit: u.unit })}</> : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {stagedItems.length > 0 && (
+                <div style={{ border: '1px solid #C7CED6', borderRadius: 12, background: '#F9FAFB', padding: '12px 16px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#4B5563' }}>
+                    {t('toStaging.alreadyTitle', { count: stagedItems.length, defaultValue: 'Already in Pending POs ({{count}})' })}
+                  </div>
+                  <div style={{ fontSize: 12, color: '#6B7280', margin: '4px 0 8px' }}>
+                    {t('toStaging.alreadyHint', 'These are already waiting in Pending POs, so they are not added again. Change the quantity there.')}
+                  </div>
+                  {stagedItems.map(u => (
+                    <div key={u.ingredient_id} style={{ fontSize: 13, color: '#4B5563', padding: '4px 0', borderTop: '1px dashed #E5E7EB' }}>
+                      {u.ingredient_name} — {t('toStaging.inStaging', 'In Pending POs')} {fq(u.in_staging_order_qty)} {u.order_unit || ''}
                     </div>
                   ))}
                 </div>

@@ -260,5 +260,22 @@
     "saving": "저장 중…",
     "cancel": "취소"
   },
-  "gsReorderLevel": "이 수량 이하면 발주"
+  "gsReorderLevel": "이 수량 이하면 발주",
+  "toStaging": {
+    "add": "발주 대기에 담기",
+    "adding": "담는 중…",
+    "review": "확인하고 보내기",
+    "keepWorking": "계속 작업",
+    "supplier": "공급업체",
+    "addedTitle": "발주 대기에 담았어요 — 아직 안 보냈어요",
+    "addedHint": "발주 대기 화면에서 «보내기»를 눌러야 공급업체에 갑니다.",
+    "already": "이미 발주 대기에 {{qty}} {{unit}} 있어요. 담으면 그만큼 늘어납니다.",
+    "bulkAddedTitle": "발주 대기에 담았어요",
+    "bulkAddedCount_one": "{{count}}개 품목을 발주 대기에 담았어요 — 아직 안 보냈어요",
+    "bulkAddedCount_other": "{{count}}개 품목을 발주 대기에 담았어요 — 아직 안 보냈어요",
+    "alreadyTitle": "이미 발주 대기에 있음 ({{count}})",
+    "alreadyHint": "이미 발주 대기에 있어 다시 담지 않아요. 수량은 발주 대기에서 바꾸세요.",
+    "inStaging": "발주 대기",
+    "rowChip": "발주 대기 · {{qty}} {{unit}}"
+  }
 }

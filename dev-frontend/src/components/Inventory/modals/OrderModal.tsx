@@ -38,7 +38,11 @@ interface Props {
   onSellerChange?: (id: number) => void;
   error?: string | null;
   submitting?: boolean;
-  lastResult?: { po_number: string; ingredient_name: string } | null;
+  lastResult?: { ingredient_name: string; qty: number; merged: boolean } | null;
+  /** 이 품목이 이미 발주 대기(안 보낸 초안)에 담긴 양 — 있으면 «담으면 늘어남» 안내 (2026-11-10 Fable §2-1) */
+  inStaging?: { qty: number; unit: string | null } | null;
+  /** 결과 «Review & Send» → 발주 대기 화면 */
+  onReview?: () => void;
   /** 원가 변경 이력을 볼 대상 종류 — 매장 재료 'ingredient' · 본사 재고아이템 'product_ingredient' (2026-10-08) */
   costSubject?: 'ingredient' | 'product_ingredient';
 }
@@ -65,6 +69,8 @@ const OrderModal: React.FC<Props> = ({
   submitting,
   lastResult,
   costSubject,
+  inStaging,
+  onReview,
 }) => {
   const { t } = useTranslation(['inventory', 'common']);
   // 원가 변경 이력 한 줄(2026-10-08 · Fable 판정 Ⅱ-4) — cost_change_logs 의 첫 화면 소비. 못 불러오면 안 보인다.
@@ -97,11 +103,15 @@ const OrderModal: React.FC<Props> = ({
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose} disabled={!!submitting}>
-            {lastResult ? 'Close' : 'Cancel'}
+            {lastResult ? t('inventory:toStaging.keepWorking', 'Keep Working') : 'Cancel'}
           </ModalButton>
-          {!lastResult && (
+          {lastResult ? (
+            <ModalButton variant="primary" onClick={onReview}>
+              {t('inventory:toStaging.review', 'Review & Send')}
+            </ModalButton>
+          ) : (
             <ModalButton variant="primary" onClick={onSend} disabled={sendDisabled}>
-              {submitting ? 'Sending…' : 'Send Order'}
+              {submitting ? t('inventory:toStaging.adding', 'Adding…') : t('inventory:toStaging.add', 'Add to Pending POs')}
             </ModalButton>
           )}
         </>
@@ -112,9 +122,12 @@ const OrderModal: React.FC<Props> = ({
           {/* Result banner */}
           {lastResult && (
             <div style={{ marginBottom: 12, padding: 12, background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#065F46' }}>Order sent ✓</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#065F46' }}>{t('inventory:toStaging.addedTitle', 'Added to Pending POs — not sent yet')}</div>
               <div style={{ fontSize: 12, color: '#065F46', marginTop: 4 }}>
-                {lastResult.po_number} — {lastResult.ingredient_name}
+                {lastResult.ingredient_name} × {formatStock(lastResult.qty)} {item.unit}{selected ? ` · ${SELLER_TYPE_LABEL[selected.seller_type] || selected.seller_type}${selected.seller_product_name ? ` · ${selected.seller_product_name}` : ''}` : ''}
+              </div>
+              <div style={{ fontSize: 12, color: '#065F46', marginTop: 4 }}>
+                {t('inventory:toStaging.addedHint', 'The supplier receives it only after you press Submit on Pending POs.')}
               </div>
             </div>
           )}
@@ -158,7 +171,7 @@ const OrderModal: React.FC<Props> = ({
 
           {sellers.length > 0 && (
             <UIFormGroup>
-              <FormLabel>Send to *</FormLabel>
+              <FormLabel>{t('inventory:toStaging.supplier', 'Supplier')} *</FormLabel>
               <FormSelect
                 value={selectedSellerId ?? ''}
                 onChange={(e) => onSellerChange?.(parseInt(e.target.value, 10))}
@@ -203,6 +216,12 @@ const OrderModal: React.FC<Props> = ({
                 </div>
               )}
             </UIFormGroup>
+          )}
+
+          {inStaging && inStaging.qty > 0 && !lastResult && (
+            <div style={{ marginBottom: 12, fontSize: 12, color: '#4B5563' }}>
+              {t('inventory:toStaging.already', { defaultValue: 'Already in Pending POs: {{qty}} {{unit}}. Adding will increase it.', qty: formatStock(inStaging.qty), unit: inStaging.unit || '' })}
+            </div>
           )}
 
           <UIFormGroup>

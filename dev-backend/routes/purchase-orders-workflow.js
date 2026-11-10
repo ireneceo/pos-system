@@ -1574,11 +1574,20 @@ router.post('/purchase-orders/consolidate-drafts', async (req, res) => {
         const list = groups[key];
         if (list.length < 2) continue;
         const primary = list[0]; // oldest
+        // 지워지는 초안의 «재고에서 담음» 기록은 남는 초안으로 옮긴다(2026-11-10 Fable 설계 §1-2)
+        const evOf = (p) => (p.tracking_info && typeof p.tracking_info === 'object' && Array.isArray(p.tracking_info.events)) ? p.tracking_info.events : [];
+        const moved = [];
         for (let i = 1; i < list.length; i++) {
           const dup = list[i];
+          moved.push(...evOf(dup).filter(e => e && e.source === 'stock'));
           await PurchaseOrderItem.update({ purchase_order_id: primary.id }, { where: { purchase_order_id: dup.id }, transaction: t });
           await dup.destroy({ transaction: t });
           removed++;
+        }
+        if (moved.length) {
+          const base = (primary.tracking_info && typeof primary.tracking_info === 'object' && !Array.isArray(primary.tracking_info)) ? { ...primary.tracking_info } : {};
+          const events = [...evOf(primary), ...moved].sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
+          await primary.update({ tracking_info: { ...base, events } }, { transaction: t });
         }
         // recompute primary total from all its items
         const items = await PurchaseOrderItem.findAll({ where: { purchase_order_id: primary.id }, transaction: t });

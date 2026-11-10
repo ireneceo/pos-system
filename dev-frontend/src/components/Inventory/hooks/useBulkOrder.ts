@@ -26,6 +26,9 @@ export interface SuggestionRow {
   committed?: number;
   available?: number;
   on_order?: number;
+  /** «발주 대기»(아직 안 보낸 초안) 양 — 재고 단위 / 주문 단위. 표시·기본 수량 빼기 전용 (2026-11-10 Fable §1-3) */
+  in_staging?: number;
+  in_staging_order_qty?: number;
   /** 재고 단위 제안 — suggested_qty(주문 단위)와 다름 */
   suggested_stock_qty?: number;
   /** 주문 단위 수량(올림 + 판매자 최소주문) — 연결 없으면 null */
@@ -54,7 +57,7 @@ export interface BulkOrderItem extends SuggestionRow {
  *   2. toggleSelect(id) — checkbox per row
  *   3. openBulk() — open modal with currently-selected items
  *   4. updateQty(id, qty) / updateSeller(id, sellerSourceId) — per-row edit
- *   5. send() — POST /api/purchase-orders/bulk { groups, auto_submit: true }
+ *   5. send() — POST /api/purchase-orders/bulk { groups, source: 'stock' } → 발주 대기(초안)에만 담김
  */
 export function useBulkOrder() {
   const [suggestionsById, setSuggestionsById] = useState<Map<number, SuggestionRow>>(new Map());
@@ -64,7 +67,7 @@ export function useBulkOrder() {
   const [bulkItems, setBulkItems] = useState<BulkOrderItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resultPos, setResultPos] = useState<Array<{ id: number; po_number: string; seller_name: string | null; status: string; merged?: boolean }> | null>(null);
+  const [resultPos, setResultPos] = useState<Array<{ id: number; po_number: string; seller_name: string | null; status: string; merged?: boolean; item_count?: number }> | null>(null);
   const [summary, setSummary] = useState<ForesightSummary | null>(null);
   const [noBasisIds, setNoBasisIds] = useState<Set<number>>(new Set());
   /** 숫자를 안 정한(자동) 품목의 발주 기준 — 목록 «발주 기준» 칸 «자동 · n» (2026-11-10) */
@@ -75,6 +78,8 @@ export function useBulkOrder() {
   const [computedAt, setComputedAt] = useState<string | null>(null);
   /** 모달 맨 아래 «연결 필요» 묶음 — 보내지 않는다(소리 없이 빼지 않고 보여 준다 §5-3) */
   const [unlinkedItems, setUnlinkedItems] = useState<SuggestionRow[]>([]);
+  /** 이미 발주 대기에 담겨 이번에 더 담을 게 없는 줄 — 소리 없이 빼지 않고 맨 아래 묶음으로 보여 준다(2026-11-10 Fable §2-2) */
+  const [stagedItems, setStagedItems] = useState<SuggestionRow[]>([]);
   /** 서버 400 BELOW_MIN_ORDER 의 줄 목록 — 모달이 minOrderViolationText 로 푼다 */
   const [errorViolations, setErrorViolations] = useState<any[] | null>(null);
 
@@ -120,6 +125,8 @@ export function useBulkOrder() {
             committed: Number(it.committed) || 0,
             available: Number(it.available) || 0,
             on_order: Number(it.on_order) || 0,
+            in_staging: Number(it.in_staging) || 0,
+            in_staging_order_qty: Number(it.in_staging_order_qty) || 0,
             suggested_stock_qty: Number(it.suggested_stock_qty) || 0,
             order_qty: num(it.order_qty),
             order_unit: it.order_unit ?? null,
@@ -159,15 +166,25 @@ export function useBulkOrder() {
   }, [suggestionsById]);
 
   // 수량 = 주문 단위 order_qty(올림 + 판매자 최소주문). 옛 응답이면 suggested_qty.
-  const qtyOf = (s: SuggestionRow) => (s.order_qty != null && s.order_qty > 0 ? s.order_qty : (s.suggested_qty || 1));
+  const fullQtyOf = (s: SuggestionRow) => (s.order_qty != null && s.order_qty > 0 ? s.order_qty : (s.suggested_qty || 1));
+  // 이미 발주 대기에 담긴 양은 뺀다(같은 줄이 합쳐져 두 배가 되는 것 방지 · 2026-11-10 Fable §2-2). 0 이면 «이미 담김» 묶음.
+  const qtyOf = (s: SuggestionRow) => {
+    const left = fullQtyOf(s) - (s.in_staging_order_qty || 0);
+    return left > 0 ? Math.round(left * 100) / 100 : 0;
+  };
 
   const openWith = useCallback((ids: number[], unlinked: SuggestionRow[]) => {
     const items: BulkOrderItem[] = [];
+    const staged: SuggestionRow[] = [];
     for (const id of ids) {
       const sugg = suggestionsById.get(id);
-      if (sugg && sugg.seller_type) items.push({ ...sugg, quantity: qtyOf(sugg) });
+      if (!sugg || !sugg.seller_type) continue;
+      const q = qtyOf(sugg);
+      if (q > 0) items.push({ ...sugg, quantity: q });
+      else staged.push(sugg);
     }
     setBulkItems(items);
+    setStagedItems(staged);
     setUnlinkedItems(unlinked);
     setError(null);
     setErrorViolations(null);
@@ -190,7 +207,7 @@ export function useBulkOrder() {
   const openNeeded = useCallback((includeSoon: boolean) => {
     const want = (s: SuggestionRow) => s.status === 'out' || s.status === 'order_now' || (includeSoon && s.status === 'soon');
     const rows = Array.from(suggestionsById.values()).filter(want);
-    const linked = rows.filter(s => s.seller_type && qtyOf(s) > 0).map(s => s.ingredient_id);
+    const linked = rows.filter(s => s.seller_type).map(s => s.ingredient_id);
     setSelectedIds(new Set(linked));
     openWith(linked, rows.filter(s => !s.seller_type));
     setNeededMode(true);
@@ -216,9 +233,14 @@ export function useBulkOrder() {
         const have = new Set(prev.map(x => x.ingredient_id));
         return [...prev, ...soon.filter(s => !s.seller_type && !have.has(s.ingredient_id))];
       });
+      setStagedItems(prev => {
+        const have = new Set(prev.map(x => x.ingredient_id));
+        return [...prev, ...soon.filter(s => s.seller_type && qtyOf(s) <= 0 && !have.has(s.ingredient_id))];
+      });
     } else {
       setBulkItems(prev => prev.filter(x => x.status !== 'soon'));
       setUnlinkedItems(prev => prev.filter(x => x.status !== 'soon'));
+      setStagedItems(prev => prev.filter(x => x.status !== 'soon'));
     }
   }, [suggestionsById]);
 
@@ -275,7 +297,9 @@ export function useBulkOrder() {
       const res = await fetch('/api/purchase-orders/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ groups, auto_submit: true })
+        // 2026-11-10 Fable 설계(.claude/fable-design-20261110-stock-order-to-staging.md §1-1): 바로 보내지 않는다.
+        //   발주 대기(초안)에만 담고 «재고에서 담음» 기록을 남긴다. 판매자에게 나가는 곳은 발주 대기 화면 Submit 하나.
+        body: JSON.stringify({ groups, source: 'stock' })
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
@@ -287,7 +311,7 @@ export function useBulkOrder() {
         const sellerKey = `${o.seller_type}:${o.seller_entity_id || 0}`;
         const groupItems = groupsMap.get(sellerKey) || [];
         const sellerName = groupItems[0]?.seller_name || null;
-        return { id: o.id, po_number: o.po_number, status: o.status, seller_name: sellerName, merged: !!o.merged };
+        return { id: o.id, po_number: o.po_number, status: o.status, seller_name: sellerName, merged: !!o.merged, item_count: groupItems.length };
       });
       setResultPos(orders);
       // Selection is cleared so user can immediately do another batch
@@ -310,6 +334,7 @@ export function useBulkOrder() {
     autoLevels,
     computedAt,
     unlinkedItems,
+    stagedItems,
     errorViolations,
     openNeeded,
     neededMode,

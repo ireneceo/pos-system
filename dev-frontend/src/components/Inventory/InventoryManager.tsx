@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Container, Header, Title, Content, TabContainer, Tab, EmptyState } from '../UI';
 import GeneralStockCategoriesTab from '../../pages/RecipeManagement/GeneralStockCategoriesTab';
@@ -146,6 +146,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   });
 
   const order = useOrderModal({ mode });
+  const navigate = useNavigate();
   const bulk = useBulkOrder();
   const { operationSettings } = useStore();
   const storeTz = (operationSettings as any)?.timeZone || 'Asia/Kuala_Lumpur';
@@ -410,7 +411,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
 
       <OrderModal
         isOpen={order.showOrderModal}
-        onClose={order.close}
+        onClose={() => { const added = !!order.lastOrderResult; order.close(); if (added) bulk.loadSuggestions(); }}
         item={order.orderItem}
         quantity={order.orderQuantity}
         onQuantityChange={order.setOrderQuantity}
@@ -423,6 +424,11 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         submitting={order.orderSubmitting}
         lastResult={order.lastOrderResult}
         costSubject={mode === 'restaurant' ? 'ingredient' : 'product_ingredient'}
+        inStaging={(() => {
+          const sg = order.orderItem ? bulk.suggestionsById.get(Number(order.orderItem.id)) : undefined;
+          return sg && sg.in_staging_order_qty ? { qty: sg.in_staging_order_qty, unit: sg.order_unit || null } : null;
+        })()}
+        onReview={() => { order.close(); navigate('/pos/purchase-orders/staging'); }}
       />
 
       {settingsBrandId && (
@@ -448,6 +454,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         errorViolations={bulk.errorViolations}
         storeTz={storeTz}
         soonToggle={bulk.neededMode ? { count: bulk.soonLinkedCount, checked: bulk.soonIncluded, onChange: bulk.toggleSoonInModal } : null}
+        stagedItems={bulk.stagedItems}
+        onReview={() => { bulk.closeBulk(); navigate('/pos/purchase-orders/staging'); }}
       />
 
       {/* Sticky bottom bar — shown when items selected on the list tab */}

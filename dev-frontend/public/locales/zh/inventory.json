@@ -260,5 +260,22 @@
     "saving": "保存中…",
     "cancel": "取消"
   },
-  "gsReorderLevel": "库存低于或等于此数量时订货"
+  "gsReorderLevel": "库存低于或等于此数量时订货",
+  "toStaging": {
+    "add": "加入待提交采购单",
+    "adding": "正在加入…",
+    "review": "检查并发送",
+    "keepWorking": "继续操作",
+    "supplier": "供应商",
+    "addedTitle": "已加入待提交采购单 — 尚未发送",
+    "addedHint": "在待提交采购单页面按「提交」后，供应商才会收到。",
+    "already": "待提交采购单中已有 {{qty}} {{unit}}。再加入会增加数量。",
+    "bulkAddedTitle": "已加入待提交采购单",
+    "bulkAddedCount_one": "{{count}} 个品项已加入待提交采购单 — 尚未发送",
+    "bulkAddedCount_other": "{{count}} 个品项已加入待提交采购单 — 尚未发送",
+    "alreadyTitle": "已在待提交采购单中 ({{count}})",
+    "alreadyHint": "这些已在待提交采购单中，不会重复加入。请在那里修改数量。",
+    "inStaging": "待提交采购单",
+    "rowChip": "待提交采购单 · {{qty}} {{unit}}"
+  }
 }

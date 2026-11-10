@@ -260,5 +260,22 @@
     "saving": "Saving…",
     "cancel": "Cancel"
   },
-  "gsReorderLevel": "Reorder when stock is at or below"
+  "gsReorderLevel": "Reorder when stock is at or below",
+  "toStaging": {
+    "add": "Add to Pending POs",
+    "adding": "Adding…",
+    "review": "Review & Send",
+    "keepWorking": "Keep Working",
+    "supplier": "Supplier",
+    "addedTitle": "Added to Pending POs — not sent yet",
+    "addedHint": "The supplier receives it only after you press Submit on Pending POs.",
+    "already": "Already in Pending POs: {{qty}} {{unit}}. Adding will increase it.",
+    "bulkAddedTitle": "Added to Pending POs",
+    "bulkAddedCount_one": "{{count}} item added to Pending POs — not sent yet",
+    "bulkAddedCount_other": "{{count}} items added to Pending POs — not sent yet",
+    "alreadyTitle": "Already in Pending POs ({{count}})",
+    "alreadyHint": "These are already waiting in Pending POs, so they are not added again. Change the quantity there.",
+    "inStaging": "In Pending POs",
+    "rowChip": "In Pending POs · {{qty}} {{unit}}"
+  }
 }

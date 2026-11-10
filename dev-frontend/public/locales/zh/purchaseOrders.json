@@ -656,7 +656,9 @@
       "desc": "此采购单草稿将被永久删除。它尚未发送给供应商。"
     },
     "discarding": "删除中…",
-    "belowMinRetry": "请删除此行，并在下单页面重新加入。"
+    "belowMinRetry": "请删除此行，并在下单页面重新加入。",
+    "fromStock": "来自库存",
+    "fromStockHint": "{{name}} 从库存页面加入 · {{when}} · {{qty}} {{unit}}"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",

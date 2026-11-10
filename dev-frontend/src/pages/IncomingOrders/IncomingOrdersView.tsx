@@ -2610,7 +2610,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             {/* DeliveryTimeline */}
             {detailFull.tracking_info && (
               <DeliveryTimeline
-                events={detailFull.tracking_info?.events}
+                events={(detailFull.tracking_info?.events || []).filter((e: any) => !e?.buyer_only)}
                 carrier_name={detailFull.tracking_info?.carrier_name}
                 carrier_code={detailFull.tracking_info?.carrier_code}
                 tracking_number={detailFull.tracking_info?.tracking_number}

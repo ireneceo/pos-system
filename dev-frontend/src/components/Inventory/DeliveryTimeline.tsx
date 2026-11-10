@@ -6,6 +6,11 @@ export interface TrackingEvent {
   at: string;          // ISO timestamp
   status: string;      // 'submitted' | 'confirmed' | 'shipped' | 'partial_received' | 'received' | 'cancelled'
   note?: string;
+  /** 재고 화면에서 담은 기록(2026-11-10) — 담은 품목·수량. buyer_only 는 판매자 화면이 걸러 낸다 */
+  source?: string;
+  buyer_only?: boolean;
+  by_name?: string | null;
+  lines?: Array<{ name?: string | null; qty?: number; unit?: string | null }>;
 }
 
 export interface DeliveryTimelineProps {
@@ -249,7 +254,12 @@ const DeliveryTimeline: React.FC<DeliveryTimelineProps> = ({
           {safeEvents.slice().reverse().map((e, idx) => (
             <li key={idx}>
               <time>{fmtTime(e.at, tz)}</time>
-              <span>{e.note || STEP_LABEL[e.status] || e.status}</span>
+              <span>
+                {e.note || STEP_LABEL[e.status] || e.status}
+                {e.source === 'stock' && Array.isArray(e.lines) && e.lines.length > 0 && (
+                  <> — {e.lines.map(l => `${l.name || '—'} × ${l.qty ?? ''}${l.unit ? ` ${l.unit}` : ''}`).join(', ')}{e.by_name ? ` · ${e.by_name}` : ''}</>
+                )}
+              </span>
             </li>
           ))}
         </NotesList>

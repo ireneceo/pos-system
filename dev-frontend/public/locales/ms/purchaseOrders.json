@@ -656,7 +656,9 @@
       "desc": "Draf PO ini akan dibuang secara kekal. Ia belum dihantar kepada pembekal."
     },
     "discarding": "Membuang…",
-    "belowMinRetry": "Buang baris ini dan tambah semula dari skrin pesanan."
+    "belowMinRetry": "Buang baris ini dan tambah semula dari skrin pesanan.",
+    "fromStock": "Dari Stok",
+    "fromStockHint": "Ditambah dari Stok oleh {{name}} · {{when}} · {{qty}} {{unit}}"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",
