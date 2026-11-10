@@ -490,8 +490,11 @@ async function checkPaymentPermission(user, invoice) {
       where: { manager_id: user.id, relationship_type: 'ownership' },
       attributes: ['restaurant_id']
     });
-    const ownedIds = ownerships.map(o => o.restaurant_id);
-    return ownedIds.includes(invoice.restaurant_id);
+    const ownedIds = ownerships.map(o => Number(o.restaurant_id));
+    if (invoice.restaurant_id && ownedIds.includes(Number(invoice.restaurant_id))) return true;
+    // 매장 관리자 칸과 같은 규칙 — 받는 쪽이 내 매장인 청구서(외부 공급업체 정산서는 restaurant_id 가 비어 있다 · 2026-11-10)
+    if (invoice.payer_type === 'restaurant' && ownedIds.includes(Number(invoice.payer_id))) return true;
+    return false;
   }
 
   // Brand General/Manager can pay invoices where they are the payer

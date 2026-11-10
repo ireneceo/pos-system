@@ -4,6 +4,7 @@ import { InvoiceActionButtons, INVOICE_ACTIONS_COL } from '../../components/Invo
 import TradeInvoiceActions from '../../components/Invoices/TradeInvoiceActions';
 import InvoiceModificationHistory from '../../components/Invoices/InvoiceModificationHistory';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
+import ExternalSoaReconcilePanel from '../../components/Invoices/ExternalSoaReconcilePanel';
 import styled from 'styled-components';
 import { printHTMLContent } from '../../utils/billPrint';
 import SuspendedBanner from '../../components/Common/SuspendedBanner';
@@ -143,6 +144,7 @@ interface Invoice {
     businessRegistration?: string;
   };
   additionalCharges?: AdditionalCharge[];
+  externalDocument?: { url?: string; filename?: string; number?: string; date?: string; total?: number } | null;
   discountType?: string;
   discountValue?: number;
   discountAmount?: number;
@@ -437,10 +439,18 @@ const OwnerInvoicesPage: React.FC = () => {
     discountAmount: parseFloat(inv.discount_amount || inv.discountAmount || 0),
     discountReason: inv.discount_reason || inv.discountReason || null,
     subtotalBeforeDiscount: parseFloat(inv.subtotal || inv.subtotalBeforeDiscount || 0) || undefined,
-    additionalCharges: inv.additional_charges || inv.additionalCharges || []
+    additionalCharges: inv.additional_charges || inv.additionalCharges || [],
+    // 외부 공급업체 정산서에 붙인 «공급업체가 보낸 SOA» — 대조 칸이 읽는다 (매장 화면과 같은 칸)
+    externalDocument: inv.external_document || null
   });
 
   // Fetch all invoices
+  // 정산서에 묶인 청구서 — 매장 화면 soaChildrenOf 와 같은 규칙
+  const soaChildrenOf = (soa: Invoice): Invoice[] =>
+    allInvoices
+      .filter((c) => c.parentSoaInvoiceId != null && String(c.parentSoaInvoiceId) === String(soa.id))
+      .sort((a, b) => String(a.issueDate).localeCompare(String(b.issueDate)));
+
   const fetchAllInvoices = async () => {
     try {
       const token = getAuthToken();
@@ -448,6 +458,8 @@ const OwnerInvoicesPage: React.FC = () => {
 
       const params = new URLSearchParams();
       if (selectedRestaurant) params.append('restaurant_id', selectedRestaurant);
+      // 이 화면은 쪽 넘김이 없다 — 서버 기본 50건이면 정산서에 묶인 옛 청구서가 빠져 대조 표가 비므로 넉넉히 받는다 (2026-11-10)
+      params.append('limit', '1000');
 
       const response = await fetch(`/api/owner/invoices?${params}`, {
         headers: {
@@ -1315,7 +1327,16 @@ const OwnerInvoicesPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Items Table */}
+                {/* 외부 공급업체 정산서 — 묶인 청구서 표(줄마다 총액 수정) + 공급업체 SOA 대조·최종 금액 확정.
+                    매장 창과 같은 조각 (2026-11-10 Irene «레스토랑관리자가 하는 비교 인보이스처럼 오너도 … 최종결제금액 수정도 오너는 해야 해») */}
+                {selectedInvoice.invoiceCategory === 'soa' && selectedInvoice.issuerIsExternal ? (
+                  <ExternalSoaReconcilePanel
+                    soa={selectedInvoice}
+                    children={soaChildrenOf(selectedInvoice)}
+                    onChanged={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }}
+                  />
+                ) : (
+                /* Items Table */
                 <div style={{ marginBottom: '24px' }}>
                   <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '12px', textTransform: 'uppercase' }}>{t('owner:ownerInvoicesPage.items')}</div>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -1348,6 +1369,7 @@ const OwnerInvoicesPage: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
+                )}
 
                 {/* Summary */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>

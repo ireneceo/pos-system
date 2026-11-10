@@ -741,6 +741,24 @@ async function attachOwnerInvoicePurchaseOrders(invoices, transformed) {
   }
 }
 
+/**
+ * 오너 청구서 범위 — 매장 목록과 같은 규칙: restaurant_id 가 내 매장이거나, 받는 쪽이 내 매장(payer_type='restaurant').
+ * (invoices-helpers checkPaymentPermission 의 오너 칸도 같은 규칙)
+ */
+function ownerInvoiceScope(ids) {
+  return {
+    [Op.or]: [
+      { restaurant_id: { [Op.in]: ids } },
+      { payer_type: 'restaurant', payer_id: { [Op.in]: ids } }
+    ]
+  };
+}
+/** 응답의 매장 id — restaurant_id 가 빈 정산서는 받는 매장(payer) */
+function ownerInvoiceRestaurantId(invoice) {
+  if (invoice.restaurant_id) return invoice.restaurant_id;
+  return invoice.payer_type === 'restaurant' ? invoice.payer_id : null;
+}
+
 router.get('/invoices', requireRole('Restaurant Owner'), async (req, res) => {
   try {
     const { status: invoiceStatus, restaurant_id, start_date, end_date, page = 1, limit = 50 } = req.query;
@@ -759,17 +777,17 @@ router.get('/invoices', requireRole('Restaurant Owner'), async (req, res) => {
       return res.json({ success: true, data: [], restaurants: [], pagination: { total: 0, page: 1, limit: 50, totalPages: 0 } });
     }
 
-    const where = {
-      restaurant_id: { [Op.in]: restaurantIds }
-    };
-
     // Filter by specific restaurant
+    let scopeIds = restaurantIds;
     if (restaurant_id) {
       const rid = parseInt(restaurant_id);
       if (restaurantIds.includes(rid)) {
-        where.restaurant_id = rid;
+        scopeIds = [rid];
       }
     }
+    // 매장 목록(GET /invoices/restaurant/:id)과 같은 범위 — restaurant_id 가 맞거나 그 매장이 받는 쪽(payer)인 청구서.
+    // 외부 공급업체 정산서(SOA)는 restaurant_id 가 비고 payer 로만 매장을 가리킨다 (2026-11-10 오너 대조·총액 수정)
+    const where = { [Op.and]: [ownerInvoiceScope(scopeIds)] };
 
     // Filter by status
     if (invoiceStatus && invoiceStatus !== 'all') {
@@ -788,7 +806,8 @@ router.get('/invoices', requireRole('Restaurant Owner'), async (req, res) => {
       where.issue_date = { ...(where.issue_date || {}), [Op.lte]: end_date };
     }
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const pageSize = Math.min(Math.max(parseInt(limit) || 50, 1), 1000);   // 오너 화면은 쪽 넘김 없이 넉넉히 받는다 — 위쪽 1000
+    const offset = (Math.max(parseInt(page) || 1, 1) - 1) * pageSize;
     const { count, rows } = await Invoice.findAndCountAll({
       where,
       include: [
@@ -803,7 +822,7 @@ router.get('/invoices', requireRole('Restaurant Owner'), async (req, res) => {
         }
       ],
       order: [['createdAt', 'DESC']],
-      limit: parseInt(limit),
+      limit: pageSize,
       offset
     });
 
@@ -843,8 +862,8 @@ router.get('/invoices', requireRole('Restaurant Owner'), async (req, res) => {
         issuer_name: issuerInfo?.name || 'Issuer',
         payer_type: invoice.payer_type,
         payer_id: invoice.payer_id,
-        restaurant_id: invoice.restaurant_id,
-        restaurant_name: invoice.restaurant?.name || '',
+        restaurant_id: ownerInvoiceRestaurantId(invoice),
+        restaurant_name: invoice.restaurant?.name || payerInfo?.name || '',
         category_display_name: invoice.category_display_name || invoice.invoice_category || 'Service',
         payment_method: invoice.payment_method,
         transaction_id: invoice.transaction_id,
@@ -881,8 +900,8 @@ router.get('/invoices', requireRole('Restaurant Owner'), async (req, res) => {
       pagination: {
         total: count,
         page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(count / parseInt(limit))
+        limit: pageSize,
+        totalPages: Math.ceil(count / pageSize)
       }
     });
   } catch (error) {
@@ -918,7 +937,7 @@ router.get('/invoices/to-pay', requireRole('Restaurant Owner'), async (req, res)
 
     const invoices = await Invoice.findAll({
       where: {
-        restaurant_id: { [Op.in]: restaurantIds },
+        [Op.and]: [ownerInvoiceScope(restaurantIds)],
         status: { [Op.in]: ['pending_payment', 'overdue', 'payment_submitted'] }
       },
       include: [
@@ -971,8 +990,8 @@ router.get('/invoices/to-pay', requireRole('Restaurant Owner'), async (req, res)
         issuer_name: issuerInfo?.name || 'Issuer',
         payer_type: invoice.payer_type,
         payer_id: invoice.payer_id,
-        restaurant_id: invoice.restaurant_id,
-        restaurant_name: invoice.restaurant?.name || '',
+        restaurant_id: ownerInvoiceRestaurantId(invoice),
+        restaurant_name: invoice.restaurant?.name || payerInfo?.name || '',
         category_display_name: invoice.category_display_name || invoice.invoice_category || 'Service',
         payment_method: invoice.payment_method,
         transaction_id: invoice.transaction_id,
