@@ -464,6 +464,8 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
   // 이미 카탈로그에 있는 공급업체 상품을 **고르기만** 하는 입구 — 지금까지 이 화면엔 «만들어 연결» 밖에
   // 없어서, 있는 상품을 고르려면 발주 화면까지 가야 했다(2026-09-15 Irene).
   const [pickSellerTarget, setPickSellerTarget] = useState<Ingredient | null>(null);
+  // 새 재고아이템 창 — 저장 뒤 바로 열 공급업체 상품 창(연결 / 새로 만들기)
+  const [afterCreate, setAfterCreate] = useState<null | 'connect' | 'external'>(null);
   const [sellAsProductTarget, setSellAsProductTarget] = useState<Ingredient | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
@@ -613,6 +615,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
 
   const handleCloseModal = () => {
     setShowModal(false);
+    setAfterCreate(null);
     setEditingIngredient(null);
     setSellerSources([]);
     setSourceForm({ seller_product_id: null, unit_price: '', unit_conversion: '1', is_preferred: false });
@@ -772,8 +775,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
       }
 
       if (response.success) {
+        // 새로 만들었고 «저장 뒤 공급업체 상품» 을 골랐으면 그 창을 바로 연다(카드 버튼과 같은 창)
+        const created = !editingIngredient && response?.data?.id ? response.data as Ingredient : null;
+        const next = afterCreate;
         handleCloseModal();
         fetchData();
+        if (created && next === 'connect') setPickSellerTarget(created);
+        if (created && next === 'external') setExtTarget(created);
       } else {
         const err: any = response.error;
         setInfoModal({ open: true, title: 'Save Failed', message: (typeof err === 'string' ? err : err?.message) || response.message || 'Failed to save ingredient. Please try again.' });
@@ -1463,6 +1471,44 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                     {savingSource ? 'Adding...' : 'Add supplier product'}
                   </ModalButton>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* 새로 만들 때도 공급업체 상품 연결·등록을 고른다(2026-11-10 Irene «스톡아이템에서도 공급업체 상품으로 등록하게 해줘.
+              서로 상호 등록 가능하게») — 공급업체 쪽 «Add to my items» 의 거울. 새 경로 없음: 저장 뒤 카드의 같은 창을 바로 연다. */}
+          {!editingIngredient && (
+            <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '16px' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: '#0A2540', marginBottom: '8px' }}>
+                {t('ingredients:stock.afterCreateTitle', 'Supplier product')}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {([
+                  ['connect', t('ingredients:stock.pickSellerProduct', { defaultValue: 'Link supplier product' })],
+                  ['external', t('ingredients:stock.createSellerProduct', { defaultValue: 'Create supplier product' })],
+                ] as const).map(([key, label]) => {
+                  const on = afterCreate === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setAfterCreate(on ? null : key)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 6,
+                        background: on ? '#EEF2FF' : '#fff',
+                        border: `1px solid ${on ? '#635BFF' : '#C7CED6'}`,
+                        color: on ? '#3730A3' : '#4B5563',
+                        fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                      }}
+                    >
+                      {on ? '✓ ' : ''}{label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 12, color: '#4B5563', marginTop: 6 }}>
+                {t('ingredients:stock.afterCreateHint', 'Pick one — it opens right after the stock item is saved.')}
               </div>
             </div>
           )}

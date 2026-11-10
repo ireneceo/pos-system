@@ -512,6 +512,8 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
   // 2026-09-02(P3-③) 외부공급업체 등록은 공유 부품(RegisterExternalSupplierModal)이 맡는다.
   //   폼·업체목록·저장은 부품 안에 있고 여기서는 **대상만** 들고 있는다(BG 화면과 같은 코드를 쓴다).
   const [extTarget, setExtTarget] = useState<Ingredient | null>(null);
+  // 새 재고아이템 창 — 저장 뒤 바로 열 공급업체 상품 창(연결 / 외부 공급업체에 등록)
+  const [afterCreate, setAfterCreate] = useState<null | 'connect' | 'external'>(null);
   // Track Stock pending value (AutoSaveField onSave 가 onChange 직후 호출됨)
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -974,6 +976,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
 
   const handleCloseModal = () => {
     setShowModal(false);
+    setAfterCreate(null);
     setSelectedIngredient(null);
     setFormData(EMPTY_FORM);
     setInitialFormData(EMPTY_FORM);
@@ -1062,8 +1065,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       try { data = text ? JSON.parse(text) : null; } catch { /* non-JSON */ }
 
       if (response.ok && data?.success) {
+        // 새로 만들었고 «저장 뒤 공급업체 상품» 을 골랐으면 그 창을 바로 연다(카드 버튼과 같은 창)
+        const created = !selectedIngredient && data?.data?.id ? data.data as Ingredient : null;
+        const next = afterCreate;
         handleCloseModal();
         fetchIngredients();
+        if (created && next === 'connect') setConnectTarget(created);
+        if (created && next === 'external') setExtTarget(created);
       } else if (isBrandCtx && response.status === 409 && (data?.error?.code === 'SIMILAR_EXISTS' || data?.code === 'SIMILAR_EXISTS')) {
         setBrandSimilar({ open: true, candidates: candidatesFrom409(data) });
         setIsSubmitting(false);
@@ -1771,33 +1779,35 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 )}
               </>
             ) : (
+              /* 새로 만들 때도 공급업체 상품 연결·등록을 고를 수 있다(2026-11-10 Irene «스톡아이템에서도 공급업체 상품으로
+                 등록하게 해줘. 서로 상호 등록 가능하게») — 공급업체 쪽 «Add to my items» 가 한 번에 재고아이템을 만드는 것의 거울.
+                 새 경로 없음: 저장이 끝나면 카드에 있는 같은 창(ConnectSellerModal / RegisterExternalSupplierModal)을 바로 연다. */
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
-                <button
-                  type="button"
-                  disabled
-                  title="Save the stock item first, then connect suppliers"
-                  style={{
-                    padding: '6px 12px', borderRadius: 6,
-                    background: '#F4F6F9', border: '1px solid #C7CED6', color: '#9CA3AF',
-                    fontSize: 13, fontWeight: 600, cursor: 'not-allowed'
-                  }}
-                >
-                  Connect supplier product
-                </button>
-                <button
-                  type="button"
-                  disabled
-                  title="Save the stock item first, then connect suppliers"
-                  style={{
-                    padding: '6px 12px', borderRadius: 6,
-                    background: '#F4F6F9', border: '1px solid #C7CED6', color: '#9CA3AF',
-                    fontSize: 13, fontWeight: 600, cursor: 'not-allowed'
-                  }}
-                >
-                  Register on external supplier
-                </button>
+                {([
+                  ['connect', t('ingredients:stock.pickSellerProduct', { defaultValue: 'Link supplier product' })],
+                  ['external', t('ingredients:stock.createSellerProduct', { defaultValue: 'Create supplier product' })],
+                ] as const).map(([key, label]) => {
+                  const on = afterCreate === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setAfterCreate(on ? null : key)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 6,
+                        background: on ? '#EEF2FF' : '#fff',
+                        border: `1px solid ${on ? '#635BFF' : '#C7CED6'}`,
+                        color: on ? '#3730A3' : '#4B5563',
+                        fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                      }}
+                    >
+                      {on ? '✓ ' : ''}{label}
+                    </button>
+                  );
+                })}
                 <div style={{ flexBasis: '100%', fontSize: 12, color: '#4B5563', marginTop: 2 }}>
-                  Save the stock item first, then connect suppliers.
+                  {t('ingredients:stock.afterCreateHint', 'Pick one — it opens right after the stock item is saved.')}
                 </div>
               </div>
             )}

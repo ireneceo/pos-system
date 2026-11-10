@@ -8,6 +8,8 @@
     "createSellerProduct": "Cipta produk pembekal & pautkan",
     "alsoSellAsProduct": "Jual juga sebagai produk",
     "alreadyProduct": "Dijual sebagai",
-    "addedOn": "Tarikh ditambah"
+    "addedOn": "Tarikh ditambah",
+    "afterCreateTitle": "Produk pembekal",
+    "afterCreateHint": "Pilih satu — ia dibuka sejurus selepas item stok disimpan."
   }
 }

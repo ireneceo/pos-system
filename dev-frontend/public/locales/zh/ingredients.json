@@ -8,6 +8,8 @@
     "createSellerProduct": "新建供应商商品并连接",
     "alsoSellAsProduct": "也登记为商品",
     "alreadyProduct": "已作为商品销售",
-    "addedOn": "添加日期"
+    "addedOn": "添加日期",
+    "afterCreateTitle": "供应商商品",
+    "afterCreateHint": "选择一项 — 保存库存项目后会立即打开。"
   }
 }

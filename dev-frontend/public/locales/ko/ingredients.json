@@ -8,6 +8,8 @@
     "createSellerProduct": "공급업체 상품 만들어 연결",
     "alsoSellAsProduct": "프로덕트로도 등록",
     "alreadyProduct": "판매 중",
-    "addedOn": "등록일"
+    "addedOn": "등록일",
+    "afterCreateTitle": "공급업체 상품",
+    "afterCreateHint": "하나를 고르면 재고아이템을 저장한 뒤 바로 열립니다."
   }
 }
