@@ -230,8 +230,7 @@ const StockListSection: React.FC<Props> = ({
   const matchesVerdict = (v: StockVerdict) => {
     if (statusFilter === 'all') return true;
     const want = FILTER_TO_VERDICT[statusFilter];
-    // 지금 발주 필터는 «주문함 · 오는 중» 도 함께(기준 이하인데 이미 주문한 것 — 숨기면 왜 안 보이는지 모른다)
-    if (statusFilter === 'fs_order_now' && v === 'incoming') return true;
+    // «주문함 · 오는 중» 은 어느 필터에도 넣지 않는다 — 띠 숫자 = 걸린 행 수(Fable 게이트 후속 2026-11-10). 전체 보기에서 배지로 보인다.
     return want ? want.includes(v) : true;
   };
 

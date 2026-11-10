@@ -42,8 +42,20 @@ const SettingsModal: React.FC<Props> = ({ isOpen, onClose, ingredient, form, onF
   const lead = parseInt(form.lead_time_days, 10) > 0 ? parseInt(form.lead_time_days, 10) : 2;
   const bufferPct = form.safety_stock_percent.trim() !== '' ? (parseFloat(form.safety_stock_percent) || 0) : 20;
   const suggestLevel = Math.ceil(daily * lead * (1 + bufferPct / 100));
-  // 미리보기 — 입력한 숫자로 지금 재고가 어떻게 보일지(서버 판정과 같은 순서: 없음 → 기준 이하 → 충분)
-  const preview: StockVerdict = stock <= 0 ? 'out' : level > 0 ? (stock <= level ? 'order_now' : 'ok') : (daily > 0 ? 'ok' : 'no_basis');
+  // 미리보기 — 입력한 숫자로 목록에 어떻게 보일지. 서버 reorderMath.classify 와 같은 순서(Fable 게이트 후속 2026-11-10):
+  //   약속한 양 초과 → 재고 없음 · 기준 없음 · 가용 ≤ 0 → 재고 없음 · 가용+오는 중 ≤ 기준 → 지금 발주 · 7일 안 기준 도달 → 곧 부족 · 충분
+  const committed = sugg ? Number(sugg.committed) || 0 : 0;
+  const available = sugg && sugg.available !== undefined ? Number(sugg.available) : stock - committed;
+  const onOrder = sugg && sugg.on_order !== undefined ? Number(sugg.on_order) || 0 : Number(ingredient.on_order_quantity) || 0;
+  const point = level > 0 ? level : daily * lead * (1 + bufferPct / 100);
+  const preview: StockVerdict =
+    committed > 0 && available < 0 ? 'out'
+      : !(daily > 0 || level > 0) ? 'no_basis'
+      : available <= 0 ? 'out'
+      : available + onOrder <= point ? 'order_now'
+      : daily > 0 && available + onOrder <= point + daily * 7 ? 'soon'
+      : 'ok';
+  const previewDays = preview === 'soon' && daily > 0 ? Math.round(((available + onOrder) / daily) * 10) / 10 : null;
   const showRecommend = daily > 0 && level > 0 && level < daily * lead;
 
   return (
@@ -89,7 +101,7 @@ const SettingsModal: React.FC<Props> = ({ isOpen, onClose, ingredient, form, onF
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 10, padding: '8px 10px', background: '#F9FAFB', borderRadius: 8, fontSize: 13, color: '#0A2540' }}>
           <span>{t('reorderSettings.preview', { defaultValue: 'Now: {{stock}} {{unit}} →', stock: formatStock(stock), unit })}</span>
-          <VerdictBadge verdict={preview} />
+          <VerdictBadge verdict={preview} days={previewDays} />
         </div>
         {showRecommend && (
           <div style={{ ...help, color: '#6B7280' }}>
