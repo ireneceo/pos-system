@@ -64,6 +64,7 @@
     "minShortLabel": "Min {{qty}}",
     "unlinkedTitle": "Needs a supplier link ({{count}}) — not sent",
     "unlinkedHint": "These items are running low but have no supplier linked. Link a supplier in the stock item settings, then order.",
+    "unlinkedHintLink": "Link a supplier here and the item moves up into this order.",
     "needQty": "need about {{qty}} {{unit}}"
   },
   "brandShared": "Brand",

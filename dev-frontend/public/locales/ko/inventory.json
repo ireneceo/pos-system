@@ -64,6 +64,7 @@
     "minShortLabel": "최소 {{qty}}",
     "unlinkedTitle": "공급처 연결 필요 ({{count}}) — 보내지 않음",
     "unlinkedHint": "부족하지만 연결된 공급처가 없는 품목입니다. 재고 품목 설정에서 공급처를 연결한 뒤 발주하세요.",
+    "unlinkedHintLink": "여기서 공급처를 연결하면 바로 위 발주 줄로 올라갑니다.",
     "needQty": "약 {{qty}} {{unit}} 필요"
   },
   "brandShared": "브랜드",

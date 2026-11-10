@@ -244,6 +244,29 @@ export function useBulkOrder() {
     }
   }, [suggestionsById]);
 
+  /**
+   * 창 안 «연결 필요» 줄에서 공급처를 연결하고 전망을 다시 읽으면(loadSuggestions) 그 줄을 위 발주 줄로 올린다
+   *   (2026-11-10 Irene «주문까지 유연하게 편하게 심플하게 이어질 수 있게»). 다른 줄 수량은 건드리지 않는다.
+   */
+  useEffect(() => {
+    if (!showBulkModal || unlinkedItems.length === 0) return;
+    const nowLinked = unlinkedItems
+      .map(u => suggestionsById.get(u.ingredient_id))
+      .filter((s): s is SuggestionRow => !!s && !!s.seller_type);
+    if (nowLinked.length === 0) return;
+    const movedIds = new Set(nowLinked.map(s => s.ingredient_id));
+    setUnlinkedItems(prev => prev.filter(u => !movedIds.has(u.ingredient_id)));
+    setBulkItems(prev => {
+      const have = new Set(prev.map(x => x.ingredient_id));
+      return [...prev, ...nowLinked.filter(s => qtyOf(s) > 0 && !have.has(s.ingredient_id)).map(s => ({ ...s, quantity: qtyOf(s) }))];
+    });
+    setStagedItems(prev => {
+      const have = new Set(prev.map(x => x.ingredient_id));
+      return [...prev, ...nowLinked.filter(s => qtyOf(s) <= 0 && !have.has(s.ingredient_id))];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestionsById, showBulkModal, unlinkedItems]);
+
   const updateBulkItem = useCallback((id: number, patch: Partial<BulkOrderItem>) => {
     setBulkItems(prev => prev.map(it => it.ingredient_id === id ? { ...it, ...patch } : it));
   }, []);

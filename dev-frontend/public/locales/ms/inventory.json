@@ -64,6 +64,7 @@
     "minShortLabel": "Min {{qty}}",
     "unlinkedTitle": "Perlu pautan pembekal ({{count}}) — tidak dihantar",
     "unlinkedHint": "Item ini hampir habis tetapi tiada pembekal dipautkan. Pautkan pembekal dalam tetapan item stok, kemudian pesan.",
+    "unlinkedHintLink": "Pautkan pembekal di sini dan item akan terus masuk ke pesanan ini.",
     "needQty": "perlu kira-kira {{qty}} {{unit}}"
   },
   "brandShared": "Jenama",

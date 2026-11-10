@@ -456,6 +456,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         soonToggle={bulk.neededMode ? { count: bulk.soonLinkedCount, checked: bulk.soonIncluded, onChange: bulk.toggleSoonInModal } : null}
         stagedItems={bulk.stagedItems}
         onReview={() => { bulk.closeBulk(); navigate('/pos/purchase-orders/staging'); }}
+        onLinkUnlinked={linkEnabled ? (u) => setLinkTarget({ id: u.ingredient_id, name: u.ingredient_name, unit: u.unit }) : undefined}
+        onNewSupplierUnlinked={linkEnabled ? (u) => setExtSupplierTarget({ id: u.ingredient_id, name: u.ingredient_name, unit: u.unit }) : undefined}
       />
 
       {/* Sticky bottom bar — shown when items selected on the list tab */}
@@ -575,14 +577,14 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             targetKind="product_ingredient"
             buyerApiBase={linkBuyerBase}
             onClose={() => setLinkTarget(null)}
-            onConnected={() => { setLinkTarget(null); data.refetch(); }}
+            onConnected={() => { setLinkTarget(null); data.refetch(); bulk.loadSuggestions(); }}
           />
           <RegisterExternalSupplierModal
             target={extSupplierTarget ? { id: extSupplierTarget.id, name: extSupplierTarget.name, unit: extSupplierTarget.unit } : null}
             targetKind="product_ingredient"
             buyerApiBase={linkBuyerBase}
             onClose={() => setExtSupplierTarget(null)}
-            onRegistered={() => { setExtSupplierTarget(null); data.refetch(); }}
+            onRegistered={() => { setExtSupplierTarget(null); data.refetch(); bulk.loadSuggestions(); }}
           />
         </>
       )}

@@ -64,6 +64,7 @@
     "minShortLabel": "最低 {{qty}}",
     "unlinkedTitle": "需要关联供应商 ({{count}}) — 不发送",
     "unlinkedHint": "这些项目库存不足但未关联供应商。请在库存项目设置中关联供应商后再下单。",
+    "unlinkedHintLink": "在此关联供应商后，该项目会直接加入上方订单。",
     "needQty": "约需 {{qty}} {{unit}}"
   },
   "brandShared": "品牌",

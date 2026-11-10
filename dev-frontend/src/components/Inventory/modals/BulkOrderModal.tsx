@@ -31,6 +31,9 @@ interface Props {
   stagedItems?: SuggestionRow[];
   /** 결과 «Review & Send» → 발주 대기 화면 */
   onReview?: () => void;
+  /** «연결 필요» 줄에서 바로 공급처 연결(브랜드) — 연결되면 그 줄이 위 발주 줄로 올라간다(2026-11-10) */
+  onLinkUnlinked?: (row: SuggestionRow) => void;
+  onNewSupplierUnlinked?: (row: SuggestionRow) => void;
 }
 
 const SELLER_TYPE_LABEL: Record<string, string> = {
@@ -43,7 +46,7 @@ const SELLER_TYPE_LABEL: Record<string, string> = {
 const BulkOrderModal: React.FC<Props> = ({
   isOpen, onClose, items, currency, submitting, error, resultPos,
   onUpdateItem, onRemoveItem, onSend, unlinkedItems = [], errorViolations = null, storeTz, soonToggle = null,
-  stagedItems = [], onReview
+  stagedItems = [], onReview, onLinkUnlinked, onNewSupplierUnlinked
 }) => {
   const { t, i18n } = useTranslation(['inventory', 'purchaseOrders']);
   const tPo = (key: string, opts?: any) => t(`purchaseOrders:${key}`, opts);
@@ -288,12 +291,31 @@ const BulkOrderModal: React.FC<Props> = ({
                     {t('bulkOrder.unlinkedTitle', { count: unlinkedItems.length, defaultValue: 'Needs a supplier link ({{count}}) — not sent' })}
                   </div>
                   <div style={{ fontSize: 12, color: '#6B7280', margin: '4px 0 8px' }}>
-                    {t('bulkOrder.unlinkedHint', 'These items are running low but have no supplier linked. Link a supplier in the stock item settings, then order.')}
+                    {onLinkUnlinked
+                      ? t('bulkOrder.unlinkedHintLink', 'Link a supplier here and the item moves up into this order.')
+                      : t('bulkOrder.unlinkedHint', 'These items are running low but have no supplier linked. Link a supplier in the stock item settings, then order.')}
                   </div>
                   {unlinkedItems.map(u => (
-                    <div key={u.ingredient_id} style={{ fontSize: 13, color: '#4B5563', padding: '4px 0', borderTop: '1px dashed #E5E7EB' }}>
-                      {u.ingredient_name} — {t('bulkOrder.stockShort', 'Current')} {fq(u.available ?? u.current_stock)} {u.unit}
-                      {u.suggested_stock_qty ? <> · {t('bulkOrder.needQty', { defaultValue: 'need about {{qty}} {{unit}}', qty: fq(u.suggested_stock_qty), unit: u.unit })}</> : null}
+                    <div key={u.ingredient_id} style={{ fontSize: 13, color: '#4B5563', padding: '6px 0', borderTop: '1px dashed #E5E7EB',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                      <span style={{ minWidth: 0 }}>
+                        {u.ingredient_name} — {t('bulkOrder.stockShort', 'Current')} {fq(u.available ?? u.current_stock)} {u.unit}
+                        {u.suggested_stock_qty ? <> · {t('bulkOrder.needQty', { defaultValue: 'need about {{qty}} {{unit}}', qty: fq(u.suggested_stock_qty), unit: u.unit })}</> : null}
+                      </span>
+                      {onLinkUnlinked && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                          <ModalButton type="button" variant="secondary" onClick={() => onLinkUnlinked(u)}>
+                            {t('inventory:linkSupplier', 'Link')}
+                          </ModalButton>
+                          {onNewSupplierUnlinked && (
+                            <button type="button" onClick={() => onNewSupplierUnlinked(u)}
+                              style={{ background: 'transparent', border: 'none', color: '#635BFF', fontSize: 12,
+                                fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
+                              {t('inventory:newSupplierProduct', 'New supplier')}
+                            </button>
+                          )}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>
