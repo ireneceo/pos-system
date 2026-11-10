@@ -82,12 +82,14 @@ const FilterBar = styled.div`
 `;
 
 const NoticesGrid = styled.div`
+  /* 2026-11-10 전 역할 공지 통일: 5화면 같은 값(문의 카드 격자와 같은 규칙) */
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
 
-  @media (max-width: 968px) {
-    grid-template-columns: 1fr;
+  @media (max-width: 1024px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
 `;
 
@@ -107,6 +109,13 @@ const NoticeCard = styled.div<{ unread?: boolean }>`
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
+  }
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+
+  @media (max-width: 768px) {
+    padding: 16px;
   }
 `;
 
@@ -860,13 +869,14 @@ const NoticesPage: React.FC = () => {
         )}
 
         {/* Category Filter Pills */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
           {(['all', 'general', 'guide', 'updates'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
               style={{
                 padding: '6px 16px',
+                  minHeight: '32px',
                 borderRadius: '20px',
                 border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #C7CED6',
                 background: categoryFilter === cat ? '#F0EFFF' : 'white',

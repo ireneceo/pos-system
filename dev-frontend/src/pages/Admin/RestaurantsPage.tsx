@@ -94,8 +94,13 @@ interface Restaurant {
 
 const RestaurantGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  /* 2026-11-10 전 역할 매장 목록 통일: 폰(343px 칸)에서 «최소 400px» 카드가 칸 밖으로 나가던 것 */
+  grid-template-columns: repeat(auto-fill, minmax(min(400px, 100%), 1fr));
   gap: 24px;
+
+  @media (max-width: 1024px) {
+    gap: 12px;
+  }
 `;
 
 const RestaurantCard = styled.div`
@@ -105,11 +110,18 @@ const RestaurantCard = styled.div`
   border: 1px solid #C7CED6;
   transition: all 0.2s;
   cursor: pointer;
-  
+  display: flex;
+  flex-direction: column;
+
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
     border-color: #635BFF;
+  }
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    padding: 16px;
   }
 `;
 
@@ -117,11 +129,14 @@ const RestaurantHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 12px; /* 2026-11-10: 폰에서 상태 꼬리표가 화면 밖으로 밀리던 것 */
   margin-bottom: 16px;
 `;
 
 const RestaurantInfo = styled.div`
   flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
 `;
 
 const RestaurantName = styled.h3`

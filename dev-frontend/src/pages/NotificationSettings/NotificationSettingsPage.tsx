@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import styled from 'styled-components';
+import { Header } from '../../components/UI/PageComponents';
 import { Modal as CommonModal } from '../../components/UI';
 import { useParams } from 'react-router-dom';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
@@ -19,37 +20,6 @@ const SettingsContainer = styled.div`
   min-height: 100vh;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
 
 const HeaderTitle = styled.h1`
   font-size: 24px;

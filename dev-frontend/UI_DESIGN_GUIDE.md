@@ -225,6 +225,24 @@ type AdminCategory = {
 
 ---
 
+### 2.5 화면 뼈대·반응형 규칙 (2026-11-10 전 역할 통일 — Fable 설계 `.claude/fable-design-20261110-ui-unify-responsive.md`)
+
+**뼈대 순서(목록형 화면)**: 머리(제목 + 행동) → 통계 카드 → 탭 → 필터(**검색 먼저** → 고르기 → 행동) → 목록 → 쪽 나눔. 예외: 탭마다 통계가 다른 화면은 탭이 통계 위.
+
+| 부품 | 규칙 (로컬로 다시 만들지 말 것) |
+|---|---|
+| 머리 `Header`·`Title`·`ActionSection`·`HeaderRight` (UI/PageComponents) | 로컬 복사본 금지. 버튼 순서 = 보조 왼쪽 → 주 행동 오른쪽(보라 1개). 폰에선 행동 줄이 균등 폭 |
+| 통계 `StatsGrid`·`DashboardStatsGrid` | 카드 수만큼 한 줄(1~6장, 5장 ≤1024 은 3+2 넓게, 7장은 끝 카드 두 칸) · 600 미만 2열(홀수 끝 두 칸) · ≤1024 낮은 카드(96px 이하 목표) |
+| 탭 `Common/TabComponents`·`UI/Tabs` | **한 줄 + 그 줄만 가로 밀기**(스크롤 막대 숨김·고른 탭 자동으로 보이게·밀어도 페이지 안 흔들림). 줄바꿈 금지. 예외: Live Orders 상태 탭(06-15 승인 줄바꿈) |
+| 필터 `FilterBar`·`SearchInput`·`FilterSelect` / `ListControlsBar` | 검색칸 먼저 · 태블릿에서 검색칸이 남는 폭 채움 · 폰은 칸마다 전폭, 행동 버튼 줄 전폭 |
+| 표 `DataTable` | ≤1024 카드: 칸 전부 왼쪽, 칸마다 `data-label` 필수 · 빈 상태는 `<tr><td colSpan><DataTableEmpty>` (표 몸통에 바로 넣지 말 것) · 카드·상자 안에 표를 바로 넣으면 `DataTableScroll` 로 감싸 오른쪽 열이 화면 밖으로 안 나가게 |
+| 카드 격자 | `grid-template-columns` 는 `minmax(0, 1fr)` / `minmax(min(Npx, 100%), 1fr)` — 그냥 `1fr`·`minmax(400px,1fr)` 은 폰에서 칸보다 넓어짐 · 카드 글 칸(flex:1)엔 `min-width: 0` (꼬리표가 화면 밖으로 밀림) |
+| 누름 크기 | 관리 화면 32px 이상 · 행 행동 = 공용 `IconButton` 32×32 회색 |
+| 빈 상태 | 글자만(아이콘 그림 없음) · 제목·안내 같은 14px · 목록 자리 전폭 |
+
+**반응형 판정 폭**: 375 · 768 · 1024 · 1100 · 1366 (1100 = 표↔카드 경계 바로 위, 사이드바 2단). 실측 도구·탐지기: 작업방 a70016ad `sweep2.js`·`measure2.js`(R1 잘림 · R3 통계 · R4 탭 줄 · R5 필터 · R6 카드 정렬 · R7 빈 상태 · R8 누름 크기 · R12 오류 글자 · R13 아래 띠 가림).
+
+
 ## 3. 컬러 팔레트
 
 ### 3.1 기본 색상

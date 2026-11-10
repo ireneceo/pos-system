@@ -172,6 +172,7 @@ const FilterRow = styled.div`
 `;
 
 const DateButton = styled.button<{ active?: boolean }>`
+  min-height: 32px; /* 2026-11-10 반응형 점검(R8): 누름 크기 32px 이상 */
   padding: 8px 16px;
   background: ${props => props.active ? '#635BFF' : '#FFFFFF'};
   color: ${props => props.active ? '#FFFFFF' : '#4B5563'};
@@ -204,6 +205,7 @@ const DateRangePickerWrapper = styled.div`
 `;
 
 const DateRangeTrigger = styled.button<{ active?: boolean }>`
+  min-height: 32px; /* 2026-11-10 반응형 점검(R8): 누름 크기 32px 이상 */
   display: flex;
   align-items: center;
   gap: 8px;

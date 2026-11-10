@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { DataTableContainer, DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell } from '../../components/UI/DataTable';
+import { Header, Title, ActionSection } from '../../components/UI/PageComponents';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -32,50 +34,8 @@ const Container = styled.div`
   background: #F9FAFB;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
 
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-`;
-
-const ActionSection = styled.div`
-  display: flex;
-  gap: 12px;
-`;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   padding: 12px 20px;
@@ -118,130 +78,10 @@ const StatSubtext = styled.div`
   margin-top: 4px;
 `;
 
-const StaffTableContainer = styled.div`
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #C7CED6;
-  /* 2026-09-01: 세로만 hidden, 가로는 auto. overflow:hidden 이면 안의 표가 넓어질 때
-     스크롤이 아니라 잘려서 오른쪽 열에 손이 닿지 않는다(1025~1400px 노트북 구간).
-     세로 hidden 유지라 둥근 모서리는 그대로다. 실측: scripts/responsive-audit.js */
-  overflow-x: auto;
-  overflow-y: hidden;
 
-  @media (max-width: 768px) {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-  }
-`;
 
-const StaffTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: auto;
 
-  @media (max-width: 768px) {
-    display: block;
-  }
 
-  tbody {
-    @media (max-width: 768px) {
-      display: block;
-    }
-  }
-`;
-
-const StaffTableHead = styled.thead`
-  background: #F1F4F8;
-  border-bottom: 1px solid #C7CED6;
-
-  @media (max-width: 768px) {
-    display: none;
-  }
-
-  th {
-    padding: 14px 16px;
-    text-align: left;
-    font-size: 12px;
-    font-weight: 600;
-    color: #4B5563;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  th:nth-child(3) { text-align: center; }
-  th:nth-child(4) { text-align: center; }
-  th:nth-child(5) { text-align: right; }
-`;
-
-const StaffTableRow = styled.tr`
-  border-bottom: 1px solid #F1F4F8;
-  transition: background 0.15s;
-
-  &:hover {
-    background: #F1F4F8;
-  }
-
-  &:last-child {
-    border-bottom: none;
-  }
-
-  @media (max-width: 768px) {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 14px;
-    margin-bottom: 10px;
-    background: white;
-    border-radius: 10px;
-    border: 1px solid #C7CED6;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-`;
-
-const StaffTableCell = styled.td`
-  padding: 16px;
-  font-size: 14px;
-  color: #0A2540;
-  vertical-align: middle;
-
-  &:nth-child(3) { text-align: center; }
-  &:nth-child(4) { text-align: center; }
-  &:nth-child(5) { text-align: right; }
-
-  @media (max-width: 768px) {
-    flex: 1 1 calc(50% - 5px);
-    min-width: 140px;
-    padding: 0;
-    text-align: left !important;
-
-    &:before {
-      content: attr(data-label);
-      display: block;
-      font-size: 10px;
-      font-weight: 600;
-      color: #6B7280;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-
-    &:last-child {
-      flex: 1 1 100%;
-      padding-top: 10px;
-      margin-top: 10px;
-      border-top: 1px solid #F1F4F8;
-
-      &:before {
-        display: none;
-      }
-    }
-  }
-`;
 
 const StaffInfo = styled.div`
   display: flex;
@@ -694,7 +534,7 @@ const ManagerAdminManagementPage: React.FC = () => {
           </FilterSelect>
         </FilterBar>
 
-        <StaffTableContainer>
+        <DataTableContainer>
           {filteredStaff.length === 0 ? (
             <EmptyState>
               <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -705,45 +545,45 @@ const ManagerAdminManagementPage: React.FC = () => {
               </div>
             </EmptyState>
           ) : (
-            <StaffTable>
-              <StaffTableHead>
+            <DataTable>
+              <DataTableHead>
                 <tr>
-                  <th>{t('admin:adminManagementPage.name')}</th>
-                  <th>{t('admin:adminManagementPage.restaurant')}</th>
-                  <th>{t('admin:adminManagementPage.role')}</th>
-                  <th>{t('admin:adminManagementPage.status')}</th>
-                  <th>{t('admin:adminManagementPage.actions')}</th>
+                  <DataTableHeaderCell align="left">{t('admin:adminManagementPage.name')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('admin:adminManagementPage.restaurant')}</DataTableHeaderCell>
+                  <DataTableHeaderCell>{t('admin:adminManagementPage.role')}</DataTableHeaderCell>
+                  <DataTableHeaderCell>{t('admin:adminManagementPage.status')}</DataTableHeaderCell>
+                  <DataTableHeaderCell align="right" isActions>{t('admin:adminManagementPage.actions')}</DataTableHeaderCell>
                 </tr>
-              </StaffTableHead>
+              </DataTableHead>
               <tbody>
                 {filteredStaff.map(staff => (
-                  <StaffTableRow key={staff.id}>
-                    <StaffTableCell data-label="Name">
+                  <DataTableRow key={staff.id}>
+                    <DataTableCell data-label="Name">
                       <StaffInfo>
                         <StaffDetails>
                           <StaffName>{staff.full_name}</StaffName>
                           <StaffEmail>{staff.email}</StaffEmail>
                         </StaffDetails>
                       </StaffInfo>
-                    </StaffTableCell>
+                    </DataTableCell>
 
-                    <StaffTableCell data-label="Restaurant">
+                    <DataTableCell data-label="Restaurant">
                       <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A2540' }}>
                         {staff.restaurantName || '-'}
                       </div>
-                    </StaffTableCell>
+                    </DataTableCell>
 
-                    <StaffTableCell data-label="Role">
+                    <DataTableCell data-label="Role" align="center">
                       <RoleBadge role={staff.role}>{displayRole(staff.role)}</RoleBadge>
-                    </StaffTableCell>
+                    </DataTableCell>
 
-                    <StaffTableCell data-label="Status">
+                    <DataTableCell data-label="Status" align="center">
                       <StatusBadge active={staff.is_active}>
                         {staff.is_active ? 'Active' : 'Inactive'}
                       </StatusBadge>
-                    </StaffTableCell>
+                    </DataTableCell>
 
-                    <StaffTableCell data-label="">
+                    <DataTableCell data-label="" align="right" mobileFullWidth>
                       <ActionButtons>
                         <ActionButton onClick={() => handleView(staff)}>{t('admin:adminManagementPage.view')}</ActionButton>
                         <ActionButton onClick={() => handleOpenEdit(staff)}>{t('admin:adminManagementPage.edit')}</ActionButton>
@@ -754,13 +594,13 @@ const ManagerAdminManagementPage: React.FC = () => {
                           {staff.is_active ? 'Deactivate' : 'Activate'}
                         </ActionButton>
                       </ActionButtons>
-                    </StaffTableCell>
-                  </StaffTableRow>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
               </tbody>
-            </StaffTable>
+            </DataTable>
           )}
-        </StaffTableContainer>
+        </DataTableContainer>
       </Content>
 
       {/* Create Modal */}

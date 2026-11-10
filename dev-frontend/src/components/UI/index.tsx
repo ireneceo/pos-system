@@ -40,7 +40,8 @@ export {
   DataTableActions,
   DataTableEmpty,
   DataTableAmount,
-  DataTableStatus
+  DataTableStatus,
+  DataTableScroll
 } from './DataTable';
 
 // Explicitly export Page components

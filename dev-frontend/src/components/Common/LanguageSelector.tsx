@@ -159,6 +159,7 @@ const Container = styled.div`
 `;
 
 const GlobeToggle = styled.button`
+  min-height: 32px; /* 2026-11-10 반응형 점검(R8): 누름 크기 32px 이상 */
   display: flex;
   align-items: center;
   gap: 6px;

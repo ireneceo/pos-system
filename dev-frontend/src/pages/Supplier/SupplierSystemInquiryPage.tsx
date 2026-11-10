@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
@@ -43,46 +45,20 @@ interface SupportTicket {
 
 // ----- Styled -----
 
-const FiltersContainer = styled.div`
-  margin-bottom: 24px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-`;
 
-const SearchInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #C7CED6;
-  border-radius: 6px;
-  font-size: 14px;
-  width: 250px;
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
-const Select = styled.select`
-  padding: 8px 12px;
-  border: 1px solid #C7CED6;
-  border-radius: 6px;
-  font-size: 14px;
-  background: white;
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-  }
-`;
 
+// 상태 탭 글자 = 4개 언어에 있는 공용 키(common:label.all · common:status.*)
+const STATUS_TAB_KEY: Record<string, string> = { all: 'common:label.all', open: 'common:status.open', 'in-progress': 'common:status.inProgress', resolved: 'common:status.resolved', closed: 'common:status.closed' };
 const TicketsGrid = styled.div`
+  /* 2026-11-10 전 역할 문의 화면 통일: 12화면 같은 값 · 칸이 글 길이에 밀려 넓어지지 않게 minmax(0,1fr) */
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 
   @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
 `;
 
@@ -98,6 +74,11 @@ const TicketCard = styled.div`
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
   }
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
 `;
 
 const TicketHeader = styled.div`
@@ -110,6 +91,9 @@ const TicketHeader = styled.div`
 
 const TicketInfo = styled.div`
   flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
 `;
 
 const TicketNumber = styled.div`
@@ -129,12 +113,15 @@ const TicketSubject = styled.div`
 
 const TicketBadges = styled.div`
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 8px;
   align-items: flex-end;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -161,6 +148,8 @@ const StatusBadge = styled.span<{ status: string }>`
 `;
 
 const PriorityBadge = styled.span<{ priority: string }>`
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -483,35 +472,36 @@ const SupplierSystemInquiryPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
-        <FiltersContainer>
+        {/* 2026-11-10 전 역할 문의 통일: 상태는 RA 시스템 문의와 같은 탭(드롭다운이던 것) */}
+        <Tabs>
+          {(['all', 'open', 'in-progress', 'resolved', 'closed'] as const).map(st => (
+            <Tab key={st} active={filterStatus === st} onClick={() => setFilterStatus(st)}>
+              {t(STATUS_TAB_KEY[st])} <Badge count={st === 'all' ? tickets.length : tickets.filter(tk => tk.status === st).length} showZero />
+            </Tab>
+          ))}
+        </Tabs>
+        <FilterBar>
           <SearchInput
             placeholder="Search tickets..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
-          <Select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="all">All Status</option>
-            <option value="open">Open</option>
-            <option value="in-progress">In Progress</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
-          </Select>
-          <Select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}>
+          <FilterSelect value={filterPriority} onChange={e => setFilterPriority(e.target.value)}>
             <option value="all">All Priority</option>
             <option value="urgent">Urgent</option>
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
-          </Select>
-          <Select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
+          </FilterSelect>
+          <FilterSelect value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
             <option value="all">All Categories</option>
             <option value="technical">Technical</option>
             <option value="billing">Billing</option>
             <option value="feature-request">Feature Request</option>
             <option value="bug-report">Bug Report</option>
             <option value="general">General</option>
-          </Select>
-        </FiltersContainer>
+          </FilterSelect>
+        </FilterBar>
 
         <TicketsGrid>
           {filteredTickets.map(ticket => (
@@ -570,8 +560,8 @@ const SupplierSystemInquiryPage: React.FC = () => {
               color: '#4B5563',
               gridColumn: '1 / -1'
             }}>
-              <h3 style={{ color: '#1F2937', marginBottom: '8px' }}>No tickets yet</h3>
-              <p>Click "Create Ticket" to submit your first support inquiry.</p>
+              <h3 style={{ color: '#1F2937', margin: '0 0 4px', fontSize: 14, fontWeight: 600 }}>No tickets yet</h3>
+              <p style={{ margin: 0, fontSize: 14 }}>Click "Create Ticket" to submit your first support inquiry.</p>
             </div>
           )}
         </TicketsGrid>

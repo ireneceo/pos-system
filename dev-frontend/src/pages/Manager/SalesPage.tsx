@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { Header } from '../../components/UI/PageComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI/StatCard';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
@@ -28,37 +29,6 @@ const Container = styled.div`
   background: #F9FAFB;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
 
 const PageTitle = styled.h1`
   font-size: 24px;
@@ -148,7 +118,7 @@ const SalesTableContainer = styled.div`
   overflow-x: auto;
   overflow-y: hidden;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     background: transparent;
     border: none;
     border-radius: 0;
@@ -160,12 +130,12 @@ const SalesTable = styled.table`
   border-collapse: collapse;
   table-layout: fixed;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: block;
   }
 
   tbody {
-    @media (max-width: 768px) {
+    @media (max-width: 1024px) {
       display: block;
     }
   }
@@ -175,7 +145,7 @@ const SalesTableHead = styled.thead`
   background: #F1F4F8;
   border-bottom: 1px solid #C7CED6;
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: none;
   }
 
@@ -206,7 +176,7 @@ const SalesTableRow = styled.tr`
     border-bottom: none;
   }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     display: flex;
     flex-wrap: wrap;
     gap: 10px;
@@ -238,7 +208,7 @@ const SalesTableCell = styled.td`
   &:nth-child(2), &:nth-child(3), &:nth-child(4), &:nth-child(5), &:nth-child(6) { text-align: right; } /* Sales, Orders, Avg, Week, Month */
   &:nth-child(7) { text-align: right; } /* Action */
 
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     flex: 1 1 calc(50% - 5px);
     min-width: 140px;
     padding: 0;

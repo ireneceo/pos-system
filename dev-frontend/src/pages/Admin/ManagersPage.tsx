@@ -18,7 +18,7 @@ import {
   // ActionButton, // Removed - not used after handleEditManager was commented out
   IconButton
 , Modal as CommonModal } from '../../components/UI';
-import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableScroll } from '../../components/UI/DataTable';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { formatCurrency, getPlanPrice, getActivePlanCurrencies, normalizeCurrencyCode } from '../../utils/currency';
 import SubscriptionFormFields, { type SubscriptionValues, type UserType as SubUserType, type BillingCycle, type PaymentModel, type DiscountType } from '../../components/Subscription/SubscriptionFormFields';
@@ -999,6 +999,13 @@ const ManagersPage: React.FC = () => {
         </StatsGrid>
 
         <FilterBar>
+
+          <SearchInput
+            type="text"
+            placeholder="Search by name, email, or company..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
           <FilterSelect
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
@@ -1007,13 +1014,6 @@ const ManagersPage: React.FC = () => {
             <option value="active">{t('admin:managersPage.active')}</option>
             <option value="inactive">{t('admin:managersPage.inactive')}</option>
           </FilterSelect>
-
-          <SearchInput
-            type="text"
-            placeholder="Search by name, email, or company..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
         </FilterBar>
 
         {filteredManagers.length === 0 ? (
@@ -1026,6 +1026,7 @@ const ManagersPage: React.FC = () => {
             </div>
           </DataTableEmpty>
         ) : (
+          <DataTableScroll>
           <DataTable>
             <DataTableHead>
               <tr>
@@ -1120,6 +1121,7 @@ const ManagersPage: React.FC = () => {
               ))}
             </tbody>
           </DataTable>
+          </DataTableScroll>
         )}
 
         {/* Add Manager Modal */}

@@ -71,6 +71,12 @@ const SearchInputWrapper = styled.div`
   min-width: 220px;
   max-width: 280px;
 
+  /* 2026-11-10 전 역할 통일(R5): 태블릿에선 검색칸이 줄의 남는 폭을 채운다
+     (280px 에서 멈춰 줄 오른쪽 끝이 들쭉날쭉하던 것) */
+  @media (max-width: 1024px) {
+    max-width: none;
+  }
+
   @media (max-width: 600px) {
     width: 100%;
     min-width: 100%;

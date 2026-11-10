@@ -17,7 +17,7 @@ import {
   ActionButtons,
   ActionButton
 } from '../../components/UI';
-import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableScroll } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
@@ -763,6 +763,7 @@ const ContentManagementPage: React.FC = () => {
           </ThemedButton>
         </EmptyState>
       ) : (
+        <DataTableScroll>
         <DataTable>
           <DataTableHead>
             <tr>
@@ -808,6 +809,7 @@ const ContentManagementPage: React.FC = () => {
             ))}
           </tbody>
         </DataTable>
+        </DataTableScroll>
       )}
     </>
   );

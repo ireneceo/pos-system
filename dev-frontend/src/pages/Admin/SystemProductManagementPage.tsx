@@ -108,7 +108,7 @@ type TabType = 'products' | 'categories' | 'options';
 // -- Products Tab --
 const ProductsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: 20px;
   margin-top: 24px;
 

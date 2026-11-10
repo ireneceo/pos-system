@@ -93,6 +93,20 @@ export const Title = styled.h1`
 export const ActionSection = styled.div`
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+
+  /* 2026-11-10 전 역할 통일(R2): 폰에선 제목 아래 한 줄을 버튼들이 고르게 나눠 채운다
+     (제각각 폭으로 여러 줄이 되던 것). 들어가지 않으면 다음 줄로. */
+  @media (max-width: 768px) {
+    width: 100%;
+    gap: 8px;
+
+    & > button,
+    & > a {
+      flex: 1 1 0;
+      min-width: max-content;
+    }
+  }
 `;
 
 // 페이지 콘텐츠
@@ -105,7 +119,14 @@ export const Content = styled.div`
 `;
 
 // 공통 버튼
+// 2026-11-10 전 역할 통일: 모양을 정식 UI/Button.tsx 와 같게(가운데 정렬·글자 줄바꿈 없음·보조 버튼 흰 바탕)
 export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' | 'danger-outline' }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  font-family: inherit;
   padding: 12px 20px;
   border-radius: 8px;
   font-size: 14px;
@@ -128,12 +149,13 @@ export const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'dange
         `;
       case 'secondary':
         return `
-          background: #F8F9FA;
-          color: #4B5563;
+          background: #FFFFFF;
+          color: #374151;
           border: 1px solid #C7CED6;
           &:hover {
-            background: #EBEEF2;
-            border-color: #D1D9E0;
+            background: #F1F4F8;
+            color: #0A2540;
+            border-color: #64748B;
           }
         `;
       case 'danger':

@@ -46,7 +46,7 @@ const HeaderActions = styled.div`
 
 const SuppliersGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 20px;
   margin-top: 24px;
   align-items: start;

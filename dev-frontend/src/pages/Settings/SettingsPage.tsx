@@ -110,13 +110,14 @@ const Content = styled.main`
 
 const SettingsGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* 2026-11-10 반응형 점검: 1fr 은 안쪽 내용 폭보다 줄지 않아 폰에서 카드가 화면(343px 칸)보다 넓어져 오른쪽이 잘렸다 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 24px;
   align-items: start;      /* 카드가 행 높이에 늘어나 내부에 빈 공간 생기는 것 방지(높이 제각각 정렬) */
   grid-auto-flow: row dense; /* 반폭 카드 사이 단일 셀 빈칸을 뒤 카드로 메움 */
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 `;
 

@@ -313,9 +313,12 @@ const CarrierWebhookEventsPage: React.FC = () => {
             </DataTableHead>
             <tbody>
               {events.length === 0 ? (
-                <DataTableEmpty colSpan={7}>
+                <tr><td colSpan={7}>
+                  {/* 2026-11-10 점검(R7): 빈 상태를 표 줄·칸 없이 넣어 작은 상자가 되던 것 */}
+                  <DataTableEmpty>
                   {loading ? t('common:loading', 'Loading…') : t('admin:carrierWebhooks.empty', 'No events match the current filter.')}
-                </DataTableEmpty>
+                  </DataTableEmpty>
+                </td></tr>
               ) : events.map(ev => (
                 <DataTableRow key={ev.id}>
                   <DataTableCell data-label="Received">

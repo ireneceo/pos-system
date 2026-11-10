@@ -14,7 +14,8 @@ import { formatDateTime } from '../../utils/timezone';
 import { downloadCSV, escapeCSV, toCSVRow, generateFilename } from '../../utils/csvDownload';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Legend
 } from 'recharts';
 import PageHeader from '../../components/Common/PageHeader';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -24,6 +25,8 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { monthLabelFromYM } from '../../components/Common/CalendarPicker';
 // 스타일 컴포넌트
+// 2026-11-10 반응형 점검: 원그래프 바깥 이름표가 폰(«…d 100%»)과 1366 노트북(사이드바 2단)에서 잘렸다 — 1400px 미만이면 이름표 대신 아래 범례
+const PIE_NARROW = () => typeof window !== 'undefined' && window.innerWidth < 1400;
 const ReportsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #F9FAFB;
@@ -1113,8 +1116,8 @@ const ReportsPage: React.FC = () => {
                         data={categoryData}
                         cx="50%"
                         cy="50%"
-                        labelLine={true}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={!PIE_NARROW()}
+                        label={PIE_NARROW() ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                         outerRadius={70}
                         fill="#8884d8"
                         dataKey="value"
@@ -1123,6 +1126,7 @@ const ReportsPage: React.FC = () => {
                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
+                        {PIE_NARROW() && <Legend formatter={(v: string) => <span style={{ fontSize: 12, color: '#374151' }}>{v}</span>} />}
                       <Tooltip formatter={(value) => `${value}%`} />
                     </PieChart>
                   </ResponsiveContainer>
@@ -1706,8 +1710,8 @@ const ReportsPage: React.FC = () => {
                             }))}
                             cx="50%"
                             cy="50%"
-                            labelLine={true}
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            labelLine={!PIE_NARROW()}
+                            label={PIE_NARROW() ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                             outerRadius={70}
                             fill="#8884d8"
                             dataKey="value"
@@ -1716,6 +1720,7 @@ const ReportsPage: React.FC = () => {
                               <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}
                           </Pie>
+                        {PIE_NARROW() && <Legend formatter={(v: string) => <span style={{ fontSize: 12, color: '#374151' }}>{v}</span>} />}
                           <Tooltip formatter={(value) => formatCurrency(Number(value), operationSettings.currency)} />
                         </PieChart>
                       </ResponsiveContainer>

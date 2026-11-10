@@ -688,6 +688,8 @@ const CouponsPage: React.FC = () => {
                 <Button onClick={fetchCoupons}>{t('retry')}</Button>
               </EmptyState>
             ) : coupons.length > 0 ? (
+              /* 2026-11-10 반응형 점검: 표가 칸보다 넓으면(1100 폭) 오른쪽 Delete 가 화면 밖으로 나갔다 — 표만 가로로 밀리게 */
+              <div style={{ overflowX: 'auto' }}>
               <DataTable>
                 <DataTableHead>
                   <tr>
@@ -757,6 +759,7 @@ const CouponsPage: React.FC = () => {
                   })}
                 </tbody>
               </DataTable>
+              </div>
             ) : (
               <EmptyState>
                 <EmptyStateText>{t('noCouponsYet')}</EmptyStateText>

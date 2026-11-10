@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
+import { Header } from '../../components/UI/PageComponents';
 import { useSearchParams } from 'react-router-dom';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatDescription } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
@@ -18,47 +19,19 @@ import { formatDateTime } from '../../utils/timezone';
 import { monthLabelFromYM } from '../../components/Common/CalendarPicker';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Legend
 } from 'recharts';
 
 // Styled Components
+// 2026-11-10 반응형 점검: 원그래프 바깥 이름표가 폰(«…d 100%»)과 1366 노트북(사이드바 2단)에서 잘렸다 — 1400px 미만이면 이름표 대신 아래 범례
+const PIE_NARROW = () => typeof window !== 'undefined' && window.innerWidth < 1400;
 const ReportsContainer = styled.div`
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background-color: #F9FAFB;
   min-height: 100vh;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
 
 const HeaderTitle = styled.h1`
   font-size: 24px;
@@ -113,7 +86,7 @@ const TableCard = styled.div`
   padding: 24px;
   border-radius: 8px;
   border: 1px solid #C7CED6;
-  /* 폰 폭에서 4열 표가 상자보다 넓어 오른쪽 열(평균 주문액)이 잘렸다(375px 실측 455/341) — 옆으로 밀어 보게 한다. */
+  /* 2026-11-10 보고서 4갈래 통일(RA 보고서와 같은 값): 폰 폭에서 표가 상자보다 넓으면 옆으로 밀어 본다(375px 455/341 잘림) */
   overflow-x: auto;
 
   @media (max-width: 600px) {
@@ -1050,9 +1023,10 @@ const OwnerReportsPage: React.FC = () => {
                     <ChartTitle>{t('owner:ownerReportsPage.salesByCategory')}</ChartTitle>
                     <ResponsiveContainer width="100%" height={300}>
                       <PieChart>
-                        <Pie data={categoryData} cx="50%" cy="50%" labelLine={true} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} outerRadius={70} fill="#8884d8" dataKey="value">
+                        <Pie data={categoryData} cx="50%" cy="50%" labelLine={true} label={PIE_NARROW() ? false : ({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} outerRadius={70} fill="#8884d8" dataKey="value">
                           {categoryData.map((_, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
                         </Pie>
+                        {PIE_NARROW() && <Legend formatter={(v: string) => <span style={{ fontSize: 12, color: '#374151' }}>{v}</span>} />}
                         <Tooltip formatter={(value) => `${value}%`} />
                       </PieChart>
                     </ResponsiveContainer>

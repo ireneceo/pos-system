@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+// 2026-11-10 전 역할 문의 통일: 머리·본문 껍데기는 공용(로컬 복사본이던 것)
+import { Container, Header, Title, Content } from '../../components/UI/PageComponents';
+import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
 import CommentSection from '../../components/Common/CommentSection';
@@ -29,67 +33,11 @@ interface OperationTicket {
   updatedAt: string;
 }
 
-const Container = styled.div`
-  min-height: 100vh;
+// 상태 탭 글자 = 4개 언어에 있는 공용 키(common:label.all · common:status.*)
+const STATUS_TAB_KEY: Record<string, string> = { all: 'common:label.all', open: 'common:status.open', 'in-progress': 'common:status.inProgress', resolved: 'common:status.resolved', closed: 'common:status.closed' };
 
-  @media (max-width: 768px) {
-    padding: 0;
-  }
-`;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const Content = styled.div`
-  padding: 32px;
-  background: #F9FAFB;
-  min-height: calc(100vh - 120px);
-
-  @media (max-width: 768px) {
-    padding: 20px;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   padding: 12px 20px;
@@ -122,27 +70,7 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   `}
 `;
 
-const FiltersContainer = styled.div`
-  margin-bottom: 24px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-`;
 
-const SearchInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid #C7CED6;
-  border-radius: 6px;
-  font-size: 14px;
-  width: 250px;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
 const Select = styled.select`
   padding: 8px 12px;
@@ -158,12 +86,14 @@ const Select = styled.select`
 `;
 
 const TicketsGrid = styled.div`
+  /* 2026-11-10 전 역할 문의 화면 통일: 12화면 같은 값 · 칸이 글 길이에 밀려 넓어지지 않게 minmax(0,1fr) */
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 
   @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
 `;
 
@@ -180,6 +110,11 @@ const TicketCard = styled.div`
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
   }
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
 `;
 
 const TicketHeader = styled.div`
@@ -192,6 +127,9 @@ const TicketHeader = styled.div`
 
 const TicketInfo = styled.div`
   flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
 `;
 
 const TicketNumber = styled.div`
@@ -215,6 +153,8 @@ const RequesterInfo = styled.div`
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -241,6 +181,8 @@ const StatusBadge = styled.span<{ status: string }>`
 `;
 
 const PriorityBadge = styled.span<{ priority: string }>`
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -279,6 +221,7 @@ const TicketDescription = styled.div`
 
 const TicketBadges = styled.div`
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 8px;
   align-items: flex-end;
@@ -491,27 +434,28 @@ const OperationInquiryPage: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
-          <FiltersContainer>
+          {/* 2026-11-10 전 역할 문의 통일: 상태는 RA 시스템 문의와 같은 탭(드롭다운이던 것) */}
+          <Tabs>
+            {(['all', 'open', 'in-progress', 'resolved', 'closed'] as const).map(st => (
+              <Tab key={st} active={filterStatus === st} onClick={() => setFilterStatus(st)}>
+                {t(STATUS_TAB_KEY[st])} <Badge count={st === 'all' ? tickets.length : tickets.filter(tk => tk.status === st).length} showZero />
+              </Tab>
+            ))}
+          </Tabs>
+          <FilterBar>
             <SearchInput
               placeholder="Search inquiries..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <Select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
-              <option value="all">{t('admin:operationInquiryPage.allStatus')}</option>
-              <option value="open">{t('admin:operationInquiryPage.open')}</option>
-              <option value="in-progress">{t('admin:operationInquiryPage.inProgress')}</option>
-              <option value="resolved">{t('admin:operationInquiryPage.resolved')}</option>
-              <option value="closed">{t('admin:operationInquiryPage.closed')}</option>
-            </Select>
-            <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
+            <FilterSelect value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)}>
               <option value="all">{t('admin:operationInquiryPage.allPriority')}</option>
               <option value="urgent">{t('admin:operationInquiryPage.urgent')}</option>
               <option value="high">{t('admin:operationInquiryPage.high')}</option>
               <option value="medium">{t('admin:operationInquiryPage.medium')}</option>
               <option value="low">{t('admin:operationInquiryPage.low')}</option>
-            </Select>
-          </FiltersContainer>
+            </FilterSelect>
+          </FilterBar>
 
           <TicketsGrid>
             {filteredTickets.map(ticket => (
@@ -558,8 +502,8 @@ const OperationInquiryPage: React.FC = () => {
                 color: '#4B5563',
                 gridColumn: '1 / -1'
               }}>
-                <h3 style={{ color: '#1F2937', marginBottom: '8px' }}>{t('admin:operationInquiryPage.noInquiriesYet')}</h3>
-                <p>{t('admin:operationInquiryPage.noOperationInquiriesHaveBeenSubmitted')}</p>
+                <h3 style={{ color: '#1F2937', margin: '0 0 4px', fontSize: 14, fontWeight: 600 }}>{t('admin:operationInquiryPage.noInquiriesYet')}</h3>
+                <p style={{ margin: 0, fontSize: 14 }}>{t('admin:operationInquiryPage.noOperationInquiriesHaveBeenSubmitted')}</p>
               </div>
             )}
           </TicketsGrid>

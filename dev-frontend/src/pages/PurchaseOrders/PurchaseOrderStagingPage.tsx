@@ -9,6 +9,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
+import { Header, Title, HeaderRight } from '../../components/UI/PageComponents';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import RecurringOrderModal from '../../components/PurchaseOrders/RecurringOrderModal';
@@ -114,35 +115,6 @@ interface POStaging {
   approval_preview?: { required: boolean; reason: string; blocking_line_ids: number[] } | null;
 }
 
-const PageHeader = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 0;
-    max-height: none;
-  }
-`;
-const PageTitle = styled.h1` font-size: 24px; font-weight: 700; color: #0A2540; margin: 0; `;
 
 const POList = styled.div` display: flex; flex-direction: column; gap: 16px; max-width: 920px; margin: 0 auto; padding: 24px 0; `;
 
@@ -774,11 +746,11 @@ const PurchaseOrderStagingPage: React.FC = () => {
         onClose={() => setRepeatPoId(null)}
         onSaved={() => { setRepeatPoId(null); navigate('/pos/purchase-orders/recurring'); }}
       />
-      <PageHeader>
+      <Header>
         <div>
-          <PageTitle>{t('staging.title', 'Pending Purchase Orders')}</PageTitle>
+          <Title>{t('staging.title', 'Pending Purchase Orders')}</Title>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <HeaderRight>
           {/* 표시방법 2가지 — 공급업체 상품명 / 우리 재고명 (2026-08-31 Irene) */}
           <NameModeToggle role="group" aria-label={t('staging.nameMode.label', 'Item name display') as string}>
             <Button
@@ -804,8 +776,8 @@ const PurchaseOrderStagingPage: React.FC = () => {
           <ThemedButton variant="ghost" onClick={() => navigate('/pos/purchase-orders')}>
             {t('staging.back', '← Back to Cart')}
           </ThemedButton>
-        </div>
-      </PageHeader>
+        </HeaderRight>
+      </Header>
 
       <Content style={{ flex: 1, paddingBottom: 80 }}>
         {/* 「To receive」 블록은 2026-09-18 제거했다 (Irene 「이게 왜 여기 남아? … 그냥 오더히스토리에

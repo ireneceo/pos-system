@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
-import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { SearchInput, FilterSelect, FilterBar } from '../../components/Common/FilterComponents';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
@@ -73,34 +73,16 @@ interface NoticeMetadata {
 // Styled Components
 // ============================================================================
 
-const FiltersContainer = styled.div`
-  display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    gap: 12px;
-  }
-
-  @media (max-width: 600px) {
-    flex-direction: column;
-    > * {
-      width: 100% !important;
-      min-width: 100% !important;
-      max-width: 100% !important;
-    }
-  }
-`;
 
 const NoticesGrid = styled.div`
+  /* 2026-11-10 전 역할 공지 통일: 5화면 같은 값(문의 카드 격자와 같은 규칙) */
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 
-  @media (max-width: 968px) {
-    grid-template-columns: 1fr;
+  @media (max-width: 1024px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
 `;
 
@@ -115,6 +97,13 @@ const NoticeCard = styled.div`
   &:hover {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
     transform: translateY(-2px);
+  }
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+
+  @media (max-width: 768px) {
+    padding: 16px;
   }
 `;
 
@@ -781,13 +770,14 @@ const NoticesPage: React.FC = () => {
         </StatsGrid>
 
         {/* Category Filter Pills */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
           {(['all', 'general', 'guide', 'updates'] as const).map(cat => (
             <button
               key={cat}
               onClick={() => setCategoryFilter(cat)}
               style={{
                 padding: '6px 16px',
+                  minHeight: '32px',
                 borderRadius: '20px',
                 border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #C7CED6',
                 background: categoryFilter === cat ? '#F0EFFF' : 'white',
@@ -804,7 +794,13 @@ const NoticesPage: React.FC = () => {
         </div>
 
         {/* Filters */}
-        <FiltersContainer>
+        <FilterBar>
+          <SearchInput
+            type="text"
+            placeholder="Search notices..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
           <FilterSelect
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
@@ -821,13 +817,7 @@ const NoticesPage: React.FC = () => {
             <option value="newest">{t('admin:noticesPage.newestFirst')}</option>
             <option value="oldest">{t('admin:noticesPage.oldestFirst')}</option>
           </FilterSelect>
-          <SearchInput
-            type="text"
-            placeholder="Search notices..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </FiltersContainer>
+        </FilterBar>
 
         {/* Notices List */}
         {filteredNotices.length === 0 ? (

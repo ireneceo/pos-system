@@ -19,6 +19,7 @@ export const ThemedButton = styled.button<{
   border-radius: 8px;
   font-weight: 600;
   font-size: 14px;
+  white-space: nowrap; /* 2026-11-10: 정식 UI/Button 과 같게 — 좁은 폭에서 버튼 글자 두 줄 방지 */
   text-decoration: none;
   cursor: pointer;
   transition: all 0.2s;
@@ -29,7 +30,7 @@ export const ThemedButton = styled.button<{
       case 'secondary':
         return `
           background: white;
-          color: #4B5563;
+          color: #374151;
           border: 1px solid #C7CED6;
 
           &:hover {
@@ -41,7 +42,7 @@ export const ThemedButton = styled.button<{
       case 'outline':
         return `
           background: white;
-          color: #4B5563;
+          color: #374151;
           border: 1px solid #C7CED6;
 
           &:hover {
@@ -76,7 +77,7 @@ export const ThemedButton = styled.button<{
       case 'cancel':
         return `
           background: white;
-          color: #4B5563;
+          color: #374151;
           border: 1px solid #C7CED6;
 
           &:hover {

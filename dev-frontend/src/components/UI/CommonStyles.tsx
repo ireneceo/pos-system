@@ -17,7 +17,7 @@ export const BaseButton = styled.button<{
     }
   }};
   border: none;
-  border-radius: 6px;
+  border-radius: 8px; /* 2026-11-10: 정식 UI/Button 과 같게 */
   font-size: ${props => {
     switch (props.size) {
       case 'small': return '12px';
@@ -25,7 +25,7 @@ export const BaseButton = styled.button<{
       default: return '14px';
     }
   }};
-  font-weight: 500;
+  font-weight: 600;
   text-align: center;
   white-space: nowrap;
   line-height: 1.4;
@@ -365,7 +365,7 @@ export const SaveButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
   transition: all 0.2s;
   border: ${props => props.variant === 'secondary' ? '1px solid #C7CED6' : 'none'};
   background: ${props => props.variant === 'secondary' ? 'white' : '#635BFF'};
-  color: ${props => props.variant === 'secondary' ? '#4B5563' : 'white'};
+  color: ${props => props.variant === 'secondary' ? '#374151' : 'white'};
 
   &:hover:not(:disabled) {
     background: ${props => props.variant === 'secondary' ? '#F9FAFB' : '#5A51E6'};

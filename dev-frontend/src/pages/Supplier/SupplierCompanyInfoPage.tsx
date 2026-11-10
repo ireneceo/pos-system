@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { Header } from '../../components/UI/PageComponents';
 import { useTranslation } from 'react-i18next';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import DeliveryZonesEditor from '../../components/Common/DeliveryZonesEditor';
@@ -44,31 +45,6 @@ const Container = styled.div`
   min-height: 100vh;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-  }
-`;
 
 const Title = styled.h1`
   font-size: 24px;
@@ -91,6 +67,11 @@ const Section = styled.div`
   border: 1px solid #C7CED6;
   padding: 32px;
   margin-bottom: 24px;
+
+  /* 2026-11-10 같은 기능 형제 화면과 같은 폰 규칙 */
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
 `;
 
 const SectionTitle = styled.h2`

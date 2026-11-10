@@ -86,6 +86,8 @@ import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/Fi
 ```
 
 #### Standard JSX Structure
+> 2026-11-10 전 역할 통일: **검색칸이 항상 맨 앞**(검색 → 고르기 → 행동). 로컬 FiltersContainer·SearchInput·Select 를 새로 만들지 말 것. 태블릿에서 검색칸은 남는 폭을 채운다.
+
 ```jsx
 <StatsGrid>
   {/* Stats cards */}

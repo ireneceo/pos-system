@@ -90,13 +90,16 @@ const PageContainer = styled.div`
 const Header = styled.div`
   background: white; padding: 12px 24px; border-bottom: 1px solid #C7CED6;
   display: flex; justify-content: space-between; align-items: center; flex-shrink: 0;
+  /* 2026-11-10 반응형 점검: 폰에서 매장 고르기·Edit Layout 이 화면 밖으로 나갔다 → 줄바꿈 */
+  flex-wrap: wrap; gap: 8px 12px;
+  @media (max-width: 768px) { padding: 12px 16px; }
 `;
-const HeaderLeft = styled.div`display: flex; align-items: center; gap: 16px;`;
+const HeaderLeft = styled.div`display: flex; align-items: center; gap: 8px 16px; flex-wrap: wrap; min-width: 0;`;
 const HeaderTitle = styled.h1`font-size: 20px; font-weight: 700; color: #0A2540; margin: 0;`;
 const Clock = styled.div`font-size: 14px; font-weight: 600; color: #0A2540; font-variant-numeric: tabular-nums;`;
-const HeaderRight = styled.div`display: flex; align-items: center; gap: 12px;`;
+const HeaderRight = styled.div`display: flex; align-items: center; gap: 12px; flex-wrap: wrap; min-width: 0;`;
 const EditBtn = styled.button`
-  padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  padding: 6px 14px; min-height: 32px; border-radius: 6px; font-size: 12px; font-weight: 600;
   cursor: pointer; transition: all .15s; border: 1px solid #C7CED6;
   background: white; color: #1F2937;
   &:hover { background: #F1F4F8; border-color: #D1D9E0; }
@@ -107,7 +110,7 @@ const PrimaryBtn = styled(EditBtn)`
 `;
 
 const Select = styled.select`
-  padding: 5px 10px; border: 1px solid #C7CED6; border-radius: 6px;
+  padding: 5px 10px; min-height: 32px; max-width: 100%; border: 1px solid #C7CED6; border-radius: 6px;
   font-size: 13px; background: white; cursor: pointer;
 `;
 
@@ -281,7 +284,7 @@ function deriveDisplayStatus(unit: FoodcourtUnit, now: Date = new Date()): UnitD
   const stage = c.stage || '';
   if (stage === 'active') {
     if (c.end_date) {
-      const end = new Date(c.end_date + 'T00:00:00');
+      const end = new Date(String(c.end_date).slice(0, 10) + 'T00:00:00'); // 2026-11-10: 시각 붙은 값이면 Invalid Date 였다
       const alertMonths = c.renewal_alert_months ?? 3;
       const alertThresholdMs = alertMonths * 30 * 24 * 3600 * 1000;
       if (end.getTime() - now.getTime() <= alertThresholdMs) return 'expiring';
@@ -318,7 +321,9 @@ function deriveKeyNumber(
     return `${days}d left`;
   }
   if (displayStatus === 'preparing' && c?.start_date) {
-    const d = new Date(c.start_date + 'T00:00:00');
+    // 2026-11-10 점검(R12): 시각이 붙은 값(2026-12-01T00:00:00.000Z)에 또 T00:00:00 을 붙여 «Opens Invalid Date» 였다
+    const d = new Date(String(c.start_date).slice(0, 10) + 'T00:00:00');
+    if (Number.isNaN(d.getTime())) return '';
     const opts: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', timeZone: timezone };
     return `Opens ${d.toLocaleDateString('en-GB', opts)}`;
   }

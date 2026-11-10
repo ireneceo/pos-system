@@ -10,8 +10,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import {
-  DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty
-} from '../../components/UI/DataTable';
+  DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableScroll } from '../../components/UI/DataTable';
 import { StatsGridComponent } from '../../components/UI/StatCard';
 import { getAuthToken } from '../../utils/auth';
 import { formatCurrency } from '../../utils/currency';
@@ -111,6 +110,7 @@ const FoodCostTab: React.FC<Props> = ({ restaurantId, currency = 'MYR', startDat
       ]} />
 
       <SectionTitle>{t('inventory:costReport.byIngredient')}</SectionTitle>
+      <DataTableScroll>
       <DataTable>
         <DataTableHead>
           <DataTableHeaderCell>{t('inventory:costReport.ingredient')}</DataTableHeaderCell>
@@ -142,8 +142,9 @@ const FoodCostTab: React.FC<Props> = ({ restaurantId, currency = 'MYR', startDat
           </DataTableRow>
         ))}
       </DataTable>
-
+      </DataTableScroll>
       <SectionTitle>{t('inventory:costReport.wasteTitle')}</SectionTitle>
+      <DataTableScroll>
       <DataTable>
         <DataTableHead>
           <DataTableHeaderCell>{t('inventory:wasteReason.label')}</DataTableHeaderCell>
@@ -162,7 +163,9 @@ const FoodCostTab: React.FC<Props> = ({ restaurantId, currency = 'MYR', startDat
           </DataTableRow>
         ))}
       </DataTable>
+      </DataTableScroll>
       {waste && waste.by_ingredient.length > 0 && (
+        <DataTableScroll>
         <DataTable>
           <DataTableHead>
             <DataTableHeaderCell>{t('inventory:costReport.ingredient')}</DataTableHeaderCell>
@@ -181,6 +184,7 @@ const FoodCostTab: React.FC<Props> = ({ restaurantId, currency = 'MYR', startDat
             </DataTableRow>
           ))}
         </DataTable>
+        </DataTableScroll>
       )}
     </div>
   );

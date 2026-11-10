@@ -200,8 +200,11 @@ const Drawer = styled.div<{ $open: boolean }>`
   display: flex;
   flex-direction: column;
   transform: translateX(${p => p.$open ? '0' : '100%'});
-  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
-  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.15);
+  /* 닫히면 숨김(그림자·키보드 탭 이동·화면 읽기에서 빠짐) — 닫힘 애니메이션이 끝난 뒤 숨기도록 visibility 는 지연 */
+  visibility: ${p => p.$open ? 'visible' : 'hidden'};
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.25s ease, visibility 0s linear ${p => p.$open ? '0s' : '0.25s'};
+  /* 닫혀 있을 땐 화면 오른쪽 밖에 붙어 있어 그림자만 모든 화면 오른쪽 끝에 흐리게 비쳤다 (2026-11-10 전수 점검) */
+  box-shadow: ${p => p.$open ? '-8px 0 32px rgba(0, 0, 0, 0.15)' : 'none'};
 
   @media (max-width: 480px) {
     width: 100%;

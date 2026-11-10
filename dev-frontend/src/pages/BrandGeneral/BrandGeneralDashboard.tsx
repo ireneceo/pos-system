@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useContextSwitchQuickAction } from '../../components/ContextSwitchQuickAction';
 import styled from 'styled-components';
+import { Header, Title } from '../../components/UI/PageComponents';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue, HeaderRight } from '../../components/UI';
 import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
@@ -24,45 +25,6 @@ const Container = styled.div`
   min-height: 100vh;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-
-    /* 태블릿 세로(769~1024) — 여기 규칙이 없어 우측 내용이 아랫줄로 밀리면 80px 고정에 잘렸다.
-     제목은 왼쪽, 나머지는 HeaderRight 로 묶어 오른쪽 두 줄. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    padding: 14px 20px;
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-    align-items: center;
-    gap: 12px 16px;
-  }
-
-  @media (max-width: 768px) {
-    padding: 12px 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 6px 12px;
-    & > h1 { flex: 1; min-width: 0; }
-  }
-`;
 
 const Content = styled.div`
   padding: 32px;
@@ -74,17 +36,6 @@ const Content = styled.div`
   }
 `;
 
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
 
 const Subtitle = styled.div`
   display: flex;
@@ -316,6 +267,11 @@ const ChartCard = styled.div`
   border-radius: 16px;
   padding: 24px;
   border: 1px solid #C7CED6;
+
+  /* 2026-11-10 같은 기능 형제 화면과 같은 폰 규칙 */
+  @media (max-width: 768px) {
+    padding: 20px;
+  }
 `;
 
 const ChartHeader = styled.div`
@@ -873,7 +829,7 @@ const BrandGeneralDashboard: React.FC = () => {
         {/* Chart + Notifications */}
         <MainGrid>
           <ChartContainer>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
               <h3 style={{ margin: 0 }}>{t('brand:brandGeneralDashboard.revenueTrend')}</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 {(['week', 'month', 'year'] as const).map(p => (
@@ -882,6 +838,7 @@ const BrandGeneralDashboard: React.FC = () => {
                     onClick={() => setChartPeriod(p)}
                     style={{
                       padding: '6px 12px',
+                      minHeight: '32px',
                       background: chartPeriod === p ? '#635BFF' : 'transparent',
                       color: chartPeriod === p ? 'white' : '#4B5563',
                       border: '1px solid #C7CED6',

@@ -95,6 +95,15 @@ export const TableRow = styled.div<{ columns: string }>`
     border-radius: 10px;
     border: 1px solid #C7CED6;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    /* 2026-11-10 전 역할 통일(R6): 카드 상태에선 칸 전부 왼쪽 — 표 상태의 «가운데» 가 남아
+       한 카드 안에 가운데·왼쪽이 섞였다(구독·직원 목록 768). DataTable 카드와 같은 모양. */
+    text-align: left;
+
+    & > div,
+    & > div > div {
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
 
     /* 모바일에서는 모두 좌측 정렬 */
     div.col-info,
@@ -274,11 +283,12 @@ export const EmptyState = styled.div`
   color: #4B5563;
   grid-column: 1 / -1;
 
+  /* 2026-11-10 전 역할 통일(R7): 제목·안내 같은 글자 크기(DataTableEmpty 와 같은 무게) */
   h3 {
     color: #1F2937;
-    font-size: 18px;
+    font-size: 14px;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin: 0 0 4px;
   }
 
   p {

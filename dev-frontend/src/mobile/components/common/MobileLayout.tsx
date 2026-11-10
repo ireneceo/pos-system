@@ -155,7 +155,8 @@ const Content = styled.main<{ $bg?: string }>`
   flex: 1;
   background: ${props => props.$bg || 'transparent'};
   padding: 16px;
-  padding-bottom: 80px; /* Space for bottom navigation */
+  /* Space for bottom navigation — 띠 높이 76px + 아이폰 아래 안전 영역. 80px 고정이면 예약 «Confirm Reservation» 아래 6px 이 띠에 가렸다(2026-11-10 점검) */
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
   max-width: 600px;
   width: 100%;
   margin: 0 auto;

@@ -103,7 +103,7 @@ interface RecipeIngredient {
 
 const RecipesGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 20px;
   margin-top: 24px;
 `;
@@ -1955,13 +1955,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         {/* 좁은 화면에서 버튼이 오른쪽 밖으로 밀리지 않게 이 묶음만 줄바꿈(공용 툴바는 그대로) */}
         <div data-controls-trailing style={{ flexWrap: 'wrap', flexShrink: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', background: '#F1F4F8', borderRadius: '6px', padding: '2px' }}>
-            <button onClick={() => chooseView('compact')} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+            <button onClick={() => chooseView('compact')} style={{ padding: '5px 14px', minHeight: '32px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Compact
             </button>
-            <button onClick={() => chooseView('image')} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+            <button onClick={() => chooseView('image')} style={{ padding: '5px 14px', minHeight: '32px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               Image
             </button>
-            <button onClick={() => chooseView('table')} style={{ padding: '5px 14px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'table' ? 'white' : 'transparent', color: viewMode === 'table' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
+            <button onClick={() => chooseView('table')} style={{ padding: '5px 14px', minHeight: '32px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'table' ? 'white' : 'transparent', color: viewMode === 'table' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               {t('recipes:recipeTable.viewTable', 'Table')}
             </button>
           </div>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { Header, Title } from '../../components/UI/PageComponents';
 import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue, HeaderRight } from '../../components/UI';
-import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableScroll } from '../../components/UI/DataTable';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
@@ -182,40 +183,6 @@ const Container = styled.div`
   }
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-    /* 태블릿 세로(769~1024) — 여기 규칙이 없어 우측 내용이 아랫줄로 밀리면 80px 고정에 잘렸다.
-     제목은 왼쪽, 나머지는 HeaderRight 로 묶어 오른쪽 두 줄. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    padding: 14px 20px;
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-    align-items: center;
-    gap: 12px 16px;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
 
 const Content = styled.div`
   padding: 32px;
@@ -227,17 +194,6 @@ const Content = styled.div`
   }
 `;
 
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
 
 
 const MainGrid = styled.div`
@@ -1144,13 +1100,14 @@ const AdminDashboard: React.FC = () => {
 
         <MainGrid>
           <ChartContainer>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
               <h3>{t('admin:adminDashboard.revenueGrowthAnalytics')}</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   onClick={() => setTimePeriod('week')}
                   style={{
                     padding: '6px 12px',
+                    minHeight: '32px',
                     background: timePeriod === 'week' ? '#635BFF' : 'transparent',
                     color: timePeriod === 'week' ? 'white' : '#4B5563',
                     border: '1px solid #C7CED6',
@@ -1165,6 +1122,7 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => setTimePeriod('month')}
                   style={{
                     padding: '6px 12px',
+                    minHeight: '32px',
                     background: timePeriod === 'month' ? '#635BFF' : 'transparent',
                     color: timePeriod === 'month' ? 'white' : '#4B5563',
                     border: '1px solid #C7CED6',
@@ -1179,6 +1137,7 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => setTimePeriod('quarter')}
                   style={{
                     padding: '6px 12px',
+                    minHeight: '32px',
                     background: timePeriod === 'quarter' ? '#635BFF' : 'transparent',
                     color: timePeriod === 'quarter' ? 'white' : '#4B5563',
                     border: '1px solid #C7CED6',
@@ -1193,6 +1152,7 @@ const AdminDashboard: React.FC = () => {
                   onClick={() => setTimePeriod('year')}
                   style={{
                     padding: '6px 12px',
+                    minHeight: '32px',
                     background: timePeriod === 'year' ? '#635BFF' : 'transparent',
                     color: timePeriod === 'year' ? 'white' : '#4B5563',
                     border: '1px solid #C7CED6',
@@ -1437,6 +1397,7 @@ const AdminDashboard: React.FC = () => {
           managers.length === 0 ? (
             <DataTableEmpty>{t('admin:adminDashboard.noManagerData', 'No manager data available')}</DataTableEmpty>
           ) : (
+            <DataTableScroll>
             <DataTable>
               <DataTableHead>
                 <tr>
@@ -1479,13 +1440,14 @@ const AdminDashboard: React.FC = () => {
                 ))}
               </tbody>
             </DataTable>
+            </DataTableScroll>
           )
         )}
 
         {activeTab === 'performance' && (
           <TableContainer style={{ padding: '32px' }}>
             <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>{t('admin:adminDashboard.performanceAnalytics')}</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '20px' }}>
               <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                 <h4 style={{ color: '#059669', marginBottom: '10px' }}>Revenue Insights ({getCurrencySymbol(selectedCurrency)})</h4>
                 <p>• Monthly revenue: {formatCurrency(getCurrencyTotal(metrics.monthlyRevenue, selectedCurrency), selectedCurrency)}</p>

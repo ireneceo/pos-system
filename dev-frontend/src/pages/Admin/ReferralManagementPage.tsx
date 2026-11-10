@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { getCurrencySymbol } from '../../utils/currency';
 import styled from 'styled-components';
+import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { Header as StdHeader, Title as StdTitle } from '../../components/UI/PageComponents';
 import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid, Legend } from 'recharts';
 import { useTranslation } from 'react-i18next';
@@ -130,37 +131,15 @@ const CardTitle = styled.h2`
   margin: 0 0 14px;
 `;
 
-const StatGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-  margin-bottom: 20px;
 
-  @media (max-width: 760px) { grid-template-columns: repeat(2, 1fr); }
-`;
 
-const Stat = styled.div`
-  background: white;
-  border: 1px solid #C7CED6;
-  border-radius: 12px;
-  padding: 18px 20px;
-`;
 
-const StatLabel = styled.div`
-  font-size: 12px;
-  color: #4B5563;
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-`;
 
-const StatValue = styled.div`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin-top: 6px;
-  letter-spacing: -0.4px;
-`;
+// 2026-11-10 통계 카드 통일: 로컬 카드 → 공용 대시보드 통계 카드(1024 에서 122px 이던 것)
+const StatGrid = DashboardStatsGrid;
+const Stat = DashboardStatCard;
+const StatLabel = DashboardStatLabel;
+const StatValue = DashboardStatValue;
 
 const StatDelta = styled.div`
   font-size: 12px;

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { SearchInput, FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
+import { Container, Header, Title, ActionSection, Content } from '../../components/UI/PageComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { API_BASE_URL } from '../../config/api';
 import { formatCurrency } from '../../utils/currency';
@@ -70,72 +72,10 @@ interface InvoiceItem {
   total: number;
 }
 
-const Container = styled.div`
-  min-height: 100vh;
-  
-  @media (max-width: 768px) {
-    padding: 0;
-  }
-`;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
 
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
 
-const Content = styled.div`
-  padding: 32px;
-  background: #F9FAFB;
-  min-height: calc(100vh - 120px);
-  
-  @media (max-width: 768px) {
-    padding: 20px;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
-
-const ActionSection = styled.div`
-  display: flex;
-  gap: 12px;
-`;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'success' }>`
   padding: 12px 20px;
@@ -178,43 +118,8 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'success' }>`
 `;
 
 
-// Filter Bar (matching StaffManagementPage)
-const FilterBar = styled.div`
-  display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-`;
 
-const SearchInput = styled.input`
-  flex: 1;
-  min-width: 300px;
-  padding: 12px 16px;
-  border: 1px solid #C7CED6;
-  border-radius: 8px;
-  font-size: 14px;
 
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
-
-const FilterSelect = styled.select`
-  padding: 12px 16px;
-  border: 1px solid #C7CED6;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
 const InvoiceInfo = styled.div``;
 

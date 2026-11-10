@@ -594,7 +594,8 @@
       "outBlock": "브랜드 품절 — 지금은 주문을 받지 않습니다",
       "overWarn": "브랜드에 지금 {{n}}{{u}} 만 있습니다 — 나머지는 입고 후 보냅니다",
       "overBlock": "브랜드가 지금은 {{n}}{{u}} 까지만 받습니다"
-    }
+    },
+    "brandStockBadge": "브랜드 재고"
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",

@@ -19,6 +19,7 @@
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styled from 'styled-components';
+import { Header, Title, HeaderRight } from '../../components/UI/PageComponents';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { poCartStorageKey, poCartNamespacedKey, hydratePoCart } from '../../utils/poCart';
@@ -188,34 +189,6 @@ const PageWrap = styled.div`
   }
 `;
 
-const PageHeader = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-  box-sizing: border-box;
-
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-  }
-`;
 
 /** 오너 «어느 매장의 발주인가» 줄 — 헤더와 같은 좌우 여백(32px · 폰 16px) (2026-10-05). */
 const OwnerPickBar = styled.div`
@@ -233,16 +206,6 @@ const OwnerPickBar = styled.div`
   }
 `;
 
-const PageTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
 
 /** 우측 카트 폭은 사람이 끌어서 정한다 — 품목명이 길어 기본 380px 로는 늘 모자랐다.
  *  (2026-08-25 Irene: "우측 패널 사이즈를 리사이징 가능하게, 더 넓게 해야 할 때가 많다") */
@@ -385,8 +348,10 @@ const Layout = styled.div<{ $cartWidth: number }>`
      (360×740 실측: 카드 영역 55px — 카드 최소 높이 180px 이라 한 장도 못 들어감).
      이제 본문이 전부 쓰고, 카트는 하단 고정 바 + 접이식 시트로 띄운다. */
   @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    /* 2026-11-10 반응형 점검(R13): 장바구니 띠를 화면 전체 고정(left:0)에서 «이 내용 칸 맨 아래 줄»로 —
+       고정이면 목록 마지막 줄과 1024 폭 사이드바 아래(Logout·Reports)를 덮었다. 띠 높이만큼 목록이 줄어든다. */
+    grid-template-rows: minmax(0, 1fr) auto;
   }
 `;
 
@@ -828,10 +793,7 @@ const CartPane = styled.div<{ $sheetOpen?: boolean }>`
   /* ≤1024px = 하단 시트. 접히면 헤더 줄만 보이고, 펼치면 내용만큼 자라되 60vh 를 넘지 않는다
      (펼쳐도 상품 목록 상단이 보여 맥락이 유지된다). 데스크탑 사이드바는 무접촉. */
   @media (max-width: 1024px) {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    position: relative;
     z-index: 30;
     border-top: 1px solid #C7CED6;
     box-shadow: 0 -2px 12px rgba(10, 37, 64, 0.10);
@@ -2197,15 +2159,15 @@ const NewPurchaseOrderPage: React.FC = () => {
 
   return (
     <PageWrap>
-      <PageHeader>
-        <PageTitle>{t('newPo.title', 'Purchase Order')}</PageTitle>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <Header style={{ flexShrink: 0 }}>
+        <Title>{t('newPo.title', 'Purchase Order')}</Title>
+        <HeaderRight>
           <ParSuggestionsBadge count={par.count} onClick={() => setParOpen(o => !o)} />
           <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/staging')}>
             {t('newPo.pendingLink', 'Pending POs')}{pendingCount > 0 ? ` (${pendingCount})` : ''} →
           </ThemedButton>
-        </div>
-      </PageHeader>
+        </HeaderRight>
+      </Header>
 
       {isOwner && (
         <OwnerPickBar>
@@ -2502,7 +2464,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                         {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
                         {/* 재료와 한 목록에 섞이므로 "이건 파는 물건 자체"라는 표시가 필요하다(P3-②) */}
                         {(row.product_id || row.brand_product_id) && <Badge $variant="shared">{t('newPo.productItem', 'Product')}</Badge>}
-                        {row.is_brand_shared && <Badge $variant="shared">{t('newPo.brandStock', 'Brand stock')}</Badge>}
+                        {row.is_brand_shared && <Badge $variant="shared">{t('newPo.brandStockBadge', 'Brand stock')}</Badge>}
                         {discontinued && <Badge $variant="warning">{t('newPo.discontinued', 'Discontinued')}</Badge>}
                         {!inCart && !hasSeller && !discontinued && !row.is_brand_shared && !isList && <Badge $variant="warning">{t('newPo.connectCta', 'Click to connect supplier →')}</Badge>}
                         {!inCart && hasSeller && !isList && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}

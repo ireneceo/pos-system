@@ -20,7 +20,7 @@ import {
   ActionButtons,
   IconButton
 } from '../../components/UI';
-import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableScroll } from '../../components/UI/DataTable';
 import ConfirmModal from '../../components/ConfirmModal';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { AddressFields } from '../../components/Form';
@@ -414,6 +414,7 @@ const BrandManagement: React.FC = () => {
               <Button variant="primary" onClick={handleAddBrand}>{t('brand:brandManagement.addBrand')}</Button>
             </EmptyState>
           ) : (
+            <DataTableScroll>
             <DataTable>
               <DataTableHead>
                 <tr>
@@ -470,6 +471,7 @@ const BrandManagement: React.FC = () => {
                 ))}
               </tbody>
             </DataTable>
+            </DataTableScroll>
           )}
 
           {/* Add/Edit Modal */}

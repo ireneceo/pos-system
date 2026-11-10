@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import {
   Modal as CommonModal, ModalButton, FormGroup, FormInput, FormLabel, FormSelect, FormRow,
-  DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty
-} from '../../components/UI';
+  DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableScroll } from '../../components/UI';
 import PageHeader from '../../components/Common/PageHeader';
 import DateRangeField from '../../components/Common/DateRangeField';
 import ConfirmModal from '../../components/ConfirmModal';
@@ -201,6 +200,7 @@ const ManagerPromotionsPage: React.FC = () => {
         {!ownerId ? (
           <DataTableEmpty>{t('noOwnerLinked')}</DataTableEmpty>
         ) : (
+          <DataTableScroll>
           <DataTable>
             <DataTableHead>
               <tr>
@@ -240,6 +240,7 @@ const ManagerPromotionsPage: React.FC = () => {
               ))}
             </tbody>
           </DataTable>
+          </DataTableScroll>
         )}
       </Content>
 

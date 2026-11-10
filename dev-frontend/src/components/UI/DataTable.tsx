@@ -38,6 +38,19 @@ export const DataTableContainer = styled.div`
   }
 `;
 
+// 테두리 없는 가로 밀림 감싸개 — 카드·상자 안에 표를 바로 넣는 화면용(2026-11-10 전수 점검).
+// 표가 칸보다 넓으면 표만 옆으로 밀리고(오른쪽 열이 화면 밖으로 나가지 않게),
+// 카드 상태(≤1024)에선 카드 그림자·떠오름이 잘리지 않게 그대로 둔다.
+export const DataTableScroll = styled.div`
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  @media (max-width: 1024px) {
+    overflow: visible;
+  }
+`;
+
 // HTML table 요소
 // table-layout: auto로 내용 기준 유연한 열 너비
 export const DataTable = styled.table`
@@ -52,6 +65,19 @@ export const DataTable = styled.table`
   tbody {
     @media (max-width: 1024px) {
       display: block;
+    }
+  }
+
+  /* 2026-11-10 전수 점검(R7): 카드 상태에서 «colspan 칸 하나짜리 줄»(빈 상태·불러오는 중)이
+     표 칸처럼 내용 폭만큼 줄어 왼쪽 작은 상자가 됐다(예약 «No reservations») → 전폭 */
+  @media (max-width: 1024px) {
+    tr:has(> td[colspan]) {
+      display: block;
+    }
+
+    td[colspan] {
+      display: block;
+      width: 100%;
     }
   }
 `;
@@ -123,6 +149,13 @@ export const DataTableCell = styled.td<{
     min-width: ${props => props.mobileFullWidth ? '100%' : '140px'};
     padding: 0;
     text-align: left !important;
+
+    /* 2026-11-10 전 역할 통일(R6): 칸 안 덩이도 왼쪽(가운데 정렬 flex 가 남아 카드 안 정렬이 섞이던 것) */
+    > * {
+      text-align: left !important;
+      justify-content: flex-start;
+      margin-left: 0;
+    }
 
     &:before {
       content: attr(data-label);

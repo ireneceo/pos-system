@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { Header, Title } from '../../components/UI/PageComponents';
 import { useNavigate } from 'react-router-dom';
 import { RestaurantSubscription } from '../../interfaces/RestaurantSubscription';
-import { StatsGrid, StatCard, StatLabel, StatValue } from '../../components/UI';
+// 2026-11-10 대시보드 통일: 다른 역할 대시보드와 같은 큰 통계 카드(DashboardStat*)
+import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardStatValue } from '../../components/UI';
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { getAuthHeaders } from '../../utils/auth';
@@ -31,40 +33,6 @@ const Container = styled.div`
   }
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-    /* 태블릿 세로(769~1024) — 여기 규칙이 없어 우측 내용이 아랫줄로 밀리면 80px 고정에 잘렸다.
-     제목은 왼쪽, 나머지는 HeaderRight 로 묶어 오른쪽 두 줄. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    padding: 14px 20px;
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-    align-items: center;
-    gap: 12px 16px;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
 
 const Content = styled.div`
   padding: 32px;
@@ -76,17 +44,6 @@ const Content = styled.div`
   }
 `;
 
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
 
 
 
@@ -99,7 +56,7 @@ const SectionTitle = styled.h2`
 
 const RestaurantGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr));
   gap: 24px;
   margin-bottom: 32px;
 `;
@@ -319,24 +276,24 @@ const ManagerDashboard: React.FC = () => {
         </Header>
         
         <Content>
-          <StatsGrid>
-          <StatCard color="#059669">
-            <StatLabel>{t('admin:managerDashboard.todaysTotalSales')}</StatLabel>
-            <StatValue>{formatCurrency(totalSales, selectedCurrency)}</StatValue>
-          </StatCard>
-          <StatCard color="#2563EB">
-            <StatLabel>{t('admin:managerDashboard.totalOrders')}</StatLabel>
-            <StatValue>{totalOrders}</StatValue>
-          </StatCard>
-          <StatCard color="#7C3AED">
-            <StatLabel>{t('admin:managerDashboard.activeRestaurants')}</StatLabel>
-            <StatValue>{activeRestaurants}/{restaurants.length}</StatValue>
-          </StatCard>
-          <StatCard color="#D97706">
-            <StatLabel>{t('admin:managerDashboard.totalStaff')}</StatLabel>
-            <StatValue>{totalStaff}</StatValue>
-          </StatCard>
-        </StatsGrid>
+          <DashboardStatsGrid>
+          <DashboardStatCard color="#059669">
+            <DashboardStatLabel>{t('admin:managerDashboard.todaysTotalSales')}</DashboardStatLabel>
+            <DashboardStatValue>{formatCurrency(totalSales, selectedCurrency)}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#2563EB">
+            <DashboardStatLabel>{t('admin:managerDashboard.totalOrders')}</DashboardStatLabel>
+            <DashboardStatValue>{totalOrders}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#7C3AED">
+            <DashboardStatLabel>{t('admin:managerDashboard.activeRestaurants')}</DashboardStatLabel>
+            <DashboardStatValue>{activeRestaurants}/{restaurants.length}</DashboardStatValue>
+          </DashboardStatCard>
+          <DashboardStatCard color="#D97706">
+            <DashboardStatLabel>{t('admin:managerDashboard.totalStaff')}</DashboardStatLabel>
+            <DashboardStatValue>{totalStaff}</DashboardStatValue>
+          </DashboardStatCard>
+        </DashboardStatsGrid>
 
         <SectionTitle>{t('admin:managerDashboard.quickActions')}</SectionTitle>
         <QuickActions>

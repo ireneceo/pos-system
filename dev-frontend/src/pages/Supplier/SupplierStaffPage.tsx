@@ -1,12 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Container, Header, Title, Content,
-  StatsGrid, StatCard, StatValue, StatLabel,
-  DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell,
-  DataTableHeaderCell, DataTableActions, DataTableEmpty,
-  Modal, ModalButton, FormRow, FormGroup, FormLabel, FormInput
-} from '../../components/UI';
+import { Container, Header, Title, Content, StatsGrid, StatCard, StatValue, StatLabel, DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell, DataTableHeaderCell, DataTableActions, DataTableEmpty, Modal, ModalButton, FormRow, FormGroup, FormLabel, FormInput, ActionSection } from '../../components/UI';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import AlertDialog from '../../components/Common/AlertDialog';
@@ -181,10 +175,12 @@ const SupplierStaffPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <div><Title>{t('supplier:staff.title', 'Staff')}</Title></div>
-        <ThemedButton variant="primary" onClick={() => { resetForm(); setAddOpen(true); }}>
-          + {t('supplier:staff.addStaff', 'Add Staff')}
-        </ThemedButton>
+        <Title>{t('supplier:staff.title', 'Staff')}</Title>
+        <ActionSection>
+          <ThemedButton variant="primary" onClick={() => { resetForm(); setAddOpen(true); }}>
+            + {t('supplier:staff.addStaff', 'Add Staff')}
+          </ThemedButton>
+        </ActionSection>
       </Header>
 
       <Content>
@@ -238,11 +234,11 @@ const SupplierStaffPage: React.FC = () => {
               ) : (
                 filteredRows.map(row => (
                   <DataTableRow key={row.id}>
-                    <DataTableCell>{row.full_name || '-'}</DataTableCell>
-                    <DataTableCell>{row.username}</DataTableCell>
-                    <DataTableCell>{row.email}</DataTableCell>
-                    <DataTableCell>{t(`supplier:staff.role.${row.role}`, row.role)}</DataTableCell>
-                    <DataTableCell>{row.createdAt ? formatDate(row.createdAt) : '-'}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:staff.table.name', 'Name') as string}>{row.full_name || '-'}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:staff.table.username', 'Username') as string}>{row.username}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:staff.table.email', 'Email') as string}>{row.email}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:staff.table.role', 'Role') as string}>{t(`supplier:staff.role.${row.role}`, row.role)}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:staff.table.joined', 'Joined') as string}>{row.createdAt ? formatDate(row.createdAt) : '-'}</DataTableCell>
                     <DataTableCell align="right" mobileFullWidth>
                       <DataTableActions>
                         {row.role === 'Supplier Staff' ? (

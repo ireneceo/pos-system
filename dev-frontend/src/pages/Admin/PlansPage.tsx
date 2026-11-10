@@ -75,7 +75,7 @@ const ALWAYS_INCLUDED_MODULES: Record<string, string[]> = {
 
 const PlansGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(350px, 100%), 1fr));
   gap: 24px;
   margin-bottom: 32px;
 
@@ -1301,6 +1301,12 @@ const PlansPage: React.FC = () => {
         </StatsGrid>
 
         <FilterBar>
+          <SearchInput
+            type="text"
+            placeholder="Search plans..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
           <FilterSelect
             value={planTargetFilter}
             onChange={(e) => setPlanTargetFilter(e.target.value as any)}
@@ -1341,12 +1347,6 @@ const PlansPage: React.FC = () => {
               );
             })}
           </FilterSelect>
-          <SearchInput
-            type="text"
-            placeholder="Search plans..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
         </FilterBar>
 
         <PlansGrid>

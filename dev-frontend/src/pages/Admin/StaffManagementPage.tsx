@@ -1602,6 +1602,13 @@ const AdminStaffManagementPage: React.FC = () => {
           </Tabs>
 
           <FilterBar>
+
+            <SearchInput
+              type="text"
+              placeholder="Search by name, email, or restaurant..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
             <FilterSelect
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
@@ -1631,13 +1638,6 @@ const AdminStaffManagementPage: React.FC = () => {
                 <option key={rest.id} value={rest.id}>{getRestaurantDisplayName(rest)}</option>
               ))}
             </FilterSelect>
-
-            <SearchInput
-              type="text"
-              placeholder="Search by name, email, or restaurant..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
           </FilterBar>
 
           <Table>

@@ -33,6 +33,10 @@ const LegendGroup = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+  /* 2026-11-10 반응형 점검: 폰 폭에서 범례 6개가 한 줄로 안 들어가 «Reserved» 가 화면 밖으로 나갔다 */
+  flex-wrap: wrap;
+  row-gap: 6px;
+  min-width: 0;
 `;
 
 const LegendItem = styled.div`

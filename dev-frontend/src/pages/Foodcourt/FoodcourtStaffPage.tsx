@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { EmptyState } from '../../components/UI/TableComponents';
+import { Header, Title, ActionSection } from '../../components/UI/PageComponents';
+import { EmptyState, IconButton } from '../../components/UI/TableComponents';
 import { DataTableContainer, DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
@@ -37,49 +38,8 @@ const Container = styled.div`
   min-height: 100vh;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
 
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const HeaderTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-`;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   padding: 12px 20px;
@@ -164,23 +124,8 @@ const ActionGroup = styled.div`
   justify-content: flex-end;
 `;
 
-const ActionButton = styled.button`
-  padding: 6px 12px;
-  background: transparent;
-  border: 1px solid #C7CED6;
-  border-radius: 6px;
-  color: #4B5563;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: #635BFF;
-    color: #635BFF;
-    background: #F4F3FF;
-  }
-`;
+// 2026-11-10 직원 가족 통일: 행 행동 = 공용 IconButton(관리자 Managers·RA 직원과 같은 회색 32px)
+const ActionButton = IconButton;
 
 const DeleteButton = styled(ActionButton)`
   &:hover {
@@ -520,13 +465,13 @@ const FoodcourtStaffPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <HeaderTitle>{t('common:foodcourtStaffPage.foodcourtManagers')}</HeaderTitle>
+          <Title>{t('common:foodcourtStaffPage.foodcourtManagers')}</Title>
           {isGeneral && (
-            <HeaderActions>
+            <ActionSection>
               <Button variant="primary" onClick={handleOpenAddModal}>
                 Add Manager
               </Button>
-            </HeaderActions>
+            </ActionSection>
           )}
         </Header>
 

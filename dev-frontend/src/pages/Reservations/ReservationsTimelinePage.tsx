@@ -18,6 +18,19 @@ import {
   FilterToolbar, StatusTabs, StatusTab, TabBadge
 } from '../LiveOrders/styles';
 
+
+// 2026-11-10 전 역할 통일(R4): 예약 상태 탭은 페이지 탭 기준대로 한 줄(안 들어가면 그 줄만 밀기).
+// 같은 부품을 쓰는 주문 현황(Live Orders)의 줄바꿈은 06-15 승인 결정이라 여기서만 바꾼다.
+const ReservationStatusTabs = styled(StatusTabs)`
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+
+  & > * { flex-shrink: 0; white-space: nowrap; }
+`;
 interface Reservation {
   id: number;
   restaurant_id: number;
@@ -262,14 +275,14 @@ export default function ReservationsTimelinePage() {
           </div>
         </FilterToolbar>
 
-        <StatusTabs>
+        <ReservationStatusTabs>
           {STATUS_TABS.map(tab => (
             <StatusTab key={tab.key} active={statusTab === tab.key} onClick={() => setStatusTab(tab.key)}>
               {tab.label}
               <TabBadge>{statusCounts[tab.key]}</TabBadge>
             </StatusTab>
           ))}
-        </StatusTabs>
+        </ReservationStatusTabs>
 
         <DataTable>
           <DataTableHead>

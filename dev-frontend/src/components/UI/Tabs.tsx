@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -6,48 +6,28 @@ import { useNavigate, useLocation } from 'react-router-dom';
 export const TabContainer = styled.div`
   display: flex;
   gap: 24px;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   border-bottom: 1px solid #C7CED6;
+  /* 2026-11-10 전 역할 통일(설계 .claude/fable-design-20261110-ui-unify-responsive.md R4):
+     페이지 탭은 폭과 상관없이 **한 줄**. 안 들어가면 그 줄만 가로로 민다(스크롤 막대 숨김,
+     밀어도 페이지는 안 흔들림). 06-15 의 «태블릿 줄바꿈»은 폰에서 2~3줄로 접히고 밑줄이
+     어긋나 바꿨다. LiveOrders 상태 탭(StatusTabs)은 따로 만든 줄이라 그대로(승인된 결정). */
   overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 
   &::-webkit-scrollbar {
-    height: 3px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #F1F4F8;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #64748B;
-    border-radius: 3px;
-  }
-
-  &::-webkit-scrollbar-thumb:hover {
-    background: #64748B;
-  }
-
-  /* 태블릿(≤1024): 가로 스크롤 대신 **줄바꿈**.
-     탭이 많은 화면(메뉴 카테고리·리포트)에서 폭이 좁으면 overflow-x:auto 가 끝 탭을 감춰
-     손님/직원이 "탭이 없다"고 느끼고, 터치로 밀면 화면이 좌우로 흔들린다.
-     2026-06-15 LiveOrders StatusTabs 를 같은 방식으로 고쳐 검증된 패턴이다
-     (메모리 reference_tablet_responsive_audit). 데스크톱은 종전대로 한 줄. */
-  @media (max-width: 1024px) {
-    flex-wrap: wrap;
-    overflow-x: visible;
-    row-gap: 4px;
+    display: none;
   }
 
   @media (max-width: 768px) {
     gap: 16px;
-    row-gap: 4px;
-    margin-bottom: 24px;
   }
 
   @media (max-width: 480px) {
     gap: 12px;
-    row-gap: 4px;
     margin-bottom: 20px;
   }
 `;
@@ -144,12 +124,24 @@ export const Tabs: React.FC<TabsProps> = ({
     }
   };
 
+  const stripRef = useRef<HTMLDivElement>(null);
+  const currentKey = useUrlParams ? activeTabKey : tabs.find(t => t.active)?.key;
+  useEffect(() => {
+    const strip = stripRef.current;
+    const el = strip?.querySelector<HTMLElement>('[data-active="true"]');
+    if (!strip || !el || strip.scrollWidth <= strip.clientWidth) return;
+    const l = el.offsetLeft - strip.offsetLeft;
+    if (l < strip.scrollLeft) strip.scrollLeft = Math.max(0, l - 16);
+    else if (l + el.offsetWidth > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = l + el.offsetWidth - strip.clientWidth + 16;
+  }, [currentKey]);
+
   return (
-    <TabContainer className={className}>
+    <TabContainer className={className} ref={stripRef}>
       {tabs.map(tab => (
         <Tab
           key={tab.key}
           active={useUrlParams ? tab.key === activeTabKey : tab.active}
+          data-active={(useUrlParams ? tab.key === activeTabKey : tab.active) ? 'true' : undefined}
           onClick={() => handleTabClick(tab)}
         >
           {tab.label}

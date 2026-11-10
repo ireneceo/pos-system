@@ -1141,6 +1141,12 @@ const SubscriptionsPage: React.FC = () => {
           </StatsGrid>
 
           <FilterBar>
+
+            <SearchInput
+              placeholder="Search subscriptions..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
             <FilterSelect
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -1163,12 +1169,6 @@ const SubscriptionsPage: React.FC = () => {
               <option value="foodcourt">{t('admin:subscriptionsPage.foodcourtGeneral')}</option>
               <option value="owner">{t('admin:subscriptionsPage.restaurantOwner')}</option>
             </FilterSelect>
-
-            <SearchInput
-              placeholder="Search subscriptions..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
           </FilterBar>
 
           <Table>
@@ -1256,6 +1256,8 @@ const SubscriptionsPage: React.FC = () => {
                       const endDate = new Date(subscription.endDate);
                       const diffTime = endDate.getTime() - today.getTime();
                       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                      // 2026-11-10 점검(R12): 종료일 없는 구독에서 «NaN days» 가 찍혔다
+                      if (!subscription.endDate || Number.isNaN(diffDays)) return <span style={{color: '#4B5563'}}>-</span>;
 
                       if (diffDays < 0) {
                         return <span style={{color: '#DC2626', fontWeight: '500'}}>{t('admin:subscriptionsPage.expired')}</span>;
@@ -1860,6 +1862,7 @@ const SubscriptionsPage: React.FC = () => {
                               const endDate = new Date(viewingSubscription.endDate);
                               const diffTime = endDate.getTime() - today.getTime();
                               const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                              if (!viewingSubscription.endDate || Number.isNaN(diffDays)) return <span style={{color: '#4B5563'}}>-</span>;
                               if (diffDays < 0) return <span style={{color: '#DC2626'}}>{t('admin:subscriptionsPage.expired')}</span>;
                               if (diffDays === 0) return <span style={{color: '#DC2626'}}>{t('admin:subscriptionsPage.today')}</span>;
                               if (diffDays <= 7) return <span style={{color: '#F59E0B'}}>{diffDays} days</span>;

@@ -621,10 +621,11 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
         <Header>
           <Title>{t('foodcourt:foodcourtSubscriptionsPage.foodcourtSubscriptions')}</Title>
           <ActionSection>
+            {/* 2026-11-10 전 역할 통일: 보조(Export) 왼쪽 → 주 행동 오른쪽(관리자 구독과 같은 순서) */}
+            <ThemedButton variant="outline" onClick={handleExportData}>{t('foodcourt:foodcourtSubscriptionsPage.export')}</ThemedButton>
             <ThemedButton variant="primary" onClick={handleOpenAdd}>
               {t('foodcourt:foodcourtSubscriptionsPage.addSubscription', 'Add Subscription')}
             </ThemedButton>
-            <ThemedButton variant="outline" onClick={handleExportData}>{t('foodcourt:foodcourtSubscriptionsPage.export')}</ThemedButton>
           </ActionSection>
         </Header>
 
@@ -653,6 +654,11 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
           </StatsGrid>
 
           <FilterBar>
+            <SearchInput
+              placeholder="Search tenants or plans..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
             <FilterSelect
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -663,11 +669,6 @@ const FoodcourtSubscriptionsPage: React.FC = () => {
               <option value="active">{t('foodcourt:foodcourtSubscriptionsPage.active')}</option>
               <option value="overdue">{t('foodcourt:foodcourtSubscriptionsPage.overdue')}</option>
             </FilterSelect>
-            <SearchInput
-              placeholder="Search tenants or plans..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
           </FilterBar>
 
           {loading && filteredSubscriptions.length === 0 ? (

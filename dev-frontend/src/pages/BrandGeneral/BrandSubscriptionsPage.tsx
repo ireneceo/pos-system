@@ -623,10 +623,11 @@ const BrandSubscriptionsPage: React.FC = () => {
         <Header>
           <Title>{t('brand:brandSubscriptionsPage.brandSubscriptions')}</Title>
           <ActionSection>
+            {/* 2026-11-10 전 역할 통일: 보조(Export) 왼쪽 → 주 행동 오른쪽(관리자 구독과 같은 순서) */}
+            <ThemedButton variant="outline" onClick={handleExportData}>{t('brand:brandSubscriptionsPage.export')}</ThemedButton>
             <ThemedButton variant="primary" onClick={handleOpenAdd}>
               + {t('brand:brandSubscriptionsPage.addSubscription', 'Add Subscription')}
             </ThemedButton>
-            <ThemedButton variant="outline" onClick={handleExportData}>{t('brand:brandSubscriptionsPage.export')}</ThemedButton>
           </ActionSection>
         </Header>
 
@@ -655,6 +656,11 @@ const BrandSubscriptionsPage: React.FC = () => {
           </StatsGrid>
 
           <FilterBar>
+            <SearchInput
+              placeholder="Search restaurants or plans..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
             <FilterSelect
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -665,11 +671,6 @@ const BrandSubscriptionsPage: React.FC = () => {
               <option value="active">{t('brand:brandSubscriptionsPage.active')}</option>
               <option value="overdue">{t('brand:brandSubscriptionsPage.overdue')}</option>
             </FilterSelect>
-            <SearchInput
-              placeholder="Search restaurants or plans..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
           </FilterBar>
 
           {loading && filteredSubscriptions.length === 0 ? (

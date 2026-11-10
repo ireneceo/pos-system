@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+// 2026-11-10 전 역할 문의 통일: 머리·본문 껍데기는 공용(로컬 복사본이던 것)
+import { Container, Header, Title, ActionSection, Content } from '../../components/UI/PageComponents';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel, Modal as CommonModal } from '../../components/UI';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
@@ -39,72 +41,10 @@ interface SupportTicket {
 }
 
 
-const Container = styled.div`
-  min-height: 100vh;
 
-  @media (max-width: 768px) {
-    padding: 0;
-  }
-`;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
 
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const Content = styled.div`
-  padding: 32px;
-  background: #F9FAFB;
-  min-height: calc(100vh - 120px);
-
-  @media (max-width: 768px) {
-    padding: 20px;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
-
-const ActionSection = styled.div`
-  display: flex;
-  gap: 12px;
-`;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   padding: 12px 20px;
@@ -140,12 +80,14 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 
 
 const TicketsGrid = styled.div`
+  /* 2026-11-10 전 역할 문의 화면 통일: 12화면 같은 값 · 칸이 글 길이에 밀려 넓어지지 않게 minmax(0,1fr) */
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 
   @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
 `;
 
@@ -160,6 +102,11 @@ const TicketCard = styled.div`
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
   }
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
 `;
 
 const TicketHeader = styled.div`
@@ -172,6 +119,9 @@ const TicketHeader = styled.div`
 
 const TicketInfo = styled.div`
   flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
 `;
 
 const TicketNumber = styled.div`
@@ -221,12 +171,15 @@ const RoleBadge = styled.span<{ role: string }>`
 
 const TicketBadges = styled.div`
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 8px;
   align-items: flex-end;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -253,6 +206,8 @@ const StatusBadge = styled.span<{ status: string }>`
 `;
 
 const PriorityBadge = styled.span<{ priority: string }>`
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -623,19 +578,19 @@ const SupportTicketsPage: React.FC = () => {
 
           <Tabs>
             <Tab active={activeTab === 'all'} onClick={() => handleTabChange('all')}>
-              All <Badge count={totalTickets} showZero />
+              {t('common:label.all')} <Badge count={totalTickets} showZero />
             </Tab>
             <Tab active={activeTab === 'open'} onClick={() => handleTabChange('open')}>
-              Open <Badge count={openTickets} showZero />
+              {t('common:status.open')} <Badge count={openTickets} showZero />
             </Tab>
             <Tab active={activeTab === 'in-progress'} onClick={() => handleTabChange('in-progress')}>
-              In Progress <Badge count={inProgressTickets} showZero />
+              {t('common:status.inProgress')} <Badge count={inProgressTickets} showZero />
             </Tab>
             <Tab active={activeTab === 'resolved'} onClick={() => handleTabChange('resolved')}>
-              Resolved <Badge count={resolvedTickets} showZero />
+              {t('common:status.resolved')} <Badge count={resolvedTickets} showZero />
             </Tab>
             <Tab active={activeTab === 'closed'} onClick={() => handleTabChange('closed')}>
-              Closed <Badge count={tickets.filter(t => t.status === 'closed').length} showZero />
+              {t('common:status.closed')} <Badge count={tickets.filter(tk => tk.status === 'closed').length} showZero />
             </Tab>
           </Tabs>
 
@@ -765,8 +720,8 @@ const SupportTicketsPage: React.FC = () => {
                 color: '#4B5563',
                 gridColumn: '1 / -1'
               }}>
-                <h3 style={{ color: '#1F2937', marginBottom: '8px' }}>{t('settings:supportTicketsPage.noTicketsYet')}</h3>
-                <p>Click "Create Ticket" to submit your first support ticket.</p>
+                <h3 style={{ color: '#1F2937', margin: '0 0 4px', fontSize: 14, fontWeight: 600 }}>{t('settings:supportTicketsPage.noTicketsYet')}</h3>
+                <p style={{ margin: 0, fontSize: 14 }}>Click "Create Ticket" to submit your first support ticket.</p>
               </div>
             )}
           </TicketsGrid>

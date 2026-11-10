@@ -4,6 +4,7 @@ import { io, Socket } from 'socket.io-client';
 import { useAuth } from '../../contexts/AuthContext';
 import DeliveryTimeline from '../../components/Inventory/DeliveryTimeline';
 import styled from 'styled-components';
+import { Header, Title } from '../../components/UI/PageComponents';
 import { useTranslation } from 'react-i18next';
 import {
   DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell,
@@ -34,44 +35,6 @@ import IncomingOrdersBoard from './IncomingOrdersBoard';
 const Container = styled.div`
   min-height: 100vh;
   background: #F9FAFB;
-`;
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-`;
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-  @media (max-width: 768px) { font-size: 20px; }
 `;
 const Content = styled.div`
   padding: 32px;
@@ -305,24 +268,23 @@ const FilterToolbar = styled.div`
 `;
 
 const RLStatusTabs = styled.div`
+  /* 2026-11-10 전 역할 통일(R4): 공용 탭(Common/TabComponents·UI/Tabs)과 같은 «한 줄 + 그 줄만 밀기».
+     06-15 의 «태블릿 줄바꿈»은 폰에서 2줄로 접히고 밑줄이 어긋나 공용 탭과 함께 바꿨다. */
   display: flex;
   gap: 24px;
   margin-bottom: 32px;
   border-bottom: 1px solid #C7CED6;
   overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
-  &::-webkit-scrollbar { height: 3px; }
-  &::-webkit-scrollbar-track { background: #F1F4F8; }
-  &::-webkit-scrollbar-thumb { background: #64748B; border-radius: 3px; }
-  &::-webkit-scrollbar-thumb:hover { background: #64748B; }
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 
-  /* 태블릿(≤1024): 가로 스크롤 대신 줄바꿈 — 끝 탭(Cancelled)이 잘려 안 보이던 것.
-     공용 TabComponents/UI Tabs 와 같은 처리(2026-06-15 LiveOrders 에서 검증된 패턴). */
-  @media (max-width: 1024px) {
-    flex-wrap: wrap;
-    overflow-x: visible;
-    row-gap: 4px;
-  }
+  & > * { flex-shrink: 0; white-space: nowrap; }
+
+  @media (max-width: 768px) { gap: 16px; margin-bottom: 24px; }
+  @media (max-width: 480px) { gap: 12px; margin-bottom: 20px; }
 `;
 
 const RLStatusTab = styled.button<{ active?: boolean }>`

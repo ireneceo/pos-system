@@ -402,11 +402,17 @@ export default SubscriptionFormFields;
 
 const FormGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
 
   @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+
+    /* 2026-11-10 반응형 점검: «두 칸 차지» 가 박힌 칸이 폰에서 보이지 않는 둘째 열을 만들어
+       «Treat as trial» 안내가 반쪽 열에 갇혀 한 단어씩 세로로 쌓였다 → 폰에선 모두 한 줄 전체 */
+    & > * {
+      grid-column: 1 / -1 !important;
+    }
   }
 `;
 

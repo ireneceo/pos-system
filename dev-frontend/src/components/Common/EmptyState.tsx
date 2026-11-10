@@ -18,22 +18,6 @@ const Wrap = styled.div`
   min-height: 200px;
 `;
 
-const IconWrap = styled.div`
-  width: 56px;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  border-radius: 16px;
-  background: #F1F0FF;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #635BFF;
-  margin-bottom: 16px;
-
-  svg { width: 28px; height: 28px; }
-`;
 
 const Title = styled.div`
   font-size: 16px;
@@ -125,15 +109,8 @@ interface Props {
   steps?: Array<{ label: string }>;
 }
 
-const DefaultIcon: React.FC = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <path d="M8 12h8" />
-    <path d="M12 8v8" />
-  </svg>
-);
 
-const EmptyState: React.FC<Props> = ({ icon, title, description, primaryAction, secondaryAction, steps }) => {
+const EmptyState: React.FC<Props> = ({ title, description, primaryAction, secondaryAction, steps }) => {
   const handle = (a?: Action) => {
     if (!a) return;
     if (a.onClick) return a.onClick();
@@ -142,7 +119,7 @@ const EmptyState: React.FC<Props> = ({ icon, title, description, primaryAction, 
 
   return (
     <Wrap>
-      <IconWrap>{icon || <DefaultIcon />}</IconWrap>
+      {/* 2026-11-10 전 역할 통일(R7·RA 기준): 빈 상태는 글자만 — 아이콘 그림 안 그림(icon 값은 받기만) */}
       <Title>{title}</Title>
       {description && <Description>{description}</Description>}
       {(primaryAction || secondaryAction) && (

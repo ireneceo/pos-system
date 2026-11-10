@@ -209,6 +209,7 @@ const SidePanelHeader = styled.div`
 
 const SearchInput = styled.input`
   flex: 1;
+  min-width: 0; /* 2026-11-10 반응형 점검: 1024 폭에서 옆 칸에 밀려 오른쪽 9px 잘림 */
   padding: 4px 8px;
   border: 1px solid #C7CED6;
   border-radius: 4px;

@@ -12,7 +12,7 @@ import {
   ActionButtons,
   EmptyState
 } from '../../components/UI';
-import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableScroll } from '../../components/UI/DataTable';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput, FormSelect } from '../../components/UI/Modal';
@@ -495,6 +495,7 @@ const ProductRecipePage: React.FC = () => {
               </div>
             </EmptyState>
           ) : (
+            <DataTableScroll>
             <DataTable>
               <DataTableHead>
                 <tr>
@@ -561,6 +562,7 @@ const ProductRecipePage: React.FC = () => {
                 ))}
               </tbody>
             </DataTable>
+            </DataTableScroll>
           )}
         </Content>
       </Container>

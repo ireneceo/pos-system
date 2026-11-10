@@ -594,7 +594,8 @@
       "outBlock": "品牌缺货——暂不接单",
       "overWarn": "品牌目前仅有 {{n}}{{u}}——其余补货后发货",
       "overBlock": "品牌目前最多接受 {{n}}{{u}}"
-    }
+    },
+    "brandStockBadge": "品牌库存"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",

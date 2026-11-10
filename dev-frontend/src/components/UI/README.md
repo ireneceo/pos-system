@@ -242,3 +242,16 @@ return (
 4. 스타일 속성 조정
 
 이를 통해 전체 프로젝트의 팝업과 폼이 일관성 있는 디자인을 갖게 됩니다.
+
+## DataTableScroll (2026-11-10)
+
+카드·상자 안에 `DataTable` 을 바로 넣는 화면(DataTableContainer 를 안 쓰는 곳)은 `DataTableScroll` 로 감싼다. 표가 칸보다 넓으면 표만 가로로 밀리고(오른쪽 열이 화면 밖으로 나가지 않게), 카드 상태(≤1024)에선 그대로 보인다.
+
+```tsx
+import { DataTableScroll, DataTable } from '../../components/UI/DataTable';
+<DataTableScroll>
+  <DataTable>…</DataTable>
+</DataTableScroll>
+```
+
+빈 상태는 표 몸통에 바로 넣지 않고 `<tr><td colSpan={n}><DataTableEmpty>…</DataTableEmpty></td></tr>` — 카드 상태에서도 전폭으로 펴진다. 화면 뼈대·반응형 규칙 전체는 `dev-frontend/UI_DESIGN_GUIDE.md` §2.5.

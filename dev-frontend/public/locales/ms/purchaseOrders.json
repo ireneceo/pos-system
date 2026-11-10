@@ -594,7 +594,8 @@
       "outBlock": "Habis di jenama — tidak menerima sekarang",
       "overWarn": "Hanya {{n}}{{u}} di jenama sekarang — selebihnya dihantar selepas tambah stok",
       "overBlock": "Jenama menerima sehingga {{n}}{{u}} sahaja sekarang"
-    }
+    },
+    "brandStockBadge": "Stok jenama"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",

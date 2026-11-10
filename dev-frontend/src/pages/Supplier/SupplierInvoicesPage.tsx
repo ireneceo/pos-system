@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
+import { FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
 import { useTranslation } from 'react-i18next';
 import {
   Container,
@@ -67,27 +68,7 @@ interface Pagination {
 
 // ----- Styled -----
 
-const FiltersContainer = styled.div`
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-`;
 
-const FilterSelect = styled.select`
-  padding: 10px 12px;
-  border: 1px solid #C7CED6;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  min-width: 160px;
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-`;
 
 const PaginationBar = styled.div`
   display: flex;
@@ -335,7 +316,7 @@ const SupplierInvoicesPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
-        <FiltersContainer>
+        <FilterBar>
           <FilterSelect
             value={statusFilter}
             onChange={e => {
@@ -352,7 +333,7 @@ const SupplierInvoicesPage: React.FC = () => {
             <option value="draft">Draft</option>
             <option value="sent">Sent</option>
           </FilterSelect>
-        </FiltersContainer>
+        </FilterBar>
 
         <DataTableContainer>
           <DataTable>

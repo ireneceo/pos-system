@@ -3,7 +3,7 @@ import ClampText from '../../components/UI/ClampText';
 import styled from 'styled-components';
 import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
-import { SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { SearchInput, FilterSelect, FilterBar } from '../../components/Common/FilterComponents';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
@@ -52,17 +52,6 @@ interface SupportTicket {
 // Container, Header, Title, Content, Button, ActionSection are imported
 // StatsGrid, StatCard, StatValue, StatLabel are imported
 
-const FiltersContainer = styled.div`
-  margin-bottom: 24px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
-
-  @media (max-width: 768px) {
-    gap: 6px;
-  }
-`;
 
 const FilterGroup = styled.div`
   display: flex;
@@ -73,12 +62,14 @@ const FilterGroup = styled.div`
 
 
 const TicketsGrid = styled.div`
+  /* 2026-11-10 전 역할 문의 화면 통일: 12화면 같은 값 · 칸이 글 길이에 밀려 넓어지지 않게 minmax(0,1fr) */
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 
-  @media (max-width: 968px) {
-    grid-template-columns: 1fr;
+  @media (max-width: 1024px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
 `;
 
@@ -95,6 +86,11 @@ const TicketCard = styled.div`
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
   }
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
 `;
 
 const TicketHeader = styled.div`
@@ -107,6 +103,9 @@ const TicketHeader = styled.div`
 
 const TicketInfo = styled.div`
   flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
 `;
 
 const TicketNumber = styled.div`
@@ -132,12 +131,15 @@ const CustomerInfo = styled.div`
 
 const TicketBadges = styled.div`
   display: flex;
+  flex-shrink: 0;
   flex-direction: column;
   gap: 8px;
   align-items: flex-end;
 `;
 
 const StatusBadge = styled.span<{ status: string }>`
+  flex-shrink: 0;
+  white-space: nowrap;
   display: inline-block;
   padding: 4px 12px;
   border-radius: 6px;
@@ -164,6 +166,8 @@ const StatusBadge = styled.span<{ status: string }>`
 `;
 
 const PriorityBadge = styled.span<{ priority: string }>`
+  flex-shrink: 0;
+  white-space: nowrap;
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -718,7 +722,12 @@ const SystemInquiryPage: React.FC = () => {
           </Tab>
         </Tabs>
 
-        <FiltersContainer>
+        <FilterBar>
+            <SearchInput
+              placeholder="Search tickets..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           <FilterGroup>
             <FilterSelect value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} style={{ maxWidth: '180px' }}>
               <option value="all">{t('admin:systemInquiryPage.allPriority')}</option>
@@ -739,13 +748,8 @@ const SystemInquiryPage: React.FC = () => {
             </FilterSelect>
           </FilterGroup>
           <FilterGroup>
-            <SearchInput
-              placeholder="Search tickets..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
           </FilterGroup>
-        </FiltersContainer>
+        </FilterBar>
 
         <TicketsGrid>
           {filteredTickets.map(ticket => (
@@ -827,8 +831,8 @@ const SystemInquiryPage: React.FC = () => {
               color: '#4B5563',
               gridColumn: '1 / -1'
             }}>
-              <h3 style={{ color: '#1F2937', marginBottom: '8px' }}>{t('admin:systemInquiryPage.noTicketsYet')}</h3>
-              <p>{t('admin:systemInquiryPage.noSupportTicketsHaveBeenSubmitted')}</p>
+              <h3 style={{ color: '#1F2937', margin: '0 0 4px', fontSize: 14, fontWeight: 600 }}>{t('admin:systemInquiryPage.noTicketsYet')}</h3>
+              <p style={{ margin: 0, fontSize: 14 }}>{t('admin:systemInquiryPage.noSupportTicketsHaveBeenSubmitted')}</p>
             </div>
           )}
         </TicketsGrid>

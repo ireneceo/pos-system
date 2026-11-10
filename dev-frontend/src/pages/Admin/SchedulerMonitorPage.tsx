@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
+import { Header } from '../../components/UI/PageComponents';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
-import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty } from '../../components/UI/DataTable';
+import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableScroll } from '../../components/UI/DataTable';
 
 interface JobSummary {
   job_name: string;
@@ -205,6 +206,7 @@ const SchedulerMonitorPage: React.FC = () => {
         {filteredRuns.length === 0 ? (
           <Empty><EmptyTitle>{t('schedulerMonitor.noRuns', 'No runs match the current filter')}</EmptyTitle></Empty>
         ) : (
+          <DataTableScroll>
           <DataTable>
             <DataTableHead>
               <tr>
@@ -232,6 +234,7 @@ const SchedulerMonitorPage: React.FC = () => {
               })}
             </tbody>
           </DataTable>
+          </DataTableScroll>
         )}
       </Content>
     </Container>
@@ -243,27 +246,6 @@ export default SchedulerMonitorPage;
 // ─── Styled ──────────────────────────────────────────────────
 
 const Container = styled.div`min-height: 100vh;`;
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
-
-  @media (max-width: 768px) { padding: 16px; height: auto; }
-`;
 const PageTitle = styled.h1`
   font-size: 24px;
   font-weight: 700;
@@ -328,7 +310,7 @@ const JobCode = styled.div`
 `;
 const JobGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr));
   gap: 16px;
 `;
 const JobCard = styled.div`

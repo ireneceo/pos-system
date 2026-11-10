@@ -594,7 +594,8 @@
       "outBlock": "Out at brand — not accepting now",
       "overWarn": "Only {{n}}{{u}} at the brand right now — the rest ships when restocked",
       "overBlock": "Brand accepts up to {{n}}{{u}} right now"
-    }
+    },
+    "brandStockBadge": "Brand stock"
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",

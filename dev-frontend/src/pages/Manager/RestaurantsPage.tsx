@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
+import { Header, Title, ActionSection } from '../../components/UI/PageComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend , Modal as CommonModal } from '../../components/UI';
@@ -46,37 +47,6 @@ const Container = styled.div`
   }
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
-
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
 
 const Content = styled.div`
   padding: 32px;
@@ -88,22 +58,7 @@ const Content = styled.div`
   }
 `;
 
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
 
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
-
-const ActionSection = styled.div`
-  display: flex;
-  gap: 12px;
-`;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   padding: 12px 20px;
@@ -138,8 +93,13 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
 
 const RestaurantGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  /* 2026-11-10 전 역할 매장 목록 통일: 폰(343px 칸)에서 «최소 400px» 카드가 칸 밖으로 나가던 것 */
+  grid-template-columns: repeat(auto-fill, minmax(min(400px, 100%), 1fr));
   gap: 24px;
+
+  @media (max-width: 1024px) {
+    gap: 12px;
+  }
 `;
 
 const RestaurantCard = styled.div`
@@ -157,17 +117,25 @@ const RestaurantCard = styled.div`
     transform: translateY(-2px);
     border-color: #635BFF;
   }
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    padding: 16px;
+  }
 `;
 
 const RestaurantHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 12px; /* 2026-11-10: 폰에서 상태 꼬리표가 화면 밖으로 밀리던 것 */
   margin-bottom: 16px;
 `;
 
 const RestaurantInfo = styled.div`
   flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
 `;
 
 const RestaurantName = styled.h3`

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { EmptyState } from '../../components/UI/TableComponents';
+import { Header, Title, ActionSection } from '../../components/UI/PageComponents';
+import { EmptyState, IconButton } from '../../components/UI/TableComponents';
 import { DataTableContainer, DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableCell, DataTableEmpty, DataTableStatus } from '../../components/UI/DataTable';
 import { useAuth } from '../../contexts/AuthContext';
 import { StatsGrid, StatCard, StatValue, StatLabel } from '../../components/UI';
@@ -45,49 +46,8 @@ const StaffContainer = styled.div`
   min-height: 100vh;
 `;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
 
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const HeaderTitle = styled.h1`
-  font-size: 24px;
-  font-weight: 600;
-  color: #0A2540;
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 16px;
-`;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   padding: 8px 16px;
@@ -214,23 +174,6 @@ const ActionGroup = styled.div`
   justify-content: flex-end;
 `;
 
-const ActionButton = styled.button`
-  padding: 6px 12px;
-  background: transparent;
-  border: 1px solid #C7CED6;
-  border-radius: 6px;
-  color: #4B5563;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    border-color: #635BFF;
-    color: #635BFF;
-    background: #F4F3FF;
-  }
-`;
 
 
 const StaffPage: React.FC = () => {
@@ -724,8 +667,8 @@ const StaffPage: React.FC = () => {
     <>
       <StaffContainer>
         <Header>
-          <HeaderTitle>{t('staff:staffPage.restaurantStaff')}</HeaderTitle>
-          <HeaderActions>
+          <Title>{t('staff:staffPage.restaurantStaff')}</Title>
+          <ActionSection>
             {user?.role === 'Restaurant Admin' && (
               <Button variant="secondary" onClick={() => openInvite()}>
                 {t('staff:staffPage.inviteExisting')}
@@ -734,7 +677,7 @@ const StaffPage: React.FC = () => {
             <Button variant="primary" onClick={handleOpenAddModal}>
               Add Staff
             </Button>
-          </HeaderActions>
+          </ActionSection>
         </Header>
 
         {/* 역할 추가 요청 (멀티 로그인 v1.3) — 이 매장 Staff 요청만(서버 범위). 이 페이지는 BG/FG/매니저도 열므로 RA·SA 일 때만. */}
@@ -892,22 +835,22 @@ const StaffPage: React.FC = () => {
                       <DataTableCell data-label="" align="right" mobileFullWidth>
                         {staff.accessKind === 'context' && canManageRequests && staff.contextId != null && (
                           <ActionGroup>
-                            <ActionButton onClick={() => openLinkedEdit(staff)}>
+                            <IconButton onClick={() => openLinkedEdit(staff)}>
                               {t('staff:staffPage.editPermissions')}
-                            </ActionButton>
-                            <ActionButton onClick={() => setUnlinkTarget(staff)}>
+                            </IconButton>
+                            <IconButton onClick={() => setUnlinkTarget(staff)}>
                               {t('staff:staffPage.unlink')}
-                            </ActionButton>
+                            </IconButton>
                           </ActionGroup>
                         )}
                         {staff.accessKind !== 'context' && <ActionGroup>
-                          <ActionButton onClick={() => handleOpenEditModal(staff)}>
+                          <IconButton onClick={() => handleOpenEditModal(staff)}>
                             Edit
-                          </ActionButton>
+                          </IconButton>
                           {staff.role === 'Staff' && (
-                            <ActionButton onClick={() => setResetPasswordTarget(staff)}>
+                            <IconButton onClick={() => setResetPasswordTarget(staff)}>
                               Reset PW
-                            </ActionButton>
+                            </IconButton>
                           )}
                         </ActionGroup>}
                       </DataTableCell>

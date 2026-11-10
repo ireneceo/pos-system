@@ -56,12 +56,14 @@ const ZoneHeader = styled.div`
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+  flex-wrap: wrap; /* 2026-11-10: 폰에서 구역 이름이 «M..» 로 눌리던 것 — 버튼이 다음 줄로 */
+  row-gap: 8px;
 `;
 const ZoneName = styled.div`
   font-size: 15px;
   font-weight: 600;
   color: #0A2540;
-  flex: 1;
+  flex: 1 1 160px;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -93,6 +95,9 @@ const GroupRow = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+  /* 2026-11-10 반응형 점검: 폰 폭에서 그룹 이름 칸이 0 으로 눌려 진행 막대가 «Tables» 글자 위에 겹쳤다 → 줄바꿈 */
+  flex-wrap: wrap;
+  row-gap: 8px;
   padding: 10px 8px;
   border-top: 1px solid #C7CED6;
   border-radius: 6px;
@@ -102,7 +107,7 @@ const GroupRow = styled.div`
   &:hover { background: #F9FAFB; }
 `;
 const GroupName = styled.div`
-  flex: 1;
+  flex: 1 1 140px;
   min-width: 0;
   font-size: 13px;
   color: #0A2540;
@@ -310,6 +315,7 @@ const TablesGrid = styled.div`
   gap: 12px;
 `;
 const TableQRItem = styled.div`
+  min-width: 0;
   border: 1px solid #C7CED6;
   border-radius: 8px;
   padding: 12px;
@@ -335,6 +341,7 @@ const TableQRActions = styled.div`
   display: flex;
   gap: 4px;
   justify-content: center;
+  flex-wrap: wrap; /* 2026-11-10 반응형 점검: 버튼 4개가 카드보다 넓어 «Print» 가 밖으로 나갔다 */
 `;
 const QRActionBtn = styled.button`
   background: #fff;
@@ -342,6 +349,7 @@ const QRActionBtn = styled.button`
   border: 1px solid #DDD9FF;
   border-radius: 4px;
   padding: 4px 8px;
+  min-height: 32px;
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;

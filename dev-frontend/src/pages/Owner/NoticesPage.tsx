@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
+import { Container, Header, Title, ActionSection, Content } from '../../components/UI/PageComponents';
 import { EmptyState } from '../../components/UI/TableComponents';
 import { useAuth } from '../../contexts/AuthContext';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
@@ -55,72 +57,10 @@ interface NoticeMetadata {
 // Styled Components
 // ============================================================================
 
-const Container = styled.div`
-  min-height: 100vh;
 
-  @media (max-width: 768px) {
-    padding: 0;
-  }
-`;
 
-const Header = styled.div`
-  background: white;
-  padding: 16px 32px;
-  border-bottom: 1px solid #C7CED6;
-  margin-bottom: 0;
-  height: 80px;
-  min-height: 80px;
-  max-height: 80px;
-  box-sizing: border-box;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 
-    /* 태블릿 세로(769~1024) — 이 구간 규칙이 없어 우측 내용이 넘치면 80px 고정에 잘렸다.
-     내용이 접히면 높이만 늘어난다. PC·모바일 동작은 그대로. (2026-09-08 Irene) */
-  @media (min-width: 769px) and (max-width: 1024px) {
-    height: auto;
-    min-height: 80px;
-    max-height: none;
-  }
 
-  @media (max-width: 768px) {
-    padding: 16px;
-    height: auto;
-    min-height: 56px;
-    max-height: none;   /* 세로로 쌓이면 80px 밖으로 잘렸다 (2026-09-08) */
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-`;
-
-const Content = styled.div`
-  padding: 32px;
-  background: #F9FAFB;
-  min-height: calc(100vh - 120px);
-
-  @media (max-width: 768px) {
-    padding: 20px;
-  }
-`;
-
-const Title = styled.h1`
-  font-size: 24px;
-  font-weight: 700;
-  color: #0A2540;
-  margin: 0;
-  line-height: 1;
-
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
-`;
-
-const ActionSection = styled.div`
-  display: flex;
-  gap: 12px;
-`;
 
 const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
   padding: 12px 20px;
@@ -175,79 +115,18 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' | 'danger' }>`
 
 
 
-const FiltersContainer = styled.div`
-  display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
-  align-items: center;
-`;
 
-const SearchInput = styled.input`
-  flex: 1;
-  min-width: 320px;
-  max-width: 480px;
-  padding: 12px 16px;
-  border: 1px solid #C7CED6;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
 
-  &::placeholder {
-    color: #6B7280;
-  }
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-
-  @media (max-width: 1024px) {
-    min-width: 280px;
-    max-width: 400px;
-  }
-
-  @media (max-width: 768px) {
-    min-width: 240px;
-    max-width: 320px;
-  }
-
-  @media (max-width: 600px) {
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
-  }
-`;
-
-const FilterSelect = styled.select`
-  padding: 12px 16px;
-  border: 1px solid #C7CED6;
-  border-radius: 8px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-  min-width: 140px;
-
-  &:focus {
-    outline: none;
-    border-color: #635BFF;
-    box-shadow: 0 0 0 3px rgba(99, 91, 255, 0.1);
-  }
-
-  @media (max-width: 600px) {
-    width: 100%;
-    min-width: 100%;
-  }
-`;
 
 const NoticesGrid = styled.div`
+  /* 2026-11-10 전 역할 공지 통일: 5화면 같은 값(문의 카드 격자와 같은 규칙) */
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 
-  @media (max-width: 968px) {
-    grid-template-columns: 1fr;
+  @media (max-width: 1024px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
   }
 `;
 
@@ -261,12 +140,19 @@ const NoticeCard = styled.div<{ unread?: boolean }>`
   cursor: pointer;
 
   ${props => props.unread && `
-    border-left: 4px solid #635BFF;
+    border-left: 3px solid #635BFF;
   `}
 
   &:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     transform: translateY(-2px);
+  }
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+
+  @media (max-width: 768px) {
+    padding: 16px;
   }
 `;
 
@@ -907,13 +793,14 @@ const NoticesPage: React.FC = () => {
           </Tabs>
 
           {/* Category Filter Pills */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px' }}>
             {(['all', 'general', 'guide', 'updates'] as const).map(cat => (
               <button
                 key={cat}
                 onClick={() => setCategoryFilter(cat)}
                 style={{
                   padding: '6px 16px',
+                  minHeight: '32px',
                   borderRadius: '20px',
                   border: categoryFilter === cat ? '1.5px solid #635BFF' : '1px solid #C7CED6',
                   background: categoryFilter === cat ? '#F0EFFF' : 'white',
@@ -930,7 +817,7 @@ const NoticesPage: React.FC = () => {
           </div>
 
           {/* Filters */}
-          <FiltersContainer>
+          <FilterBar>
             <SearchInput
               type="text"
               placeholder="Search notices..."
@@ -958,7 +845,7 @@ const NoticesPage: React.FC = () => {
               <option value="important">{'Important'}</option>
               <option value="urgent">{'Urgent'}</option>
             </FilterSelect>
-          </FiltersContainer>
+          </FilterBar>
 
           {/* Notice Cards */}
           <NoticesGrid>
