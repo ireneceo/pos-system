@@ -56,7 +56,14 @@
       "currentStock": "当前库存",
       "suggested": "建议数量",
       "loadFailed": "加载建议失败。",
-      "empty": "目前没有补货建议。"
+      "empty": "目前没有补货建议。",
+      "createPOCount": "创建采购单 ({{n}})",
+      "selectAll": "全选",
+      "pickHint": "勾选需要的项目后点击“创建采购单”——只有勾选的项目会加入新采购单，数量仍可在那里修改。",
+      "noneSelected": "请至少勾选一项",
+      "noLink": "请先关联供应商——此项目暂时无法下单",
+      "addToOrderCount": "加入采购单 ({{n}})",
+      "added": "已加入右侧采购单"
     },
     "action": {
       "markReceivedAll": "全部入库",

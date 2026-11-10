@@ -37,6 +37,7 @@ import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import { Modal as UIModal } from '../../components/UI/Modal';
 import OrderCutoffBadge, { useMinuteNow } from '../../components/PurchaseOrders/OrderCutoffBadge';
 import OrderCutoffSummary from '../../components/PurchaseOrders/OrderCutoffSummary';
+import { useParSuggestions, ParSuggestionsBadge, ParSuggestionsPanel } from '../../components/PurchaseOrders/ParSuggestions';
 import type { OrderWindows } from '../../utils/orderCutoff';
 import { useStore } from '../../contexts/StoreContext';
 import { qtyStepForUnit, parseMinOrderQty, formatQuantity, sellerOrderUnitOf, sellerSpecText, defaultLinkConversion, minQtyOf, minOrderViolationText, inactiveSellerProductText, type OrderMode } from '../../utils/unitConversion';
@@ -1549,17 +1550,8 @@ const NewPurchaseOrderPage: React.FC = () => {
 
   // 발주 내역 «추천» 의 «발주 만들기» 가 넘긴 품목·수량(?items=)을 카트에 담는다 (2026-10-09 Fable C-2 공통결함 ①).
   //   예전엔 링크만 넘기고 이 화면이 읽지 않아 제안 수량이 사라졌다. 화면 진입당 1회.
-  const suggestedItemsAppliedRef = useRef(false);
-  useEffect(() => {
-    if (suggestedItemsAppliedRef.current || !myList.length) return;
-    const raw = searchParams.get('items');
-    if (!raw) return;
-    suggestedItemsAppliedRef.current = true;
-    let wanted: Array<{ ingredient_id?: number; product_ingredient_id?: number; quantity?: number }> = [];
-    try {
-      const parsed = JSON.parse(raw.startsWith('%') ? decodeURIComponent(raw) : raw);
-      if (Array.isArray(parsed)) wanted = parsed;
-    } catch { return; }
+  //   같은 담기를 이 화면 PAR 추천 창(«발주에 담기»)도 쓴다 — addWantedToCart 하나 (2026-11-10 Irene «항목별로 선택해서 PO로»).
+  const addWantedToCart = useCallback((wanted: Array<{ ingredient_id?: number; product_ingredient_id?: number; quantity?: number }>) => {
     setCart(prev => {
       let next = [...prev];
       for (const w of wanted) {
@@ -1588,7 +1580,23 @@ const NewPurchaseOrderPage: React.FC = () => {
       }
       return next;
     });
-  }, [myList, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [myList]); // eslint-disable-line react-hooks/exhaustive-deps
+  const suggestedItemsAppliedRef = useRef(false);
+  useEffect(() => {
+    if (suggestedItemsAppliedRef.current || !myList.length) return;
+    const raw = searchParams.get('items');
+    if (!raw) return;
+    suggestedItemsAppliedRef.current = true;
+    let wanted: Array<{ ingredient_id?: number; product_ingredient_id?: number; quantity?: number }> = [];
+    try {
+      const parsed = JSON.parse(raw.startsWith('%') ? decodeURIComponent(raw) : raw);
+      if (Array.isArray(parsed)) wanted = parsed;
+    } catch { return; }
+    addWantedToCart(wanted);
+  }, [myList, searchParams, addWantedToCart]);
+  // PAR 추천 창 — 발주 이력·재고 화면과 같은 공용 창. 여기서는 고른 줄을 오른쪽 장바구니에 바로 담는다. 오너는 만들지 않는다.
+  const par = useParSuggestions(!isOwner);
+  const [parOpen, setParOpen] = useState(false);
 
   // Deep-link from /restaurant/:id/ingredients — auto-enter connect mode for a specific ingredient.
   useEffect(() => {
@@ -2191,9 +2199,12 @@ const NewPurchaseOrderPage: React.FC = () => {
     <PageWrap>
       <PageHeader>
         <PageTitle>{t('newPo.title', 'Purchase Order')}</PageTitle>
-        <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/staging')}>
-          {t('newPo.pendingLink', 'Pending POs')}{pendingCount > 0 ? ` (${pendingCount})` : ''} →
-        </ThemedButton>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <ParSuggestionsBadge count={par.count} onClick={() => setParOpen(o => !o)} />
+          <ThemedButton variant="outline" onClick={() => navigate('/pos/purchase-orders/staging')}>
+            {t('newPo.pendingLink', 'Pending POs')}{pendingCount > 0 ? ` (${pendingCount})` : ''} →
+          </ThemedButton>
+        </div>
       </PageHeader>
 
       {isOwner && (
@@ -2211,6 +2222,12 @@ const NewPurchaseOrderPage: React.FC = () => {
             />
           </div>
         </OwnerPickBar>
+      )}
+      {parOpen && (
+        // 화면 높이가 고정이라(아래 장바구니 칸) 추천 창은 위쪽 절반까지만 차지하고 그 안에서 굴린다
+        <div style={{ padding: '12px 32px 0', maxHeight: '45vh', overflowY: 'auto', flexShrink: 0 }}>
+          <ParSuggestionsPanel groups={par.groups} onClose={() => setParOpen(false)} onAddToOrder={addWantedToCart} />
+        </div>
       )}
       <OrderCutoffSummary sellers={cutoffSellers} nowMs={nowMs} storeTimeZone={storeTimeZone} />
       {isOwner && !ownerRid ? (

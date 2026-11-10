@@ -26,10 +26,9 @@ import ReceivePayModal, { ReceivePayMode } from '../../components/PurchaseOrders
 import OwnerPoTabs from '../../components/PurchaseOrders/OwnerPoTabs';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import PoFileManageModal from '../../components/PurchaseOrders/PoFileManageModal';
-import { formatQuantity } from '../../utils/unitConversion';
 import { useAuth } from '../../contexts/AuthContext';
 import { isOwnerRole, setOwnerPoRestaurantId, withOwnerPoScope, getOwnerPoListView, setOwnerPoListView, OWNER_PO_ALL } from '../../utils/ownerPoScope';
-import VerdictBadge from '../../components/Inventory/VerdictBadge';
+import { useParSuggestions, ParSuggestionsBadge, ParSuggestionsPanel } from '../../components/PurchaseOrders/ParSuggestions';
 
 // LiveOrders 와 동일한 FilterToolbar 패턴
 const FilterToolbar = styled.div`
@@ -297,29 +296,6 @@ interface POListRow {
   reconcile_diff_amount?: number;
 }
 
-interface SuggestionItem {
-  ingredient_id: number;
-  /** 브랜드 본사 재고아이템 줄 (2026-10-09 Fable C-1 #5) */
-  product_ingredient_id?: number | null;
-  ingredient_name: string;
-  current_stock: number | string;
-  par_level?: number | string | null;
-  suggested_quantity: number | string;
-  /** 발주 전망 단계 · 주문 단위 (2026-11-03 §5-4) — suggested_quantity 는 주문 단위 수량 */
-  status?: 'out' | 'order_now' | 'soon' | null;
-  order_unit?: string | null;
-  preferred_seller_id?: number | null;
-  preferred_seller_type?: string | null;
-  preferred_seller_name?: string | null;
-}
-
-interface SuggestionGroup {
-  seller_id: number | null;
-  seller_type: string | null;
-  seller_name: string | null;
-  items: SuggestionItem[];
-}
-
 const Subtitle = styled.div`
   color: #4B5563;
   font-size: 14px;
@@ -330,89 +306,6 @@ const HeaderActions = styled.div`
   display: flex;
   gap: 8px;
   align-items: center;
-`;
-
-const SuggestionBadge = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border: 1px solid #FCD34D;
-  background: #FFFBEB;
-  color: #92400E;
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.15s;
-
-  &:hover {
-    background: #FEF3C7;
-    border-color: #F59E0B;
-  }
-`;
-
-const SuggestionPanel = styled.div`
-  background: white;
-  border: 1px solid #C7CED6;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 16px;
-`;
-
-const SuggestionHead = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-  gap: 16px;
-
-  h3 {
-    margin: 0 0 4px;
-    font-size: 16px;
-    color: #0A2540;
-  }
-  p {
-    margin: 0;
-    font-size: 13px;
-    color: #4B5563;
-  }
-`;
-
-const SuggestionGroupBox = styled.div`
-  border: 1px solid #C7CED6;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 10px;
-
-  &:last-child { margin-bottom: 0; }
-`;
-
-const SuggestionGroupHead = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-
-  strong { color: #0A2540; font-size: 14px; }
-  span { color: #4B5563; font-size: 12px; }
-`;
-
-const SuggestionList = styled.ul`
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  font-size: 13px;
-  color: #1F2937;
-
-  li {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 0;
-    border-bottom: 1px dashed #F1F4F8;
-  }
-  li:last-child { border-bottom: none; }
 `;
 
 const StatusVariantMap: Record<POStatus, 'success' | 'warning' | 'error' | 'info'> = {
@@ -460,8 +353,6 @@ const PurchaseOrdersPage: React.FC = () => {
   // Detail side panel — DetailPage 컴포넌트가 자체 fetch
   const [selectedPoId, setSelectedPoId] = useState<number | null>(null);
 
-  const [suggestions, setSuggestions] = useState<SuggestionGroup[]>([]);
-  const [suggestionsCount, setSuggestionsCount] = useState(0);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [alertDlg, setAlertDlg] = useState<{ title: string; message: string } | null>(null);
   // 붙인 인보이스·영수증 «열기 · 다시 올리기 · 삭제» 창 (2026-10-30)
@@ -571,75 +462,12 @@ const PurchaseOrdersPage: React.FC = () => {
     setDateRange({ start, end });
   };
 
-  const fetchSuggestions = useCallback(async () => {
-    if (isOwner) { setSuggestions([]); setSuggestionsCount(0); return; } // 추천 = 새 발주 만들기 — 오너는 만들지 않는다
-    try {
-      const token = getAuthToken();
-      const res = await fetch('/api/purchase-orders/suggestions', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setSuggestions([]);
-        setSuggestionsCount(0);
-        return;
-      }
-      // Backend may return either flat items[] or grouped[] — normalize to groups.
-      const payload = data.data || {};
-      let groups: SuggestionGroup[] = [];
-      if (Array.isArray(payload.groups)) {
-        // 서버는 { seller_type, seller_entity_id, seller_name, items:[{ ingredient:{id,name,current_stock}, suggested_qty, product_ingredient_id }] }
-        //   를 준다(재고 화면 useBulkOrder 와 같은 응답). 이 패널은 평평한 칸(ingredient_name·suggested_quantity)을 읽어
-        //   품목명·제안 수량이 비어 보였다 — 여기서 한 번 풀어 준다 (2026-10-09 Fable C-1 #5).
-        groups = payload.groups.map((g: any) => ({
-          seller_id: g.seller_id ?? g.seller_entity_id ?? null,
-          seller_type: g.seller_type ?? null,
-          seller_name: g.seller_name ?? null,
-          items: (g.items || []).map((it: any) => it && it.ingredient ? {
-            ingredient_id: it.product_ingredient_id ? 0 : it.ingredient.id,
-            product_ingredient_id: it.product_ingredient_id ?? null,
-            ingredient_name: it.ingredient.name,
-            current_stock: it.ingredient.current_stock,
-            suggested_quantity: it.suggested_qty,
-            status: it.status ?? null,
-            order_unit: it.order_unit ?? null,
-          } : it),
-        }));
-      } else if (Array.isArray(payload.items)) {
-        const map = new Map<string, SuggestionGroup>();
-        for (const it of payload.items as SuggestionItem[]) {
-          const key = `${it.preferred_seller_type || ''}:${it.preferred_seller_id ?? 'none'}`;
-          if (!map.has(key)) {
-            map.set(key, {
-              seller_id: it.preferred_seller_id ?? null,
-              seller_type: it.preferred_seller_type ?? null,
-              seller_name: it.preferred_seller_name ?? null,
-              items: []
-            });
-          }
-          map.get(key)!.items.push(it);
-        }
-        groups = Array.from(map.values());
-      } else if (Array.isArray(payload)) {
-        groups = payload;
-      }
-      const total = groups.reduce((sum, g) => sum + g.items.length, 0);
-      setSuggestions(groups);
-      setSuggestionsCount(total);
-    } catch (err) {
-      console.error('Failed to fetch PO suggestions:', err);
-      setSuggestions([]);
-      setSuggestionsCount(0);
-    }
-  }, [isOwner]);
+  // PAR 추천 — 재고 화면과 같은 공용 창(components/PurchaseOrders/ParSuggestions). 추천 = 새 발주 만들기 — 오너는 만들지 않는다
+  const { groups: suggestions, count: suggestionsCount } = useParSuggestions(!isOwner);
 
   useEffect(() => {
     fetchList();
   }, [fetchList]);
-
-  useEffect(() => {
-    fetchSuggestions();
-  }, [fetchSuggestions]);
 
   const supplierOptions = useMemo(() => {
     const map = new Map<string, { value: string; label: string }>();
@@ -831,18 +659,6 @@ const PurchaseOrdersPage: React.FC = () => {
     } catch (e) { console.error(e); setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Network error' }); }
   };
 
-  const handleCreatePOFromSuggestion = (group: SuggestionGroup) => {
-    const params = new URLSearchParams();
-    if (group.seller_id != null) params.set('sellerId', String(group.seller_id));
-    if (group.seller_type) params.set('sellerType', group.seller_type);
-    const itemPayload = group.items.map(i => ({
-      ...(i.product_ingredient_id ? { product_ingredient_id: i.product_ingredient_id } : { ingredient_id: i.ingredient_id }),
-      quantity: Number(i.suggested_quantity)
-    }));
-    params.set('items', encodeURIComponent(JSON.stringify(itemPayload)));
-    navigate(`/pos/purchase-orders/new?${params.toString()}`);
-  };
-
   // 오너 승인취소 — 발주를 «승인 전» 으로 되돌린다(서버 revoke-approval). fetchAPI 는 실패 본문을 버리므로 직접 fetch.
   const askRevokeApproval = (row: POListRow) => {
     setConfirmDlg({
@@ -886,14 +702,7 @@ const PurchaseOrdersPage: React.FC = () => {
             {t('list.ownerSuppliers', 'My suppliers')}
           </ThemedButton>
         )}
-        {suggestionsCount > 0 && (
-          <SuggestionBadge
-            type="button"
-            onClick={() => setSuggestionsOpen(o => !o)}
-          >
-            ▲ {t('list.suggestions.badge', { n: suggestionsCount })}
-          </SuggestionBadge>
-        )}
+        <ParSuggestionsBadge count={suggestionsCount} onClick={() => setSuggestionsOpen(o => !o)} />
       </Header>
 
       <Content>
@@ -917,56 +726,7 @@ const PurchaseOrdersPage: React.FC = () => {
           </StatCard>
         </StatsGrid>
 
-        {suggestionsOpen && suggestions.length > 0 && (
-          <SuggestionPanel>
-            <SuggestionHead>
-              <div>
-                <h3>{t('list.suggestions.title')}</h3>
-                <p>{t('list.suggestions.subtitle')}</p>
-              </div>
-              <ThemedButton
-                size="small"
-                variant="outline"
-                onClick={() => setSuggestionsOpen(false)}
-              >
-                {t('common.close')}
-              </ThemedButton>
-            </SuggestionHead>
-            {suggestions.map((g, idx) => (
-              <SuggestionGroupBox key={`${g.seller_type || 'none'}-${g.seller_id ?? idx}`}>
-                <SuggestionGroupHead>
-                  <strong>{g.seller_name || t('list.suggestions.noPreferred')}</strong>
-                  {g.seller_id != null && (
-                    <ThemedButton
-                      size="small"
-                      variant="primary"
-                      onClick={() => handleCreatePOFromSuggestion(g)}
-                    >
-                      {t('list.suggestions.createPO')}
-                    </ThemedButton>
-                  )}
-                </SuggestionGroupHead>
-                <SuggestionList>
-                  {g.items.map((item) => (
-                    <li key={item.product_ingredient_id ? `pi-${item.product_ingredient_id}` : item.ingredient_id}>
-                      <span>
-                        {/* 단계 이름·색 = 재고 화면과 같은 배지(2026-11-10 Fable 설계 stock-simple-reorder §2-8) */}
-                        {item.status && (
-                          <span style={{ marginRight: 6 }}><VerdictBadge verdict={item.status} /></span>
-                        )}
-                        {item.ingredient_name}
-                      </span>
-                      <span>
-                        {t('list.suggestions.currentStock')}: {Number(item.current_stock).toFixed(2)} ·{' '}
-                        {t('list.suggestions.suggested')}: <strong>{formatQuantity(item.suggested_quantity)}{item.order_unit ? ` ${item.order_unit}` : ''}</strong>
-                      </span>
-                    </li>
-                  ))}
-                </SuggestionList>
-              </SuggestionGroupBox>
-            ))}
-          </SuggestionPanel>
-        )}
+        {suggestionsOpen && <ParSuggestionsPanel groups={suggestions} onClose={() => setSuggestionsOpen(false)} />}
 
         <FilterToolbar>
           {isOwner && (

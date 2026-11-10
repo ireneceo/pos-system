@@ -56,7 +56,14 @@
       "currentStock": "현재 재고",
       "suggested": "추천 수량",
       "loadFailed": "추천을 불러오지 못했습니다.",
-      "empty": "지금은 재주문 추천이 없습니다."
+      "empty": "지금은 재주문 추천이 없습니다.",
+      "createPOCount": "발주 생성 ({{n}})",
+      "selectAll": "전체 선택",
+      "pickHint": "필요한 항목만 체크하고 «발주 생성»을 누르세요 — 체크한 항목만 새 발주에 담깁니다. 수량은 거기서 고칠 수 있어요.",
+      "noneSelected": "항목을 하나 이상 체크하세요",
+      "noLink": "먼저 공급처를 연결하세요 — 아직 발주할 수 없는 항목입니다",
+      "addToOrderCount": "발주에 담기 ({{n}})",
+      "added": "오른쪽 발주에 담았습니다"
     },
     "action": {
       "markReceivedAll": "전량 입고",

@@ -56,7 +56,14 @@
       "currentStock": "Stok Semasa",
       "suggested": "Kuantiti Dicadangkan",
       "loadFailed": "Gagal memuat cadangan.",
-      "empty": "Tiada cadangan pesan semula buat masa ini."
+      "empty": "Tiada cadangan pesan semula buat masa ini.",
+      "createPOCount": "Cipta PO ({{n}})",
+      "selectAll": "Pilih semua",
+      "pickHint": "Tandakan item yang anda mahu, kemudian Cipta PO — hanya item bertanda masuk ke pesanan baharu. Kuantiti masih boleh diubah di sana.",
+      "noneSelected": "Tandakan sekurang-kurangnya satu item",
+      "noLink": "Pautkan penjual dahulu — item ini belum boleh dipesan",
+      "addToOrderCount": "Tambah ke pesanan ({{n}})",
+      "added": "Ditambah ke pesanan di sebelah kanan"
     },
     "action": {
       "markReceivedAll": "Terima semua",

@@ -56,7 +56,14 @@
       "currentStock": "Current Stock",
       "suggested": "Suggested Qty",
       "loadFailed": "Failed to load suggestions.",
-      "empty": "No reorder suggestions right now."
+      "empty": "No reorder suggestions right now.",
+      "createPOCount": "Create PO ({{n}})",
+      "selectAll": "Select all",
+      "pickHint": "Tick the items you want, then Create PO — only ticked items go to the new order. You can still change quantities there.",
+      "noneSelected": "Tick at least one item",
+      "noLink": "Link a seller first — this item can't be ordered yet",
+      "addToOrderCount": "Add to order ({{n}})",
+      "added": "Added to the order on the right"
     },
     "action": {
       "markReceivedAll": "Receive all",

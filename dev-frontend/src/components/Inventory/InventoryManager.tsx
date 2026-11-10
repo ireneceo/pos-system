@@ -32,6 +32,7 @@ import GeneralStockReceiveModal from './modals/GeneralStockReceiveModal';
 import OrderModal from './modals/OrderModal';
 import BulkOrderModal from './modals/BulkOrderModal';
 import ForesightPanel from './sections/ForesightPanel';
+import { useParSuggestions, ParSuggestionsBadge, ParSuggestionsPanel } from '../PurchaseOrders/ParSuggestions';
 import { stockVerdict } from './stockVerdict';
 import StockSettingsModal, { StockSettings } from './modals/StockSettingsModal';
 import { getAuthToken } from '../../utils/auth';
@@ -148,6 +149,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const order = useOrderModal({ mode });
   const navigate = useNavigate();
   const bulk = useBulkOrder();
+  // PAR 추천 창 — 발주 화면과 같은 공용 창(줄마다 골라 새 발주로). 일괄 발주로 담고 전망을 다시 읽으면 같이 다시 읽는다 (2026-11-10 Irene)
+  const par = useParSuggestions(true, bulk.computedAt);
+  const [parOpen, setParOpen] = useState(false);
   const { operationSettings } = useStore();
   const storeTz = (operationSettings as any)?.timeZone || 'Asia/Kuala_Lumpur';
   // «필요한 것 담기» 에 «곧 부족» 도 넣을지 — 기본 끔(과발주가 미발주보다 되돌리기 어렵다 · Fable §9 Q3)
@@ -182,6 +186,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     return out;
   }, [data.generalStockInventory]);
   const foresightPanel = (
+    <>
+    {parOpen && <ParSuggestionsPanel groups={par.groups} onClose={() => setParOpen(false)} />}
     <ForesightPanel
       summary={bulk.summary}
       computedAt={bulk.computedAt}
@@ -194,6 +200,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       blocking={stockSettings?.short_order_policy === 'block'}
       extraCounts={gsExtra}
     />
+    </>
   );
 
   const deleteConfirm = useDeleteConfirm({
@@ -227,6 +234,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     <Container>
       <Header>
         <Title>Inventory</Title>
+        <ParSuggestionsBadge count={par.count} onClick={() => setParOpen(o => !o)} />
       </Header>
 
       <Content>
