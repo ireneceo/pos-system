@@ -341,10 +341,12 @@ class InvoiceScheduler {
       description: `${restaurant.plan_type} - ${billingCycle === 'annual' ? 'Annual' : 'Monthly'} Subscription (${periodText})`,
       calculation_method: 'fixed',
       fixed_amount: planAmount,
-      calculated_amount: discountedAmount,
+      // 줄은 정가 — 할인은 머리(discount_*)에서 finalizeInvoice 가 한 번만 뺀다.
+      //   예전엔 줄에 할인 뒤 금액을 넣어 finalizeInvoice 가 한 번 더 빼 50% 할인이 75% 가 됐다(2026-11-08).
+      calculated_amount: planAmount,
       tax_rate: 0,
       tax_amount: 0,
-      total_amount: discountedAmount
+      total_amount: planAmount
     });
 
     // Referral first-month discount (negative item) — applied BEFORE finalizeInvoice
@@ -370,10 +372,14 @@ class InvoiceScheduler {
     const { finalizeInvoice } = require('../utils/invoiceCalculation');
     await finalizeInvoice(invoice.id);
 
-    console.log(`✓ Created invoice ${invoiceNumber} for ${restaurant.name} - ${currency} ${totalAmount.toFixed(2)}`);
+    // 전액 할인(받을 돈 0)은 «낼 것 없음» 으로 바로 닫는다 — 열어 두면 마감일 뒤 연체 → 매장 정지로 간다.
+    const { closeIfNothingToCollect } = require('./subscriptionInvoiceService');
+    const closedFree = await closeIfNothingToCollect(invoice.id);
 
-    // Send email notification (non-blocking)
-    this.sendInvoiceEmail(invoice, restaurant, 'system_admin', null, invoiceNumber);
+    console.log(`✓ Created invoice ${invoiceNumber} for ${restaurant.name} - ${currency} ${totalAmount.toFixed(2)}${closedFree ? ' (fully discounted — closed)' : ''}`);
+
+    // Send email notification (non-blocking) — 낼 것 없는 청구서는 결제 요청 메일을 보내지 않는다.
+    if (!closedFree) this.sendInvoiceEmail(invoice, restaurant, 'system_admin', null, invoiceNumber);
   }
 
   /**
@@ -822,6 +828,9 @@ class InvoiceScheduler {
             continue;
           }
 
+          const { computeSubscriptionDiscount } = require('./subscriptionInvoiceService');
+          const entDiscount = computeSubscriptionDiscount(entity, planAmount);
+
           // Generate invoice number
           const prefix = type === 'brand' ? 'BRD' : type === 'foodcourt' ? 'FC' : 'OWN';
           const dateStr = billingStart.toISOString().slice(0, 10).replace(/-/g, '');
@@ -845,8 +854,13 @@ class InvoiceScheduler {
             due_date: dueDate,
             subtotal: planAmount,
             tax_amount: 0,
-            discount_amount: 0,
-            total_amount: planAmount,
+            // 구독 할인(users.discount_*) — 2026-11-08 전엔 0 으로 박혀 브랜드 할인이 월 청구에 안 들어갔다.
+            //   금액은 아래 finalizeInvoice 가 머리 할인으로 한 번 계산한다(매장 월 청구와 같은 식).
+            discount_type: entDiscount.type,
+            discount_value: entDiscount.value,
+            discount_amount: entDiscount.discountAmount,
+            discount_reason: entDiscount.reason,
+            total_amount: Math.round((planAmount - entDiscount.discountAmount) * 100) / 100,
             currency: currency,
             status: 'pending_payment',
             issued_by: 0,
@@ -870,9 +884,11 @@ class InvoiceScheduler {
 
           const { finalizeInvoice } = require('../utils/invoiceCalculation');
           await finalizeInvoice(invoice.id);
+          const { closeIfNothingToCollect } = require('./subscriptionInvoiceService');
+          const closedFree = await closeIfNothingToCollect(invoice.id);
 
           result.generated++;
-          console.log(`✓ [ENTITY SUB] ${invoiceNumber} for ${name} - ${currency} ${planAmount.toFixed(2)}`);
+          console.log(`✓ [ENTITY SUB] ${invoiceNumber} for ${name} - ${currency} ${planAmount.toFixed(2)}${entDiscount.discountAmount > 0 ? ` (discount ${entDiscount.discountAmount.toFixed(2)})` : ''}${closedFree ? ' (fully discounted — closed)' : ''}`);
 
         } catch (error) {
           console.error(`✗ [ENTITY SUB] Error for ${name}:`, error.message);

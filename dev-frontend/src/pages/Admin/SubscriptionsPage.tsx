@@ -458,9 +458,11 @@ const SubscriptionsPage: React.FC = () => {
           nextPayment: subEnd ? new Date(subEnd).toISOString().split('T')[0] : '',
           autoRenew: true,
           location: u.address || '',
-          discountType: 'none',
-          discountValue: 0,
-          discountReason: '',
+          // 브랜드·푸드코트·오너 구독 할인은 users.discount_* — 고정 'none' 이면 저장한 할인이 안 보이고,
+          //   다른 칸만 고쳐 저장해도 할인이 지워졌다(2026-11-08 Fable 게이트 R1).
+          discountType: (u.discount_type || 'none') as any,
+          discountValue: parseFloat(u.discount_value) || 0,
+          discountReason: u.discount_reason || '',
           entityType: u.role.includes('Brand') ? 'brand' : u.role.includes('Foodcourt') ? 'foodcourt' : u.role === 'Supplier Admin' ? 'supplier' : 'owner',
           userRole: u.role,
           isDemo: u.is_demo || false,
@@ -950,7 +952,11 @@ const SubscriptionsPage: React.FC = () => {
           currency: (editingSubscription as any).currency || 'MYR',
           subscription_start: editingSubscription.startDate,
           subscription_end: editingSubscription.endDate,
-          subscription_status: editingSubscription.status
+          subscription_status: editingSubscription.status,
+          // 브랜드·푸드코트·오너 구독 할인 — 2026-11-08 전엔 이 경로에서 할인을 빼고 보내 저장이 안 됐다
+          discount_type: editingSubscription.discountType || 'none',
+          discount_value: editingSubscription.discountValue || 0,
+          discount_reason: editingSubscription.discountReason || null
         } as any;
       }
 

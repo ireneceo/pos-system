@@ -196,6 +196,44 @@ async function resolvePayer(subject) {
 /**
  * Build invoice data object shared between create and sync.
  */
+/**
+ * 구독 할인 금액 — subject.discount_type/value/reason (매장·사용자 행의 값).
+ * percentage 는 100% 를 넘지 않게, fixed 는 정가를 넘지 않게 자른다(invoiceScheduler 와 같은 식).
+ */
+function computeSubscriptionDiscount(subject, planAmount) {
+  const type = ['percentage', 'fixed'].includes(subject.discount_type) ? subject.discount_type : 'none';
+  const value = parseFloat(subject.discount_value) || 0;
+  let discountAmount = 0;
+  if (type === 'percentage' && value > 0) {
+    discountAmount = Math.round(planAmount * Math.min(value, 100) / 100 * 100) / 100;
+  } else if (type === 'fixed' && value > 0) {
+    discountAmount = Math.min(value, planAmount);
+  }
+  discountAmount = Math.max(0, Math.min(discountAmount, planAmount));
+  if (discountAmount <= 0) return { type: 'none', value: 0, discountAmount: 0, reason: null };
+  return { type, value, discountAmount, reason: subject.discount_reason || null };
+}
+
+/**
+ * 받을 돈이 0 인 구독 청구서를 «낼 것 없음(paid · 0)» 으로 닫는다 — 새로 만든 직후와 구독 수정 동기화(sync) 뒤에 부른다.
+ *   brands-plans·foodcourts-plans·invoiceScheduler(엔티티 플랜)이 이미 쓰는 규칙과 같다.
+ *   열어 두면 마감일 뒤 subscriptionScheduler 가 연체 → 매장 정지로 끌고 간다.
+ * 반환: 닫았으면 true.
+ */
+async function closeIfNothingToCollect(invoiceId) {
+  const inv = await Invoice.findByPk(invoiceId);
+  if (!inv) return false;
+  if (!['draft', 'pending_payment', 'overdue'].includes(inv.status)) return false;
+  if (parseFloat(inv.total_amount) > 0) return false;
+  await inv.update({
+    status: 'paid',
+    paid_amount: 0,
+    paid_at: new Date(),
+    payment_notes: 'Fully discounted — nothing to collect'
+  });
+  return true;
+}
+
 async function buildInvoiceData(subject) {
   const { kind } = subject;
   const currency = (subject.currency || 'MYR').replace(/^RM$/, 'MYR');
@@ -211,10 +249,17 @@ async function buildInvoiceData(subject) {
 
   const planAmount = await resolvePlanAmount(subject.plan_type, subject.plan_amount, currency, billingCycle);
 
+  // 구독 할인(매장 restaurants.discount_* · 브랜드/푸드코트/오너 users.discount_*) — 2026-11-08 Irene
+  //   «K-DINE 브랜드들은 100% 할인처리 해야 하는데 계속 적용해도 안돼»: 구독을 고쳐 저장하면 열린 청구서를
+  //   여기서 다시 맞추는데 할인을 빼고 정가로 덮어썼다. 월 청구(invoiceScheduler.createSubscriptionInvoice)와 같은 식.
+  const discount = computeSubscriptionDiscount(subject, planAmount);
+  const discountedAmount = Math.round((planAmount - discount.discountAmount) * 100) / 100;
+
   // Apply additional charges from admin payment settings (tax, service charge, etc.)
   // These are configured per-currency in SystemSettings.payment_settings.additionalCharges
+  // 세금 등은 할인 뒤 금액에 붙는다(utils/invoiceCalculation 과 같은 규칙).
   const additionalCharges = await getAdditionalChargesForCurrency(currency);
-  const { charges, totalChargeAmount, total: totalAmount } = applyAdditionalCharges(planAmount, additionalCharges);
+  const { charges, totalChargeAmount, total: totalAmount } = applyAdditionalCharges(discountedAmount, additionalCharges);
 
   const cycleText = billingCycle === 'annual' ? 'Annual' : 'Monthly';
   const periodText = `${formatDate(subStart)} ~ ${formatDate(billingEnd)}`;
@@ -227,7 +272,7 @@ async function buildInvoiceData(subject) {
   const displayName = `${siteName} - ${subject.plan_type} (${cycleText})`;
 
   return {
-    billingCycle, billingEnd, dueDate, planAmount,
+    billingCycle, billingEnd, dueDate, planAmount, discount,
     charges, totalChargeAmount, totalAmount,
     currency, periodText, siteName, payer_type, payer_id, subStart,
     cycleText, displayName, planType: subject.plan_type
@@ -287,6 +332,10 @@ async function createInitialInvoice(subject) {
     billing_period_end: data.billingEnd,
     due_date: data.dueDate,
     subtotal: data.planAmount,
+    discount_type: data.discount.type,
+    discount_value: data.discount.value,
+    discount_amount: data.discount.discountAmount,
+    discount_reason: data.discount.reason,
     total_amount: data.totalAmount,
     currency: data.currency,
     status: 'pending_payment',
@@ -315,6 +364,7 @@ async function createInitialInvoice(subject) {
 
   const { finalizeInvoice } = require('../utils/invoiceCalculation');
   await finalizeInvoice(invoice.id);
+  await closeIfNothingToCollect(invoice.id);
 
   console.log(`[SubInvoice] Created ${invoiceNumber} for ${subject.kind} ${subject.id} (${data.currency} ${data.totalAmount.toFixed(2)})`);
   return { invoice, invoiceNumber };
@@ -334,7 +384,7 @@ async function createInitialInvoice(subject) {
  *
  * Returns:
  *   { updated: invoice }  — if a pending invoice was found and updated
- *   { updated: null, reason: 'no_pending' | 'no_change' } — if nothing was done
+ *   { updated: null, reason: 'no_pending' | 'no_change' | 'already_closed_free' } — if nothing was done
  */
 async function syncPendingInvoice(subject) {
   if (!subject.subscription_start || !subject.plan_type) {
@@ -359,6 +409,23 @@ async function syncPendingInvoice(subject) {
     where.restaurant_id = null; // Exclude restaurant invoices that happen to be paid by this user
   }
 
+  const data = await buildInvoiceData(subject);
+
+  // 받을 돈 0(100% 할인)인 이번 기간이 이미 0원 결제완료로 닫혀 있으면 아무것도 안 한다 —
+  // 같은 저장을 다시 하면 지난 열린 청구서를 덮어 닫거나 새 0원 청구서를 만들던 것 막음(Fable 게이트 S1, 2026-11-10).
+  if (data.totalAmount <= 0) {
+    const { status: _ignored, ...scope } = where;
+    const closedFree = await Invoice.findAll({
+      where: { ...scope, status: 'paid', total_amount: 0 },
+      attributes: ['id', 'billing_period_start'],
+      order: [['id', 'DESC']]
+    });
+    const startStrFree = formatDate(data.subStart);
+    if (closedFree.some(inv => inv.billing_period_start && formatDate(new Date(inv.billing_period_start)) === startStrFree)) {
+      return { updated: null, reason: 'already_closed_free' };
+    }
+  }
+
   const existing = await Invoice.findOne({
     where,
     order: [['id', 'DESC']]
@@ -368,7 +435,6 @@ async function syncPendingInvoice(subject) {
     return { updated: null, reason: 'no_pending' };
   }
 
-  const data = await buildInvoiceData(subject);
   if (data.planAmount <= 0) {
     return { updated: null, reason: 'zero_amount' };
   }
@@ -379,6 +445,9 @@ async function syncPendingInvoice(subject) {
     billing_period_start: existing.billing_period_start,
     billing_period_end: existing.billing_period_end,
     subtotal: parseFloat(existing.subtotal || 0),
+    discount_type: existing.discount_type || 'none',
+    discount_value: parseFloat(existing.discount_value) || 0,
+    discount_amount: parseFloat(existing.discount_amount) || 0,
     additional_charges: existing.additional_charges
   };
 
@@ -391,7 +460,13 @@ async function syncPendingInvoice(subject) {
   const existingChargesJson = JSON.stringify(existing.additional_charges || []);
   const newChargesJson = JSON.stringify(data.charges || []);
 
+  const discountChanged =
+    (existing.discount_type || 'none') !== data.discount.type ||
+    (parseFloat(existing.discount_value) || 0) !== data.discount.value ||
+    (parseFloat(existing.discount_amount) || 0) !== data.discount.discountAmount;
+
   const changed =
+    discountChanged ||
     before.total_amount !== data.totalAmount ||
     existingStartStr !== startStr ||
     existingEndStr !== endStr ||
@@ -408,7 +483,8 @@ async function syncPendingInvoice(subject) {
       history = typeof existing.modification_history === 'string'
         ? JSON.parse(existing.modification_history)
         : existing.modification_history;
-      if (!Array.isArray(history)) history = [];
+      // 복사본으로 — 같은 배열을 push 해 update 하면 Sequelize 가 바뀐 줄 몰라 이력이 저장 안 됐다(Fable 게이트 R3)
+      history = Array.isArray(history) ? [...history] : [];
     }
   } catch (e) { history = []; }
 
@@ -425,6 +501,9 @@ async function syncPendingInvoice(subject) {
       billing_period_start: data.subStart,
       billing_period_end: data.billingEnd,
       subtotal: data.planAmount,
+      discount_type: data.discount.type,
+      discount_value: data.discount.value,
+      discount_amount: data.discount.discountAmount,
       tax_amount: taxAmount,
       additional_charges: data.charges
     }
@@ -435,6 +514,10 @@ async function syncPendingInvoice(subject) {
     billing_period_end: data.billingEnd,
     due_date: data.dueDate,
     subtotal: data.planAmount,
+    discount_type: data.discount.type,
+    discount_value: data.discount.value,
+    discount_amount: data.discount.discountAmount,
+    discount_reason: data.discount.reason,
     total_amount: data.totalAmount,
     currency: data.currency,
     additional_charges: data.charges,
@@ -444,9 +527,16 @@ async function syncPendingInvoice(subject) {
   });
 
   // Also update the invoice item
-  const existingItem = await InvoiceItem.findOne({ where: { invoice_id: existing.id, item_type: 'subscription' } });
+  // 품목이 하나뿐인데 종류가 subscription 이 아니면(옛 «수정» 저장이 service 로 바꿔 둔 것 — 2026-11-08)
+  //   그 한 줄이 구독 줄이다 — 종류를 되돌리며 같이 맞춘다. 줄이 여럿이면 subscription 줄만 만진다.
+  let existingItem = await InvoiceItem.findOne({ where: { invoice_id: existing.id, item_type: 'subscription' } });
+  if (!existingItem) {
+    const allItems = await InvoiceItem.findAll({ where: { invoice_id: existing.id } });
+    if (allItems.length === 1) existingItem = allItems[0];
+  }
   if (existingItem) {
     await existingItem.update({
+      item_type: 'subscription',
       description: `${data.planType} - ${data.cycleText} Subscription (${data.periodText})`,
       fixed_amount: data.planAmount,
       calculated_amount: data.planAmount,
@@ -455,6 +545,9 @@ async function syncPendingInvoice(subject) {
       total_amount: data.totalAmount
     });
   }
+
+  // 할인으로 받을 돈이 0 이 됐으면 닫는다 — 열어 두면 마감일 뒤 연체 → 매장 정지(2026-11-08 Fable 게이트 R2)
+  await closeIfNothingToCollect(existing.id);
 
   console.log(`[SubInvoice] Synced ${existing.invoice_number} for ${subject.kind} ${subject.id} (${data.currency} ${data.totalAmount.toFixed(2)})`);
   return { updated: existing, invoiceNumber: existing.invoice_number };
@@ -517,7 +610,8 @@ async function recalcPendingInvoiceCharges() {
           history = typeof inv.modification_history === 'string'
             ? JSON.parse(inv.modification_history)
             : inv.modification_history;
-          if (!Array.isArray(history)) history = [];
+          // 복사본으로 — 같은 배열을 push 해 update 하면 Sequelize 가 바뀐 줄 몰라 이력이 저장 안 됐다(Fable 게이트 R3)
+      history = Array.isArray(history) ? [...history] : [];
         }
       } catch (e) { history = []; }
 
@@ -567,5 +661,7 @@ module.exports = {
   createInitialInvoice,
   syncPendingInvoice,
   recalcPendingInvoiceCharges,
-  calcBillingEnd
+  calcBillingEnd,
+  computeSubscriptionDiscount,
+  closeIfNothingToCollect
 };

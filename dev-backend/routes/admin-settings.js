@@ -99,6 +99,19 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       savedBrandLogo = await saveImageToFile(brandLogo, 'brand-logo', { maxWidth: 400, maxHeight: 400 }) || '';
     }
 
+    // 인보이스·문서 로고도 파일로 — 그림 글자(base64)로 두면 인보이스 목록 응답에 줄마다 복제돼
+    //   응답이 수십 MB 로 불었다(2026-08-23 실측 57배 · 2026-11-08 «인보이스 목록이 안 나와»).
+    let savedCompanyLogo = companyLogo || '';
+    if (companyLogo && companyLogo.startsWith('data:image/')) {
+      savedCompanyLogo = await saveImageToFile(companyLogo, 'company-logo', { maxWidth: 400, maxHeight: 400 }) || '';
+    }
+    let savedLogo = logo || '';
+    if (logo && logo.startsWith('data:image/')) {
+      savedLogo = logo === companyLogo
+        ? savedCompanyLogo
+        : (await saveImageToFile(logo, 'logo-legacy', { maxWidth: 400, maxHeight: 400 }) || '');
+    }
+
     const settingsData = {
       company_name: companyName,
       address,
@@ -114,8 +127,8 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
       tax_number: taxNumber,
       registration_number: registrationNumber,
       brand_logo: savedBrandLogo,
-      company_logo: companyLogo || '',
-      logo: logo || savedBrandLogo || '', // Keep for backward compatibility
+      company_logo: savedCompanyLogo,
+      logo: savedLogo || savedBrandLogo || '', // Keep for backward compatibility
       bank_name: bankName || '',
       bank_account: bankAccount || '',
       bank_account_name: bankAccountName || '',
@@ -125,13 +138,16 @@ router.post('/', authenticateToken, requireRole('System Admin'), async (req, res
 
     if (settings) {
       // 이미지 변경 시 이전 파일 삭제
-      if (brandLogo && settings.brand_logo && brandLogo !== settings.brand_logo) {
+      // 저장된 «파일 주소» 끼리 비교한다 — 고정 파일 이름(brand-logo·company-logo)이라 새 그림이 옛 주소와
+      //   같은 자리에 쓰인다. 받은 값(base64)과 비교하면 방금 쓴 새 파일을 지운다.
+      const keepUrls = new Set([savedBrandLogo, savedCompanyLogo, savedLogo].filter(Boolean));
+      if (brandLogo && settings.brand_logo && !keepUrls.has(settings.brand_logo)) {
         await deleteOldImages(settings.brand_logo);
       }
-      if (companyLogo && settings.company_logo && companyLogo !== settings.company_logo) {
+      if (companyLogo && settings.company_logo && !keepUrls.has(settings.company_logo)) {
         await deleteOldImages(settings.company_logo);
       }
-      if (logo && settings.logo && logo !== settings.logo) {
+      if (logo && settings.logo && !keepUrls.has(settings.logo)) {
         await deleteOldImages(settings.logo);
       }
       // 업데이트

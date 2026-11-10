@@ -138,6 +138,8 @@
     "migrate-po-approval-exemptions.js",
     "migrate-customer-reset-token.js",
     "migrate-import-history-recipes.js",
+    "migrate-company-logo-to-file.js",
+    "migrate-subscription-item-type-repair.js",
     "migrate-brand-menu-push-frozen-ipc.js",
     "migrate-contact-inquiry-type-card-terminal.js",
     "migrate-faq-card-terminal-20261109.js"

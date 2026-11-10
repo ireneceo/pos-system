@@ -1197,7 +1197,7 @@ const InvoicesPage: React.FC = () => {
         setSelectedInvoice(null);
       } else {
         const errorData = await response.json();
-        setSuccessMessage(`Failed to send invoice: ${errorData.error || 'Unknown error'}`);
+        setSuccessMessage(`Failed to send invoice: ${getErrorMessage(errorData, 'Unknown error')}`);
         setShowSuccessModal(true);
       }
     } catch (error) {
@@ -1266,7 +1266,7 @@ const InvoicesPage: React.FC = () => {
         await fetchInvoices();
       } else {
         const errorData = await response.json();
-        setEditSaveError(errorData.error || 'Failed to update invoice');
+        setEditSaveError(getErrorMessage(errorData, 'Failed to update invoice'));
       }
     } catch (error) {
       console.error('Error updating invoice:', error);
@@ -1386,7 +1386,7 @@ const InvoicesPage: React.FC = () => {
         resetInvoiceForm();
       } else {
         const errorData = await response.json();
-        setSuccessMessage(`Failed to create invoice: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true);
+        setSuccessMessage(`Failed to create invoice: ${getErrorMessage(errorData, 'Unknown error')}`); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error creating invoice:', error);
@@ -1415,7 +1415,7 @@ const InvoicesPage: React.FC = () => {
         window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json();
-        setSuccessMessage(`Failed to update payment status: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true);
+        setSuccessMessage(`Failed to update payment status: ${getErrorMessage(errorData, 'Unknown error')}`); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error updating payment status:', error);
@@ -1460,7 +1460,7 @@ const InvoicesPage: React.FC = () => {
         window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json().catch(() => ({}));
-        setSuccessMessage(`Failed to revert invoice: ${errorData.error?.message || errorData.error || 'Unknown error'}`); setShowSuccessModal(true);
+        setSuccessMessage(`Failed to revert invoice: ${getErrorMessage(errorData, 'Unknown error')}`); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error reverting invoice to draft:', error);
@@ -1484,7 +1484,7 @@ const InvoicesPage: React.FC = () => {
         window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json();
-        setSuccessMessage(`Failed to cancel invoice: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true);
+        setSuccessMessage(`Failed to cancel invoice: ${getErrorMessage(errorData, 'Unknown error')}`); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error cancelling invoice:', error);
@@ -1507,7 +1507,7 @@ const InvoicesPage: React.FC = () => {
         window.dispatchEvent(new Event('refreshBadgeCounts'));
       } else {
         const errorData = await response.json();
-        setSuccessMessage(`Failed to delete invoice: ${errorData.error || 'Unknown error'}`); setShowSuccessModal(true);
+        setSuccessMessage(`Failed to delete invoice: ${getErrorMessage(errorData, 'Unknown error')}`); setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error deleting invoice:', error);

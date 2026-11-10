@@ -1412,6 +1412,9 @@ router.post('/', authenticateToken, requireRole(
           billing_cycle: restaurant.billing_cycle || 'monthly',
           currency: restaurant.currency || 'MYR',
           subscription_start: restaurant.subscription_start,
+          discount_type: restaurant.discount_type,
+          discount_value: restaurant.discount_value,
+          discount_reason: restaurant.discount_reason,
           restaurant: {
             id: restaurant.id,
             payment_model: restaurant.payment_model,
@@ -2086,7 +2089,9 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     }
 
     // Sync pending invoice if subscription fields changed
-    if (subscriptionFieldsChanged && restaurant.subscription_start && restaurant.plan_type) {
+    //   구독 할인(System Admin 만 바꿈)도 열린 구독 청구서 금액을 바꾼다 — 2026-11-08 할인 반영 고침.
+    const discountFieldsChanged = updateData.discount_type !== undefined || updateData.discount_value !== undefined;
+    if ((subscriptionFieldsChanged || discountFieldsChanged) && restaurant.subscription_start && restaurant.plan_type) {
       try {
         const { syncPendingInvoice, createInitialInvoice } = require('../services/subscriptionInvoiceService');
         const subject = {
@@ -2097,6 +2102,9 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
           billing_cycle: restaurant.billing_cycle,
           currency: restaurant.currency,
           subscription_start: restaurant.subscription_start,
+          discount_type: restaurant.discount_type,
+          discount_value: restaurant.discount_value,
+          discount_reason: restaurant.discount_reason,
           restaurant: {
             id: restaurant.id,
             payment_model: restaurant.payment_model,

@@ -428,6 +428,8 @@ router.get('/', authenticateToken, async (req, res) => {
           }
 
           return {
+            // 줄 종류 — 관리자 «수정» 저장이 이 줄을 그대로 돌려보내므로 종류도 같이 실어야 안 바뀐다(2026-11-08)
+            itemType: item.item_type || null,
             description: fullDescription,
             quantity: Number(item.quantity ?? 1),
             unit: item.unit || null,

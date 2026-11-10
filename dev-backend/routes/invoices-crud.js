@@ -426,9 +426,18 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // recomputes header against the items already on disk).
     let itemsForRecalc;
     if (items && Array.isArray(items)) {
-      itemsForRecalc = items.map(item => ({
+      // 관리자 «수정» 화면은 목록 응답의 줄(종류 없음)을 그대로 돌려보낸다 — 종류가 없으면 'service' 로 바뀌어
+      //   구독 청구서가 «서비스» 로 보였다(2026-11-08 Irene). 종류가 안 오면 같은 자리의 기존 줄 종류,
+      //   그것도 없으면 청구서 분류(invoice_category)를 쓴다.
+      const prevRows = await InvoiceItem.findAll({
+        where: { invoice_id: invoiceId }, order: [['id', 'ASC']], attributes: ['item_type'], transaction
+      });
+      const fallbackType = (idx) => prevRows[idx]?.item_type
+        || (invoiceCategory !== undefined ? invoiceCategory : invoice.invoice_category)
+        || 'service';
+      itemsForRecalc = items.map((item, idx) => ({
         invoice_id: invoiceId,
-        item_type: item.itemType || item.item_type || 'service',
+        item_type: item.itemType || item.item_type || fallbackType(idx),
         description: item.description || '',
         quantity: Number(item.quantity ?? 1),
         unit: item.unit || null,
@@ -457,7 +466,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
       discount_type: updateData.discount_type !== undefined ? updateData.discount_type : invoice.discount_type,
       discount_value: updateData.discount_value !== undefined ? updateData.discount_value : invoice.discount_value
     };
-    const recomputed = recomputeInvoiceTotals(mergedHeader, itemsForRecalc);
+    let recomputed = recomputeInvoiceTotals(mergedHeader, itemsForRecalc);
+    // 할인만 바꾸고 세금 줄을 안 보낸 저장 — 기존 세금 금액은 할인 전 금액으로 매겨져 있어 100% 할인에도
+    //   세금만 남았다(2026-11-08 «100% 할인 적용해도 안돼»). 세율이 있는 줄은 할인 뒤 금액으로 다시 매긴다.
+    if ((discountType !== undefined || discountValue !== undefined) && additionalCharges === undefined
+        && Array.isArray(mergedHeader.additional_charges) && mergedHeader.additional_charges.length) {
+      const base = Math.max(0, recomputed.header.subtotal - recomputed.header.discount_amount);
+      const rerated = mergedHeader.additional_charges.map(c => {
+        const rate = parseFloat(c?.rate);
+        return Number.isFinite(rate) ? { ...c, amount: Math.round(base * rate / 100 * 100) / 100 } : c;
+      });
+      mergedHeader.additional_charges = rerated;
+      updateData.additional_charges = rerated;
+      recomputed = recomputeInvoiceTotals(mergedHeader, itemsForRecalc);
+    }
     updateData.subtotal = recomputed.header.subtotal;
     updateData.discount_amount = recomputed.header.discount_amount;
     updateData.total_amount = recomputed.header.total_amount;

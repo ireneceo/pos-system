@@ -695,7 +695,10 @@ router.post('/', authenticateToken, async (req, res) => {
           plan_amount: user.plan_amount,
           billing_cycle: user.billing_cycle,
           currency: user.currency,
-          subscription_start: user.subscription_start
+          subscription_start: user.subscription_start,
+          discount_type: user.discount_type,
+          discount_value: user.discount_value,
+          discount_reason: user.discount_reason
         });
         if (result && result.invoice) {
           console.log(`[Auto-Invoice] Created ${result.invoiceNumber} for new ${role} "${user.full_name || user.email}"`);
@@ -991,7 +994,10 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
           plan_amount: user.plan_amount,
           billing_cycle: user.billing_cycle,
           currency: user.currency,
-          subscription_start: user.subscription_start
+          subscription_start: user.subscription_start,
+          discount_type: user.discount_type,
+          discount_value: user.discount_value,
+          discount_reason: user.discount_reason
         };
         const syncResult = await syncPendingInvoice(subject);
         if (syncResult.updated) {
