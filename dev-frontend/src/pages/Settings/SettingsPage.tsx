@@ -758,6 +758,8 @@ const SettingsPage: React.FC = () => {
   // 2026-06-25 (Irene): 프린터 설정은 레스토랑 관리자(또는 System Admin)만 변경 가능.
   // 백엔드(routes/store.js)도 동일하게 강제 — 비-RA 저장 시 printer_settings 통째 무시.
   const canEditPrinterSettings = user?.role === 'Restaurant Admin' || user?.role === 'System Admin';
+  // 주방 스테이션(카테고리·메뉴 배정)도 같은 기준 — 서버 kitchen-stations POST/PUT/DELETE 와 같은 역할.
+  const canEditStations = canEditPrinterSettings;
   const { updateSettings } = useStore();
   const { categories } = useMenu();
   const { setTheme, resetTheme, isDefaultTheme } = useBrandTheme();
@@ -1042,6 +1044,9 @@ const SettingsPage: React.FC = () => {
   const [allCategories, setAllCategories] = useState<any[]>([]);
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [stationSaving, setStationSaving] = useState(false);
+  // 2026-11-10 (Irene «권고대로»): 서버가 스테이션 저장·삭제를 RA/SA 만 허용(routes/kitchen-stations.js requireRole).
+  // 예전엔 응답을 안 보고 창을 닫아 직원 계정(안드로이드 앱)에서 «저장됐는데 안 바뀜» 으로 보였다 → 실패를 보여 준다.
+  const [stationError, setStationError] = useState<string | null>(null);
   // Takeaway per-item-individual: combobox + highlight last-added row
   const [showTakeawayAddModal, setShowTakeawayAddModal] = useState(false);
   const [takeawayAddSearch, setTakeawayAddSearch] = useState('');
@@ -7849,14 +7854,27 @@ const SettingsPage: React.FC = () => {
               <SettingsCard>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                   <CardTitle style={{ marginBottom: 0 }}>{t('settings:settingsPage.stations')}</CardTitle>
+                  {canEditStations && (
                   <SaveButton onClick={() => {
                     setEditingStation(null);
                     setStationForm({ name: '', category_ids: [], product_ids: [], alert_sound: 'bell' });
+                    setStationError(null);
                     setShowStationModal(true);
                   }}>
                     Add Station
                   </SaveButton>
+                  )}
                 </div>
+                {!canEditStations && (
+                  <div style={{ padding: '10px 14px', marginBottom: 16, background: '#FEF3F2', border: '1px solid #FECDCA', borderRadius: 8, fontSize: 13, color: '#B42318' }}>
+                    {t('settings:settingsPage.stationsAdminOnlyReadonly')}
+                  </div>
+                )}
+                {stationError && !showStationModal && (
+                  <div role="alert" style={{ padding: '10px 14px', marginBottom: 16, background: '#FEF3F2', border: '1px solid #FECDCA', borderRadius: 8, fontSize: 13, color: '#B42318' }}>
+                    {stationError}
+                  </div>
+                )}
 
                 {kitchenStationsLoading ? (
                   <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('settings:settingsPage.loading')}</div>
@@ -7885,9 +7903,11 @@ const SettingsPage: React.FC = () => {
                                 <span style={{ fontSize: '11px', background: '#FEE2E2', color: '#EF4444', padding: '2px 8px', borderRadius: '10px', fontWeight: 500 }}>{t('settings:settingsPage.inactive')}</span>
                               )}
                             </div>
+                            {canEditStations && (
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button type="button"
                                 onClick={() => {
+                                  setStationError(null);
                                   setEditingStation(station);
                                   setStationForm({
                                     name: station.name,
@@ -7908,6 +7928,7 @@ const SettingsPage: React.FC = () => {
                                 Delete
                               </button>
                             </div>
+                            )}
                           </div>
                           {/* Assignment info */}
                           <div style={{ marginTop: '8px', fontSize: '13px', color: '#4B5563' }}>
@@ -8000,10 +8021,20 @@ const SettingsPage: React.FC = () => {
                   setDeleteStationConfirm({ isOpen: false, stationId: null, stationName: '' });
                   if (!id) return;
                   const token = getAuthToken();
-                  await fetch(`/api/kitchen-stations/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
-                  });
+                  setStationError(null);
+                  try {
+                    const res = await fetch(`/api/kitchen-stations/${id}`, {
+                      method: 'DELETE',
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                    });
+                    if (!res.ok) {
+                      setStationError(res.status === 403
+                        ? t('settings:settingsPage.stationSaveDenied')
+                        : t('settings:settingsPage.stationSaveFailed'));
+                    }
+                  } catch (e) {
+                    setStationError(t('settings:settingsPage.stationSaveFailed'));
+                  }
                   loadKitchenStations();
                 }}
                 onCancel={() => setDeleteStationConfirm({ isOpen: false, stationId: null, stationName: '' })}
@@ -8014,12 +8045,12 @@ const SettingsPage: React.FC = () => {
                 <CommonModal
                   isOpen={true}
                   title={editingStation ? `Edit Station: ${editingStation.name}` : 'Add Kitchen Station'}
-                  onClose={() => setShowStationModal(false)}
+                  onClose={() => { setShowStationModal(false); setStationError(null); }}
                   maxWidth="640px"
                   footer={
                     <>
                       <button type="button"
-                        onClick={() => setShowStationModal(false)}
+                        onClick={() => { setShowStationModal(false); setStationError(null); }}
                         style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid #C7CED6', background: 'white', cursor: 'pointer', fontSize: '14px', color: '#4B5563' }}
                       >
                         Cancel
@@ -8028,12 +8059,14 @@ const SettingsPage: React.FC = () => {
                         disabled={!stationForm.name.trim() || stationSaving}
                         onClick={async () => {
                           setStationSaving(true);
+                          setStationError(null);
                           try {
                             const token = getAuthToken();
                             const authHeaders = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
+                            let res: Response;
                             if (editingStation) {
-                              await fetch(`/api/kitchen-stations/${editingStation.id}`, {
+                              res = await fetch(`/api/kitchen-stations/${editingStation.id}`, {
                                 method: 'PUT',
                                 headers: authHeaders,
                                 body: JSON.stringify({
@@ -8044,7 +8077,7 @@ const SettingsPage: React.FC = () => {
                                 })
                               });
                             } else {
-                              await fetch('/api/kitchen-stations', {
+                              res = await fetch('/api/kitchen-stations', {
                                 method: 'POST',
                                 headers: authHeaders,
                                 body: JSON.stringify({
@@ -8057,10 +8090,21 @@ const SettingsPage: React.FC = () => {
                               });
                             }
 
+                            if (!res.ok) {
+                              // 창은 열어 둔다 — 고른 내용이 그대로 남고, 왜 안 됐는지 바로 보인다.
+                              let msg = '';
+                              try { const body = await res.json(); msg = (res.status === 400 && (body?.message || '')) || ''; } catch { /* 본문 없음 */ }
+                              setStationError(res.status === 403
+                                ? t('settings:settingsPage.stationSaveDenied')
+                                : (msg || t('settings:settingsPage.stationSaveFailed')));
+                              return;
+                            }
+
                             setShowStationModal(false);
                             loadKitchenStations();
                           } catch (error) {
                             console.error('Failed to save station:', error);
+                            setStationError(t('settings:settingsPage.stationSaveFailed'));
                           } finally {
                             setStationSaving(false);
                           }
@@ -8071,6 +8115,11 @@ const SettingsPage: React.FC = () => {
                     </>
                   }
                 >
+                    {stationError && (
+                      <div role="alert" style={{ padding: '10px 14px', marginBottom: 16, background: '#FEF3F2', border: '1px solid #FECDCA', borderRadius: 8, fontSize: 13, color: '#B42318' }}>
+                        {stationError}
+                      </div>
+                    )}
                     <FormGroup>
                       <Label>Station Name *</Label>
                       <Input
