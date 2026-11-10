@@ -177,7 +177,7 @@ const StockSettingsModal: React.FC<Props> = ({ isOpen, onClose, brandId, onSaved
           </FormGroup>
 
           <div style={{ fontSize: 12, color: '#6B7280', borderTop: '1px solid #E5E7EB', paddingTop: 10 }}>
-            {t('stockSettings.perItemHint', 'Min stock, daily usage and lead time are set per item — use the Settings button on each row.')}
+            {t('stockSettings.perItemHint', 'Each item\'s reorder number is set in that item\'s settings.')}
           </div>
         </div>
       )}

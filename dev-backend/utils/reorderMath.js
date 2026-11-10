@@ -5,9 +5,13 @@
  * «하루 사용량» 을 판매가 아니라 **입고**(purchase 장부)로 계산했다. 이제:
  *   하루 사용량 = 최근 28일 장부의 «나간 양»(판매 차감 + 폐기 + 만들기에 쓴 원재료) ÷ 그중 기록이 있는 날 수
  *                 기록 있는 날이 7일 미만이면 수동 입력값(manual_daily_usage), 그것도 없으면 0
- *   안전재고     = 최소재고(min_stock)가 있으면 그것, 없으면 하루 사용량 × 리드타임 × 안전재고%
- *   발주점       = 하루 사용량 × 리드타임 + 안전재고
- *   제안 수량    = max(0, 발주점 + 하루 사용량 × 7 − 지금 재고 − 이미 발주해 오는 중인 양)
+ *   발주점(«발주 기준») = 최소재고(min_stock)가 있으면 **그 숫자 그대로**
+ *                         없으면 하루 사용량 × 리드타임 × (1 + 안전재고%)  (= «자동»)
+ *   채울 여유    = 하루 사용량 × 7 · 사용량이 0 이면 발주점 × 0.5
+ *   제안 수량    = max(0, 발주점 + 채울 여유 − 지금 재고 − 이미 발주해 오는 중인 양)
+ *   2026-11-10 개정(Fable 설계 .claude/fable-design-20261110-stock-simple-reorder.md §1):
+ *     ① min_stock 이 있으면 발주점 = min_stock (예전: 사용량×리드타임 + min_stock — 정한 숫자와 표시가 어긋남)
+ *     ② 사용량 0 이면 채울 여유 = 발주점 × 0.5 (예전 0 — 받아도 재고가 딱 min 이라 다시 «지금 발주»)
  * 수량 단위는 전부 재고 취급단위(장부와 같은 단위).
  *
  * 2026-11-03 확장(Fable 설계 .claude/fable-design-20261103-stock-foresight-oneclick-po.md §3):
@@ -24,10 +28,13 @@ const r2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
 function compute({ dailyUsage = 0, leadTimeDays = 2, minStock = 0, safetyStockPercent = 20, onHand = 0, onOrder = 0 }) {
   const daily = Number(dailyUsage) || 0;
   const lead = Number(leadTimeDays) > 0 ? Number(leadTimeDays) : 2;
-  const safety = Number(minStock) > 0 ? Number(minStock) : daily * lead * ((Number(safetyStockPercent) || 0) / 100);
-  const reorderPoint = daily * lead + safety;
-  const suggest = Math.max(0, reorderPoint + daily * COVER_DAYS - (Number(onHand) || 0) - (Number(onOrder) || 0));
+  const manual = Number(minStock) > 0;
+  const safety = manual ? Number(minStock) : daily * lead * ((Number(safetyStockPercent) || 0) / 100);
+  const reorderPoint = manual ? Number(minStock) : daily * lead + safety;           // 2026-11-10 ① 정한 숫자 = 기준
+  const cover = daily > 0 ? daily * COVER_DAYS : reorderPoint * 0.5;                 // 2026-11-10 ②
+  const suggest = Math.max(0, reorderPoint + cover - (Number(onHand) || 0) - (Number(onOrder) || 0));
   return {
+    level_source: manual ? 'manual' : (daily > 0 ? 'auto' : 'none'),
     daily_usage: r2(daily), lead_time_days: lead, safety_stock: r2(safety),
     reorder_point: r2(reorderPoint), on_hand: r2(onHand), on_order: r2(onOrder),
     suggested_qty: Math.ceil(suggest * 10) / 10,

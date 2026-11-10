@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, ModalButton, FormGroup as UIFormGroup, FormLabel, FormInput } from '../../UI/Modal';
 import { FilterSelect } from '../../Common/FilterComponents';
 import ImageUploadDropzone from '../../Common/ImageUploadDropzone';
@@ -28,6 +29,7 @@ const GeneralStockFormModal: React.FC<Props> = ({
   saving,
   onConfirm,
 }) => {
+  const { t } = useTranslation(['inventory']);
   const title = mode === 'add' ? 'Add General Stock' : 'Edit General Stock';
   const confirmLabel = mode === 'add'
     ? (saving ? 'Adding...' : 'Add Item')
@@ -152,7 +154,7 @@ const GeneralStockFormModal: React.FC<Props> = ({
             />
           </UIFormGroup>
           <UIFormGroup>
-            <FormLabel>Min Stock</FormLabel>
+            <FormLabel>{t('inventory:gsReorderLevel', 'Reorder when stock is at or below')}</FormLabel>
             <FormInput
               type="number"
               step="0.01"

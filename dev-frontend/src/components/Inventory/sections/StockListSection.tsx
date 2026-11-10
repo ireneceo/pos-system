@@ -12,12 +12,10 @@ import {
 import { FilterBar, SearchInput, FilterSelect } from '../../Common/FilterComponents';
 import {
   SectionTitle,
-  StatusBadge,
   StockItemImage,
   StockItemInfo,
   StockItemDetails,
   StockItemCode,
-  ConfidenceBadge,
   SettingsButton,
   IngredientName,
   BrandTag,
@@ -31,7 +29,9 @@ import {
   DeleteButton,
   EditButton, PrepTag} from '../styles';
 import { formatCurrency } from '../../../utils/currency';
-import { formatStock, formatDate, getStatusLabel, getConfidenceLabel } from '../utils';
+import { formatStock, formatDate } from '../utils';
+import VerdictBadge from '../VerdictBadge';
+import { stockVerdict, StockVerdict, FILTER_TO_VERDICT } from '../stockVerdict';
 import {
   InventoryMode,
   IngredientStock,
@@ -104,6 +104,10 @@ interface Props {
   suggestionsById?: Map<number, SuggestionRow>;
   /** 발주 전망 «기준 없음» 품목 id (서버 summary 와 같은 판정) */
   noBasisIds?: Set<number>;
+  /** 숫자를 안 정한(자동) 품목의 발주 기준 — «발주 기준» 칸 «자동 · n» (2026-11-10) */
+  autoLevels?: Map<number, number>;
+  /** 발주 전망을 읽었는가 — 못 읽었으면 판정이 옛 필드로 떨어진다(stockVerdict) */
+  suggestionsLoaded?: boolean;
   selectedIds?: Set<number>;
   onToggleSelect?: (id: number) => void;
 
@@ -113,6 +117,39 @@ interface Props {
   /** 카탈로그에 없는 업체 — 외부 공급업체 상품으로 만들어 바로 연결 */
   onCreateSupplierProduct?: (ingredient: IngredientStock) => void;
 }
+
+/**
+ * «발주 기준» 칸 — 정함: «5 kg» · 자동: «자동 · 24 kg» · 없음: «미정 · 정하기». 누르면 그 품목 설정 창 (2026-11-10 §2-4)
+ */
+const ReorderAtCell: React.FC<{ level: number; auto?: number; unit: string; onEdit: () => void }> = ({ level, auto, unit, onEdit }) => {
+  const { t } = useTranslation(['inventory']);
+  const btn: React.CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', font: 'inherit' };
+  if (level > 0) {
+    return (
+      <button type="button" onClick={onEdit} title={t('inventory:reorderAt.edit', 'Change the reorder number') as string}
+        style={{ ...btn, color: '#0A2540', fontWeight: 600, fontSize: 14 }}>
+        {formatStock(level)} {unit}
+      </button>
+    );
+  }
+  if (auto != null && auto > 0) {
+    return (
+      <button type="button" onClick={onEdit} title={t('inventory:reorderAt.autoHint', 'Estimated from the last 28 days of use. Set your own number in the item settings.') as string}
+        style={{ ...btn, color: '#4B5563', fontSize: 13 }}>
+        {t('inventory:reorderAt.auto', { defaultValue: 'Auto · {{qty}} {{unit}}', qty: formatStock(auto), unit })}
+      </button>
+    );
+  }
+  return (
+    <span style={{ fontSize: 13, color: '#6B7280' }}>
+      {t('inventory:reorderAt.notSet', 'Not set')}
+      {' · '}
+      <button type="button" onClick={onEdit} style={{ ...btn, color: '#635BFF', fontWeight: 600, textDecoration: 'underline' }}>
+        {t('inventory:reorderAt.set', 'Set')}
+      </button>
+    </span>
+  );
+};
 
 const StockListSection: React.FC<Props> = ({
   mode,
@@ -145,6 +182,8 @@ const StockListSection: React.FC<Props> = ({
   setShowUntracked,
   suggestionsById,
   noBasisIds,
+  autoLevels,
+  suggestionsLoaded = false,
   selectedIds,
   onToggleSelect,
   onLinkSupplier,
@@ -182,27 +221,23 @@ const StockListSection: React.FC<Props> = ({
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [inventory]);
 
-  // 'zero' = 재고가 0 인 것. stock_status 와 별개 기준인 이유: 최소재고(min_stock)를 안 정한
-  // 품목은 stock_status 가 늘 'normal' 이라 "재고 없는 것만 보기"가 불가능했다.
-  // (임계치 미설정 품목을 경고로 안 띄우는 기존 알림 정책은 그대로 둔다.)
-  const matchesStatusFilter = (item: { stock_status: string; current_stock: number }) =>
-    statusFilter === 'all' ? true
-      : statusFilter === 'zero' ? (item.current_stock <= 0)
-      : statusFilter.startsWith('fs_') ? false   // 발주 전망 단계 — 재료 목록에서만(아래 matchesForesight)
-      : item.stock_status === statusFilter;
-
-  // 발주 전망 단계 필터(띠의 네 칸) — 서버 제안 행의 status / 기준 없음 id 로 가른다
-  const matchesForesight = (id: number): boolean | null => {
-    if (!statusFilter.startsWith('fs_')) return null;
-    if (statusFilter === 'fs_no_basis') return !!noBasisIds?.has(id);
-    const sg = suggestionsById?.get(id);
-    return !!sg && `fs_${sg.status}` === statusFilter;
+  // 상태 판정은 한 함수(stockVerdict — 2026-11-10 Fable 설계 §2-1). 배지·필터·띠 숫자가 같은 답을 낸다.
+  //   필터 값은 기존 fs_* 그대로(아침 알림 ?filter=fs_out 링크 보존). 일반재고도 같은 판정으로 걸린다.
+  const verdictOfIngredient = (item: IngredientStock): StockVerdict =>
+    stockVerdict(item, suggestionsById?.get(item.id), noBasisIds, suggestionsLoaded, true);
+  const verdictOfGeneral = (item: GeneralStockItem): StockVerdict =>
+    stockVerdict(item, undefined, undefined, false, false);
+  const matchesVerdict = (v: StockVerdict) => {
+    if (statusFilter === 'all') return true;
+    const want = FILTER_TO_VERDICT[statusFilter];
+    // 지금 발주 필터는 «주문함 · 오는 중» 도 함께(기준 이하인데 이미 주문한 것 — 숨기면 왜 안 보이는지 모른다)
+    if (statusFilter === 'fs_order_now' && v === 'incoming') return true;
+    return want ? want.includes(v) : true;
   };
 
   const filteredInventory = inventory.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const fs = matchesForesight(item.id);
-    const matchesStatus = fs !== null ? fs : matchesStatusFilter(item);
+    const matchesStatus = matchesVerdict(verdictOfIngredient(item));
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
     return matchesSearch && matchesStatus && matchesCategory && matchesSupplier(item);
   });
@@ -253,15 +288,11 @@ const StockListSection: React.FC<Props> = ({
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
-          <option value="all">All Status</option>
-          <option value="zero">Zero Stock</option>
-          <option value="normal">Normal</option>
-          <option value="low_stock">Low Stock</option>
-          <option value="out_of_stock">Out of Stock</option>
-          <option value="fs_out">{t('inventory:foresight.out', "Out — can't cover orders")}</option>
-          <option value="fs_order_now">{t('inventory:foresight.orderNow', 'Order now')}</option>
-          <option value="fs_soon">{t('inventory:foresight.soon', 'Running low within 7 days')}</option>
-          <option value="fs_no_basis">{t('inventory:foresight.noBasis', 'No basis to judge')}</option>
+          <option value="all">{t('inventory:statusFilter.all', 'All statuses')}</option>
+          <option value="fs_out">{t('inventory:statusFilter.out', 'Out of stock')}</option>
+          <option value="fs_order_now">{t('inventory:statusFilter.orderNow', 'Order now')}</option>
+          <option value="fs_soon">{t('inventory:statusFilter.soon', 'Running low')}</option>
+          <option value="fs_no_basis">{t('inventory:statusFilter.noLevel', 'No reorder number')}</option>
         </FilterSelect>
         <Button
           variant="primary"
@@ -278,7 +309,7 @@ const StockListSection: React.FC<Props> = ({
             <SectionTitle>
               General Stock ({generalStockInventory.filter(item => {
                 const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-                const matchesStatus = matchesStatusFilter(item);
+                const matchesStatus = matchesVerdict(verdictOfGeneral(item));
                 return matchesSearch && matchesStatus;
               }).length})
             </SectionTitle>
@@ -288,7 +319,7 @@ const StockListSection: React.FC<Props> = ({
               <span className="col-info">Item</span>
               <span>Status</span>
               <span>Current Stock</span>
-              <span className="col-min">Min Stock</span>
+              <span className="col-min">{t('inventory:reorderAt.column', 'Reorder at')}</span>
               <span className="col-cost">Unit Cost</span>
               <span className="col-supplier">Supplier</span>
               <span className="col-last">Last Stock Take</span>
@@ -298,7 +329,7 @@ const StockListSection: React.FC<Props> = ({
             {generalStockInventory
               .filter(item => {
                 const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-                const matchesStatus = matchesStatusFilter(item);
+                const matchesStatus = matchesVerdict(verdictOfGeneral(item));
                 return matchesSearch && matchesStatus;
               })
               .map(item => (
@@ -341,9 +372,7 @@ const StockListSection: React.FC<Props> = ({
                     </MobileValue>
                     <MobileValue>
                       <MobileLabel>Status</MobileLabel>
-                      <StatusBadge status={item.stock_status}>
-                        {getStatusLabel(item.stock_status)}
-                      </StatusBadge>
+                      <VerdictBadge verdict={verdictOfGeneral(item)} />
                     </MobileValue>
                     <MobileValue>
                       <MobileLabel>Current Stock</MobileLabel>
@@ -368,10 +397,12 @@ const StockListSection: React.FC<Props> = ({
                       )}
                     </MobileValue>
                     <MobileValue className="col-min">
-                      <MobileLabel>Min Stock</MobileLabel>
-                      <div style={{ color: '#4B5563' }}>
-                        {formatStock(item.min_stock)} {item.stock_unit}
-                      </div>
+                      <MobileLabel>{t('inventory:reorderAt.column', 'Reorder at')}</MobileLabel>
+                      <ReorderAtCell
+                        level={Number(item.min_stock) || 0}
+                        unit={item.stock_unit || item.unit}
+                        onEdit={() => onEditGeneralStock(item)}
+                      />
                     </MobileValue>
                     <MobileValue className="col-cost">
                       <MobileLabel>Unit Cost</MobileLabel>
@@ -500,7 +531,7 @@ const StockListSection: React.FC<Props> = ({
                 <span className="col-info">Ingredient</span>
                 <span>Status</span>
                 <span>Current Stock</span>
-                <span className="col-min">Min / Prediction</span>
+                <span className="col-min">{t('inventory:reorderAt.column', 'Reorder at')}</span>
                 <span className="col-cost">Unit Cost</span>
                 <span className="col-supplier">Supplier</span>
                 <span className="col-last">Last Stock Take</span>
@@ -584,20 +615,7 @@ const StockListSection: React.FC<Props> = ({
                     </MobileValue>
                     <MobileValue>
                       <MobileLabel>Status</MobileLabel>
-                      {sugg && sugg.status ? (
-                        // 발주 전망 단계로 덮어쓴다 — 제안 없는 행은 종전 stock_status (§5-2)
-                        <StatusBadge status={sugg.status === 'soon' ? 'low_stock' : 'out_of_stock'}>
-                          {sugg.status === 'out' ? t('inventory:foresight.badgeOut', 'Out')
-                            : sugg.status === 'order_now' ? t('inventory:foresight.badgeOrderNow', 'Order now')
-                            : sugg.days_of_cover != null
-                              ? t('inventory:foresight.badgeSoonDays', { defaultValue: 'Soon ({{n}}d)', n: sugg.days_of_cover })
-                              : t('inventory:foresight.badgeSoon', 'Soon')}
-                        </StatusBadge>
-                      ) : (
-                        <StatusBadge status={item.stock_status}>
-                          {getStatusLabel(item.stock_status)}
-                        </StatusBadge>
-                      )}
+                      <VerdictBadge verdict={verdictOfIngredient(item)} days={sugg && sugg.status === 'soon' ? sugg.days_of_cover : null} />
                     </MobileValue>
                     <MobileValue>
                       <MobileLabel>Current Stock</MobileLabel>
@@ -631,13 +649,13 @@ const StockListSection: React.FC<Props> = ({
                       )}
                     </MobileValue>
                     <MobileValue className="col-min">
-                      <MobileLabel>Min / Prediction</MobileLabel>
-                      <div style={{ color: '#4B5563', marginBottom: '4px' }}>
-                        Min: {formatStock(item.min_stock)} {item.unit}
-                      </div>
-                      <ConfidenceBadge level={item.prediction_confidence || 'none'}>
-                        {getConfidenceLabel(item.prediction_confidence || 'none')}
-                      </ConfidenceBadge>
+                      <MobileLabel>{t('inventory:reorderAt.column', 'Reorder at')}</MobileLabel>
+                      <ReorderAtCell
+                        level={Number(item.min_stock) || 0}
+                        auto={autoLevels?.get(item.id)}
+                        unit={item.unit}
+                        onEdit={() => onSettings(item)}
+                      />
                     </MobileValue>
                     <MobileValue className="col-cost">
                       <MobileLabel>Unit Cost</MobileLabel>

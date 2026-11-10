@@ -67,6 +67,11 @@ export function useBulkOrder() {
   const [resultPos, setResultPos] = useState<Array<{ id: number; po_number: string; seller_name: string | null; status: string; merged?: boolean }> | null>(null);
   const [summary, setSummary] = useState<ForesightSummary | null>(null);
   const [noBasisIds, setNoBasisIds] = useState<Set<number>>(new Set());
+  /** 숫자를 안 정한(자동) 품목의 발주 기준 — 목록 «발주 기준» 칸 «자동 · n» (2026-11-10) */
+  /** «발주 담기» 로 열었는가(창 안 «곧 부족도 담기» 체크는 이때만) · 그 체크 상태 */
+  const [neededMode, setNeededMode] = useState(false);
+  const [soonIncluded, setSoonIncluded] = useState(false);
+  const [autoLevels, setAutoLevels] = useState<Map<number, number>>(new Map());
   const [computedAt, setComputedAt] = useState<string | null>(null);
   /** 모달 맨 아래 «연결 필요» 묶음 — 보내지 않는다(소리 없이 빼지 않고 보여 준다 §5-3) */
   const [unlinkedItems, setUnlinkedItems] = useState<SuggestionRow[]>([]);
@@ -89,6 +94,7 @@ export function useBulkOrder() {
       const groups = data.data?.groups || [];
       setSummary(data.data?.summary || null);
       setNoBasisIds(new Set<number>((data.data?.no_basis_ids || []).map((x: any) => Number(x))));
+      setAutoLevels(new Map<number, number>(Object.entries(data.data?.auto_levels || {}).map(([k, v]) => [Number(k), Number(v)])));
       setComputedAt(data.data?.computed_at || null);
       const num = (v: any) => (v === null || v === undefined || v === '' ? null : Number(v));
       const map = new Map<number, SuggestionRow>();
@@ -170,6 +176,7 @@ export function useBulkOrder() {
   }, [suggestionsById]);
 
   const openBulk = useCallback(() => {
+    setNeededMode(false);
     const ids = Array.from(selectedIds);
     // 체크는 연결 있는 줄만 가능하다 — 체크한 것 중 연결 없는 것이 있으면(옛 선택) 빼지 말고 보여 준다
     const unlinked = ids.map(id => suggestionsById.get(id)).filter((s): s is SuggestionRow => !!s && !s.seller_type);
@@ -186,7 +193,34 @@ export function useBulkOrder() {
     const linked = rows.filter(s => s.seller_type && qtyOf(s) > 0).map(s => s.ingredient_id);
     setSelectedIds(new Set(linked));
     openWith(linked, rows.filter(s => !s.seller_type));
+    setNeededMode(true);
+    setSoonIncluded(includeSoon);
   }, [suggestionsById, openWith]);
+
+  /**
+   * 일괄 발주 창 맨 위 «7일 안에 부족해질 n개도 같이 담기» (2026-11-10 §2-6 — 띠에서 창 안으로 옮김).
+   *   켜면 곧 부족 줄을 더하고 끄면 뺀다. 이미 고친 다른 줄 수량은 건드리지 않는다.
+   */
+  const soonRows = Array.from(suggestionsById.values()).filter(s => s.status === 'soon');
+  const soonLinkedCount = soonRows.filter(s => s.seller_type && qtyOf(s) > 0).length;
+  const toggleSoonInModal = useCallback((on: boolean) => {
+    setSoonIncluded(on);
+    const soon = Array.from(suggestionsById.values()).filter(s => s.status === 'soon');
+    if (on) {
+      setBulkItems(prev => {
+        const have = new Set(prev.map(x => x.ingredient_id));
+        const add = soon.filter(s => s.seller_type && qtyOf(s) > 0 && !have.has(s.ingredient_id)).map(s => ({ ...s, quantity: qtyOf(s) }));
+        return [...prev, ...add];
+      });
+      setUnlinkedItems(prev => {
+        const have = new Set(prev.map(x => x.ingredient_id));
+        return [...prev, ...soon.filter(s => !s.seller_type && !have.has(s.ingredient_id))];
+      });
+    } else {
+      setBulkItems(prev => prev.filter(x => x.status !== 'soon'));
+      setUnlinkedItems(prev => prev.filter(x => x.status !== 'soon'));
+    }
+  }, [suggestionsById]);
 
   const updateBulkItem = useCallback((id: number, patch: Partial<BulkOrderItem>) => {
     setBulkItems(prev => prev.map(it => it.ingredient_id === id ? { ...it, ...patch } : it));
@@ -273,10 +307,15 @@ export function useBulkOrder() {
     suggestionsById,
     summary,
     noBasisIds,
+    autoLevels,
     computedAt,
     unlinkedItems,
     errorViolations,
     openNeeded,
+    neededMode,
+    soonIncluded,
+    soonLinkedCount,
+    toggleSoonInModal,
     loadingSuggestions,
     loadSuggestions,
     // Selection

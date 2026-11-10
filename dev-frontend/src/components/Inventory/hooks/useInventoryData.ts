@@ -46,18 +46,16 @@ export function useInventoryData({ mode, restaurantId, authFetch, includeUntrack
       setLoading(true);
 
       if (mode === 'restaurant') {
-        const [summaryRes, inventoryRes, alertsRes, suggestionsRes, expiringRes] = await Promise.all([
+        // 2026-11-10: 대시보드의 옛 «Stock Alerts»·«Reorder Suggestions» 를 없애 그 두 조회도 뺐다(서버 라우트는 남김).
+        //   부족 판정은 «발주할 것» 띠(/purchase-orders/suggestions) 한 곳 — Fable 설계 .claude/fable-design-20261110-stock-simple-reorder.md §2-5
+        const [summaryRes, inventoryRes, expiringRes] = await Promise.all([
           authFetch(`/api/restaurants/${restaurantId}/inventory/summary`),
           authFetch(`/api/restaurants/${restaurantId}/inventory${includeUntracked ? '?include_untracked=true' : ''}`),
-          authFetch(`/api/restaurants/${restaurantId}/inventory/alerts?resolved=false`),
-          authFetch(`/api/restaurants/${restaurantId}/inventory/reorder-suggestions`),
           authFetch(`/api/restaurants/${restaurantId}/inventory/expiring?days=14`)
         ]);
 
         if (summaryRes.success) setSummary(summaryRes.data);
         if (inventoryRes.success) setInventory(inventoryRes.data);
-        if (alertsRes.success) setAlerts(alertsRes.data);
-        if (suggestionsRes.success) setSuggestions(suggestionsRes.data);
         if (expiringRes.success) setExpiringItems(expiringRes.data);
 
         try {

@@ -4174,6 +4174,45 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     }
   });
 
+  // 2026-11-10 Irene «재고 몇 개 이하면 발주하는 거 헷갈리지 않게» — Fable 설계 .claude/fable-design-20261110-stock-simple-reorder.md §5-3
+  //   불변식: 발주 기준(min_stock)을 정한 품목은 «가용 + 오는 중 ≤ 기준» ⇔ 단계가 재고 없음·지금 발주. 사용량이 있어도 기준을 부풀리지 않는다.
+  test('inventory', '발주 기준 한 숫자 — 매장 38: 기준 5·하루 10 에서 재고 6 → 곧 부족 · 5 → 지금 발주 · 자동 품목은 auto_levels · 기준 정한 줄 전부 «≤ 기준 ⇔ 재고 없음/지금 발주»', async () => {
+    const M = require('../models');
+    const { sequelize } = require('../config/database');
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const [[ra]] = await sequelize.query("SELECT id FROM users WHERE email = 'demo-restaurant@purplehere.com' LIMIT 1");
+    if (!ra) return fail('데모 RA 없음 — 검사 불가');
+    const auth = { Authorization: `Bearer ${jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+    const tag = `ZZ-HC-REORDER-AT-${Date.now()}`;
+    let ing = null, auto = null;
+    try {
+      ing = await M.Ingredient.create({ restaurant_id: 38, name: tag, unit: 'kg', unit_cost: 1, base_quantity: 1, current_stock: 6, min_stock: 5,
+        manual_daily_usage: 10, lead_time_days: 2, safety_stock_percent: 20, is_active: true });
+      auto = await M.Ingredient.create({ restaurant_id: 38, name: tag + ' Auto', unit: 'kg', unit_cost: 1, base_quantity: 1, current_stock: 100, min_stock: 0,
+        manual_daily_usage: 10, lead_time_days: 2, safety_stock_percent: 20, is_active: true });
+      const get = async () => {
+        const r = await request('GET', '/purchase-orders/suggestions?entity_type=restaurant&entity_id=38', null, auth);
+        const d = (r.body && r.body.data) || {};
+        const rows = (d.groups || []).flatMap(g => g.items || []);
+        return { st: r.status, d, rows, mine: rows.find(x => Number(x.ingredient.id) === Number(ing.id)) };
+      };
+      const a = await get();
+      if (a.st !== 200 || !a.mine || a.mine.status !== 'soon' || a.mine.reorder_point !== 5) return fail(`재고 6: ${a.st} ${JSON.stringify(a.mine && { s: a.mine.status, rp: a.mine.reorder_point })} (기대 soon · 기준 5)`);
+      if (!a.d.auto_levels || Number(a.d.auto_levels[auto.id]) !== 24 || a.d.auto_levels[ing.id] !== undefined) return fail(`auto_levels ${JSON.stringify(a.d.auto_levels && { auto: a.d.auto_levels[auto.id], man: a.d.auto_levels[ing.id] })} (기대 자동 24 · 정한 품목은 없음)`);
+      await ing.update({ current_stock: 5 });
+      const b = await get();
+      if (!b.mine || b.mine.status !== 'order_now') return fail(`재고 5: ${JSON.stringify(b.mine && b.mine.status)} (기대 order_now)`);
+      const bad = b.rows.filter(x => Number(x.ingredient.min_stock) > 0)
+        .filter(x => (Number(x.available) <= 0 || (Number(x.available) + Number(x.on_order)) <= Number(x.ingredient.min_stock) + 1e-9) !== ['out', 'order_now'].includes(x.status));
+      // «재고 없음» 은 오는 중과 무관하게 가용 ≤ 0 (classify 첫 갈래 — 11-03 설계 그대로)
+      if (bad.length) return fail(`불변식 깨짐 ${bad.length}건: ${JSON.stringify(bad.slice(0, 3).map(x => ({ id: x.ingredient.id, av: x.available, oo: x.on_order, min: x.ingredient.min_stock, s: x.status })))}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      for (const x of [ing, auto]) if (x) await sequelize.query('DELETE FROM ingredients WHERE id = :i', { replacements: { i: x.id } });
+    }
+  });
+
   test('inventory', '재고 전망 ③④ — 매장: 발주 제안 = 대시보드 공식(같은 수량·발주점) · 연결 없는 품목은 «연결 필요» 묶음(order_qty null)', async () => {
     const { sequelize } = require('../config/database');
     const M = require('../models');
@@ -11059,9 +11098,9 @@ function definePaymentTests() {
       const items = ((r.body && r.body.data && r.body.data.groups) || []).flatMap((g) => g.items || []);
       const hit = items.find((x) => Number(x.product_ingredient_id) === Number(pi.id));
       const sharedLeak = items.some((x) => !x.product_ingredient_id);
-      // 2026-11-03 제안 공식 단일화(Fable 설계 .claude/fable-design-20261103-stock-foresight-oneclick-po.md §3-5 C — 의도된 변경):
-      //   옛 식 min×1.5−현재 = 13 → reorderMath: 발주점 10(사용량 0 · 안전재고=최소 10) + 0 − 현재 2 = 8 · 단계 order_now · 연결 없음이라 주문 단위 환산 없음
-      const ok = r.status === 200 && !!hit && Math.abs(Number(hit.suggested_qty) - 8) < 0.001 && hit.status === 'order_now' && !sharedLeak;
+      // 2026-11-03 제안 공식 단일화 → 8 · 2026-11-10 개정(Fable 설계 .claude/fable-design-20261110-stock-simple-reorder.md §1 ② — 의도된 변경):
+      //   사용량 0 이면 채울 여유 = 발주점×0.5 → 10 + 5 − 2 = 13(받으면 15 > 10 → 충분) · 단계 order_now · 연결 없음이라 주문 단위 환산 없음
+      const ok = r.status === 200 && !!hit && Math.abs(Number(hit.suggested_qty) - 13) < 0.001 && hit.status === 'order_now' && !sharedLeak;
       if (!ok) console.log(c.gray(`      (${r.status} 제안 ${items.length}건 · 내 줄 ${hit ? JSON.stringify({ q: hit.suggested_qty }) : '없음'} · 공유재료 섞임 ${sharedLeak})`));
       return ok;
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }

@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { poCartStorageKey, poCartNamespacedKey } from '../../utils/poCart';
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -19,7 +18,6 @@ import { useInlineStockEdit } from './hooks/useInlineStockEdit';
 import { useOrderModal } from './hooks/useOrderModal';
 import { useBulkOrder } from './hooks/useBulkOrder';
 import { useDeleteConfirm } from './hooks/useDeleteConfirm';
-import { useAlertResolver } from './hooks/useAlertResolver';
 
 import DashboardSection from './sections/DashboardSection';
 import CostReadinessPanel from './sections/CostReadinessPanel';
@@ -34,6 +32,7 @@ import GeneralStockReceiveModal from './modals/GeneralStockReceiveModal';
 import OrderModal from './modals/OrderModal';
 import BulkOrderModal from './modals/BulkOrderModal';
 import ForesightPanel from './sections/ForesightPanel';
+import { stockVerdict } from './stockVerdict';
 import StockSettingsModal, { StockSettings } from './modals/StockSettingsModal';
 import { getAuthToken } from '../../utils/auth';
 import { useStore } from '../../contexts/StoreContext';
@@ -67,54 +66,6 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const [stockTypeFilter, setStockTypeFilter] = useState<'all' | 'ingredients' | 'general_stock'>('all');
   // 카테고리 필터 — 재고가 많아지면 "무엇을 발주할지" 를 카테고리로 좁혀 보게 된다.
   const [categoryFilter, setCategoryFilter] = useState('all');
-
-  // ── 부족 알림에서 바로 발주 담기 ─────────────────────────────────────────
-  // 즉시 발주가 아니라 **장바구니에 담는다**: 부족한 품목은 보통 여러 개 나오고,
-  // 하나씩 주문서를 만들면 같은 판매자에게 주문이 쪼개진다. 담아 두면 발주 화면에서
-  // 판매자별로 묶어 한 번에 보낼 수 있다.
-  // 저장 형식은 발주 화면(NewPurchaseOrderPage)의 CartRow 와 **같은 모양·같은 키**를 쓴다 —
-  // 다른 형식으로 쓰면 담긴 게 화면에 안 나타나는 조용한 실패가 된다.
-  const [cartNotice, setCartNotice] = useState<string | null>(null);
-
-  const addToPurchaseCart = (ingredient: any) => {
-    const brandId = (user as any)?.brand_id;
-    if (!brandId) return;
-    // 저장 키·줄 키는 발주 화면과 같은 함수 (utils/poCart — 2026-10-09 Fable C-1 #6). 판매처는 발주 화면이 열릴 때 채운다.
-    const key = poCartStorageKey('brands', brandId);
-    try {
-      const raw = localStorage.getItem(key);
-      const cart: any[] = raw ? JSON.parse(raw) : [];
-      const cartKey = poCartNamespacedKey({ product_ingredient_id: ingredient.id }) as string;
-      const existing = cart.find((r) => r.cart_key === cartKey);
-      // 부족분 = 최소 재고 - 현재 재고. 0 이하면 최소 주문량(없으면 1)으로 시작한다.
-      const shortfall = Math.max(0, (ingredient.min_stock || 0) - (ingredient.current_stock || 0));
-      // 발주 전망 제안이 있으면 그 주문 단위 수량(올림 + 판매자 최소주문)을 쓴다 — 같은 공식 한 벌(2026-11-03 §6-10)
-      const sugg = bulk.suggestionsById.get(Number(ingredient.id));
-      const qty = (sugg && sugg.order_qty != null && sugg.order_qty > 0)
-        ? sugg.order_qty
-        : (Math.max(shortfall || 0, ingredient.min_order || 0) || 1);
-      if (existing) {
-        existing.quantity = (existing.quantity || 0) + qty;
-      } else {
-        cart.push({
-          cart_key: cartKey,
-          ingredient_id: ingredient.linked_ingredient_id || ingredient.id,
-          product_ingredient_id: ingredient.id,
-          ingredient_name: ingredient.name,
-          ingredient_unit: ingredient.unit,
-          selected_seller_id: ingredient.supplier_id || 0,
-          quantity: qty,
-          available_sellers: []
-        });
-      }
-      localStorage.setItem(key, JSON.stringify(cart));
-      setCartNotice(`${ingredient.name} added to your order cart (${cart.length} item${cart.length > 1 ? 's' : ''}).`);
-      window.setTimeout(() => setCartNotice(null), 4000);
-    } catch {
-      setCartNotice('Could not add to cart. Please try again.');
-      window.setTimeout(() => setCartNotice(null), 4000);
-    }
-  };
 
   // 재고 관리 켜기/끄기 — 재고 화면 한 곳에서 처리한다.
   // 예전에는 끄는 순간 목록에서 사라져, 다시 켜려면 재료 관리(RA)나 매입자재(BG) 화면으로
@@ -220,20 +171,27 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   const suggList = Array.from(bulk.suggestionsById.values());
   const linkedPositive = (x: any) => !!x.seller_type && ((x.order_qty ?? x.suggested_qty) || 0) > 0;
   const neededCount = suggList.filter(x => (x.status === 'out' || x.status === 'order_now') && linkedPositive(x)).length;
-  const soonLinkedCount = suggList.filter(x => x.status === 'soon' && linkedPositive(x)).length;
+  // 일반재고도 같은 판정(stockVerdict)으로 목록에서 걸러지므로 띠 숫자에 더한다 — 카드 숫자 = 그 필터로 걸린 행 수(2026-11-10 §5-5)
+  const gsExtra = React.useMemo(() => {
+    const out = { out: 0, order_now: 0, no_basis: 0, soon: 0 };
+    data.generalStockInventory.forEach(g => {
+      const v = stockVerdict(g as any, undefined, undefined, false, false);
+      if (v in out) (out as any)[v] += 1;
+    });
+    return out;
+  }, [data.generalStockInventory]);
   const foresightPanel = (
     <ForesightPanel
       summary={bulk.summary}
       computedAt={bulk.computedAt}
       neededCount={neededCount}
-      soonLinkedCount={soonLinkedCount}
-      includeSoon={includeSoon}
-      setIncludeSoon={setIncludeSoon}
       activeFilter={statusFilter}
       onFilter={(f) => { setStatusFilter(f); if (f !== 'all') setActiveTab('list'); }}
       onAddNeeded={() => bulk.openNeeded(includeSoon)}
       onOpenSettings={settingsBrandId ? () => setShowStockSettings(true) : undefined}
+      isBrand={mode === 'brand'}
       blocking={stockSettings?.short_order_policy === 'block'}
+      extraCounts={gsExtra}
     />
   );
 
@@ -246,12 +204,6 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     setGeneralStockInventory: data.setGeneralStockInventory,
   });
 
-  const resolveAlert = useAlertResolver({
-    mode,
-    restaurantId,
-    authFetch,
-    setAlerts: data.setAlerts,
-  });
 
   const hasValidId = mode === 'restaurant' ? !!restaurantId : true;
   if (!hasValidId) {
@@ -275,17 +227,6 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
       <Header>
         <Title>Inventory</Title>
       </Header>
-
-      {/* 담긴 사실을 알려주지 않으면 눌렀는지 몰라 같은 품목을 또 담는다.
-          발주 화면으로 강제 이동시키지는 않는다 — 여러 건을 이어서 담는 흐름을 끊지 않기 위함. */}
-      {cartNotice && (
-        <div style={{
-          margin: '0 24px 12px', padding: '10px 14px', borderRadius: '8px',
-          background: '#EEF2FF', border: '1px solid #C7D2FE', color: '#3730A3', fontSize: '13px'
-        }}>
-          {cartNotice}
-        </div>
-      )}
 
       <Content>
         <TabContainer>
@@ -312,18 +253,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
           <DashboardSection
             summary={data.summary}
             inventory={data.inventory}
-            alerts={data.alerts}
-            suggestions={data.suggestions}
             expiringItems={data.expiringItems}
             selectedCurrency={data.selectedCurrency}
-            orderQuantities={order.orderQuantities}
-            setOrderQuantities={order.setOrderQuantities}
-            onReceive={adjust.openReceive}
-            onProduce={produce.open}
             onWaste={adjust.openWaste}
-            onResolveAlert={resolveAlert}
-            onOrder={order.open}
-            onAddToPurchaseCart={isBrandGeneralMode ? addToPurchaseCart : undefined}
             onGoToList={() => setActiveTab('list')}
             onGoToHistory={() => setActiveTab('history')}
             onGoToIngredientsPage={goToIngredientsPage}
@@ -375,6 +307,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
             onDelete={deleteConfirm.open}
             suggestionsById={bulk.suggestionsById}
             noBasisIds={bulk.noBasisIds}
+            autoLevels={bulk.autoLevels}
+            suggestionsLoaded={!!bulk.summary}
             selectedIds={bulk.selectedIds}
             onToggleSelect={bulk.toggleSelect}
             onLinkSupplier={linkEnabled ? setLinkTarget : undefined}
@@ -513,6 +447,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         unlinkedItems={bulk.unlinkedItems}
         errorViolations={bulk.errorViolations}
         storeTz={storeTz}
+        soonToggle={bulk.neededMode ? { count: bulk.soonLinkedCount, checked: bulk.soonIncluded, onChange: bulk.toggleSoonInModal } : null}
       />
 
       {/* Sticky bottom bar — shown when items selected on the list tab */}
@@ -596,7 +531,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
         form={settings.settingsForm}
         onFormChange={settings.setSettingsForm}
         saving={settings.savingSettings}
-        onSave={settings.handleSave}
+        onSave={async () => { if (await settings.handleSave()) bulk.loadSuggestions(); }}
+        sugg={settings.settingsIngredient ? bulk.suggestionsById.get(Number(settings.settingsIngredient.id)) : undefined}
       />
 
       <GeneralStockFormModal

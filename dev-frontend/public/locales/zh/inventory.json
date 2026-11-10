@@ -168,28 +168,25 @@
   "order.costChanges": "成本变更 {{count}} 次",
   "order.lastCostChange": "最近",
   "foresight": {
-    "title": "补货预测",
-    "subtitle": "根据最近 28 天用量、在途采购和已承诺给门店的订单计算",
+    "title": "需要订货",
+    "subtitle": "库存降到您为该品项设定的订货点或以下时，显示“立即订货”。尚未设定？我们按最近28天用量自动估算。",
     "unlinked": "{{count}} 项需要关联供应商",
-    "includeSoon": "包含即将不足的项目",
-    "addNeeded": "加入所需项目 ({{count}})",
-    "out": "缺货 — 无法满足订单",
-    "orderNow": "立即采购",
-    "soon": "7 天内不足",
-    "noBasis": "无判断依据",
-    "outHint": "扣除已承诺订单后无剩余",
-    "orderNowHint": "已达或低于再订货点",
-    "soonHint": "一周内达到再订货点",
-    "noBasisHint": "请设置最低库存或日用量",
-    "noBasisLine": "{{count}} 个项目没有最低库存或日用量 — 在各项目设置中填写后，我们会在缺货前提醒您。",
+    "addNeeded": "订购这些 ({{count}})",
+    "out": "无库存",
+    "orderNow": "立即订货",
+    "noBasis": "未设订货点",
+    "outHint": "已无剩余",
+    "orderNowHint": "等于或低于订货点",
+    "noBasisHint": "设定数字后，我们会提醒您何时订货",
     "last28d": "28天",
     "committedLine": "门店订单待发：{{qty}} {{unit}}",
-    "badgeOut": "缺货",
-    "badgeOrderNow": "立即采购",
-    "badgeSoonDays": "即将不足 ({{n}}天)",
-    "badgeSoon": "即将不足",
     "settings": "库存设置",
-    "blockingOn": "门店无法提交超过您可用库存的订单（已开启拦截）。"
+    "blockingOn": "门店无法提交超过您可用库存的订单（已开启拦截）。",
+    "subtitleBrand": "先扣除门店已下单待发的数量。",
+    "outHintBrand": "扣除门店待发订单后已无剩余",
+    "soonLine": "另有 {{count}} 项将在7天内不足",
+    "soonView": "查看",
+    "includeSoonModal": "同时加入7天内将不足的 {{count}} 项"
   },
   "stockSettings": {
     "title": "库存设置",
@@ -208,7 +205,7 @@
     "at": "时间",
     "morningHint": "仅在有缺货或已到再订货点的项目时，每天一次发送给本品牌的所有管理员。不发邮件。仅为自己关闭：通知设置 › Low Stock Alert。",
     "includeSoon": "默认在“加入所需项目”中包含即将不足的项目",
-    "perItemHint": "最低库存、日用量和交货期按项目设置——使用每行的 Settings 按钮。"
+    "perItemHint": "每个品项的订货点在该品项的设置中设定。"
   },
   "supplierFilter": {
     "label": "供应商",
@@ -217,5 +214,51 @@
   },
   "sellerOff": "供应商已下架该商品 — 请重新关联",
   "linkSupplier": "关联",
-  "newSupplierProduct": "新供应商"
+  "newSupplierProduct": "新供应商",
+  "verdict": {
+    "out": "无库存",
+    "orderNow": "立即订货",
+    "soon": "即将不足 · 约剩{{n}}天",
+    "soonPlain": "即将不足",
+    "ok": "充足",
+    "noLevel": "未设订货点",
+    "incoming": "已订货 · 在途"
+  },
+  "statusFilter": {
+    "all": "全部状态",
+    "out": "无库存",
+    "orderNow": "立即订货",
+    "soon": "即将不足",
+    "noLevel": "未设订货点"
+  },
+  "reorderAt": {
+    "column": "订货点",
+    "auto": "自动 · {{qty}} {{unit}}",
+    "autoHint": "根据最近28天用量估算。可在品项设置中自行设定。",
+    "notSet": "未设",
+    "set": "设置",
+    "edit": "修改订货点"
+  },
+  "reorderSettings": {
+    "title": "订货设置：{{name}}",
+    "level": "库存低于或等于此数量时订货 ({{unit}})",
+    "levelHelp": "库存降到这个数字时显示“立即订货”。留 0 则按用量自动估算。",
+    "preview": "当前库存 {{stock}} {{unit}} →",
+    "recommend": "每天约用 {{daily}} {{unit}}，送货需 {{lead}} 天 — 设为 {{suggest}} 或以上更稳妥。",
+    "minOrder": "每次最少订货量 ({{unit}})",
+    "minOrderHelp": "可选。建议数量不会少于此值。",
+    "autoGroup": "自动估算用的数值（可选）",
+    "autoGroupHelp": "用于未设订货点品项的自动估算，以及计算建议订货量。",
+    "measured": "实测用量：每天 {{daily}} {{unit}}（最近28天中有 {{days}} 天记录）",
+    "measuredShort": "实测用量：每天 {{daily}} {{unit}}",
+    "notEnough": "记录还不够",
+    "leadTime": "送货所需天数",
+    "buffer": "额外缓冲 (%)",
+    "manualDaily": "手动每日用量 ({{unit}}/天) — 仅在记录不足时使用",
+    "brandShared": "名称、单位和供应商由品牌管理。以下数字只适用于本门店。",
+    "save": "保存",
+    "saving": "保存中…",
+    "cancel": "取消"
+  },
+  "gsReorderLevel": "库存低于或等于此数量时订货"
 }

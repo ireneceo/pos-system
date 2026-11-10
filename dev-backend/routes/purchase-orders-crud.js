@@ -468,6 +468,7 @@ async function buildSuggestionRows({ subjects, usage, onOrder, committed, links,
   const { sellerOrderLine } = require('../utils/poLineSpec');
   const summary = { out: 0, order_now: 0, soon: 0, ok: 0, no_basis: 0, unlinked: 0, total: subjects.length };
   const noBasisIds = [];   // 재고 화면 «기준 없음» 필터용(id 만 — 목록 행은 싣지 않는다)
+  const autoLevels = {};   // 2026-11-10: 숫자를 안 정한(자동) 품목의 발주 기준 — 재고 목록 «발주 기준» 칸 표시용
 
   // 1) 계산 + 단계
   const rows = [];
@@ -487,6 +488,7 @@ async function buildSuggestionRows({ subjects, usage, onOrder, committed, links,
     });
     summary[k.status] = (summary[k.status] || 0) + 1;
     if (k.status === 'no_basis') noBasisIds.push(Number(sub.id));
+    if (r.level_source === 'auto') autoLevels[Number(sub.id)] = r.reorder_point;
     if (!['out', 'order_now', 'soon'].includes(k.status)) continue;
     if (!link) summary.unlinked += 1;
     rows.push({ sub, link, picked, comm, available, oo, r, k });
@@ -574,7 +576,7 @@ async function buildSuggestionRows({ subjects, usage, onOrder, committed, links,
       } : null
     });
   }
-  return { groups: Object.values(groups), summary, no_basis_ids: noBasisIds, computed_at: new Date().toISOString() };
+  return { groups: Object.values(groups), summary, no_basis_ids: noBasisIds, auto_levels: autoLevels, computed_at: new Date().toISOString() };
 }
 
 const { preferredLinkMap } = require('../utils/reorderMath');   // 대시보드와 같은 함수(2026-11-03 2단계 §6-2)

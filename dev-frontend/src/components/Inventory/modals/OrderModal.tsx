@@ -134,7 +134,7 @@ const OrderModal: React.FC<Props> = ({
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: '13px', color: '#4B5563' }}>Min Stock</div>
+                <div style={{ fontSize: '13px', color: '#4B5563' }}>{t('inventory:reorderAt.column', 'Reorder at')}</div>
                 <div style={{ fontSize: '18px', fontWeight: 600, color: '#4B5563' }}>
                   {formatStock(item.min_stock)} {item.unit}
                 </div>

@@ -168,28 +168,25 @@
   "order.costChanges": "Kos berubah {{count}} kali",
   "order.lastCostChange": "terakhir",
   "foresight": {
-    "title": "Unjuran pesanan semula",
-    "subtitle": "Berdasarkan penggunaan 28 hari lepas, pesanan dalam perjalanan dan pesanan yang telah dijanjikan kepada kedai",
+    "title": "Perlu dipesan",
+    "subtitle": "Item menunjukkan “Pesan sekarang” apabila stoknya pada atau bawah had pesanan yang anda tetapkan. Belum ada nombor? Kami anggarkan daripada penggunaan 28 hari lepas.",
     "unlinked": "{{count}} perlu pautan pembekal",
-    "includeSoon": "Sertakan item yang hampir habis",
-    "addNeeded": "Tambah yang diperlukan ({{count}})",
-    "out": "Habis — tidak cukup untuk pesanan",
+    "addNeeded": "Pesan ini ({{count}})",
+    "out": "Stok habis",
     "orderNow": "Pesan sekarang",
-    "soon": "Habis dalam 7 hari",
-    "noBasis": "Tiada asas penilaian",
-    "outHint": "Tiada baki selepas pesanan yang dijanjikan",
-    "orderNowHint": "Pada atau bawah titik pesanan semula",
-    "soonHint": "Mencapai titik pesanan semula dalam seminggu",
-    "noBasisHint": "Tetapkan stok minimum atau penggunaan harian",
-    "noBasisLine": "{{count}} item tiada stok minimum atau penggunaan harian — tetapkan dalam tetapan setiap item dan kami akan maklumkan sebelum habis.",
+    "noBasis": "Tiada had pesanan",
+    "outHint": "Tiada baki",
+    "orderNowHint": "Pada atau bawah had pesanan",
+    "noBasisHint": "Tetapkan nombor dan kami beritahu bila perlu pesan",
     "last28d": "28h",
     "committedLine": "Pesanan kedai menunggu: {{qty}} {{unit}}",
-    "badgeOut": "Habis",
-    "badgeOrderNow": "Pesan sekarang",
-    "badgeSoonDays": "Hampir habis ({{n}}h)",
-    "badgeSoon": "Hampir habis",
     "settings": "Tetapan stok",
-    "blockingOn": "Kedai tidak boleh menghantar pesanan melebihi stok tersedia anda (sekatan dihidupkan)."
+    "blockingOn": "Kedai tidak boleh menghantar pesanan melebihi stok tersedia anda (sekatan dihidupkan).",
+    "subtitleBrand": "Pesanan kedai yang menunggu penghantaran ditolak dahulu.",
+    "outHintBrand": "Tiada baki selepas pesanan kedai yang menunggu",
+    "soonLine": "{{count}} lagi akan hampir habis dalam 7 hari",
+    "soonView": "Lihat",
+    "includeSoonModal": "Tambah juga {{count}} item yang hampir habis dalam 7 hari"
   },
   "stockSettings": {
     "title": "Tetapan stok",
@@ -208,7 +205,7 @@
     "at": "Pada",
     "morningHint": "Hanya apabila ada item habis atau pada titik pesanan semula, sekali sehari, kepada semua pengurus jenama ini. Tiada e-mel. Untuk matikan bagi diri sendiri: Pemberitahuan › Low Stock Alert.",
     "includeSoon": "Sertakan item yang hampir habis dalam «Tambah yang diperlukan» secara lalai",
-    "perItemHint": "Stok minimum, penggunaan harian dan masa pendahuluan ditetapkan bagi setiap item — gunakan butang Settings pada setiap baris."
+    "perItemHint": "Had pesanan setiap item ditetapkan dalam tetapan item itu."
   },
   "supplierFilter": {
     "label": "Pembekal",
@@ -217,5 +214,51 @@
   },
   "sellerOff": "Produk dikeluarkan oleh pembekal — pautkan semula",
   "linkSupplier": "Pautkan",
-  "newSupplierProduct": "Pembekal baharu"
+  "newSupplierProduct": "Pembekal baharu",
+  "verdict": {
+    "out": "Stok habis",
+    "orderNow": "Pesan sekarang",
+    "soon": "Hampir habis · ~{{n}} hari",
+    "soonPlain": "Hampir habis",
+    "ok": "Cukup",
+    "noLevel": "Tiada had pesanan",
+    "incoming": "Sudah dipesan · dalam perjalanan"
+  },
+  "statusFilter": {
+    "all": "Semua status",
+    "out": "Stok habis",
+    "orderNow": "Pesan sekarang",
+    "soon": "Hampir habis",
+    "noLevel": "Tiada had pesanan"
+  },
+  "reorderAt": {
+    "column": "Had pesanan",
+    "auto": "Auto · {{qty}} {{unit}}",
+    "autoHint": "Dianggarkan daripada penggunaan 28 hari lepas. Tetapkan nombor sendiri dalam tetapan item.",
+    "notSet": "Belum ditetapkan",
+    "set": "Tetapkan",
+    "edit": "Tukar had pesanan"
+  },
+  "reorderSettings": {
+    "title": "Tetapan pesanan: {{name}}",
+    "level": "Pesan apabila stok pada atau bawah ({{unit}})",
+    "levelHelp": "Apabila stok turun ke nombor ini, item menunjukkan “Pesan sekarang”. Biarkan 0 dan kami anggarkan daripada penggunaan.",
+    "preview": "Sekarang: {{stock}} {{unit}} →",
+    "recommend": "Anda guna kira-kira {{daily}} {{unit}} sehari dan penghantaran ambil {{lead}} hari — {{suggest}} atau lebih adalah lebih selamat.",
+    "minOrder": "Pesan sekurang-kurangnya ({{unit}})",
+    "minOrderHelp": "Pilihan. Cadangan tidak akan kurang daripada ini.",
+    "autoGroup": "Anggaran automatik (pilihan)",
+    "autoGroupHelp": "Digunakan untuk menganggar had pesanan jika anda belum menetapkannya, dan untuk mengira jumlah pesanan.",
+    "measured": "Penggunaan diukur: {{daily}} {{unit}}/hari (28 hari lepas, {{days}} hari direkod)",
+    "measuredShort": "Penggunaan diukur: {{daily}} {{unit}}/hari",
+    "notEnough": "Rekod belum mencukupi",
+    "leadTime": "Masa penghantaran (hari)",
+    "buffer": "Penampan tambahan (%)",
+    "manualDaily": "Penggunaan harian, jika rekod kurang ({{unit}}/hari)",
+    "brandShared": "Nama, unit dan pembekal diurus oleh jenama anda. Nombor di bawah hanya untuk kedai ini.",
+    "save": "Simpan",
+    "saving": "Menyimpan…",
+    "cancel": "Batal"
+  },
+  "gsReorderLevel": "Pesan apabila stok pada atau bawah"
 }

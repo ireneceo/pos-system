@@ -2,11 +2,12 @@
 const { compute, pickDailyUsage } = require('../utils/reorderMath');
 
 describe('reorderMath.compute', () => {
-  test('최소재고가 있으면 안전재고 = 최소재고', () => {
+  test('최소재고(발주 기준)가 있으면 발주점 = 그 숫자 그대로 (2026-11-10 개정 — 예전 10×2+15=35)', () => {
     const r = compute({ dailyUsage: 10, leadTimeDays: 2, minStock: 15, onHand: 30, onOrder: 0 });
-    expect(r.reorder_point).toBe(35);          // 10×2 + 15
-    expect(r.suggested_qty).toBe(75);          // 35 + 70 − 30
-    expect(r.needs_order).toBe(true);
+    expect(r.reorder_point).toBe(15);
+    expect(r.level_source).toBe('manual');
+    expect(r.suggested_qty).toBe(55);          // 15 + 70 − 30
+    expect(r.needs_order).toBe(false);         // 30 > 15
   });
   test('최소재고가 없으면 안전재고 = 사용량 × 리드타임 × 안전%', () => {
     const r = compute({ dailyUsage: 10, leadTimeDays: 2, minStock: 0, safetyStockPercent: 20, onHand: 100 });
@@ -18,8 +19,8 @@ describe('reorderMath.compute', () => {
     const a = compute({ dailyUsage: 10, leadTimeDays: 2, minStock: 15, onHand: 30, onOrder: 0 });
     const b = compute({ dailyUsage: 10, leadTimeDays: 2, minStock: 15, onHand: 30, onOrder: 50 });
     expect(b.suggested_qty).toBe(a.suggested_qty - 50);
-    const c = compute({ dailyUsage: 10, leadTimeDays: 2, minStock: 15, onHand: 30, onOrder: 10 });
-    expect(c.needs_order).toBe(false);         // 30 + 10 > 35 → 아직 발주점 위
+    const c = compute({ dailyUsage: 10, leadTimeDays: 2, minStock: 15, onHand: 10, onOrder: 10 });
+    expect(c.needs_order).toBe(false);         // 10 + 10 > 15 → 아직 발주점 위
   });
   test('사용량 0 · 최소재고 0 이면 제안 없음', () => {
     const r = compute({ dailyUsage: 0, leadTimeDays: 2, minStock: 0, onHand: 0 });
@@ -76,12 +77,12 @@ describe('재고 전망 — 단계 판정 + 주문 수량 (Fable §3-5)', () => 
     expect(k.days_of_cover).toBe(15);
     expect(c.suggested_qty).toBe(0);
   });
-  test('C 최소치만 → order_now · 2 → MOQ 10 (옛 식 4.5 와 의도된 차이)', () => {
+  test('C 최소치만 → order_now · 5 + 2.5 − 3 = 4.5 → MOQ 10 (2026-11-10 ② 채울 여유 = 발주점×0.5)', () => {
     const { c, k, o } = flow({ onHand: 3, min: 5, conv: 1, moq: 10 });
     expect(c.reorder_point).toBe(5);
     expect(k.status).toBe('order_now');
     expect(k.days_of_cover).toBeNull();
-    expect(c.suggested_qty).toBe(2);
+    expect(c.suggested_qty).toBe(4.5);
     expect(o.order_qty).toBe(10);
   });
   test('D 기준 없음 → no_basis', () => {
@@ -98,5 +99,33 @@ describe('재고 전망 — 단계 판정 + 주문 수량 (Fable §3-5)', () => 
   });
   test('제안 0 이면 MOQ 를 붙이지 않는다', () => {
     expect(orderQtyFor({ suggest_stock: 0, unit_conversion: 500, moq: 10 }).order_qty).toBe(0);
+  });
+});
+
+// 2026-11-10 Fable 설계 §5-1 (.claude/fable-design-20261110-stock-simple-reorder.md) — «정한 숫자 = 기준»
+describe('발주 기준 한 숫자 (2026-11-10)', () => {
+  test('a min 5 · 하루 10 · 리드 2: 재고 6 → 지금 발주 아님(곧 부족) · 재고 5 → 지금 발주', () => {
+    const six = flow({ onHand: 6, daily: 10, lead: 2, min: 5 });
+    expect(six.c.reorder_point).toBe(5);
+    expect(six.k.status).toBe('soon');
+    const five = flow({ onHand: 5, daily: 10, lead: 2, min: 5 });
+    expect(five.k.status).toBe('order_now');
+  });
+  test('b min 10 · 사용량 0 · 재고 2 → 제안 13 · 받은 뒤 15 → ok', () => {
+    const b = flow({ onHand: 2, min: 10 });
+    expect(b.c.suggested_qty).toBe(13);
+    expect(b.k.status).toBe('order_now');
+    const after = flow({ onHand: 15, min: 10 });
+    expect(after.k.status).toBe('ok');
+  });
+  test('c 숫자 안 정함 · 하루 10 · 리드 2 · 20% → 자동 24 (변화 없음)', () => {
+    const r = compute({ dailyUsage: 10, leadTimeDays: 2, minStock: 0, safetyStockPercent: 20, onHand: 100 });
+    expect(r.reorder_point).toBe(24);
+    expect(r.level_source).toBe('auto');
+  });
+  test('d 둘 다 0 → no_basis', () => {
+    const d = flow({ onHand: 4 });
+    expect(d.k.status).toBe('no_basis');
+    expect(d.c.level_source).toBe('none');
   });
 });

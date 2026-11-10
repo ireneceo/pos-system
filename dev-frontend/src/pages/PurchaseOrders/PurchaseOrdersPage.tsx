@@ -29,6 +29,7 @@ import PoFileManageModal from '../../components/PurchaseOrders/PoFileManageModal
 import { formatQuantity } from '../../utils/unitConversion';
 import { useAuth } from '../../contexts/AuthContext';
 import { isOwnerRole, setOwnerPoRestaurantId, withOwnerPoScope, getOwnerPoListView, setOwnerPoListView, OWNER_PO_ALL } from '../../utils/ownerPoScope';
+import VerdictBadge from '../../components/Inventory/VerdictBadge';
 
 // LiveOrders 와 동일한 FilterToolbar 패턴
 const FilterToolbar = styled.div`
@@ -949,13 +950,9 @@ const PurchaseOrdersPage: React.FC = () => {
                   {g.items.map((item) => (
                     <li key={item.product_ingredient_id ? `pi-${item.product_ingredient_id}` : item.ingredient_id}>
                       <span>
+                        {/* 단계 이름·색 = 재고 화면과 같은 배지(2026-11-10 Fable 설계 stock-simple-reorder §2-8) */}
                         {item.status && (
-                          <span
-                            title={item.status}
-                            aria-label={item.status}
-                            style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', marginRight: 6, verticalAlign: 'middle',
-                              background: item.status === 'out' ? '#EF4444' : item.status === 'order_now' ? '#F59E0B' : '#EAB308' }}
-                          />
+                          <span style={{ marginRight: 6 }}><VerdictBadge verdict={item.status} /></span>
                         )}
                         {item.ingredient_name}
                       </span>

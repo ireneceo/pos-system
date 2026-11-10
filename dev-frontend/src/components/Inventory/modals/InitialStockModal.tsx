@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Table, TableHeader, TableRow } from '../../UI';
 import { Modal, ModalButton, FormInput } from '../../UI/Modal';
 import { InfoBox } from '../styles';
@@ -22,7 +23,9 @@ const InitialStockModal: React.FC<Props> = ({
   onUpdateItem,
   saving,
   onSave,
-}) => (
+}) => {
+  const { t } = useTranslation(['inventory']);
+  return (
   <Modal
     isOpen={isOpen}
     onClose={onClose}
@@ -58,7 +61,7 @@ const InitialStockModal: React.FC<Props> = ({
           <TableHeader columns="2fr 1fr 1fr">
             <span className="col-info">Ingredient</span>
             <span>Current Qty</span>
-            <span>Min Stock</span>
+            <span>{t('inventory:reorderAt.column', 'Reorder at')}</span>
           </TableHeader>
           {items.map(item => (
             <TableRow key={item.id} columns="2fr 1fr 1fr" style={{ padding: '12px 16px' }}>
@@ -95,5 +98,6 @@ const InitialStockModal: React.FC<Props> = ({
     ))}
   </Modal>
 );
+};
 
 export default InitialStockModal;

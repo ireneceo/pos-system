@@ -15363,3 +15363,9 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 ## ✅ 완료: 재고아이템 새로 만들기 창 — 공급업체 상품 연결·만들기 (2026-11-10) [Claude Code] 작업방 0dcd6618
 - 매장·브랜드 Stock Items «New Stock Item» 창에 «공급업체 상품» 고르기 → 저장 뒤 연결/외부 공급업체 상품 창이 바로 열림 (공급업체 쪽 «Add to my items» 의 거울 · 서버 변경 0)
 - 수정 파일: `dev-frontend/src/pages/RecipeManagement/IngredientsTab.tsx` · `dev-frontend/src/pages/BrandProductRecipe/ProductIngredientsTab.tsx` · `dev-frontend/public/locales/{en,ko,zh,ms}/ingredients.json` · 문서 검토: INVENTORY_MANAGEMENT_SYSTEM·TRADE_STRUCTURE 업데이트 불필요(새 목록·경로 없음)
+
+## ✅ 완료: 재고 «발주 기준» 한 숫자 — 쉬운 부족 표시 (2026-11-10) [Claude Code] 작업방 caf20565
+- ✅ 판정 한 벌: 품목마다 «이 수량 이하면 발주» 숫자(min_stock) = 발주점 그대로 · 숫자 없으면 사용량 자동(«자동 · n»)
+- ✅ 화면: 띠 «발주할 것» 설명 한 줄 · 상태 이름 한 벌 · 필터 5개 · «발주 기준» 칸 · 설정 창 칸 2개 + 접힘 · 대시보드 겹친 블록 정리 · 4개 언어
+- ✅ Fable 설계 + 게이트 PASS(092e1c6d5d5b) · 마이그 0 · 미배포
+- ⬜ 후속: 설정 창 미리보기 «곧 부족» 반영 · «지금 발주» 필터에서 «오는 중» 빼기 · 브랜드 목록 «오는 중» 배지(서버 칸) · verify-all 안 health 흔들림 조사

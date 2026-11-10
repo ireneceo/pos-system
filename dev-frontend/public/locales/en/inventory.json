@@ -168,28 +168,25 @@
   "order.costChanges": "Cost changed {{count}} time(s)",
   "order.lastCostChange": "last",
   "foresight": {
-    "title": "Reorder outlook",
-    "subtitle": "Based on the last 28 days of usage, orders on the way and orders already promised to stores",
+    "title": "What to order",
+    "subtitle": "An item shows “Order now” when its stock is at or below the reorder number you set for it. No number yet? We estimate one from the last 28 days of use.",
     "unlinked": "{{count}} need a supplier link",
-    "includeSoon": "Include items running low soon",
-    "addNeeded": "Add what's needed ({{count}})",
-    "out": "Out — can't cover orders",
+    "addNeeded": "Order these ({{count}})",
+    "out": "Out of stock",
     "orderNow": "Order now",
-    "soon": "Running low within 7 days",
-    "noBasis": "No basis to judge",
-    "outHint": "Nothing left after orders already promised",
-    "orderNowHint": "At or below the reorder point",
-    "soonHint": "Reaches the reorder point within a week",
-    "noBasisHint": "Set a min stock or daily usage",
-    "noBasisLine": "{{count}} items have no min stock or daily usage — set one in each item's settings and we'll warn you before they run out.",
+    "noBasis": "No reorder number",
+    "outHint": "Nothing left",
+    "orderNowHint": "At or below the reorder number",
+    "noBasisHint": "Set a number and we'll tell you when to order",
     "last28d": "28d",
     "committedLine": "Store orders waiting: {{qty}} {{unit}}",
-    "badgeOut": "Out",
-    "badgeOrderNow": "Order now",
-    "badgeSoonDays": "Soon ({{n}}d)",
-    "badgeSoon": "Soon",
     "settings": "Stock settings",
-    "blockingOn": "Stores can't send orders beyond your available stock (blocking is on)."
+    "blockingOn": "Stores can't send orders beyond your available stock (blocking is on).",
+    "subtitleBrand": "Store orders waiting to ship are taken off first.",
+    "outHintBrand": "Nothing left after store orders waiting",
+    "soonLine": "{{count}} more will run low within 7 days",
+    "soonView": "View",
+    "includeSoonModal": "Also add {{count}} items that will run low within 7 days"
   },
   "stockSettings": {
     "title": "Stock settings",
@@ -208,7 +205,7 @@
     "at": "At",
     "morningHint": "Only when items are out or at their reorder point, once a day, to every manager of this brand. No email. To turn it off just for yourself: Notifications › Low Stock Alert.",
     "includeSoon": "Include items running low soon in «Add what's needed» by default",
-    "perItemHint": "Min stock, daily usage and lead time are set per item — use the Settings button on each row."
+    "perItemHint": "Each item's reorder number is set in that item's settings."
   },
   "supplierFilter": {
     "label": "Supplier",
@@ -217,5 +214,51 @@
   },
   "sellerOff": "Product removed by supplier — relink",
   "linkSupplier": "Link",
-  "newSupplierProduct": "New supplier"
+  "newSupplierProduct": "New supplier",
+  "verdict": {
+    "out": "Out of stock",
+    "orderNow": "Order now",
+    "soon": "Running low · ~{{n}}d left",
+    "soonPlain": "Running low",
+    "ok": "OK",
+    "noLevel": "No reorder number",
+    "incoming": "Ordered · on the way"
+  },
+  "statusFilter": {
+    "all": "All statuses",
+    "out": "Out of stock",
+    "orderNow": "Order now",
+    "soon": "Running low",
+    "noLevel": "No reorder number"
+  },
+  "reorderAt": {
+    "column": "Reorder at",
+    "auto": "Auto · {{qty}} {{unit}}",
+    "autoHint": "Estimated from the last 28 days of use. Set your own number in the item settings.",
+    "notSet": "Not set",
+    "set": "Set",
+    "edit": "Change the reorder number"
+  },
+  "reorderSettings": {
+    "title": "Reorder settings: {{name}}",
+    "level": "Reorder when stock is at or below ({{unit}})",
+    "levelHelp": "When stock drops to this number the item shows “Order now”. Leave 0 and we estimate it from your usage.",
+    "preview": "Now: {{stock}} {{unit}} →",
+    "recommend": "You use about {{daily}} {{unit}} a day and delivery takes {{lead}} days — {{suggest}} or more is safer.",
+    "minOrder": "Order at least ({{unit}})",
+    "minOrderHelp": "Optional. We never suggest less than this.",
+    "autoGroup": "Automatic estimate (optional)",
+    "autoGroupHelp": "Used to estimate a reorder number when you haven't set one, and to work out how much to order.",
+    "measured": "Measured use: {{daily}} {{unit}}/day (last 28 days, {{days}} days recorded)",
+    "measuredShort": "Measured use: {{daily}} {{unit}}/day",
+    "notEnough": "Not enough history yet",
+    "leadTime": "Delivery time (days)",
+    "buffer": "Extra buffer (%)",
+    "manualDaily": "Daily use, if history is short ({{unit}}/day)",
+    "brandShared": "Name, unit and suppliers are managed by your brand. The numbers below apply to this store only.",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel"
+  },
+  "gsReorderLevel": "Reorder when stock is at or below"
 }

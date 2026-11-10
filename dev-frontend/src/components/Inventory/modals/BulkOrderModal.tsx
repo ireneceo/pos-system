@@ -6,6 +6,7 @@ import { formatCurrency } from '../../../utils/currency';
 import { formatQuantity, minOrderViolationText } from '../../../utils/unitConversion';
 import { cutoffState, cutoffClock, intlLocale, CUTOFF_COLORS } from '../../../utils/orderCutoff';
 import { BulkOrderItem, SuggestionRow } from '../hooks/useBulkOrder';
+import VerdictBadge from '../VerdictBadge';
 
 interface Props {
   isOpen: boolean;
@@ -24,6 +25,8 @@ interface Props {
   onUpdateItem: (id: number, patch: Partial<BulkOrderItem>) => void;
   onRemoveItem: (id: number) => void;
   onSend: () => void;
+  /** «발주 담기» 로 열었을 때만 — 맨 위 «7일 안에 부족해질 n개도 같이 담기» (2026-11-10 §2-6) */
+  soonToggle?: { count: number; checked: boolean; onChange: (on: boolean) => void } | null;
 }
 
 const SELLER_TYPE_LABEL: Record<string, string> = {
@@ -35,7 +38,7 @@ const SELLER_TYPE_LABEL: Record<string, string> = {
 
 const BulkOrderModal: React.FC<Props> = ({
   isOpen, onClose, items, currency, submitting, error, resultPos,
-  onUpdateItem, onRemoveItem, onSend, unlinkedItems = [], errorViolations = null, storeTz
+  onUpdateItem, onRemoveItem, onSend, unlinkedItems = [], errorViolations = null, storeTz, soonToggle = null
 }) => {
   const { t, i18n } = useTranslation(['inventory', 'purchaseOrders']);
   const tPo = (key: string, opts?: any) => t(`purchaseOrders:${key}`, opts);
@@ -129,6 +132,18 @@ const BulkOrderModal: React.FC<Props> = ({
               </div>
             </div>
           )}
+          {soonToggle && soonToggle.count > 0 && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, padding: '10px 12px', border: '1px solid #C7CED6', borderRadius: 8, fontSize: 13, color: '#0A2540', cursor: submitting ? 'default' : 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={soonToggle.checked}
+                disabled={submitting}
+                onChange={(e) => soonToggle.onChange(e.target.checked)}
+                style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+              />
+              {t('foresight.includeSoonModal', { count: soonToggle.count, defaultValue: 'Also add {{count}} items that will run low within 7 days' })}
+            </label>
+          )}
           {items.length === 0 && unlinkedItems.length === 0 ? (
             <div style={{ padding: 32, textAlign: 'center', color: '#4B5563' }}>
               {t('bulkOrder.empty', 'No items selected. Pick low-stock ingredients with a preferred seller mapping first.')}
@@ -200,7 +215,10 @@ const BulkOrderModal: React.FC<Props> = ({
                           borderBottom: '1px dashed #F1F4F8'
                         }}>
                           <div>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540' }}>{it.ingredient_name}</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              {it.ingredient_name}
+                              {it.status && <VerdictBadge verdict={it.status} days={it.status === 'soon' ? it.days_of_cover : null} />}
+                            </div>
                             <div style={{ fontSize: 11, color: '#6B7280' }}>
                               {it.status ? (
                                 <>
@@ -210,7 +228,7 @@ const BulkOrderModal: React.FC<Props> = ({
                                   {!!it.committed && <> · {t('bulkOrder.committed', { defaultValue: 'store orders waiting {{qty}} {{unit}}', qty: fq(it.committed), unit: it.unit })}</>}
                                 </>
                               ) : (
-                                <>{t('bulkOrder.stockShort', 'Current')}: {it.current_stock} / {t('bulkOrder.minShort', 'Min')}: {it.min_stock} {it.unit}</>
+                                <>{t('bulkOrder.stockShort', 'Current')}: {it.current_stock} / {t('reorderAt.column', 'Reorder at')}: {it.min_stock} {it.unit}</>
                               )}
                             </div>
                             {it.min_order_qty != null && (
