@@ -84,13 +84,15 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
   const [loading, setLoading] = useState(true);
   const [recipeCategoryRefreshKey, setRecipeCategoryRefreshKey] = useState(0);
 
+  const isBrandUser = user?.role === 'Brand General' || user?.role === 'Brand Manager';
   const brandIdFromUrl = searchParams.get('brandId');
   const selectedBrand = brandIdFromUrl ? Number(brandIdFromUrl) : (brands.length > 0 ? brands[0].id : null);
   const [showBrandDropdown, setShowBrandDropdown] = useState(false);
   const currentBrand = brands.find(b => b.id === selectedBrand);
 
   useEffect(() => {
-    if (user && user.role === 'Brand General') {
+    // 2026-11-10: Brand Manager 도 브랜드를 골라야 레시피를 읽는다 — 빼먹어 brandId 없이 «Loading» 에 멈췄다.
+    if (user && isBrandUser) {
       fetchBrands();
     } else {
       setLoading(false);
@@ -153,7 +155,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
     );
   }
 
-  if (user?.role === 'Brand General' && brands.length === 0) {
+  if (isBrandUser && brands.length === 0) {
     return (
       <Container>
         <PageHeader title={pageTitle} />
@@ -170,7 +172,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
     <Container>
       <PageHeader title={pageTitle} />
       <Content>
-        {user?.role === 'Brand General' && brands.length > 0 && (
+        {isBrandUser && brands.length > 0 && (
           <ActionRow>
             {brands.length > 1 ? (
               <div style={{ position: 'relative' }}>
@@ -212,7 +214,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
           </Tab>
         </Tabs>
 
-        {(selectedBrand || user?.role !== 'Brand General') && (
+        {(selectedBrand || !isBrandUser) && (
           <>
             <div style={{ display: activeTab === 'recipes' ? 'block' : 'none' }}>
               <RecipesTab brandId={selectedBrand} restaurantId={urlRestaurantId ? Number(urlRestaurantId) : null} onCountChange={setRecipesCount} categoryRefreshKey={recipeCategoryRefreshKey} />

@@ -1082,7 +1082,8 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   useEffect(() => {
     let cancelled = false;
     const fetchAllData = async () => {
-      if (!brandId && !effectiveRestaurantId) return;
+      // 읽을 곳이 없으면 «Loading» 에 멈추지 않고 빈 목록으로 (2026-11-10)
+      if (!brandId && !effectiveRestaurantId) { setLoading(false); return; }
 
       const token = getToken();
       const isBrandRole = user?.role === 'Brand General' || user?.role === 'Brand Manager';
