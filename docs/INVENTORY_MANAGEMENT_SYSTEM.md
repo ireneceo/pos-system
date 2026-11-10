@@ -830,3 +830,7 @@ async function updateAvgDailyUsage(ingredientId) {
 - 공급업체 필터(업체별 개수 + «No supplier linked») · 공급업체 칸 = 대표 업체 + «+N» · 연결된 상품이 전부 삭제·판매중지면 «다시 연결» 표시.
 - 데이터: `hooks/useInventoryData.ts` `seller_source_names` · `seller_source_all_off` — 판정은 기존 `GET …?include=sellers`(ingredient_seller_products 활성 연결) 그대로.
 - 시험: `e2e/inventory-inline-link.spec.js`.
+
+## PAR 추천 공용 창 · 발주 창 공급처 연결 (2026-11-10 · [Claude Code] · 개발서버)
+- PAR 추천 = 공용 창 `components/PurchaseOrders/ParSuggestions.tsx` 하나 — 재고관리(매장·브랜드 `InventoryManager`)·발주 이력·발주 본 화면에서 같이 연다. 줄마다 체크(기본 전부) → «Create PO (n)» 은 고른 줄만 · 발주 본 화면은 «발주에 담기»(장바구니). 계산·서버 변경 0.
+- 브랜드 재고 일괄 발주 창(`modals/BulkOrderModal.tsx` · `hooks/useBulkOrder.ts`): «연결 필요» 줄에서 바로 공급처 연결·새 공급업체 → 연결되면 창 안 발주 줄로 올라가고 발주 전망을 다시 읽음.

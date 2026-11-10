@@ -1052,3 +1052,12 @@ ALTER TABLE invoices ADD COLUMN parent_soa_invoice_id INT NULL;
 - (2026-10-30) 청구서 창 `TradeInvoiceActions` — «Re-upload invoice» 는 옛 파일을 지우고 바꾼다 · «Delete invoice file»(확인창) = `DELETE /purchase-orders/:id/upload-invoice`(파일만 뗌 · 대조·총액 그대로 · 오너도 스코프로 가능). 상세 `docs/PURCHASE_ORDER_SYSTEM.md` 끝 절.
 - 목록 응답 칸: `uploaded_invoice_url` · `uploaded_invoice_filename` (RA = invoices-list 의 attachPurchaseOrders, 오너 = owner.js 목록 — 오너 쪽에 filename 추가).
 - 파일은 같은 주소 `/uploads/...` 라 링크 `download` 속성으로 받는다(새 API 없음).
+
+## 11-4. 오너도 외부 공급업체 정산서 대조·최종 금액 확정 (2026-11-10 · Fable 게이트 PASS 9015168aec0b) [Claude Code]
+- 오너 청구서 범위·결제 권한 = 매장 규칙과 같음(청구서 `restaurant_id` 또는 받는 매장이 오너 소유) — `routes/owner.js` · `routes/invoices-helpers.js`.
+- `pages/Owner/OwnerInvoicesPage.tsx` 상세 창에 매장(RA)과 같은 대조 조각 — 비교 인보이스 · «Confirm this total» · 줄마다 총액 수정.
+
+## 11-5. 구독 할인 반영·0원 청구서 (2026-11-10 · Fable 게이트 PASS e089094d8481) [Claude Code]
+- 구독 할인(100% 포함)을 매장·브랜드·푸드코트·오너 구독 청구서 모두에 반영 — `services/subscriptionInvoiceService.js` · `services/invoiceScheduler.js`.
+- 받을 돈 0원이 된 이번 기간 청구서는 결제완료(Fully discounted)로 닫힘 → 연체·정지로 안 넘어감 · 같은 저장을 반복해도 청구서가 늘거나 지난 청구서를 덮지 않음.
+- 관리자 수정 저장 때 구독 줄 `item_type` 이 서비스로 바뀌던 것 · 할인만 바꿔도 세금 재매김 · 매장 월 청구 할인 이중 적용 고침. 배포 마이그 2(`migrate-subscription-item-type-repair.js` · `migrate-company-logo-to-file.js`).
