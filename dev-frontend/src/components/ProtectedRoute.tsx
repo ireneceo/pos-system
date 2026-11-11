@@ -1,137 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAllowedRoutes } from '../hooks/useAllowedRoutes';
 import styled from 'styled-components';
-import { useTranslation } from 'react-i18next';
-// 이 파일에는 기존 로컬 `Button`(아래 styled)이 이미 있다 — 이름 충돌을 피해 별칭으로 가져온다.
-// (기존 로컬 버튼은 baseline 부채라 이번 작업 범위에서 건드리지 않는다.)
-import { ThemedButton as SharedButton } from './UI';
-import { getAuthToken } from '../utils/auth';
 
-// ── POS 현장 단말 가드용 헬퍼 (설계 §6.3) ──────────────────────────────────
-// 이 기기가 어느 매장 POS 로 고정됐는지는 로그인 시에만 기록된다(`pos_device_restaurant`,
-// AuthContext). 컨텍스트 전환은 이 값을 덮어쓰지 않으므로 "기기가 원래 속한 매장"의 기준값이 된다.
-const POS_DEVICE_ROUTE_PREFIXES = ['/pos-terminal', '/kitchen', '/display', '/checkout-display', '/floor-plan'];
-
-function isPosDeviceRoute(pathname: string): boolean {
-  return POS_DEVICE_ROUTE_PREFIXES.some((p) => pathname.startsWith(p) || pathname.includes(p));
-}
-
-function getDeviceContextMismatch(user: { restaurantId?: string | null; restaurant_id?: number | null }):
-  { device: { id: string; name: string }; session: string } | null {
-  let device: any = null;
-  try {
-    const raw = localStorage.getItem('pos_device_restaurant');
-    device = raw ? JSON.parse(raw) : null;
-  } catch {
-    device = null;
-  }
-  if (!device?.id) return null;                      // 기기 고정 없음 → 가드 미적용(기존 동작)
-  const sessionRid = String(user.restaurantId ?? user.restaurant_id ?? '');
-  if (!sessionRid) return null;
-  if (sessionRid === String(device.id)) return null; // 일치 → 통과
-  return { device: { id: String(device.id), name: device.name || '' }, session: sessionRid };
-}
-
-const MismatchWrap = styled.div`
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 20px;
-  background: var(--pos-bg, #F6F9FC);
-  text-align: center;
-`;
-
-const MismatchPanel = styled.div`
-  max-width: 460px;
-  width: 100%;
-  padding: 28px 24px;
-  border-radius: 12px;
-  background: var(--pos-surface, #FFFFFF);
-  box-shadow: 0 4px 16px rgba(10, 37, 64, 0.08);
-
-  button {
-    min-height: 44px;
-  }
-`;
-
-const MismatchGlyph = styled.div`
-  font-size: 28px;
-  line-height: 1;
-  margin-bottom: 12px;
-  color: #F59E0B;
-`;
-
-const MismatchTitle = styled.h2`
-  margin: 0 0 8px;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--pos-text, #0A2540);
-`;
-
-const MismatchText = styled.p`
-  margin: 0 0 20px;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--pos-text-muted, #425466);
-`;
-
-const MismatchHint = styled.p`
-  margin: 8px 0 16px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--pos-text-muted, #425466);
-`;
-
-// 진입 차단 화면 — 두 길로 정상 상태로 돌아간다.
-//   ① «이 기기를 지금 매장으로» — 기기 고정값을 세션 매장으로 덮어써 화면·기기·세션 3자를 다시 맞춘다
-//      (2026-10-25 Irene «권고대로» — 관리자 노트북이 예전 로그인 매장에 묶여 플로어플랜이 막히던 일).
-//      이후 이 기기의 직원 PIN 로그인도 새 매장 기준이 된다 — 문구로 알린다.
-//   ② «Choose context» — 기기 매장 쪽으로 세션을 되돌린다(기존).
-const DeviceContextMismatchScreen: React.FC<{
-  device: { id: string; name: string };
-  session: string;
-  onAdopted: () => void;
-}> = ({ device, session, onAdopted }) => {
-  const { t } = useTranslation('auth');
-  const navigate = useNavigate();
-  const [busy, setBusy] = useState(false);
-
-  const adoptThisStore = async () => {
-    if (busy) return;
-    setBusy(true);
-    // 매장 이름은 서버의 세션 매장 기준(/me) — 컨텍스트 전환 뒤 user.restaurantName 은 비어 있다.
-    let name = '';
-    try {
-      const token = getAuthToken();
-      const res = await fetch('/api/auth/me', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      const json = await res.json().catch(() => null);
-      if (String(json?.data?.restaurant_id ?? '') === session) name = json?.data?.restaurantName || '';
-    } catch { /* 이름은 표시용 — 없어도 매장 번호로 동작 */ }
-    try { localStorage.setItem('pos_device_restaurant', JSON.stringify({ id: session, name })); } catch {}
-    setBusy(false);
-    onAdopted();
-  };
-
-  return (
-    <MismatchWrap>
-      <MismatchPanel>
-        <MismatchGlyph aria-hidden="true">◐</MismatchGlyph>
-        <MismatchTitle>{t('context.deviceMismatch.title')}</MismatchTitle>
-        <MismatchText>{t('context.deviceMismatch.message', { device: device.name || device.id })}</MismatchText>
-        <SharedButton variant="primary" fullWidth onClick={adoptThisStore} disabled={busy}>
-          {t('context.deviceMismatch.adopt')}
-        </SharedButton>
-        <MismatchHint>{t('context.deviceMismatch.adoptHint', { device: device.name || device.id })}</MismatchHint>
-        <SharedButton variant="secondary" fullWidth onClick={() => navigate('/pos/select-context')}>
-          {t('context.deviceMismatch.switch')}
-        </SharedButton>
-      </MismatchPanel>
-    </MismatchWrap>
-  );
-};
+// (2026-11-10) «Different store on this device» 계산대 입구 차단 화면은 제거했다 — Fable 판단:
+// 서버 권한·인쇄와 무관하고, 막던 유일한 문제(PIN 전환이 기기 매장 직원을 찾음)는
+// CashierPinModal 이 세션 매장 기준으로 찾게 고쳐 사라졌다. docs/MULTI_CONTEXT_LOGIN_DESIGN.md §6.3.
 
 // Routes whose feature belongs to an advanced-tier addon module. When the user's
 // current subscription plan does not include the listed module code, ProtectedRoute
@@ -271,8 +146,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams<{ restaurantId?: string }>();
-  // 기기 고정 매장을 바꾼 뒤 가드를 다시 판정하게 하는 신호(localStorage 는 렌더를 일으키지 않는다).
-  const [, setDeviceAdoptTick] = useState(0);
 
   // Resolve module entitlements for the current user (brand/foodcourt context).
   // hasModule fails open when plan filtering is skipped (System Admin or error state).
@@ -531,25 +404,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return <Navigate to="/pos/supplier/dashboard" replace />;
       default:
         return <Navigate to="/pos" replace />;
-    }
-  }
-
-  // ── POS 현장 단말 가드 (docs/MULTI_CONTEXT_LOGIN_DESIGN.md §6.3 / 검증 F7-2) ──
-  //
-  // 스위처를 POS 화면에 안 그리는 것만으로는 부족하다. B 매장 모자를 쓴 사람이 A 매장에
-  // 고정된 기기에서 주소로 POS 에 들어올 수 있고(권한상 정당하다 — 그 매장의 RA 니까),
-  // 그러면 PIN 캐셔 전환은 기기 고정 매장(A) 기준으로 직원을 찾아 **화면·기기·세션 3자가 어긋난다.**
-  // 기기 고정이 없는 브라우저는 이 가드가 아예 동작하지 않는다(기존 동작 유지).
-  if (user && isPosDeviceRoute(location.pathname)) {
-    const mismatch = getDeviceContextMismatch(user);
-    if (mismatch) {
-      return (
-        <DeviceContextMismatchScreen
-          device={mismatch.device}
-          session={mismatch.session}
-          onAdopted={() => setDeviceAdoptTick((n) => n + 1)}
-        />
-      );
     }
   }
 

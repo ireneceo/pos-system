@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { useAuth } from '../../contexts/AuthContext';
 interface PinVerifyResult {
   data: { id: number; name: string; role: string; department: string };
   token: string;
@@ -149,6 +150,7 @@ const CurrentCashier = styled.div`
 
 const CashierPinModal: React.FC<CashierPinModalProps> = ({ show, onClose, onVerified, onLogout, currentCashierName }) => {
   const { t } = useTranslation('pos');
+  const { user } = useAuth();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -169,11 +171,18 @@ const CashierPinModal: React.FC<CashierPinModalProps> = ({ show, onClose, onVeri
       // → restaurant_id 를 반드시 body 로 보내야 한다. 기기가 기억하는 매장(pos_device_restaurant,
       // StaffPinLogin 과 동일 소스)에서 해석. (2026-06-23: 이 누락으로 POS/FloorPlan PIN 전환이
       // 400 으로 실패하던 회귀 수정.)
-      let restaurantId: number | string | null = null;
-      try {
-        const raw = localStorage.getItem('pos_device_restaurant');
-        if (raw) { const d = JSON.parse(raw); if (d && d.id) restaurantId = d.id; }
-      } catch { /* ignore */ }
+      // 2026-11-10 (Fable 판단 · Irene «왜 막아?»): 지금 보고 있는 매장(세션) 직원을 먼저 찾는다.
+      // 예전엔 기기에 찍힌 매장(pos_device_restaurant)만 봐서, 다른 매장 화면에서 PIN 을 치면
+      // 엉뚱한 매장 직원을 찾았다 — 그 어긋남 때문에 계산대 입구 차단 화면이 있었다(이제 제거).
+      // 세션 매장이 없을 때만 기기 매장을 쓴다.
+      const u: any = user;
+      let restaurantId: number | string | null = (u?.restaurantId ?? u?.restaurant_id) || null;
+      if (restaurantId == null) {
+        try {
+          const raw = localStorage.getItem('pos_device_restaurant');
+          if (raw) { const d = JSON.parse(raw); if (d && d.id) restaurantId = d.id; }
+        } catch { /* ignore */ }
+      }
       const response = await fetch('/api/staff/verify-pin', {
         method: 'POST',
         headers: {
@@ -199,7 +208,7 @@ const CashierPinModal: React.FC<CashierPinModalProps> = ({ show, onClose, onVeri
     } finally {
       setIsVerifying(false);
     }
-  }, [onVerified]);
+  }, [onVerified, user]);
 
   const handleKeyPress = useCallback((key: string) => {
     if (isVerifying) return;
