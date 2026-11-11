@@ -984,5 +984,18 @@
     "incomplete": "Pilih sekurang-kurangnya satu hari — had masa disimpan apabila ada hari dan masa.",
     "addRule": "+ Tambah had masa",
     "preview": "{{days}} {{time}} → {{delivery}}"
+  },
+  "printerHelp": {
+    "android": "Pastikan pencetak dihidupkan, ada kertas dan berada pada Wi-Fi yang sama dengan tablet ini, dan setiap stesen dapur ada pencetak dipilih di Tetapan → Pencetak.",
+    "windows": "Pastikan pencetak dihidupkan, ada kertas dan disambung ke PC ini, dan setiap stesen dapur ada pencetak dipilih di Tetapan → Pencetak.",
+    "rawbt": "Pastikan aplikasi RawBT dipasang dan pencetak dihidupkan dengan kertas, kemudian semak Tetapan → Pencetak.",
+    "qz": "Pastikan QZ Tray sedang berjalan pada PC ini dan pencetak dihidupkan dengan kertas, kemudian semak nama pencetak di Tetapan → Pencetak.",
+    "browser": "Semak kuasa, kertas dan sambungan pencetak, kemudian semak Tetapan → Pencetak.",
+    "drawer_android": "Laci dibuka melalui pencetak resit. Pastikan pencetak resit dihidupkan dan dipilih di Tetapan → Pencetak, dan kabel laci dipasang pada pencetak.",
+    "drawer_windows": "Laci dibuka melalui pencetak resit. Pastikan pencetak resit dihidupkan dan dipilih di Tetapan → Pencetak, dan kabel laci dipasang pada pencetak.",
+    "drawer_rawbt": "Laci dibuka melalui pencetak resit. Pastikan RawBT dipasang, pencetak resit dihidupkan, dan kabel laci dipasang pada pencetak.",
+    "drawer_qz": "Laci dibuka melalui pencetak resit. Pastikan QZ Tray sedang berjalan, pencetak resit dihidupkan, dan kabel laci dipasang pada pencetak.",
+    "drawer_browser": "Tetingkap cetak pelayar tidak boleh membuka laci tunai. Gunakan aplikasi PurplePOS (atau sambungan pencetak) untuk peranti ini di Tetapan → Pencetak.",
+    "qrFailed": "Cetakan QR gagal — QR memerlukan pencetak yang boleh mencetak imej."
   }
 }

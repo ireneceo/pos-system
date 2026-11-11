@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
+import { printerHelpKey } from '../utils/printerHelpHint';
 
 /**
  * AutoPrintFailureBanner — PRINT_RULES_MATRIX rule 6: when an auto-print fails,
@@ -96,7 +97,8 @@ const AutoPrintFailureBanner: React.FC = () => {
           ? t('printFailBanner.failedOrder', '{{scope}} auto-print failed — order {{n}}. Retrying automatically.', { scope: scopeLabel, n: fail.orderNumber })
           : t('printFailBanner.failed', '{{scope}} auto-print failed. Retrying automatically.', { scope: scopeLabel })}
         {' '}
-        {t('printFailBanner.hint', 'If it keeps failing, check whether QZ Tray is running and the printer connection / printer name.')}
+        {/* 2026-11-11: 기기에 맞는 안내 — 앱(안드로이드·윈도우)엔 QZ 가 없으니 QZ 를 말하지 않는다 */}
+        {(() => { const h = printerHelpKey(); return t(h.key, h.fallback); })()}
       </span>
       <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
         <button

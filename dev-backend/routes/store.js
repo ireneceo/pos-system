@@ -12,6 +12,9 @@ const {
   normalizePaymentSettings,
 } = require('../utils/settingsGuard');
 const { isPoMasterLocked, applyPoMasterKeep } = require('../utils/poOwnerApproval');
+const printerScope = require('../utils/printerSetupDevice');
+const { applyPrinterWrite } = printerScope;
+const KitchenStation = require('../models/KitchenStation');
 
 // Get store settings
 router.get('/settings', authenticateToken, checkRestaurantAccess, async (req, res) => {
@@ -145,7 +148,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
     // 매장 직원(Staff)·기타 역할이 다른 설정을 저장할 때 printer_settings 를 함께 덮어쓰지
     // 못하게 막는다 (thefire kitchenPrinter wipe 재발 방지의 한 축). 권한 없는 사용자의 저장에서는
     // printer_settings 필드를 통째로 건너뛰어 기존 DB 값을 보존한다.
-    const canEditPrinterSettings = req.user.role === 'Restaurant Admin' || req.user.role === 'System Admin';
+    // → 판정은 utils/printerSetupDevice.applyPrinterWrite 한 곳(아래 필드 루프).
     // 발주 오너 승인 스위치 — 오너 연결 매장이면 오너·SA 만 바꾼다(2026-11-01 Irene «권고대로» · Fable §G-7-8 A안)
     const poMasterLocked = await isPoMasterLocked(req.user, restaurantId);
 
@@ -214,32 +217,31 @@ router.put('/settings', authenticateToken, async (req, res) => {
       reservation_settings: (i, e, r) => guardShallowSettings('reservation_settings', i, e, r),
     };
 
+    let printerSettingsSkipped;
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
-        // RA-only printer_settings gate (2026-06-25) — 비-RA 저장은 프린터 설정 보존.
-        // 예외(Irene): 비상 라우팅 모드(emergencyMode)는 영업 중 프린터 고장 시 직원도 즉시
-        // 켜야 하므로 허용한다 — emergencyMode/emergencyEnabledAt 만 기존값에 머지하고 나머지는
-        // 통째로 보존(직원의 미로드/stale payload 가 실제 프린터 설정을 못 덮게).
-        if (field === 'printer_settings' && !canEditPrinterSettings) {
+        // printer_settings — 판정 한 곳(utils/printerSetupDevice · 2026-11-10 Fable 설계):
+        //  · 관리자·SA 아님 → 비상 모드 두 칸만(2026-06-25 RA-only 자물쇠 그대로 옮김)
+        //  · «프린터 설정 기기» 가 정해진 매장에서 다른 기기가 확인 없이 보낸 저장 → 비상 두 칸만 + 응답에 표시
+        //  · 그 밖 → 기존 anti-wipe 가드 · 꼬리표(setupDevice)는 언제나 DB 값 유지
+        if (field === 'printer_settings') {
           try {
-            const _rawEx = restaurant.getDataValue('printer_settings');
-            const existingPs = _rawEx ? (typeof _rawEx === 'string' ? JSON.parse(_rawEx) : _rawEx) : {};
-            const incomingPs = typeof req.body.printer_settings === 'string'
-              ? JSON.parse(req.body.printer_settings) : (req.body.printer_settings || {});
-            if (typeof incomingPs.emergencyMode === 'boolean' && incomingPs.emergencyMode !== existingPs.emergencyMode) {
-              existingPs.emergencyMode = incomingPs.emergencyMode;
-              existingPs.emergencyEnabledAt = incomingPs.emergencyMode
-                ? (incomingPs.emergencyEnabledAt || new Date().toISOString())
-                : null;
-              restaurant.printer_settings = existingPs;
-              console.warn(`  🟠 printer_settings: non-RA(${req.user.role}) emergencyMode=${incomingPs.emergencyMode} 만 반영, 나머지 보존`);
+            const r = applyPrinterWrite({
+              user: req.user, body: req.body,
+              existingRaw: restaurant.getDataValue('printer_settings'),
+              guard: guardPrinterSettings, restaurantId,
+            });
+            if (r.skipped) printerSettingsSkipped = r.skipped;
+            if (r.action === 'save') {
+              restaurant.printer_settings = r.value;
+              console.log(`  ✏️  printer_settings (${r.reason})`);
             } else {
-              console.warn(`  🔒 printer_settings skipped (role=${req.user.role}) — RA only (emergency 변화 없음)`);
+              console.warn(`  🔒 printer_settings skipped (${r.reason}, role=${req.user.role})`);
             }
           } catch (e) {
-            console.warn('  🔒 printer_settings skipped (non-RA, parse error)');
+            console.warn('  🔒 printer_settings skipped (parse error)', e.message);
           }
-          return; // 비-RA 는 전체 printer_settings 적용 안 함 (emergency 만 위에서 머지)
+          return;
         }
         console.log(`  ✏️  ${field}:`, field === 'payment_settings' || field === 'operation_settings'
           ? `[JSON ${typeof req.body[field]}]`
@@ -351,7 +353,8 @@ router.put('/settings', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       data: restaurant,
-      message: 'Settings updated successfully'
+      message: 'Settings updated successfully',
+      ...(printerSettingsSkipped ? { printerSettingsSkipped } : {})
     });
   } catch (error) {
     console.error('✗ [STORE UPDATE ERROR]:', error.message);
@@ -360,6 +363,106 @@ router.put('/settings', authenticateToken, async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 프린터 설정 좁은 쓰기 길 3개 (2026-11-10 · Fable 설계 §3-2 · utils/printerSetupDevice)
+// 통째 저장에 얹지 않고 DB 원본 JSON 을 읽어 «해당 칸만» 바꾼다. 응답 = 바뀐 뒤 printer_settings.
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadRestaurantForPrinterWrite(req, res) {
+  const raw = req.body && req.body.restaurantId != null ? req.body.restaurantId : req.user.restaurant_id;
+  if (raw == null || !/^\d+$/.test(String(raw))) {
+    res.status(400).json({ success: false, message: 'Invalid restaurant id' });
+    return null;
+  }
+  const restaurantId = String(parseInt(raw, 10));
+  if (req.user.role !== 'System Admin') {
+    const allowed = await userCanAccessRestaurant(req.user, restaurantId);
+    if (!allowed) {
+      res.status(403).json({ success: false, message: 'Access denied to this restaurant' });
+      return null;
+    }
+  }
+  const restaurant = await Restaurant.findByPk(restaurantId);
+  if (!restaurant) {
+    res.status(404).json({ success: false, message: 'Restaurant not found' });
+    return null;
+  }
+  return { restaurant, restaurantId };
+}
+
+// ① 이 기기를 «프린터 설정 기기» 로 — 관리자·SA 만. setupDevice 칸만 바꾼다.
+router.post('/printer-setup-device', authenticateToken, async (req, res) => {
+  try {
+    if (!printerScope.canEditPrinterSettings(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Only the restaurant admin can change printer settings' });
+    }
+    const device = printerScope.normalizeDevice(req.body && req.body.device);
+    if (!device) return res.status(400).json({ success: false, message: 'This device has no device id' });
+    const ctx = await loadRestaurantForPrinterWrite(req, res);
+    if (!ctx) return;
+    const ps = { ...printerScope.parsePs(ctx.restaurant.getDataValue('printer_settings')) };
+    ps.setupDevice = printerScope.makeSetupDevice(device, req.user);
+    ctx.restaurant.printer_settings = ps;
+    await ctx.restaurant.save();
+    logActivity(req, {
+      action_type: 'update', entity_type: 'settings', entity_id: ctx.restaurantId,
+      entity_name: ctx.restaurant.name, restaurant_id: ctx.restaurantId,
+      description: `Printer setup device set to "${device.name || device.kind}" (${device.kind})`,
+    });
+    res.json({ success: true, data: { printer_settings: ctx.restaurant.printer_settings } });
+  } catch (error) {
+    console.error('[printer-setup-device]', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// ② 빠진 스테이션 칸만 채우기 — 관리자·SA. 더한 게 없으면 쓰지 않는다. 기기 잠금과 무관(더하기만).
+//    (2026-05-28 사고 수리: 칸이 빠지면 그 스테이션 티켓이 첫 스테이션 프린터로 몰림)
+router.post('/printer-station-seed', authenticateToken, async (req, res) => {
+  try {
+    if (!printerScope.canEditPrinterSettings(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Only the restaurant admin can change printer settings' });
+    }
+    const ctx = await loadRestaurantForPrinterWrite(req, res);
+    if (!ctx) return;
+    const stations = await KitchenStation.findAll({ where: { restaurant_id: ctx.restaurantId }, attributes: ['id', 'name'] });
+    const { value, added } = printerScope.seedMissingStations(ctx.restaurant.getDataValue('printer_settings'), stations.map(s => s.get({ plain: true })));
+    if (added > 0) {
+      ctx.restaurant.printer_settings = value;
+      await ctx.restaurant.save();
+      console.log(`[printer-station-seed] restaurant ${ctx.restaurantId}: +${added} station entries`);
+    }
+    res.json({ success: true, data: { printer_settings: ctx.restaurant.printer_settings, added } });
+  } catch (error) {
+    console.error('[printer-station-seed]', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+// ③ 비상 모드 — 매장에 닿는 모든 역할(직원 포함 · 영업 중 프린터 고장 대응). 비상 두 칸만.
+router.post('/printer-emergency', authenticateToken, async (req, res) => {
+  try {
+    if (typeof (req.body && req.body.on) !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'on must be true or false' });
+    }
+    const ctx = await loadRestaurantForPrinterWrite(req, res);
+    if (!ctx) return;
+    const { value, changed } = printerScope.mergeEmergencyOnly(ctx.restaurant.getDataValue('printer_settings'), { emergencyMode: req.body.on });
+    if (changed) {
+      ctx.restaurant.printer_settings = value;
+      await ctx.restaurant.save();
+      logActivity(req, {
+        action_type: 'update', entity_type: 'settings', entity_id: ctx.restaurantId,
+        entity_name: ctx.restaurant.name, restaurant_id: ctx.restaurantId,
+        description: `Printer emergency mode ${req.body.on ? 'ON' : 'OFF'}`,
+      });
+    }
+    res.json({ success: true, data: { printer_settings: ctx.restaurant.printer_settings } });
+  } catch (error) {
+    console.error('[printer-emergency]', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 

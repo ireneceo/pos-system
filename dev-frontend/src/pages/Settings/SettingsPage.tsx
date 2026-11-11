@@ -13,6 +13,7 @@ import { CARD_TYPE_OPTIONS, EWALLET_TYPE_OPTIONS } from '../../constants';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
+import { PrinterAutoSave, PrinterLockContext, PrinterScopeBar, SetupDeviceModal, OtherDeviceModal, usePrinterDeviceScope, buildPrinterDevice, deviceKindLabel, SetupDeviceTag } from './PrinterDeviceScope';
 import DateField from '../../components/Common/DateField';
 import ItemScheduleEditor from '../MenuManagement/ItemScheduleEditor';
 import ReservationSettingsTab from '../../components/Settings/ReservationSettingsTab';
@@ -709,7 +710,7 @@ const NativePrinterSelect: React.FC<NativePrinterSelectProps> = ({ address, prin
 
   return (
     <div>
-      <AutoSaveField onSave={onAutoSave} type="select">
+      <PrinterAutoSave onSave={onAutoSave} type="select">
       <select
         value={selValue}
         onChange={(e) => handleSelect(e.target.value)}
@@ -724,11 +725,11 @@ const NativePrinterSelect: React.FC<NativePrinterSelectProps> = ({ address, prin
         {printers.map((p) => (<option key={p} value={p}>{p}</option>))}
         <option value="__NETWORK__">{t('settings:printer.native.networkIp', { defaultValue: 'Network printer (enter IP)…' })}</option>
       </select>
-      </AutoSaveField>
+      </PrinterAutoSave>
 
       {netMode && (
         <div style={{ marginTop: '6px' }}>
-          <AutoSaveField onSave={onAutoSave}>
+          <PrinterAutoSave onSave={onAutoSave}>
           <input
             type="text"
             value={addr}
@@ -736,7 +737,7 @@ const NativePrinterSelect: React.FC<NativePrinterSelectProps> = ({ address, prin
             placeholder="192.168.1.101:9100"
             style={{ width: '100%', padding: pad, border: '1px solid #6B7280', borderRadius: '6px', fontSize: fs, fontFamily: 'monospace', boxSizing: 'border-box' }}
           />
-          </AutoSaveField>
+          </PrinterAutoSave>
         </div>
       )}
 
@@ -1032,6 +1033,16 @@ const SettingsPage: React.FC = () => {
     window.addEventListener('workstation-changed', handler);
     return () => window.removeEventListener('workstation-changed', handler);
   }, []);
+
+  // «프린터 설정 기기» (2026-11-10 · Fable 설계 .claude/fable-design-20261110-printer-settings-device-scope.md · PrinterDeviceScope.tsx)
+  // 매장 프린터 설정은 한 벌 — 바로 바꾸는 곳은 이 꼬리표의 기기 한 대. 꼬리표는 printerSettings 상태와 따로 둔다(저장 본문에 섞이지 않게).
+  const [setupDeviceTag, setSetupDeviceTag] = useState<SetupDeviceTag | null>(null);
+  const [printerScopeNotice, setPrinterScopeNotice] = useState<string | null>(null);
+  const [scopeSetupOpen, setScopeSetupOpen] = useState(false);
+  const [scopeOtherOpen, setScopeOtherOpen] = useState(false);
+  const [scopeBusy, setScopeBusy] = useState(false);
+  const printerScope = usePrinterDeviceScope({ canEdit: canEditPrinterSettings, tag: setupDeviceTag, loading: printerSettingsLoading, error: printerSettingsError });
+  const printerEditable = printerScope.editable;
 
   // Kitchen Stations state — hybrid mode (v3.44+): category default + per-menu override
   const [kitchenStations, setKitchenStations] = useState<any[]>([]);
@@ -1562,8 +1573,8 @@ const SettingsPage: React.FC = () => {
   }, [activeTab, user?.restaurantId]);
 
   // Load printer settings from DB
-  const loadPrinterSettings = useCallback(async () => {
-      if (!user?.restaurantId) return;
+  const loadPrinterSettings = useCallback(async (): Promise<boolean> => {
+      if (!user?.restaurantId) return false;
 
       setPrinterSettingsLoading(true);
       setPrinterSettingsError(false);
@@ -1584,6 +1595,7 @@ const SettingsPage: React.FC = () => {
         }
         {
           const restaurant = await response.json();
+          setSetupDeviceTag((restaurant.printer_settings && restaurant.printer_settings.setupDevice && restaurant.printer_settings.setupDevice.id) ? restaurant.printer_settings.setupDevice : null);
           if (restaurant.printer_settings) {
             const dbSettings = restaurant.printer_settings;
             const rawMode = dbSettings.printerMode || 'rawbt';
@@ -1676,14 +1688,63 @@ const SettingsPage: React.FC = () => {
           }
         }
         setPrinterModeState(getPrinterMode());
+        return false;
       } finally {
         setPrinterSettingsLoading(false);
       }
+      return true;
   }, [user?.restaurantId]);
 
   useEffect(() => {
     loadPrinterSettings();
   }, [loadPrinterSettings]);
+
+  // «프린터 설정 기기» 동작 (PrinterDeviceScope.tsx · 서버 utils/printerSetupDevice.js)
+  const thisWorkstationName: string = ((printerSettings.workstations || []).find((w: any) => w.id === activeWorkstationId) as any)?.name || '';
+  const defaultScopeDeviceName = `${deviceKindLabel(t, printerScope.device.kind)}${thisWorkstationName ? ' · ' + thisWorkstationName : ''}`.slice(0, 40);
+  const printerDevicePayload = () => buildPrinterDevice(printerScope.device, defaultScopeDeviceName, printerScope.state === 'O' && printerScope.unlocked);
+  const handlePrinterSettingsSkipped = () => {
+    printerScope.setUnlocked(false);
+    setPrinterScopeNotice(t('settings:printer.deviceScope.skippedNotice', 'Printer settings were not saved — the printer setup device has changed.'));
+    loadPrinterSettings();
+  };
+  const postPrinterScope = async (path: string, body: any): Promise<any | null> => {
+    if (!user?.restaurantId) return null;
+    try {
+      const token = getAuthToken();
+      const r = await fetch(`/api/store/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ restaurantId: user.restaurantId, ...body }),
+      });
+      const d = await r.json().catch(() => ({}));
+      return r.ok && d && d.success ? d : null;
+    } catch { return null; }
+  };
+  const confirmSetupDevice = async (name: string) => {
+    setScopeBusy(true);
+    const d = await postPrinterScope('printer-setup-device', { device: buildPrinterDevice(printerScope.device, name || defaultScopeDeviceName, false) });
+    setScopeBusy(false);
+    if (!d) { setPrinterScopeNotice(t('settings:printer.deviceScope.setFailed', 'Could not set the printer setup device. Try again.')); return; }
+    setScopeSetupOpen(false);
+    setPrinterScopeNotice(null);
+    printerScope.setUnlocked(false);
+    await loadPrinterSettings();
+  };
+  const confirmOtherDevice = async (takeOver: boolean) => {
+    setScopeBusy(true);
+    if (takeOver) {
+      const d = await postPrinterScope('printer-setup-device', { device: buildPrinterDevice(printerScope.device, defaultScopeDeviceName, false) });
+      if (!d) { setScopeBusy(false); setPrinterScopeNotice(t('settings:printer.deviceScope.setFailed', 'Could not set the printer setup device. Try again.')); return; }
+    }
+    // 서버에서 다시 불러온 뒤 연다 — 잠긴 동안 이 화면에 남은 옛 값이 실려 가지 않게. 불러오기 실패면 열지 않는다.
+    const loaded = await loadPrinterSettings();
+    setScopeBusy(false);
+    setScopeOtherOpen(false);
+    if (!loaded) return;
+    setPrinterScopeNotice(null);
+    if (!takeOver) printerScope.setUnlocked(true);
+  };
 
   // Load active coupons for External QR partner-discount linking
   useEffect(() => {
@@ -1801,22 +1862,17 @@ const SettingsPage: React.FC = () => {
       stationSeedDoneRef.current = true;
       return;
     }
-    setPrinterSettings(prev => {
-      const next = { ...(prev.kitchenStationPrinters || {}) };
-      missing.forEach((s: any) => {
-        next[s.id] = {
-          name: '',
-          autoPrint: true,
-          address: '',
-          method: 'qztray',
-          stationName: s.name
-        };
-      });
-      return { ...prev, kitchenStationPrinters: next };
-    });
     stationSeedDoneRef.current = true;
-    // Allow setPrinterSettings to flush before handleSave reads the state
-    setTimeout(() => { handleSave(); }, 60);
+    // 2026-11-10 (Fable 설계 §4-2): 통째 저장(handleSave) 대신 «빠진 칸만 더하는» 전용 길(②) — 설정 기기 잠금과 무관하게
+    // 5-28 사고 수리(빠진 칸 → 첫 스테이션 프린터로 몰림)는 계속 돈다. 관리자만(서버도 같은 판정). 응답 값으로 화면을 채운다.
+    if (!canEditPrinterSettings) return;
+    (async () => {
+      const d = await postPrinterScope('printer-station-seed', {});
+      const ksp = d && d.data && d.data.printer_settings && d.data.printer_settings.kitchenStationPrinters;
+      if (ksp && typeof ksp === 'object') {
+        setPrinterSettings(prev => ({ ...prev, kitchenStationPrinters: ksp }));
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kitchenStations, user?.restaurantId, printerSettingsLoading, printerSettingsError]);
 
@@ -2422,7 +2478,10 @@ const SettingsPage: React.FC = () => {
           // 근본 차단. 로드 완료 후에는 state 가 DB 값과 동일하므로 포함해도 안전하다.
           // 2026-06-26 (item 7): 로드 실패(printerSettingsError)도 동일하게 제외 —
           // localStorage 폴백은 비권위적이라 운영 DB 를 덮어쓰면 안 됨.
-          ...((printerSettingsLoading || printerSettingsError) ? {} : {
+          // 2026-11-10 자물쇠④ «프린터 설정 기기»: 이 기기에서 프린터 설정을 바꿀 수 없으면(설정 기기 아님·확인 안 함·직원)
+          // 어떤 저장에도 printer_settings 를 싣지 않는다 — 다른 기기의 결제 토글 저장이 예전에 불러온 프린터 설정을 되돌리던 길.
+          ...((printerSettingsLoading || printerSettingsError || !printerEditable) ? {} : {
+            printer_device: printerDevicePayload(),
             printer_settings: {
               printerMode: printerMode,
               billPrinter: printerSettings.billPrinter,
@@ -2440,6 +2499,8 @@ const SettingsPage: React.FC = () => {
         };
         if (printerSettingsLoading || printerSettingsError) {
           console.warn('⏳ [Lock①] printer_settings not loaded (loading/error) — excluded from save to protect live printer config');
+        } else if (!printerEditable) {
+          console.warn('🔒 [Lock④] printer_settings excluded — this device is not the printer setup device (or view-only)');
         }
 
         console.log('📦 Request body (first 500 chars):', JSON.stringify(requestBody).substring(0, 500));
@@ -2486,6 +2547,7 @@ const SettingsPage: React.FC = () => {
 
         const result = await response.json();
         console.log('✅ Database save successful:', result);
+        if (result && result.printerSettingsSkipped) handlePrinterSettingsSkipped();
 
         // Update StoreContext with new operation settings (including currency settings)
         console.log('🔄 Updating StoreContext with new operation settings');
@@ -5981,8 +6043,18 @@ const SettingsPage: React.FC = () => {
           )}
 
           {activeTab === 'printer' && (
-            <>
-              {/* 2026-06-25 (Irene): 프린터 설정 변경 권한 안내 — 레스토랑 관리자 전용.
+            <PrinterLockContext.Provider value={!printerEditable}><>
+              {/* 2026-11-10 «프린터 설정 기기» 상태 줄 (관리자·SA) — 직원은 아래 옛 안내 그대로(보기 전용). */}
+              {canEditPrinterSettings && !printerSettingsLoading && !printerSettingsError && (
+                <PrinterScopeBar
+                  t={t} state={printerScope.state} tag={setupDeviceTag} unlocked={printerScope.unlocked}
+                  timeZone={operationSettings.timeZone} notice={printerScopeNotice}
+                  onSetup={() => setScopeSetupOpen(true)} onChangeHere={() => setScopeOtherOpen(true)}
+                  onRelock={() => printerScope.setUnlocked(false)}
+                />
+              )}
+              {!canEditPrinterSettings && (<>
+                {/* 2026-06-25 (Irene): 프린터 설정 변경 권한 안내 — 레스토랑 관리자 전용.
                   백엔드(routes/store.js)에서도 비-RA 저장 시 printer_settings 를 무시한다. */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 8,
@@ -5998,6 +6070,26 @@ const SettingsPage: React.FC = () => {
                     : t('settings:printer.adminOnlyReadonly', 'Printer settings can only be changed by the Restaurant Admin. Your account is view-only — any changes here will not be saved.')}
                 </span>
               </div>
+              </>)}
+              <SetupDeviceModal
+                t={t} isOpen={scopeSetupOpen} onClose={() => setScopeSetupOpen(false)} onConfirm={confirmSetupDevice}
+                hasId={printerScope.hasId} deviceKind={printerScope.device.kind} defaultName={defaultScopeDeviceName}
+                wsName={thisWorkstationName}
+                notPrintingSeat={(() => {
+                  const wsl: any[] = printerSettings.workstations || [];
+                  if (wsl.length < 2) return null;
+                  const mine = wsl.find((w: any) => w.id === activeWorkstationId);
+                  if (mine && mine.billPrinter?.autoPrint) return null;
+                  const printing = wsl.filter((w: any) => w.billPrinter?.autoPrint).map((w: any) => w.name).join(', ');
+                  return printing || null;
+                })()}
+                busy={scopeBusy}
+              />
+              <OtherDeviceModal
+                t={t} isOpen={scopeOtherOpen} onClose={() => setScopeOtherOpen(false)} onConfirm={confirmOtherDevice}
+                tag={setupDeviceTag} hasId={printerScope.hasId} deviceKind={printerScope.device.kind}
+                timeZone={operationSettings.timeZone} busy={scopeBusy}
+              />
               {/* 2026-06-26 (item 7): load-state banner. A connection blip can make the
                   server return non-OK; without this the tab silently rendered the all-off
                   defaults, which staff misread as "the printers disappeared" (the DB was
@@ -6317,6 +6409,13 @@ const SettingsPage: React.FC = () => {
                   {t('settings:autoPrintPreview.title')}
                 </button>
               </div>
+              {canEditPrinterSettings && !printerSettingsLoading && !printerSettingsError && printerScope.state !== 'M' && (
+                <PrinterScopeBar
+                  compact t={t} state={printerScope.state} tag={setupDeviceTag} unlocked={printerScope.unlocked}
+                  onSetup={() => setScopeSetupOpen(true)} onChangeHere={() => setScopeOtherOpen(true)}
+                  onRelock={() => printerScope.setUnlocked(false)}
+                />
+              )}
               {!printerSettingsLoading && (
               <SettingsGrid>
                 {/* Workstations Section — multi-POS bill printers (replaces single Bill Printer card).
@@ -6355,9 +6454,10 @@ const SettingsPage: React.FC = () => {
                             const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
                               method: 'PUT',
                               headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ printer_settings: newPS })
+                              body: JSON.stringify({ printer_settings: newPS, printer_device: printerDevicePayload() })
                             });
                             const d = await r.json();
+                            if (d && d.printerSettingsSkipped) handlePrinterSettingsSkipped();
                             setSaveStatus({ type: d.success ? 'success' : 'error', message: d.success ? 'Workstation deleted' : 'Delete failed' });
                           } catch { setSaveStatus({ type: 'error', message: 'Delete failed' }); }
                           setTimeout(() => setSaveStatus(null), 2000);
@@ -6371,7 +6471,7 @@ const SettingsPage: React.FC = () => {
                               any overflow in the 2-column SettingsGrid where each card can be
                               ~440px wide on 10-inch tablets. */}
                           <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', rowGap: '10px' }}>
-                            <AutoSaveField onSave={handleSave} style={{ flex: '1 1 100%', minWidth: 0 }}>
+                            <PrinterAutoSave onSave={handleSave} style={{ flex: '1 1 100%', minWidth: 0 }}>
                             <input
                               type="text"
                               value={ws.name || ''}
@@ -6379,7 +6479,7 @@ const SettingsPage: React.FC = () => {
                               placeholder={t('settings:printer.workstations.nameInputPlaceholder')}
                               style={{ width: '100%', padding: '8px 12px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '14px', fontWeight: 600, boxSizing: 'border-box' }}
                             />
-                            </AutoSaveField>
+                            </PrinterAutoSave>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0, flexWrap: 'wrap' }}>
                               {isActiveWs && (
                                 <span style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700, color: '#635BFF', background: '#EDE9FE', border: '1px solid #C4B5FD', borderRadius: '12px', letterSpacing: '0.3px', whiteSpace: 'nowrap' }}>{t('settings:printer.workstations.thisDevice')}</span>
@@ -6392,7 +6492,7 @@ const SettingsPage: React.FC = () => {
                               )}
                               <button type="button"
                                 onClick={deleteWs}
-                                disabled={!canDelete}
+                                disabled={!canDelete || !printerEditable}
                                 title={canDelete ? t('settings:printer.workstations.deleteConfirm', { name: ws.name }) : t('settings:printer.workstations.atLeastOneRequired')}
                                 style={{ padding: '6px 10px', fontSize: '12px', border: '1px solid #FCA5A5', borderRadius: '6px', background: '#fff', color: '#DC2626', cursor: canDelete ? 'pointer' : 'not-allowed', opacity: canDelete ? 1 : 0.4, whiteSpace: 'nowrap' }}
                               >{t('settings:printer.workstations.deleteBtn')}</button>
@@ -6400,7 +6500,7 @@ const SettingsPage: React.FC = () => {
                           </div>
 
                           {/* Enabled toggle */}
-                          <AutoSaveField onSave={handleSave} type="toggle">
+                          <PrinterAutoSave onSave={handleSave} type="toggle">
                           <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px', cursor: 'pointer' }}>
                             <input
                               type="checkbox"
@@ -6410,7 +6510,7 @@ const SettingsPage: React.FC = () => {
                             />
                             <span style={{ fontSize: '13px', color: '#1F2937', fontWeight: 500 }}>{t('settings:printer.workstations.billEnabled')}</span>
                           </label>
-                          </AutoSaveField>
+                          </PrinterAutoSave>
 
                           {ws.billPrinter?.enabled !== false && (
                             <>
@@ -6440,7 +6540,7 @@ const SettingsPage: React.FC = () => {
                               {/* Method select */}
                               <div style={{ marginBottom: '10px' }}>
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#1F2937', marginBottom: '4px' }}>{t('settings:printer.assign.methodLabel', 'Connection method')}</label>
-                                <AutoSaveField onSave={handleSave} type="select">
+                                <PrinterAutoSave onSave={handleSave} type="select">
                                 <select
                                   value={wsBillMethod}
                                   onChange={(e) => updateWs({ billPrinter: { method: e.target.value as any } })}
@@ -6450,14 +6550,14 @@ const SettingsPage: React.FC = () => {
                                   <option value="qztray">{t('settings:printer.assign.optQz', 'Printer name or IP (PC print helper QZ Tray)')}</option>
                                   <option value="rawbt">{t('settings:printer.assign.optRawbt', 'RawBT (Android browser)')}</option>
                                 </select>
-                                </AutoSaveField>
+                                </PrinterAutoSave>
                               </div>
 
                               {/* QZ Tray: address + detected dropdown + Test */}
                               {wsBillMethod === 'qztray' && (
                                 <div>
                                   <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '6px', rowGap: '8px', alignItems: 'stretch' }}>
-                                    <AutoSaveField onSave={handleSave} style={{ flex: '1 1 240px', minWidth: 0 }}>
+                                    <PrinterAutoSave onSave={handleSave} style={{ flex: '1 1 240px', minWidth: 0 }}>
                                     <input
                                       type="text"
                                       value={wsBillAddr}
@@ -6465,7 +6565,7 @@ const SettingsPage: React.FC = () => {
                                       placeholder={t('settings:printer.assign.wsAddrPlaceholder', 'Blank = this device’s default printer · or 192.168.1.100:9100')}
                                       style={{ width: '100%', padding: '7px 10px', border: '1px solid #6B7280', borderRadius: '6px', fontSize: '13px', fontFamily: 'monospace', boxSizing: 'border-box' }}
                                     />
-                                    </AutoSaveField>
+                                    </PrinterAutoSave>
                                     <button type="button"
                                       onClick={async () => {
                                         const addr = wsBillAddr;
@@ -6483,7 +6583,7 @@ const SettingsPage: React.FC = () => {
                                   {qzTrayPrinters.length > 0 && (
                                     <div>
                                       <label style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px', display: 'block' }}>{t('settings:printer.assign.pickDetectedThis', 'Or pick a printer found on this device:')}</label>
-                                      <AutoSaveField onSave={handleSave} type="select">
+                                      <PrinterAutoSave onSave={handleSave} type="select">
                                       <select
                                         value={wsBillAddr}
                                         onChange={(e) => updateWs({ billPrinter: { address: e.target.value } })}
@@ -6494,7 +6594,7 @@ const SettingsPage: React.FC = () => {
                                           <option key={p} value={p}>{p}</option>
                                         ))}
                                       </select>
-                                      </AutoSaveField>
+                                      </PrinterAutoSave>
                                     </div>
                                   )}
                                 </div>
@@ -6509,7 +6609,7 @@ const SettingsPage: React.FC = () => {
                               </>)}
 
                               {/* AutoPrint toggle */}
-                              <AutoSaveField onSave={handleSave} type="toggle">
+                              <PrinterAutoSave onSave={handleSave} type="toggle">
                               <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px', cursor: 'pointer' }}>
                                 <input
                                   type="checkbox"
@@ -6519,7 +6619,7 @@ const SettingsPage: React.FC = () => {
                                 />
                                 <span style={{ fontSize: '13px', color: '#1F2937' }}>{t('settings:printer.workstations.autoPrintAfterPayment')}</span>
                               </label>
-                              </AutoSaveField>
+                              </PrinterAutoSave>
                               {/* M4 (Fable 점검): POS 자리 2개 이상이면 이 토글이 «주방 티켓을 찍는 기기» 도 정한다(폴러 판정 그대로 — 글만) */}
                               {(printerSettings.workstations || []).length >= 2 && (
                                 <div style={{ fontSize: '11px', color: '#6B7280', lineHeight: 1.5, margin: '4px 0 0 26px' }}>
@@ -6535,7 +6635,7 @@ const SettingsPage: React.FC = () => {
                                     <span style={{ fontSize: '13px', color: '#1F2937' }}>{t('settings:printer.workstations.copiesAfterPayment')}</span>
                                     <div style={{ display: 'flex', gap: '4px' }}>
                                       {[1, 2, 3].map(n => (
-                                        <AutoSaveField key={n} onSave={handleSave} type="toggle">
+                                        <PrinterAutoSave key={n} onSave={handleSave} type="toggle">
                                         <button type="button"
                                           onClick={() => setReceiptSettings(prev => ({ ...prev, copiesAfterPayment: n }))}
                                           style={{
@@ -6546,12 +6646,12 @@ const SettingsPage: React.FC = () => {
                                             borderRadius: '6px', cursor: 'pointer'
                                           }}
                                         >{n}</button>
-                                        </AutoSaveField>
+                                        </PrinterAutoSave>
                                       ))}
                                     </div>
                                     <span style={{ fontSize: '11px', color: '#6B7280' }}>{t('settings:printer.workstations.copiesHint')}</span>
                                   </div>
-                                  <AutoSaveField onSave={handleSave} type="toggle">
+                                  <PrinterAutoSave onSave={handleSave} type="toggle">
                                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                                     <input
                                       type="checkbox"
@@ -6561,7 +6661,7 @@ const SettingsPage: React.FC = () => {
                                     />
                                     <span style={{ fontSize: '13px', color: '#1F2937' }}>{t('settings:printer.workstations.autoOpenDrawer', 'Auto-open cash drawer on cash payment')}</span>
                                   </label>
-                                  </AutoSaveField>
+                                  </PrinterAutoSave>
                                   <div style={{ fontSize: '11px', color: '#9CA3AF', fontStyle: 'italic' }}>{t('settings:printer.workstations.shopWideHint')}</div>
                                 </div>
                               )}
@@ -6570,7 +6670,7 @@ const SettingsPage: React.FC = () => {
                                   one toggle per POS row — replaces the separate "Consolidated Order
                                   Ticket" card AND the redundant mirror-to-counter checkbox, and scales
                                   to any number of POS (add more with "+ Add Workstation"). */}
-                              <AutoSaveField onSave={handleSave} type="toggle">
+                              <PrinterAutoSave onSave={handleSave} type="toggle">
                               <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginTop: '12px', cursor: 'pointer' }}>
                                 <input
                                   type="checkbox"
@@ -6585,7 +6685,7 @@ const SettingsPage: React.FC = () => {
                                   </span>
                                 </span>
                               </label>
-                              </AutoSaveField>
+                              </PrinterAutoSave>
 
                               {/* 2026-06-12 (Irene): 통합티켓 스테이션 범위 — 주방 쪽 워크스테이션은
                                   바 메뉴를 뺀(=선택한 주방 스테이션 메뉴만 모은) 통합티켓이 필요.
@@ -6598,7 +6698,7 @@ const SettingsPage: React.FC = () => {
                                       {t('settings:printer.workstations.consolidatedStationsHint', 'Select stations to print only their items on this ticket. Nothing selected = full order.')}
                                     </span>
                                   </div>
-                                  <AutoSaveField onSave={handleSave} type="toggle">
+                                  <PrinterAutoSave onSave={handleSave} type="toggle">
                                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                                     {(() => {
                                       const sel: number[] = Array.isArray((ws as any).consolidatedStations) ? (ws as any).consolidatedStations : [];
@@ -6630,7 +6730,7 @@ const SettingsPage: React.FC = () => {
                                       );
                                     })()}
                                   </div>
-                                  </AutoSaveField>
+                                  </PrinterAutoSave>
                                 </div>
                               )}
                             </>
@@ -6642,6 +6742,7 @@ const SettingsPage: React.FC = () => {
 
                   {/* + Add Workstation — persist atomically with the new state */}
                   <button type="button"
+                    disabled={!printerEditable}
                     onClick={async () => {
                       const newId = 'ws_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
                       const newName = `POS ${(printerSettings.workstations || []).length + 1}`;
@@ -6657,9 +6758,10 @@ const SettingsPage: React.FC = () => {
                           const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
                             method: 'PUT',
                             headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ printer_settings: newPS })
+                            body: JSON.stringify({ printer_settings: newPS, printer_device: printerDevicePayload() })
                           });
                           const d = await r.json();
+                          if (d && d.printerSettingsSkipped) handlePrinterSettingsSkipped();
                           setSaveStatus({ type: d.success ? 'success' : 'error', message: d.success ? 'Workstation added' : 'Add failed' });
                         } catch { setSaveStatus({ type: 'error', message: 'Add failed' }); }
                         setTimeout(() => setSaveStatus(null), 2000);
@@ -6678,7 +6780,7 @@ const SettingsPage: React.FC = () => {
 
                   <Toggle>
                     <ToggleLabel>{t('settings:settingsPage.enableKitchenPrinter')}</ToggleLabel>
-                    <AutoSaveField ref={kitchenPrinterToggleRef} onSave={handleSave} type="toggle">
+                    <PrinterAutoSave ref={kitchenPrinterToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
                         type="checkbox"
@@ -6693,7 +6795,7 @@ const SettingsPage: React.FC = () => {
                       />
                       <ToggleSlider />
                     </ToggleSwitch>
-                    </AutoSaveField>
+                    </PrinterAutoSave>
                   </Toggle>
 
                   {/* 2026-06-17 매장 critical fix: per-station kitchen printer config (KQ1→KITCHEN 1 등)이
@@ -6719,6 +6821,7 @@ const SettingsPage: React.FC = () => {
                               setPrinterSettings(prev => ({ ...prev, kitchenPrinter: { ...prev.kitchenPrinter, autoPrint: true } }));
                               kitchenPrinterAutoPrintRef.current?.triggerSave();
                             }}
+                            disabled={!printerEditable}
                             style={{ padding: '8px 16px', fontSize: '13px', fontWeight: 700, border: 'none', borderRadius: '8px', background: '#635BFF', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
                           >{t('settings:printer.native.autoPrintOnBtn', { defaultValue: 'Turn on auto-print' })}</button>
                         </div>
@@ -6750,7 +6853,7 @@ const SettingsPage: React.FC = () => {
                           <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#1F2937', marginBottom: '6px' }}>
                             {t('settings:printer.assign.methodLabel', 'Connection method')}
                           </label>
-                          <AutoSaveField onSave={handleSave} type="select">
+                          <PrinterAutoSave onSave={handleSave} type="select">
                           <select
                             value={printerSettings.kitchenPrinter.method || 'qztray'}
                             onChange={(e) => setPrinterSettings(prev => ({
@@ -6763,7 +6866,7 @@ const SettingsPage: React.FC = () => {
                             <option value="qztray">{t('settings:printer.assign.optQz', 'Printer name or IP (PC print helper QZ Tray)')}</option>
                             <option value="rawbt">{t('settings:printer.assign.optRawbt', 'RawBT (Android browser)')}</option>
                           </select>
-                          </AutoSaveField>
+                          </PrinterAutoSave>
                         </div>
                       )}
 
@@ -6850,7 +6953,7 @@ const SettingsPage: React.FC = () => {
                                       {!isNativePrint && (
                                       <div style={{ marginBottom: '8px' }}>
                                         <label style={{ display: 'block', fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>{t('settings:printer.assign.methodLabel', 'Connection method')}</label>
-                                        <AutoSaveField onSave={handleSave} type="select">
+                                        <PrinterAutoSave onSave={handleSave} type="select">
                                         <select
                                           value={spMethod}
                                           onChange={(e) => setPrinterSettings(prev => ({
@@ -6870,14 +6973,14 @@ const SettingsPage: React.FC = () => {
                                           <option value="qztray">{t('settings:printer.assign.optQz', 'Printer name or IP (PC print helper QZ Tray)')}</option>
                                           <option value="rawbt">{t('settings:printer.assign.optRawbt', 'RawBT (Android browser)')}</option>
                                         </select>
-                                        </AutoSaveField>
+                                        </PrinterAutoSave>
                                       </div>
                                       )}
 
                                       {/* #6 주방 스테이션 인쇄 매수 (1~3장) — 인쇄 방식/라우팅 무변경, 같은 ticket 을 N번 발행 */}
                                       <div style={{ marginBottom: '8px' }}>
                                         <label style={{ display: 'block', fontSize: '12px', color: '#4B5563', marginBottom: '4px' }}>{t('settings:printer.kitchenCopies', { defaultValue: 'Print Copies' })}</label>
-                                        <AutoSaveField onSave={handleSave} type="select">
+                                        <PrinterAutoSave onSave={handleSave} type="select">
                                         <select
                                           value={String(sp.copies || 1)}
                                           onChange={(e) => setPrinterSettings(prev => ({
@@ -6897,7 +7000,7 @@ const SettingsPage: React.FC = () => {
                                           <option value="2">{t('settings:printer.copies2', { defaultValue: '2 copies' })}</option>
                                           <option value="3">{t('settings:printer.copies3', { defaultValue: '3 copies' })}</option>
                                         </select>
-                                        </AutoSaveField>
+                                        </PrinterAutoSave>
                                       </div>
 
                                       {/* Web / QZ Tray path (unchanged): per-method IP / detected dropdown / info. */}
@@ -6906,7 +7009,7 @@ const SettingsPage: React.FC = () => {
                                       {spMethod === 'qztray' && (
                                         <>
                                           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                            <AutoSaveField onSave={handleSave} style={{ flex: '1 1 160px', minWidth: 0 }}>
+                                            <PrinterAutoSave onSave={handleSave} style={{ flex: '1 1 160px', minWidth: 0 }}>
                                             <input
                                               type="text"
                                               value={sp.address || ''}
@@ -6927,7 +7030,7 @@ const SettingsPage: React.FC = () => {
                                                 fontSize: '13px', fontFamily: 'monospace', boxSizing: 'border-box'
                                               }}
                                             />
-                                            </AutoSaveField>
+                                            </PrinterAutoSave>
                                             <button type="button"
                                               onClick={async () => {
                                                 const addr = sp.address;
@@ -6951,7 +7054,7 @@ const SettingsPage: React.FC = () => {
                                           {qzTrayPrinters.length > 0 && (
                                             <div style={{ marginTop: '6px' }}>
                                               <label style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px', display: 'block' }}>{t('settings:printer.assign.pickDetected', 'Or pick a printer found on this device:')}</label>
-                                              <AutoSaveField onSave={handleSave} type="select">
+                                              <PrinterAutoSave onSave={handleSave} type="select">
                                               <select
                                                 value={sp.address || ''}
                                                 onChange={(e) => setPrinterSettings(prev => ({
@@ -6972,7 +7075,7 @@ const SettingsPage: React.FC = () => {
                                                   <option key={p} value={p}>{p}</option>
                                                 ))}
                                               </select>
-                                              </AutoSaveField>
+                                              </PrinterAutoSave>
                                             </div>
                                           )}
                                         </>
@@ -7004,7 +7107,7 @@ const SettingsPage: React.FC = () => {
                                 {t('settings:printer.assign.addrLabel', 'Printer address')}
                               </label>
                               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                <AutoSaveField onSave={handleSave} style={{ flex: '1 1 180px', minWidth: 0 }}>
+                                <PrinterAutoSave onSave={handleSave} style={{ flex: '1 1 180px', minWidth: 0 }}>
                                 <input
                                   type="text"
                                   value={printerSettings.kitchenPrinter.address || ''}
@@ -7018,7 +7121,7 @@ const SettingsPage: React.FC = () => {
                                     fontSize: '14px', fontFamily: 'monospace', boxSizing: 'border-box'
                                   }}
                                 />
-                                </AutoSaveField>
+                                </PrinterAutoSave>
                                 <button type="button"
                                   onClick={async () => {
                                     const addr = printerSettings.kitchenPrinter.address;
@@ -7047,7 +7150,7 @@ const SettingsPage: React.FC = () => {
                           {qzTrayPrinters.length > 0 && kitchenStations.length === 0 && (
                             <div style={{ marginTop: '8px' }}>
                               <label style={{ fontSize: '12px', color: '#4B5563', marginBottom: '4px', display: 'block' }}>{t('settings:printer.assign.pickDetected', 'Or pick a printer found on this device:')}</label>
-                              <AutoSaveField onSave={handleSave} type="select">
+                              <PrinterAutoSave onSave={handleSave} type="select">
                               <select
                                 value={printerSettings.kitchenPrinter.address || ''}
                                 onChange={(e) => setPrinterSettings(prev => ({
@@ -7061,13 +7164,13 @@ const SettingsPage: React.FC = () => {
                                   <option key={p} value={p}>{p}</option>
                                 ))}
                               </select>
-                              </AutoSaveField>
+                              </PrinterAutoSave>
                             </div>
                           )}
                         </div>
                       )}
 
-                      <AutoSaveField ref={kitchenPrinterAutoPrintRef} onSave={handleSave} type="toggle">
+                      <PrinterAutoSave ref={kitchenPrinterAutoPrintRef} onSave={handleSave} type="toggle">
                       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '16px', cursor: 'pointer' }}>
                         <input
                           type="checkbox"
@@ -7092,7 +7195,7 @@ const SettingsPage: React.FC = () => {
                         />
                         <span style={{ fontSize: '14px', color: '#1F2937' }}>{t('settings:settingsPage.autoprintOnNewOrder')}</span>
                       </label>
-                      </AutoSaveField>
+                      </PrinterAutoSave>
                     </>
                   )}
                 </SettingsCard>
@@ -7108,6 +7211,13 @@ const SettingsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
+              {canEditPrinterSettings && !printerSettingsLoading && !printerSettingsError && printerScope.state !== 'M' && (
+                <PrinterScopeBar
+                  compact t={t} state={printerScope.state} tag={setupDeviceTag} unlocked={printerScope.unlocked}
+                  onSetup={() => setScopeSetupOpen(true)} onChangeHere={() => setScopeOtherOpen(true)}
+                  onRelock={() => printerScope.setUnlocked(false)}
+                />
+              )}
               {/* ★ Print Format — store-level. How tickets/receipts render on the
                   printer. 'auto' works for most; 'text' rescues text-only / cheap USB
                   printers that print blank with graphic mode. Additive setting saved
@@ -7119,7 +7229,7 @@ const SettingsPage: React.FC = () => {
                   </CardTitle>
                   <FormGroup>
                     <Label>{t('settings:printer.printFormat.label', 'Print format')}</Label>
-                    <AutoSaveField onSave={handleSave} type="select">
+                    <PrinterAutoSave onSave={handleSave} type="select">
                       <Select
                         value={(printerSettings as any).printFormat || 'auto'}
                         onChange={(e) => {
@@ -7132,7 +7242,7 @@ const SettingsPage: React.FC = () => {
                         <option value="graphic">{t('settings:printer.printFormat.optionGraphic', 'Graphic')}</option>
                         <option value="text">{t('settings:printer.printFormat.optionText', 'Text')}</option>
                       </Select>
-                    </AutoSaveField>
+                    </PrinterAutoSave>
                     <HelpText>{t('settings:printer.printFormat.help', 'Auto: the system decides the best format for your printer — leave it here for most setups. Graphic: prints your logo and design as an image (for printers that can print images). Text: prints as plain text without a logo — choose this for text-only / cheap USB printers whose receipts come out blank; the logo is replaced by your store-name text.')}</HelpText>
                   </FormGroup>
                 </SettingsCard>
@@ -7152,7 +7262,7 @@ const SettingsPage: React.FC = () => {
                         {t('settings:printer.printPerItemDesc')}
                       </p>
                     </div>
-                    <AutoSaveField ref={printPerItemToggleRef} onSave={handleSave} type="toggle">
+                    <PrinterAutoSave ref={printPerItemToggleRef} onSave={handleSave} type="toggle">
                     <ToggleSwitch>
                       <ToggleInput
                         type="checkbox"
@@ -7167,7 +7277,7 @@ const SettingsPage: React.FC = () => {
                       />
                       <ToggleSlider />
                     </ToggleSwitch>
-                    </AutoSaveField>
+                    </PrinterAutoSave>
                   </Toggle>
 
                   {/* 2026-06-09 (Irene): the "mirror full order to counter" checkbox was removed —
@@ -7189,14 +7299,14 @@ const SettingsPage: React.FC = () => {
                   {/* Left column: Logo + Footer + Membership */}
                   <div className="receipt-col-left" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingRight: '24px' }}>
                     {/* Receipt Logo */}
-                    <AutoSaveField ref={receiptLogoRef} onSave={handleSave} type="image">
+                    <PrinterAutoSave ref={receiptLogoRef} onSave={handleSave} type="image">
                     <ImageUploadDropzone
                       value={receiptSettings.receiptLogo}
                       onChange={(value) => { setReceiptSettings(prev => ({ ...prev, receiptLogo: value })); receiptLogoRef.current?.triggerSave(); }}
                       label={t('settings:printer.receiptLogo')}
                       helpText={t('settings:printer.receiptLogoHint')}
                     />
-                    </AutoSaveField>
+                    </PrinterAutoSave>
 
                     {/* Membership Info */}
                     <Toggle>
@@ -7206,7 +7316,7 @@ const SettingsPage: React.FC = () => {
                           {t('settings:receipt.membershipHelpText')}
                         </p>
                       </div>
-                      <AutoSaveField ref={receiptMembershipToggleRef} onSave={handleSave} type="toggle">
+                      <PrinterAutoSave ref={receiptMembershipToggleRef} onSave={handleSave} type="toggle">
                       <ToggleSwitch>
                         <ToggleInput type="checkbox" checked={receiptSettings.showMembership} onChange={(e) => {
                           setReceiptSettings(prev => ({ ...prev, showMembership: e.target.checked }));
@@ -7214,15 +7324,15 @@ const SettingsPage: React.FC = () => {
                         }} />
                         <ToggleSlider />
                       </ToggleSwitch>
-                      </AutoSaveField>
+                      </PrinterAutoSave>
                     </Toggle>
 
                     {/* Footer Message */}
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('settings:settingsPage.footerMessage')}</label>
-                      <AutoSaveField onSave={handleSave}>
+                      <PrinterAutoSave onSave={handleSave}>
                       <input type="text" value={receiptSettings.footerMessage} onChange={(e) => setReceiptSettings(prev => ({ ...prev, footerMessage: e.target.value }))} placeholder={t('settings:receipt.footerMessagePlaceholder')} maxLength={100} style={{ width: '100%', padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
-                      </AutoSaveField>
+                      </PrinterAutoSave>
                     </div>
                   </div>
 
@@ -7231,22 +7341,22 @@ const SettingsPage: React.FC = () => {
 
                   {/* Right column: Custom QR / Promotion */}
                   <div className="receipt-col-right" style={{ display: 'flex', flexDirection: 'column', gap: '20px', paddingLeft: '24px' }}>
-                    <AutoSaveField ref={customQrImageRef} onSave={handleSave} type="image">
+                    <PrinterAutoSave ref={customQrImageRef} onSave={handleSave} type="image">
                     <ImageUploadDropzone
                       value={receiptSettings.customQrImage}
                       onChange={(value) => { setReceiptSettings(prev => ({ ...prev, customQrImage: value })); customQrImageRef.current?.triggerSave(); }}
                       label={t('settings:receipt.customQrLabel')}
                       helpText={t('settings:receipt.customQrHelpText')}
                     />
-                    </AutoSaveField>
+                    </PrinterAutoSave>
 
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{t('settings:settingsPage.guideText')}</label>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <AutoSaveField onSave={handleSave}>
+                        <PrinterAutoSave onSave={handleSave}>
                         <input type="text" value={receiptSettings.customQrText} onChange={(e) => setReceiptSettings(prev => ({ ...prev, customQrText: e.target.value }))} placeholder={t('settings:receipt.customQrTextPlaceholder')} maxLength={100} style={{ flex: 1, padding: '8px 12px', border: '1px solid #C7CED6', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box' }} />
-                        </AutoSaveField>
-                        <AutoSaveField ref={qrPositionRef} onSave={handleSave} type="toggle">
+                        </PrinterAutoSave>
+                        <PrinterAutoSave ref={qrPositionRef} onSave={handleSave} type="toggle">
                         <div style={{ display: 'flex', gap: '8px' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${receiptSettings.customQrPosition === 'front' ? '#635BFF' : '#C7CED6'}`, background: receiptSettings.customQrPosition === 'front' ? '#F8F7FF' : 'white', fontSize: '12px', whiteSpace: 'nowrap' }}>
                           <input type="radio" name="customQrPosition" checked={receiptSettings.customQrPosition === 'front'} onChange={() => { setReceiptSettings(prev => ({ ...prev, customQrPosition: 'front' })); qrPositionRef.current?.triggerSave(); }} style={{ margin: 0 }} />
@@ -7257,7 +7367,7 @@ const SettingsPage: React.FC = () => {
                           <span style={{ fontWeight: 500, color: '#0A2540' }}>{t('settings:settingsPage.afterQr')}</span>
                         </label>
                         </div>
-                        </AutoSaveField>
+                        </PrinterAutoSave>
                       </div>
                     </div>
                   </div>
@@ -7356,14 +7466,11 @@ const SettingsPage: React.FC = () => {
                   setPrinterSettings(newPS as any);
                   if (!user?.restaurantId) return;
                   try {
-                    const token = getAuthToken();
-                    const r = await fetch(`/api/restaurants/${user.restaurantId}`, {
-                      method: 'PUT',
-                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ printer_settings: newPS })
-                    });
-                    const d = await r.json();
-                    if (!d.success) throw new Error('save failed');
+                    // 2026-11-10: 비상 스위치는 비상 두 칸만 쓰는 전용 길(③) — 프린터 설정 통째 전송 없앰(설정 기기 잠금과 무관 · 직원도).
+                    const d = await postPrinterScope('printer-emergency', { on: next });
+                    if (!d) throw new Error('save failed');
+                    const sp = d.data && d.data.printer_settings;
+                    if (sp) setPrinterSettings(prev => ({ ...prev, emergencyMode: !!sp.emergencyMode, emergencyEnabledAt: sp.emergencyEnabledAt || null } as any));
                     // Inform the user — Setup Modal style, NOT alert/toast.
                     setInfoModal({
                       open: true,
@@ -7777,7 +7884,7 @@ const SettingsPage: React.FC = () => {
                 </div>
               )}
 
-            </>
+            </></PrinterLockContext.Provider>
           )}
 
           {activeTab === 'kitchenStations' && (

@@ -1832,9 +1832,18 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       if (r.action !== 'reject') updateData.reservation_settings = r.value;
     }
     if (req.body.floor_plan !== undefined) updateData.floor_plan = req.body.floor_plan;
+    let printerSettingsSkipped;
     if (req.body.printer_settings !== undefined) {
-      const r = guardPrinterSettings(req.body.printer_settings, restaurant.getDataValue('printer_settings'), req.params.id);
-      if (r.action !== 'reject') updateData.printer_settings = r.value;
+      // 판정 한 곳(utils/printerSetupDevice · 2026-11-10 Fable 설계) — store.js PUT /settings 와 같은 함수.
+      // 이 길에는 «관리자만» 문이 없어 직원의 비상 스위치·옛 화면이 프린터 설정을 통째로 덮을 수 있었다.
+      const r = require('../utils/printerSetupDevice').applyPrinterWrite({
+        user: req.user, body: req.body,
+        existingRaw: restaurant.getDataValue('printer_settings'),
+        guard: guardPrinterSettings, restaurantId: req.params.id,
+      });
+      if (r.skipped) printerSettingsSkipped = r.skipped;
+      if (r.action === 'save') updateData.printer_settings = r.value;
+      else console.warn(`[restaurant update] printer_settings skipped (${r.reason}, role=${req.user.role}, restaurant=${req.params.id})`);
     }
 
     // Brand association
@@ -2127,7 +2136,7 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       }
     }
 
-    res.json({ success: true, restaurant });
+    res.json({ success: true, restaurant, ...(printerSettingsSkipped ? { printerSettingsSkipped } : {}) });
   } catch (error) {
     console.error('[Restaurants] Error updating restaurant:', error.message);
     res.status(500).json({ error: 'Failed to update restaurant', details: error.message });

@@ -1,6 +1,17 @@
 ## 현재 작업 상태
 
+### ✅ 완료 (11/12 00:00 정기 점검 · 2026-11-11 15:xx UTC) — /개발완료(프린터 설정 기기 · 앱 QZ 안내 커밋) + /개발시작(운영 새 문의 0) [Claude Code · 백그라운드 작업방 a2313eed]
+- 커밋: 작업방 55cb7c4b·4b4ecce8 «프린터 설정 기기 한 대»(Fable gate PASS) + 32b658fc·4b4ecce8 «앱 QZ 안내 기기별»(Fable ux PASS) 코드·번역·문서 + 11-11 배포 기록(deploy-manifest · releases archive 이동) · Fable 설계 문서.
+- 기록: CHANGELOG 11-11 2줄 · DEVELOPMENT_PLAN 섹션 · 문서(PRINT_DEVICE_SETUP_STANDARD §7-c · WORKSTATION_DESIGN)는 작업방이 이미 고침.
+- verify-all --full 23/24 — 실패 1 = deploy-ready(기록·SW 버전 — 배포 준비 몫) · health-check·인쇄 라우트·mount sweep 통과 · check-sensitive-diff 비대상.
+- 그대로 둔 미커밋: GTM 보류 4파일(tracking.ts · index.html · MARKETING_TRACKING.md · gtm json) · playwright.config · oneoff/run-*.sh.
+- 운영 확인(prod-query 읽기 전용): 열린 시스템 문의 3건(SUPP-2026-6842-103·1886-062·2401-270) 예전 판단 그대로(이미 해결) · 14일 새 문의 0 · 후속 글 0 · 랜딩 문의 0 · operation_tickets closed 4 / in-progress 1.
+- 다음 확정 작업: 없음 — 지시 대기. 열린 답 기다림: K-DINE 세트 구성품 옵션(작업방 7076114b — 읽기 명령 붙여 넣기).
 
+
+### ✅ 완료 — 직접 할 일 정기 점검(todo-check mwbjqy1hpu) [Claude Code · 작업방 246e269c · 2026-11-11]
+- 운영 반영 완료: 2026-11-11 02:49 상황판 배포 버튼 배포 성공(운영 sw 6.17) → todomwazyvs6 뺌.
+- todomw88smeh 뺌(인보이스 고침 424b4b87e 운영 반영). todomw841vpg 그대로(운영 매장 28 address 빈 칸). todomw3slas6·todomw8d4pcg·todomwb3vve6 그대로(운영 DB 읽기 필요 — 확인 못 함).
 ### ✅ 완료 (2026-11-11 03:3x UTC) — 꺼진 재고아이템 «꺼짐» 표시 + /개발완료 기록 [Claude Code · 백그라운드 작업방 2fbb75b6]
 - e420d8ae4: 재고 목록 «Turned off» 배지 · 상태 필터·띠 숫자 제외 · 발주 칸 대신 Stock Items 안내 — 빌드 1회 · 실브라우저 확인 · health 480/480 · print-guard 8/8. 운영 반영: 다음 배포 때.
 - /개발완료: CHANGELOG 11-11 2줄 · DEVELOPMENT_PLAN 섹션(e420d8ae4 · 84b4d8813) · docs/INVENTORY_MANAGEMENT_SYSTEM.md «꺼짐» 절. 다른 방 미커밋 코드(프린터 설정 분리 55cb7c4b 등)는 커밋하지 않음.

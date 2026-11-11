@@ -23,7 +23,9 @@ const apiGet = async () => { const r = await fetch(BASE + '/api/restaurants/38',
 const canon = (o) => JSON.stringify(o, (k, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.keys(v).sort().reduce((a, kk) => (a[kk] = v[kk], a), {}) : v));
 // Fable 판정 §9: 저장이 «없음» 을 읽는 쪽과 같은 기본값으로 채우는 칸은 동치로 본다(화이트리스트). receiptSettings 는 따로 보고.
 const EQUIV = { 'kitchenPrinter.printPerItem': false, 'kitchenPrinter.mirrorToBillPrinter': false, 'kitchenPrinter.printCancellationTicket': true, 'emergencyMode': false, 'emergencyEnabledAt': null, 'printFormat': 'auto', 'consolidatedOrderTicket': { enabled: false, method: 'qztray', address: '', autoPrint: false } };
-const norm = (o) => { const x = JSON.parse(JSON.stringify(o || {})); for (const [path, dv] of Object.entries(EQUIV)) { const ks = path.split('.'); let c = x; for (const k of ks.slice(0, -1)) c = c?.[k]; const last = ks[ks.length - 1]; if (c && JSON.stringify(c[last]) === JSON.stringify(dv)) delete c[last]; } for (const sp of Object.values(x.kitchenStationPrinters || {})) if (sp && (sp.copies === 1 || sp.copies === undefined)) delete sp.copies; delete x.receiptSettings; return x; };
+const norm = (o) => { const x = JSON.parse(JSON.stringify(o || {})); for (const [path, dv] of Object.entries(EQUIV)) { const ks = path.split('.'); let c = x; for (const k of ks.slice(0, -1)) c = c?.[k]; const last = ks[ks.length - 1]; if (c && JSON.stringify(c[last]) === JSON.stringify(dv)) delete c[last]; } for (const sp of Object.values(x.kitchenStationPrinters || {})) if (sp && (sp.copies === 1 || sp.copies === undefined)) delete sp.copies; delete x.receiptSettings; delete x.setupDevice; return x; };
+// 2026-11-10 «프린터 설정 기기» 꼬리표 — 설정 값이 아니라 따로 비교한다(저장이 바꾸거나 지우면 안 됨)
+const withTag = (raw, id = 'rt-check-device') => { const o = typeof raw === 'string' ? JSON.parse(raw) : { ...(raw || {}) }; o.setupDevice = { id, kind: 'pc-browser', name: 'roundtrip ' + id, at: '2026-11-10T00:00:00.000Z', byId: 23, byName: 'check' }; return JSON.stringify(o); };
 const diffKeys = (a, b, p = '') => { const out = []; const ks = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]); for (const k of ks) { const x = a?.[k], y = b?.[k]; if (x && y && typeof x === 'object' && typeof y === 'object' && !Array.isArray(x)) out.push(...diffKeys(x, y, p + k + '.')); else if (JSON.stringify(x) !== JSON.stringify(y)) out.push(`${p}${k}: ${JSON.stringify(x)} → ${JSON.stringify(y)}`); } return out; };
 
 async function open(browser, { ua = UA.linux, init, lang = 'en', width = 1280, conn = 'wifi', model = 'std', route } = {}) {
@@ -32,12 +34,13 @@ async function open(browser, { ua = UA.linux, init, lang = 'en', width = 1280, c
     localStorage.setItem('auth_token', t); localStorage.setItem('currentUserRole', 'Restaurant Admin'); localStorage.setItem('i18nextLng', l);
     if (c) localStorage.setItem('printer_setup_conn', c); else localStorage.removeItem('printer_setup_conn');
     localStorage.setItem('printer_setup_model', m);
+    localStorage.setItem('print_device_id', 'rt-check-device'); // 2026-11-10 «프린터 설정 기기» — 이 검사 브라우저의 기기 번호
   }, [TOKEN, lang, conn, model]);
   if (init) await ctx.addInitScript(init);
   const page = await ctx.newPage();
   const writes = [], errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
-  page.on('request', (r) => { if (['PUT', 'POST', 'PATCH', 'DELETE'].includes(r.method()) && /\/api\/restaurants\/38|\/api\/store\/settings/.test(r.url())) writes.push(r.method() + ' ' + r.url()); });
+  page.on('request', (r) => { if (['PUT', 'POST', 'PATCH', 'DELETE'].includes(r.method()) && /\/api\/restaurants\/38|\/api\/store\/settings|\/api\/store\/printer-/.test(r.url())) writes.push(r.method() + ' ' + r.url()); });
   if (route) await route(page);
   await page.goto(URL, { waitUntil: 'load', timeout: 60000 });
   await page.waitForSelector('#printer-sec-connect', { timeout: 30000 });
@@ -65,6 +68,7 @@ const boxCount = (p, anchorSel) => p.evaluate((sel) => {
   const origObj = typeof ORIG === 'string' ? JSON.parse(ORIG) : ORIG;
   const browser = await chromium.launch();
   try {
+    if (!process.env.ONLY_ROUNDTRIP) { // 2026-11-11 A~E = 11-08 안내 화면 틀 검사(11-09 EspBluFi 안내로 바뀐 뒤 낡음) — 라운드트립만 볼 때 건너뜀
     // ── A. PC 브라우저 — 틀
     console.log('A. PC browser — layout'); report.push('A. PC browser');
     {
@@ -160,6 +164,7 @@ const boxCount = (p, anchorSel) => p.evaluate((sel) => {
       await page.screenshot({ path: OUT + 'b-' + name + '.png', fullPage: true });
       ok(writes.length === 0 && errs.length === 0, name + ' 쓰기 0 · 오류 0 ' + JSON.stringify(writes) + ' ' + errs.slice(0, 2).join(' | ')); await ctx.close();
     }
+    } // ONLY_ROUNDTRIP
     // ── S2 · S4 라운드트립 (모양 3가지) + 반증
     console.log('S2/S4 round trip'); report.push('S2/S4 round trip');
     const st = origObj.kitchenStationPrinters || {};
@@ -169,7 +174,7 @@ const boxCount = (p, anchorSel) => p.evaluate((sel) => {
       c: JSON.stringify({ printerMode: 'rawbt', billPrinter: { enabled: true, name: '', autoPrint: false, address: '' }, kitchenPrinter: { enabled: true, name: '', autoPrint: true, method: 'qztray', address: 'KITCHEN' }, kitchenStationPrinters: st, workstations: [{ id: 'ws_default', name: 'Main POS', billPrinter: { enabled: true, name: '', autoPrint: true, method: 'qztray', address: 'POS-80C' } }, { id: 'ws_check2', name: 'POS 2', billPrinter: { enabled: true, name: '', autoPrint: false, method: 'rawbt', address: '' } }] }),
     };
     const roundTrip = async (shapeName, raw, stripMethod = false) => {
-      await writeRaw(raw);
+      await writeRaw(withTag(raw)); // 이 검사 브라우저 = 프린터 설정 기기(상태 M)
       const A = await apiGet();
       const route = stripMethod ? async (page) => {
         await page.route(/\/api\/store\/settings/, async (r) => {
@@ -204,6 +209,7 @@ const boxCount = (p, anchorSel) => p.evaluate((sel) => {
         const r = await roundTrip(name, shapes[name]);
         const same = canon(norm(r.A)) === canon(norm(r.B));
         ok(same, `S2 모양 (${name}) 불러오기→저장 ${r.saves}회→다시 불러오기 동일(동치 기본값 제외)` + (same ? '' : ' — 다름: ' + diffKeys(norm(r.A), norm(r.B)).slice(0, 6).join(' ; ')));
+        ok(r.saves >= 2 && canon(r.A.setupDevice) === canon(r.B.setupDevice), `꼬리표 모양 (${name}) 설정 기기에서 저장 ${r.saves}회 뒤 setupDevice 그대로`);
         const rcpt = JSON.stringify(r.A.receiptSettings) === JSON.stringify(r.B.receiptSettings);
         report.push(`  · 정보 — 모양 (${name}) receiptSettings: ${rcpt ? '그대로' : (r.A.receiptSettings ? '바뀜' : '없던 것이 저장 1회에 생김(기존 동작 · Fable §9 이번엔 안 고침)')}`); console.log(report[report.length - 1]);
         ok(r.mountWrites === 0, `S3 모양 (${name}) 열기만 했을 때 쓰기 0 (${r.mountWrites})`);
@@ -215,6 +221,18 @@ const boxCount = (p, anchorSel) => p.evaluate((sel) => {
       let tot = 0;
       for (let i = 0; i < 5; i++) { const o = await open(browser, {}); await o.page.waitForTimeout(8000); tot += o.writes.length; await o.ctx.close(); }
       ok(tot === 0, 'S3 모양 (a) 5번 열기 — 쓰기 ' + tot + '건');
+      // 꼬리표 있는 모양 (d) — 다른 기기가 설정 기기: 열기만 → 쓰기 0 · 칸 잠김 · 바이트 그대로
+      {
+        const rawD = withTag(ORIG, 'some-other-device');
+        await writeRaw(rawD);
+        const o = await open(browser, {});
+        await o.page.waitForTimeout(8000);
+        const copiesDisabled = await o.page.locator('select:has(option[value="3"]):has(option[value="1"])').first().isDisabled().catch(() => null);
+        const bar = await o.page.getByTestId('printer-scope-bar').getAttribute('data-scope-state').catch(() => null);
+        ok(o.writes.length === 0 && copiesDisabled === true && bar === 'O', `꼬리표 모양 (d) 다른 기기 — 쓰기 ${o.writes.length} · 칸 잠김 ${copiesDisabled} · 상태 ${bar}`);
+        await o.ctx.close();
+        ok((await readRaw()) === rawD, '꼬리표 모양 (d) DB 바이트 그대로');
+      }
       // 반증: 저장 본문에서 method 를 빼면(= M3 이전 동작) 검사가 실패해야 한다
       const f = await roundTrip('c', shapes.c, true);
       const caught = canon(f.A) !== canon(f.B) && f.B.kitchenPrinter?.method === 'rawbt';

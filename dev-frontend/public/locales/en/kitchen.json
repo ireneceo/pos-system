@@ -55,7 +55,7 @@
   "kitchenDisplayPage.printNotConfirmed": "Not printed — print problem",
   "kitchenDisplayPage.reprint": "Reprint",
   "kitchenDisplayPage.printProblemTitle": "Kitchen ticket not printed",
-  "kitchenDisplayPage.printProblemBody": "Check the kitchen printer (QZ Tray / connection), then Reprint. The order stays on screen.",
+  "kitchenDisplayPage.printProblemBody": "Check the kitchen printer (power, paper, connection), then Reprint. The order stays on screen.",
   "kitchenDisplayPage.ok": "OK",
   "kitchenDisplayPage.printProblemLine": "may not have printed to the kitchen.",
   "kitchenDisplayPage.notPrintedBadge": "Not printed",

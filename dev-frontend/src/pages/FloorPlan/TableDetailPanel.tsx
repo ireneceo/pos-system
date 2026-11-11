@@ -19,6 +19,7 @@ import { Modal, ModalButton } from '../../components/UI';
 import OrderActionHistory from '../LiveOrders/OrderActionHistory';
 import TableMoveTrail from '../LiveOrders/TableMoveTrail';
 import { useTranslation } from 'react-i18next';
+import { printerHelpKey } from '../../utils/printerHelpHint';
 import { getTableLabel } from '../../utils/tableLabel';
 
 import { getAuthToken } from '../../utils/auth';
@@ -1520,7 +1521,7 @@ const TableDetailPanel: React.FC<TableDetailPanelProps> = ({
         if (!printed) {
           // 2026-05-29: 자동 진단 이메일 발송 제거 (매장 요청). 실패 시 화면 안내만
           // 표시하고, 필요하면 Settings → Printer 의 수동 진단 버튼으로 보고한다.
-          setQrError('QR print failed via the configured printer method. Check Settings → Printer (QZ Tray / address / connection) — the QR may need a printer that supports raster images.');
+          { const h = printerHelpKey(); setQrError(`${t('common:printerHelp.qrFailed', 'QR print failed — the QR needs a printer that can print images.')} ${t(h.key, h.fallback)}`); }
         }
       }
     } catch (err) {

@@ -984,5 +984,18 @@
     "incomplete": "Pick at least one day — this cutoff is saved once it has a day and a time.",
     "addRule": "+ Add cutoff",
     "preview": "{{days}} {{time}} → {{delivery}}"
+  },
+  "printerHelp": {
+    "android": "Check that the printer is on, has paper and is on the same Wi-Fi as this tablet, and that every kitchen station has a printer picked in Settings → Printer.",
+    "windows": "Check that the printer is on, has paper and is connected to this PC, and that every kitchen station has a printer picked in Settings → Printer.",
+    "rawbt": "Check that the RawBT app is installed and the printer is on with paper, then check Settings → Printer.",
+    "qz": "Check that QZ Tray is running on this PC and the printer is on with paper, then check the printer name in Settings → Printer.",
+    "browser": "Check that the printer is on with paper and connected, then check Settings → Printer.",
+    "drawer_android": "The drawer opens through the receipt printer. Check that the receipt printer is on and picked in Settings → Printer, and that the drawer cable is plugged into the printer.",
+    "drawer_windows": "The drawer opens through the receipt printer. Check that the receipt printer is on and picked in Settings → Printer, and that the drawer cable is plugged into the printer.",
+    "drawer_rawbt": "The drawer opens through the receipt printer. Check that RawBT is installed, the receipt printer is on, and the drawer cable is plugged into the printer.",
+    "drawer_qz": "The drawer opens through the receipt printer. Check that QZ Tray is running, the receipt printer is on, and the drawer cable is plugged into the printer.",
+    "drawer_browser": "The browser print window cannot open a cash drawer. Use the PurplePOS app (or a printer connection) for this device in Settings → Printer.",
+    "qrFailed": "QR print failed — the QR needs a printer that can print images."
   }
 }

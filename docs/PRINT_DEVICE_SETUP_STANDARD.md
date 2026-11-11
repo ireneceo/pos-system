@@ -59,3 +59,17 @@ POS에서 넣은 주문은 2장, 모바일 주문은 1장. 모바일은 손님 �
 - **매칭 고침:** M1 Windows 앱 등록 문구 = 앱 드롭다운 글자 · **M3 설정 불러올 때 `billPrinter.method`·`kitchenPrinter.method` 를 버리던 기존 결함**(화면은 qztray 로 보이고 다음 저장 때 method 가 빠져 서버가 옛 printerMode 로 되돌림) → 서버 값이 있을 때만 그대로 · M4 POS 자리 ≥2 면 «결제 후 자동인쇄» 토글 아래 «이 스위치가 주방 티켓 찍는 기기도 정함» · M5 이름 다르면 Test 실패 · M6 스테이션 Test 빈 주소 안내 · **스테이션 칸 채우기 저장이 설정 불러오기 전에 돌던 경합** → 불러온 뒤에만.
 - **배포 안전 증명(데모 38, 실브라우저 56/56):** 모양 3가지(지금 값 · 옛 모양(method 없음) · 섞인 모양) × «불러오기 → 저장 → 다시 불러오기» 동일(읽는 쪽 동치 기본값 채움 제외) · 열기만 했을 때 쓰기 0(기기 6종 + 원본 5회) · §2 표시 = 저장값 · 반증(method 뺀 저장은 검사가 잡음) · 원본 바이트 복원.
 - **알고 둔 기존 동작(이번에 안 고침 · Fable §9):** 매장 JSON 에 `receiptSettings` 가 없으면 설정에서 아무 저장 1회에 화면 기본값(결제 후 영수증 2장)이 들어감 — 읽는 쪽은 없을 때 1장. 2026-05-26 부터 · 운영 동일. 운영 해당 매장 수는 `scripts/report-printer-settings-fp.js` 의 `rcpt_missing_autoOn`(배포 방·정기 점검이 배포 전·후 실행 · 0 이면 끝, >0 이면 Irene 결정).
+
+### 7-c. «프린터 설정 기기» — 매장 설정은 한 벌, 바로 바꾸는 곳은 한 기기 (2026-11-10)
+
+설계 원문: `.claude/fable-design-20261110-printer-settings-device-scope.md` (Fable · Irene «레스토랑 프린터 설정을 한 디바이스에서 다른 곳에서 안하게. 하려면 확인을 하고 바꾸게»).
+
+- **기기별로 쪼개지 않는다.** `restaurants.printer_settings` 한 벌 그대로(인쇄 경로 🔒 무변경). 기기별인 것(자리 바인딩 `workstation_id` · 앱 등록부 · 안내 고르기)도 그대로.
+- **꼬리표 `printer_settings.setupDevice`** `{ id(=print_device_id), kind, name, at, byId, byName, otherEdit? }` — 전용 길 `POST /api/store/printer-setup-device` 로만 써진다. 설정 저장에 실려 온 값은 서버가 무시(`keepSetupDevice`). 인쇄 경로는 안 읽는다.
+- **상태 3가지:** N(아직 없음 — 잠김, «이 기기를 설정 기기로») · M(이 기기 — 열림) · O(다른 기기 — 잠김, 확인 창 뒤 그 방문 동안만 열림 · 체크하면 설정 기기를 이 기기로 옮김). 배포 뒤 모든 매장 N 에서 시작(인쇄 영향 없음).
+- **잠금 세 겹:** 화면(`PrinterAutoSave` 래퍼 + 자리 추가·삭제·«Turn on auto-print» disabled) · 저장 본문(`!printerEditable` 이면 어떤 저장에도 `printer_settings` 안 실음 + `printer_device` 동봉) · 서버(`utils/printerSetupDevice.applyPrinterWrite` — `store.js PUT /settings` · `restaurants-crud.js PUT /:id` 같은 함수. 다른 기기가 확인 없이 보낸 저장 = 비상 두 칸만 + 응답 `printerSettingsSkipped`).
+- **잠그지 않음:** §1 이 기기 연결 · «Use on this device» · Test 버튼 · §4 비상(전용 길 `POST /api/store/printer-emergency` · 직원 포함) · 미리보기 · 자가진단.
+- **스테이션 칸 채우기(5-28 사고 수리)** = 전용 길 `POST /api/store/printer-station-seed`(빠진 칸만 · 0 이면 안 씀 · 관리자).
+- **함께 막은 기존 구멍:** `PUT /api/restaurants/:id` 에 «관리자만» 문이 없어 직원 저장이 프린터 설정을 통째로 덮을 수 있었다(실측 — 고장 주입으로 확인) → 같은 판정. health-check security 2건.
+- **알고 둔 한계:** 기기 정보를 안 보내는 옛 번들 저장은 지금처럼 통과(꼬리표는 보존 · 로그 `[printer-scope] no device info`).
+- 화면 `pages/Settings/PrinterDeviceScope.tsx` · 단위 시험 `dev-backend/tests/printer-setup-device.test.js`.

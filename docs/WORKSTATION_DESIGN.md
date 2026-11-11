@@ -120,3 +120,7 @@ the entire `printer_settings` object back.
 5. Layout chip + selector modal.
 6. Verify multi-POS round-trip (one shop, two devices, each binds to its own
    workstation, each prints to its own printer).
+
+## «프린터 설정 기기» (2026-11-10)
+
+자리(Workstation)는 그대로 기기마다 고른다(`localStorage.workstation_id`). 그와 별개로 매장 프린터 설정(`printer_settings`) 을 **바로 바꾸는 기기는 한 대**(`printer_settings.setupDevice`)다 — 다른 기기는 보기만, 확인 창 뒤 그 방문 동안만 바꾼다. «Use on this device» · Test 인쇄 · 비상 모드는 어느 기기에서나 된다. 상세 `docs/PRINT_DEVICE_SETUP_STANDARD.md §7-c`.

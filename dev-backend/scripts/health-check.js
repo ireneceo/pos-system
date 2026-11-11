@@ -1549,6 +1549,39 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const r = await request('PATCH', `/restaurants/${otherRid}/status`, { status: target.status }, { Authorization: `Bearer ${tk}` });
     return r.status === 403;
   });
+  // 프린터 설정 기기(2026-11-10 · utils/printerSetupDevice · Fable 설계 §7 V2 h): PUT /restaurants/:id 에 «관리자만» 문이 없어
+  // 직원 저장이 프린터 설정을 통째로 덮을 수 있었다. 데모 38 · 임시 직원 · 원본 바이트 복원.
+  test('security', '직원이 PUT /restaurants/:id 로 printer_settings 통째 → 비상 외 무변경', async () => {
+    const { sequelize } = require('../config/database');
+    const RID = 38;
+    const [[row]] = await sequelize.query('SELECT printer_settings p FROM restaurants WHERE id=?', { replacements: [RID] });
+    if (!row) return true;
+    const original = row.p;
+    const tag = `hcpsd${Date.now()}`;
+    const [uid] = await sequelize.query(`INSERT INTO users (username, email, password, role, restaurant_id, permissions, is_active, email_verified, createdAt, updatedAt) VALUES (?, ?, 'x', 'Staff', ?, '[]', 1, 1, NOW(), NOW())`, { replacements: [tag, `${tag}@example.com`, RID] });
+    try {
+      const cur = original ? (typeof original === 'string' ? JSON.parse(original) : original) : {};
+      const evil = { ...cur, kitchenPrinter: { ...(cur.kitchenPrinter || {}), address: 'HC-STAFF-WROTE' } };
+      const tk = jwt.sign({ userId: uid }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      await request('PUT', `/restaurants/${RID}`, { printer_settings: evil }, { Authorization: `Bearer ${tk}` });
+      const [[after]] = await sequelize.query('SELECT printer_settings p FROM restaurants WHERE id=?', { replacements: [RID] });
+      return after.p === original;
+    } finally {
+      await sequelize.query('UPDATE restaurants SET printer_settings=? WHERE id=?', { replacements: [original, RID] });
+      await sequelize.query('DELETE FROM activity_logs WHERE user_id=?', { replacements: [uid] });
+      await sequelize.query('DELETE FROM users WHERE id=?', { replacements: [uid] });
+    }
+  });
+  test('security', '«프린터 설정 기기» 정하기 — 직원 403 · 익명 401', async () => {
+    const User = require('../models/User');
+    const staff = await User.findOne({ where: { role: 'Staff', restaurant_id: restId } }) || await User.findOne({ where: { role: 'Staff' } });
+    const anon = await request('POST', '/store/printer-setup-device', { restaurantId: restId, device: { id: 'hc-dev', kind: 'pc-browser' } });
+    if (anon.status !== 401) return false;
+    if (!staff) return true;
+    const tk = jwt.sign({ userId: staff.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const r = await request('POST', '/store/printer-setup-device', { restaurantId: staff.restaurant_id || restId, device: { id: 'hc-dev', kind: 'pc-browser' } }, { Authorization: `Bearer ${tk}` });
+    return r.status === 403;
+  });
   test('security', '익명 /restaurants/slug/:slug 에 printer_settings·게이트웨이 비밀키 없음', async () => {
     const Restaurant = require('../models/Restaurant');
     const { Op } = require('sequelize');

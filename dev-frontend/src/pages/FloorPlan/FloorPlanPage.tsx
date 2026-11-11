@@ -30,6 +30,7 @@ import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
 import FinalReconcilePanel from '../Reports/FinalReconcilePanel';
 import io from 'socket.io-client';
 import { useTranslation } from 'react-i18next';
+import { drawerHelpKey } from '../../utils/printerHelpHint';
 
 import { getAuthToken } from '../../utils/auth';
 import { useStore } from '../../contexts/StoreContext';
@@ -2050,7 +2051,7 @@ const FloorPlanPage: React.FC = () => {
                 const { openCashDrawer } = await import('../../utils/billPrint');
                 const ok = await openCashDrawer();
                 if (!ok) {
-                  setCdInfoModal({ open: true, title: 'Drawer did not open', message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.' });
+                  setCdInfoModal({ open: true, title: 'Drawer did not open', message: (() => { const h = drawerHelpKey(); return t(h.key, h.fallback) as string; })() });
                 }
               } catch (e: any) {
                 setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
@@ -2137,7 +2138,7 @@ const FloorPlanPage: React.FC = () => {
                   try {
                     const { openCashDrawer } = await import('../../utils/billPrint');
                     const ok = await openCashDrawer();
-                    if (!ok) setCdInfoModal({ open: true, title: 'Drawer did not open', message: 'Cash drawer pulse needs QZ Tray or RawBT (not Browser print mode).\nCheck Settings → Workstations → Method.' });
+                    if (!ok) setCdInfoModal({ open: true, title: 'Drawer did not open', message: (() => { const h = drawerHelpKey(); return t(h.key, h.fallback) as string; })() });
                   } catch (e: any) {
                     setCdInfoModal({ open: true, title: 'Drawer error', message: e?.message || 'Unknown error' });
                   }
