@@ -7,14 +7,12 @@
 - 남은 Irene 할 일: todomwb3vve6 운영 SC-450·SC-800 Activate.
 - 다음 확정 작업: 없음 — 지시 대기.
 
-### 나중에 — 서버 메모리 줄(스왑 초과)이 풀리면 빌드·화면 확인: «Different store on this device» 계산대 입구 차단 제거 [Claude Code · 작업방 d877e7cc · 2026-11-10]
-- Irene «업무처리는 온갖 디바이스에서 하는데 이런 거 왜 보여줘? 프린터 설정만 중요한거 아니야? … 이렇게 막아야 하는 이유가 있어? 한번 fable이 판단해봐.»
-- **Fable 판단:** 없앤다. 서버 권한·자동인쇄(폴러=세션 매장)를 지키지 않았고, 막던 유일한 문제(PIN 전환이 기기에 찍힌 매장 직원을 찾음)를 PIN 쪽에서 고친다. Irene 질문 없음 · 구현 뒤 Fable 검증 불필요(자체 검증).
-- **고친 것(미커밋):** `components/POSTerminal/CashierPinModal.tsx`(PIN 매장 = 세션 매장 먼저, 없을 때만 기기 표시) · `components/ProtectedRoute.tsx`(진입 가드·경고 화면 삭제) · `auth.json` 4개 언어 `context.deviceMismatch` 삭제 · `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §6.3·§8-6·Q4 · 메모리 reference_pos_device_anchor. 서버·DB·🔒 8개 무접촉.
-- **확인됨:** 문법 0 오류(2파일) · print-guard 8/8 변경 없음 · i18n verify 오류 0 · design-guard 신규 0 · 매장 전환 뒤 user.restaurantId 가 새 매장으로 바뀜(AuthContext switchContext→switchUser 코드) · 서버 verify-pin 은 body restaurant_id 로 찾음(staff.js).
-- **빌드 1회 만료(18:40~19:40 UTC경 3600초 · 스왑 2230/2048MB — 우회 안 함).** 20:12 부터 다른 방 purple-build 가 줄에 서 있음 — 그 빌드가 이 변경도 담는다(끝났으면 다시 빌드 불필요).
-- **남은 것(메모리 풀리면):** build:dev 1회 → 데모 38/39 실브라우저: ①기기 표시 38·세션 39 로 /floor-plan·/pos-terminal·/kitchen 차단 없음 ②39 직원 PIN 성공·요청 restaurant_id=39 ③평소(38=38) 같음 ④기기 표시 없음에서 PIN 됨 ⑤고장주입 1회 ⑥로그인 화면 PIN 패드 그대로 → verify-all --full.
-- 범위 밖(Irene 원하면): 매장 고르기 확인창·알림 진입 안내도 같은 기기 표시 헛경보.
+### ✅ 완료 — «Different store on this device» 계산대 입구 차단 제거 (커밋 922a95e33) [Claude Code · 작업방 d877e7cc · 2026-11-11]
+- Irene «… 이렇게 막아야 하는 이유가 있어? 한번 fable이 판단해봐.» → Fable: 없앤다(권한·인쇄 무관, PIN 전환만 세션 매장 기준으로).
+- 고친 것: CashierPinModal(PIN 매장=세션 먼저) · ProtectedRoute 가드 삭제 · auth.json 4개 언어 · 설계 §6.3 · 메모리.
+- 확인: 데모 38 세션 + 기기 표시 39/38/없음 → 플로어·POS·주방 차단 0·화면 오류 0 · PIN 요청 restaurant_id=38(표시 39 일 때도) · verify-all --full 23/24(실패 = 배포 준비 몫) · print-guard 8/8.
+- 확인 못 함: 실제 직원 PIN 성공(시험 PIN 모름 — 서버 쪽은 안 바뀜).
+- 범위 밖(Irene 원하면): 매장 고르기 확인창·알림 진입 안내도 같은 헛경보.
 
 ### ✅ 완료 — 매장 28 Live Orders «주문 삭제 안 됨» + 다른 매장 주문 삭제 구멍 막음 (커밋 84b4d8813) [Claude Code · 작업방 c13c53fa · 2026-11-11]
 - 원인(운영 nginx·DB 읽기만): kdineipc1(Kate, user 19) = 이미 매장 28 관리자(user_contexts id 3). 맥 기기는 Live Orders 를 보며 삭제 요청 0건 — 첫 화면 «오늘» 을 매장 시간대 오기 전 UTC 로 잡아 탭 숫자(counts 11-10)와 목록(11-11)이 어긋남. 다른 기기에선 같은 계정으로 15:33 UTC 20건 삭제 200.
