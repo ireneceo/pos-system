@@ -1433,6 +1433,29 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const r = await request('GET', `/orders/restaurant/${otherRid}/counts`, null, { Authorization: `Bearer ${tk}` });
     return r.status === 403;
   });
+  // 2026-11-11: DELETE /orders/:id 가 주문의 매장을 안 봐서 어느 RA 든 남의 매장 주문을 지웠다(개발 실측 38→39 200).
+  //   대상은 **다른 데모 매장** 주문만 — 가드가 깨져 지워지면 바로 되돌린다(실매장 무접촉).
+  test('security', '다른 RA가 남의 매장 주문 DELETE /orders/:id → 403 · 주문 그대로', async () => {
+    const { sequelize } = require('../config/database');
+    const User = require('../models/User');
+    const demoRest = (await sequelize.query('SELECT id FROM restaurants WHERE is_demo = 1 ORDER BY id LIMIT 1', { type: sequelize.QueryTypes.SELECT }))[0];
+    const ra = demoRest && await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: demoRest.id } });
+    if (!ra) { console.log(c.yellow('      ↳ 데모 매장 RA 없음 — 건너뜀')); return true; }
+    const demoRestId = demoRest.id;
+    const demoRaToken = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const rows = await sequelize.query(
+      `SELECT o.id FROM orders o JOIN restaurants r ON r.id = o.restaurant_id
+        WHERE r.is_demo = 1 AND o.restaurant_id <> :rid AND o.is_deleted = 0 ORDER BY o.id DESC LIMIT 1`,
+      { replacements: { rid: demoRestId }, type: sequelize.QueryTypes.SELECT });
+    if (!rows[0]) { console.log(c.yellow('      ↳ 다른 데모 매장 주문 없음 — 건너뜀')); return true; }
+    const id = rows[0].id;
+    const r = await request('DELETE', `/orders/${id}`, null, { Authorization: `Bearer ${demoRaToken}` });
+    const [after] = await sequelize.query('SELECT is_deleted FROM orders WHERE id = :id', { replacements: { id }, type: sequelize.QueryTypes.SELECT });
+    if (after && Number(after.is_deleted) === 1) {
+      await sequelize.query('UPDATE orders SET is_deleted = 0, deleted_at = NULL WHERE id = :id', { replacements: { id } });
+    }
+    return r.status === 403 && after && Number(after.is_deleted) === 0;
+  });
   test('security', '다른 RA가 cross-tenant /activity-logs/restaurant/:rid → 403', async () => {
     const User = require('../models/User');
     const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });

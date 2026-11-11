@@ -39,3 +39,9 @@
 - `MainLayout.tsx` 23(lucide `PieChart` import) · 사이드바 항목 3블록(`/pos/brand/general/profitability` · `/pos/owner/profitability` · `/restaurant/${rid}/profitability?tab=…`)뿐 — `_printPollFn`·인쇄 분기 무접촉(Fable 이 git diff 로 직접 확인)
 - `health-check --category=print` 인쇄 계약 10/10(지문 1건 = 이 파일) · 보호파일 7개 변경 0 · `check-print-guard` → 재등록 후 8/8 변경 없음
 - 종이 확인 대상 아님(인쇄 동작 변경 없음) — manifest 가 git 추적 파일이라 bless → Fable 마커 순서
+
+## 2026-11-11 — orders-crud.js (주문 삭제 DELETE /:id 에 «관할 매장만» 확인 4줄) — Fable 게이트 PASS(서버 쪽) 뒤 bless
+- Irene 원문 「권고대로 진행해 줘」((가) 고침 — 삭제 길 하나만, 인쇄 부분 손 안 댐 · 다른 매장이면 403 · 자동 검사 추가 · Fable 검증 1회)
+- 기준 지문(70383edb…) = git HEAD 파일 지문과 같음을 Fable 이 직접 대조 → 달라진 것은 2129~2132 의 4줄(`userCanAccessRestaurant` 아니면 403)뿐. pending-print / printed / print-claim / kitchen_items 무접촉
+- `health-check --category=print` 인쇄 계약 10/10(실패 1 = 이 파일 지문) · 보호파일 7개 변경 0 · security 110/110(새 검사 «남의 매장 주문 DELETE → 403» 건너뜀 없이 통과)
+- 종이 확인 대상 아님(인쇄 동작 변경 없음). Fable 통과 마커는 찍지 않음 — 작업공간에 다른 방의 미검증 민감 변경(restaurants-crud.js · store.js 등)이 같이 있고 화면 쪽 빌드·실브라우저 확인이 남음

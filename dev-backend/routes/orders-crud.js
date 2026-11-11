@@ -2126,6 +2126,10 @@ router.delete('/:id', authenticateToken, requireRole('Restaurant Admin', 'System
     if (!order) {
       return res.status(404).json({ success: false, error: { message: 'Order not found', code: 'NOT_FOUND' } });
     }
+    // 2026-11-11: 관할 매장만 — 없으면 어느 매장 관리자든 주문 번호로 다른 매장 주문을 지웠다(Irene 승인 «권고대로»)
+    if (!(await userCanAccessRestaurant(req.user, order.restaurant_id))) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied to this restaurant', code: 'FORBIDDEN' } });
+    }
 
     const restaurantId = order.restaurant_id;
     const orderId = order.id;

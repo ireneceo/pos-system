@@ -61,6 +61,8 @@
   "liveOrdersPage.reject": "Reject",
   "liveOrdersPage.customerSubmittedProof": "Customer Submitted Proof",
   "liveOrdersPage": {
+    "deleteFailedAdminOnly": "Only a restaurant admin can remove orders.",
+    "deleteFailed": "Couldn't remove the order: {{reason}}",
     "takeawayCharge": "Takeaway Charge",
     "printToKitchenTitle": "Print to kitchen?",
     "dontPrint": "Don't print",

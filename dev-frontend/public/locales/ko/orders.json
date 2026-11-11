@@ -61,6 +61,8 @@
   "liveOrdersPage.reject": "거절",
   "liveOrdersPage.customerSubmittedProof": "고객 제출 증빙",
   "liveOrdersPage": {
+    "deleteFailedAdminOnly": "주문 지우기는 매장 관리자만 할 수 있어요.",
+    "deleteFailed": "주문을 지우지 못했어요: {{reason}}",
     "takeawayCharge": "포장료",
     "printToKitchenTitle": "주방에 인쇄할까요?",
     "dontPrint": "인쇄 안 함",

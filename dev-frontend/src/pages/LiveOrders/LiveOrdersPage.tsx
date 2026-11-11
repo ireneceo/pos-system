@@ -141,6 +141,19 @@ const LiveOrdersPage: React.FC = () => {
   const [activePeriod, setActivePeriod] = useState<PeriodType>('today');
   const [dateRange, setDateRange] = useState(() => calculatePeriodDateRange('today', operationSettings.timeZone));
   const [isCustomDateRange, setIsCustomDateRange] = useState(false);
+  // 첫 화면은 매장 시간대가 아직 안 와서 «오늘» 이 브라우저/UTC 날짜로 잡힐 수 있다 → 탭 숫자는 어제,
+  // 목록(실시간 스토어 = 매장 날짜)은 오늘이 되어 «숫자는 있는데 주문이 안 보임» (2026-11-11 매장 28).
+  // 시간대가 오거나 매장 날짜가 넘어가면(밤새 켜 둔 화면) 프리셋 기간을 다시 계산한다. 직접 고른 기간은 그대로.
+  useEffect(() => {
+    if (isCustomDateRange) return;
+    const sync = () => {
+      const next = calculatePeriodDateRange(activePeriod, operationSettings.timeZone);
+      setDateRange(prev => (prev.start === next.start && prev.end === next.end ? prev : next));
+    };
+    sync();
+    const timer = setInterval(sync, 60000);
+    return () => clearInterval(timer);
+  }, [operationSettings.timeZone, activePeriod, isCustomDateRange]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettlement, setShowSettlement] = useState(false);
   const [showCashDrawer, setShowCashDrawer] = useState(false);
@@ -1501,9 +1514,20 @@ const LiveOrdersPage: React.FC = () => {
       setOrderToDelete(null);
       try {
         const response = await fetch(`/api/orders/${orderIdToDelete}`, getFetchOptions({ method: 'DELETE' }));
-        const result = await response.json();
-        if (!result.success) fetchOrders();
-      } catch (error) { console.error('Failed to delete order:', error); fetchOrders(); }
+        const result = await response.json().catch(() => ({} as any));
+        if (!response.ok || !result.success) {
+          // 실패를 조용히 되돌리지 않는다 — 이유(권한 403 등)를 알린다 (2026-11-11)
+          const reason = response.status === 403
+            ? t('orders:liveOrdersPage.deleteFailedAdminOnly', 'Only a restaurant admin can remove orders.')
+            : (typeof result?.error === 'string' ? result.error : result?.error?.message || result?.message || `HTTP ${response.status}`);
+          showToast(t('orders:liveOrdersPage.deleteFailed', { reason, defaultValue: "Couldn't remove the order: {{reason}}" }), 'error');
+          fetchOrders();
+        }
+      } catch (error) {
+        console.error('Failed to delete order:', error);
+        showToast(t('orders:liveOrdersPage.deleteFailed', { reason: (error as any)?.message || 'network', defaultValue: "Couldn't remove the order: {{reason}}" }), 'error');
+        fetchOrders();
+      }
     } else {
       setShowDeleteConfirm(false);
     }

@@ -61,6 +61,8 @@
   "liveOrdersPage.reject": "Tolak",
   "liveOrdersPage.customerSubmittedProof": "Bukti Dikemukakan Pelanggan",
   "liveOrdersPage": {
+    "deleteFailedAdminOnly": "Hanya pentadbir restoran boleh membuang pesanan.",
+    "deleteFailed": "Pesanan tidak dapat dibuang: {{reason}}",
     "takeawayCharge": "Caj Bungkus",
     "printToKitchenTitle": "Cetak ke dapur?",
     "dontPrint": "Jangan cetak",
