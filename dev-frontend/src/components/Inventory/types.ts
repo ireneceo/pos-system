@@ -34,6 +34,8 @@ export interface IngredientStock {
   // 목록에 함께 보여 주고 그 자리에서 켤 수 있게 하려고 화면까지 내려보낸다.
   // 브랜드 표준 재료(부모 브랜드 소유) — 매장은 재고를 다루되 재료 자체는 못 고친다(읽기전용).
   is_brand_shared?: boolean;
+  // 재고아이템이 켜져 있는가 — false 면 목록 배지 «꺼짐», 상태 필터·발주에서 빠진다(stockVerdict 'off')
+  is_active?: boolean;
   // 준비된 재고(1차 가공) — 이 재료를 «만드는» 레시피 (2026-09-17). null 이면 보통 재료.
   //   준비 재료는 «입고» 대신 «만들기» 를 쓰고, 발주 화면에는 나오지 않는다.
   source_recipe_id?: number | null;

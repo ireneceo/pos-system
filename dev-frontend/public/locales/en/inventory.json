@@ -223,7 +223,9 @@
     "soonPlain": "Running low",
     "ok": "OK",
     "noLevel": "No reorder number",
-    "incoming": "Ordered · on the way"
+    "incoming": "Ordered · on the way",
+    "off": "Turned off",
+    "offHint": "Turn it on in Product & Recipe › Stock Items to order"
   },
   "statusFilter": {
     "all": "All statuses",

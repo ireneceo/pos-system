@@ -223,7 +223,9 @@
     "soonPlain": "곧 부족",
     "ok": "충분",
     "noLevel": "발주 기준 없음",
-    "incoming": "주문함 · 오는 중"
+    "incoming": "주문함 · 오는 중",
+    "off": "꺼짐",
+    "offHint": "Product & Recipe › Stock Items 에서 켜야 발주할 수 있어요"
   },
   "statusFilter": {
     "all": "모든 상태",

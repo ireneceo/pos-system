@@ -142,6 +142,8 @@ export function useInventoryData({ mode, restaurantId, authFetch, includeUntrack
               manual_daily_usage: ing.manual_daily_usage ? parseFloat(ing.manual_daily_usage) : null,
               prediction_confidence: ing.prediction_confidence || 'none',
               stock_status: stockStatus,
+              // 꺼진 재고아이템(Stock Items 에서 Deactivate) — 목록에 «꺼짐» 배지로 보이고 상태 필터·발주에서 빠진다(stockVerdict 'off')
+              is_active: ing.is_active !== false && ing.is_active !== 0,
               // 준비된 재고(1차 가공) — 이 재료를 «만드는» 레시피 (2026-09-17).
               //   값이 있으면 목록 버튼이 «입고» 대신 «만들기» 가 된다.
               source_recipe_id: ing.source_recipe_id || null,

@@ -13,6 +13,7 @@ export function useVerdictLabel() {
         ? t('inventory:verdict.soon', { defaultValue: 'Running low · ~{{n}}d left', n: days })
         : t('inventory:verdict.soonPlain', 'Running low');
       case 'incoming': return t('inventory:verdict.incoming', 'Ordered · on the way');
+      case 'off': return t('inventory:verdict.off', 'Turned off');
       case 'no_basis': return t('inventory:verdict.noLevel', 'No reorder number');
       default: return t('inventory:verdict.ok', 'OK');
     }

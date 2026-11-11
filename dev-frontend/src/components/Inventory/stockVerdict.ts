@@ -8,7 +8,9 @@
  */
 import type { SuggestionRow } from './hooks/useBulkOrder';
 
-export type StockVerdict = 'out' | 'order_now' | 'soon' | 'ok' | 'no_basis' | 'incoming';
+// 'off' = 재고아이템이 꺼짐(is_active=0 · Stock Items 에서 Deactivate). 발주 판정(서버)이 세지 않으므로
+//   목록에서도 «꺼짐» 으로만 보이고 어느 상태 필터·띠 숫자에도 들지 않는다 — «전체» 에서만 보인다 (2026-11-10 Irene «탭을 누르면 나와야 하는 리스트에 안나와»)
+export type StockVerdict = 'out' | 'order_now' | 'soon' | 'ok' | 'no_basis' | 'incoming' | 'off';
 
 interface VerdictInput {
   id: number;
@@ -16,6 +18,7 @@ interface VerdictInput {
   min_stock: number;
   stock_status?: string;
   on_order_quantity?: number;
+  is_active?: boolean | number | null;
 }
 
 /**
@@ -29,6 +32,7 @@ export function stockVerdict(
   loaded: boolean,
   isIngredient: boolean,
 ): StockVerdict {
+  if (item.is_active === false || item.is_active === 0) return 'off';
   const min = Number(item.min_stock) || 0;
   const stock = Number(item.current_stock) || 0;
   if (isIngredient && loaded) {
@@ -52,6 +56,7 @@ export const VERDICT_COLOR: Record<StockVerdict, { fg: string; bg: string }> = {
   ok: { fg: '#047857', bg: '#D1FAE5' },
   no_basis: { fg: '#4B5563', bg: '#F1F4F8' },
   incoming: { fg: '#075985', bg: '#E0F2FE' },
+  off: { fg: '#6B7280', bg: '#E5E7EB' },
 };
 
 /** 상태 필터 값(기존 fs_* 그대로 — 아침 알림 ?filter=fs_out 링크 보존) → 판정 */

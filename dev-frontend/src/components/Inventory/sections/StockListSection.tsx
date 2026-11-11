@@ -723,7 +723,12 @@ const StockListSection: React.FC<Props> = ({
                       똑같이 수량칸+Order 버튼을 그려서, 눌러야 "No supplier mapping" 을 보고
                       알 수 있었다 — 목록만 봐서는 무엇을 발주할 수 있는지 구분이 안 됐다.
                       버튼을 비활성으로 두지 않고(비활성 금지 규칙), 연결하러 가는 행동을 준다. */}
-                  {(!hasMapping || (item.seller_source_all_off && onLinkSupplier)) ? (
+                  {item.is_active === false ? (
+                    // 꺼진 재고아이템 — 서버 발주 판정이 세지 않는다. 발주 칸 대신 어디서 켜는지만 알린다(2026-11-10)
+                    <span style={{ fontSize: 12, color: '#6B7280' }}>
+                      {t('inventory:verdict.offHint', 'Turn it on in Product & Recipe › Stock Items to order')}
+                    </span>
+                  ) : (!hasMapping || (item.seller_source_all_off && onLinkSupplier)) ? (
                     // 연결이 없거나, 연결된 판매 상품이 전부 삭제·판매중지면 발주가 안 된다 → 그 자리에서 연결.
                     //   onLinkSupplier 가 있으면(브랜드 모드) 창이 이 목록 위에 열리고, 연결하면 목록을 다시 불러
                     //   같은 행이 곧바로 수량칸+Order 로 바뀐다(2026-11-03 Irene «이동시키지 말고 · 발주도 바로바로»).

@@ -223,7 +223,9 @@
     "soonPlain": "即将不足",
     "ok": "充足",
     "noLevel": "未设订货点",
-    "incoming": "已订货 · 在途"
+    "incoming": "已订货 · 在途",
+    "off": "已停用",
+    "offHint": "请在 Product & Recipe › Stock Items 中启用后再下单"
   },
   "statusFilter": {
     "all": "全部状态",

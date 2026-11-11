@@ -223,7 +223,9 @@
     "soonPlain": "Hampir habis",
     "ok": "Cukup",
     "noLevel": "Tiada had pesanan",
-    "incoming": "Sudah dipesan · dalam perjalanan"
+    "incoming": "Sudah dipesan · dalam perjalanan",
+    "off": "Dimatikan",
+    "offHint": "Hidupkan di Product & Recipe › Stock Items untuk membuat pesanan"
   },
   "statusFilter": {
     "all": "Semua status",
