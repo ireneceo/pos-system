@@ -1,28 +1,85 @@
 ## 현재 작업 상태
 
+
+### ✅ 완료 (2026-11-11 03:3x UTC) — 꺼진 재고아이템 «꺼짐» 표시 + /개발완료 기록 [Claude Code · 백그라운드 작업방 2fbb75b6]
+- e420d8ae4: 재고 목록 «Turned off» 배지 · 상태 필터·띠 숫자 제외 · 발주 칸 대신 Stock Items 안내 — 빌드 1회 · 실브라우저 확인 · health 480/480 · print-guard 8/8. 운영 반영: 다음 배포 때.
+- /개발완료: CHANGELOG 11-11 2줄 · DEVELOPMENT_PLAN 섹션(e420d8ae4 · 84b4d8813) · docs/INVENTORY_MANAGEMENT_SYSTEM.md «꺼짐» 절. 다른 방 미커밋 코드(프린터 설정 분리 55cb7c4b 등)는 커밋하지 않음.
+- 남은 Irene 할 일: todomwb3vve6 운영 SC-450·SC-800 Activate.
+- 다음 확정 작업: 없음 — 지시 대기.
+
+### 나중에 — 서버 메모리 줄(스왑 초과)이 풀리면 빌드·화면 확인: «Different store on this device» 계산대 입구 차단 제거 [Claude Code · 작업방 d877e7cc · 2026-11-10]
+- Irene «업무처리는 온갖 디바이스에서 하는데 이런 거 왜 보여줘? 프린터 설정만 중요한거 아니야? … 이렇게 막아야 하는 이유가 있어? 한번 fable이 판단해봐.»
+- **Fable 판단:** 없앤다. 서버 권한·자동인쇄(폴러=세션 매장)를 지키지 않았고, 막던 유일한 문제(PIN 전환이 기기에 찍힌 매장 직원을 찾음)를 PIN 쪽에서 고친다. Irene 질문 없음 · 구현 뒤 Fable 검증 불필요(자체 검증).
+- **고친 것(미커밋):** `components/POSTerminal/CashierPinModal.tsx`(PIN 매장 = 세션 매장 먼저, 없을 때만 기기 표시) · `components/ProtectedRoute.tsx`(진입 가드·경고 화면 삭제) · `auth.json` 4개 언어 `context.deviceMismatch` 삭제 · `docs/MULTI_CONTEXT_LOGIN_DESIGN.md` §6.3·§8-6·Q4 · 메모리 reference_pos_device_anchor. 서버·DB·🔒 8개 무접촉.
+- **확인됨:** 문법 0 오류(2파일) · print-guard 8/8 변경 없음 · i18n verify 오류 0 · design-guard 신규 0 · 매장 전환 뒤 user.restaurantId 가 새 매장으로 바뀜(AuthContext switchContext→switchUser 코드) · 서버 verify-pin 은 body restaurant_id 로 찾음(staff.js).
+- **빌드 1회 만료(18:40~19:40 UTC경 3600초 · 스왑 2230/2048MB — 우회 안 함).** 20:12 부터 다른 방 purple-build 가 줄에 서 있음 — 그 빌드가 이 변경도 담는다(끝났으면 다시 빌드 불필요).
+- **남은 것(메모리 풀리면):** build:dev 1회 → 데모 38/39 실브라우저: ①기기 표시 38·세션 39 로 /floor-plan·/pos-terminal·/kitchen 차단 없음 ②39 직원 PIN 성공·요청 restaurant_id=39 ③평소(38=38) 같음 ④기기 표시 없음에서 PIN 됨 ⑤고장주입 1회 ⑥로그인 화면 PIN 패드 그대로 → verify-all --full.
+- 범위 밖(Irene 원하면): 매장 고르기 확인창·알림 진입 안내도 같은 기기 표시 헛경보.
+
+### ✅ 완료 — 매장 28 Live Orders «주문 삭제 안 됨» + 다른 매장 주문 삭제 구멍 막음 (커밋 84b4d8813) [Claude Code · 작업방 c13c53fa · 2026-11-11]
+- 원인(운영 nginx·DB 읽기만): kdineipc1(Kate, user 19) = 이미 매장 28 관리자(user_contexts id 3). 맥 기기는 Live Orders 를 보며 삭제 요청 0건 — 첫 화면 «오늘» 을 매장 시간대 오기 전 UTC 로 잡아 탭 숫자(counts 11-10)와 목록(11-11)이 어긋남. 다른 기기에선 같은 계정으로 15:33 UTC 20건 삭제 200.
+- 고친 것: LiveOrdersPage 기간 재계산 + 삭제 실패 알림 · 번역 4언어 · orders-crud.js DELETE /:id 매장 확인 4줄(Irene «권고대로») · health-check security 1건 · print-guard bless(4줄만).
+- 확인: security 110/110 · 고장 주입 잡힘 · 실호출(남의 매장 403 / 자기 매장 200 / RA 모자 200) · 실브라우저 7/7 · verify-all --full 23/24(남은 1 = 배포 준비: 기록·SW 버전 — 배포 때).
+- Fable 게이트: 서버 쪽 PASS · 화면 쪽 자체 검증 · 마커 안 찍음(다른 방 미검증 민감 변경 같은 작업공간).
+- 운영 반영: 다음 배포 때(그때까지 운영엔 구멍 남음). 매장 28 어제(11-10) 남은 대기 주문 261110-003~020·032 는 Live Orders «Yesterday» 에서 보임.
+- health-check.js 의 다른 방(55cb7c4b) 프린터 검사 2건은 미커밋 그대로 둠.
+
+### 답 기다림 (2026-11-10) — K-DINE Noodles 세트 구성품 옵션: 운영 읽기 명령 1줄 붙여 넣기 [Claude Code · 백그라운드 작업방 7076114b]
+- Irene «브랜드 메뉴에 세트가 각 옵션까지 잘 들어가 있는데 해당 브랜드 레스토랑 포스랑 모바일오더 키오스크에서는 세트의 메뉴 옵션이 안나와 … 콤보세트 같은 거»
+- 확인한 것(운영 읽기, 쓰기 0): 매장 28 Combo SET(927)·Tteokbokki SET(926) 구성품이 매장 상품 번호로 제대로 바뀌어 있음 · 구성품마다 옵션그룹 연결됨(국수 153/154/155 · 비빔밥 156/161 · 떡볶이 157 · 강정 158 · 튀김 162) · 매장 옵션그룹 8개 모두 켜짐.
+- 코드: 서버 utils/setMenu.js buildSetResolved(운영=개발 같은 파일)가 구성품 옵션을 붙여 줌 · 개발 API 실호출(데모 38 «[확인용] Coffee Set» 23277) Latte 아래 Size[2]·Extras[2] 내려옴 · POS 세트 창(POSSetModal)·모바일(MobileSetOrder)·키오스크 안내형(ItemDetailPage guided) 모두 «구성품을 고른 뒤» 그 구성품 옵션을 보여 주게 되어 있음.
+- 확인 못 함: ① 매장 28 옵션그룹 안에 실제 옵션 줄이 있는지(운영 두 번째 읽기 권한 거부) ② 실브라우저 화면 — 메모리 자리표가 스왑 초과로 1시간 차례 안 와 실행 안 됨.
+- 무엇: Irene 가 `! bash /var/www/.claude/run-kdine-set-options-read.sh` 붙여 넣기(읽기 전용) · 왜: 옵션그룹이 비어 있으면 화면에 옵션이 안 나오는 유일한 남은 원인 · 답이 오면: 옵션 0개면 브랜드 옵션을 매장 28 옵션그룹으로 채우는 보정 설계(운영 쓰기 → Irene 승인) · 옵션이 있으면 개발 실브라우저로 POS·모바일·키오스크 재현(자리표 풀리면).
+
+### (이전) 답 기다림: SC-450·SC-800 두 품목을 다시 «발주할 것» 목록에 나오게 할까요? → Irene «dmd»(=응 · (가) 다시 켬) [Claude Code · 작업방 2fbb75b6 · 2026-11-10]
+- 답 뒤: 운영 쓰기라 Irene 할 일 카드로 올림(«운영 Stock Items 에서 SC-450·SC-800 Activate»). 꺼짐 배지 화면 빌드·확인은 아래 «다음 할 일» 그대로.
+- 무엇: 브랜드 재고 목록의 (SC-450)·(SC-800) 두 품목은 Product & Recipe › Stock Items 에서 **꺼진(Deactivate) 상태**라 위쪽 «재고 없음/지금 발주» 탭에 안 나온다. 고장이 아니라 «꺼짐» 때문.
+- 선택: (가) 예 → Irene 가 운영 Product & Recipe › Stock Items 에서 두 품목 «Activate» 누름(운영 쓰기라 Irene 손) → 탭에 나옴 · (나) 아니요(안 쓰는 품목) → 할 것 없음 — 이제 목록에 회색 «꺼짐» 배지로 보여 헷갈리지 않음.
+- Opus 의견: 지금도 사는 품목이면 (가), 안 쓰는 품목이면 (나). 되돌릴 수 있는 일이라 Fable 안 부름.
+- 이미 한 것(답과 무관): 재고 목록 «꺼짐(Turned off)» 배지(상태 필터·띠 숫자에서 빠지고 «전체»에만 보임) · 꺼진 품목은 발주 칸 대신 «Stock Items 에서 켜야 발주» 안내 — 코드만(9파일: stockVerdict·VerdictBadge·useInventoryData·types·StockListSection·inventory.json 4개 언어). API 실측: 꺼진 품목은 목록 응답에 is_active=false 로 오고 발주 판정엔 안 들어감. 확인용 데이터 «[Check] Turned-off stock item»(개발 데모 브랜드, id 14148).
+- ✅ 2026-11-11 03:2x UTC 스왑 풀린 뒤 빌드 1회(89초) · 실브라우저(데모 브랜드 /pos/brand-inventory): [Check] 행 배지 «Turned off» 1 · 발주 칸 안내 1 · ?filter=fs_out 에서 0 · 콘솔 오류 0 · health-check 480/480 · print-guard 8/8 무변경. 운영 반영: 다음 배포 때. 남은 것: Irene 할 일 todomwb3vve6(운영 SC-450·SC-800 Activate).
+
+### (이전) 답 기다림: 꺼진 재고아이템 SC-450·SC-800 을 다시 켤지 — «재고 주문 목록 탭 오류» (Irene «이 리스트들이 주문을 해야 하는 것들인데 제대로 안나와. 위에 탭을 누르면 나와야 하는 리스트에 안나와») [Claude Code · 작업방 c5198e1f · 2026-11-10]
+- **원인 확정(운영 DB 읽기 전용 · 쓰기 0)**: 브랜드 owner 23(with MIN·K-DINE with MIN·K-DINE Noodles) 의 재고아이템 id 304 «(SC-450)» PI-286(재고 3·기준 3)·id 305 «(SC-800)» PI-287(재고 0·기준 4) 둘 다 `is_active=0`(Product & Recipe › Stock Items 에서 Deactivate 된 상태). «발주할 것» 판정(`brandStockItemSuggestionsFor` — is_active 만)은 꺼진 것을 안 세고, 재고 목록(`/api/product-ingredients` — 꺼진 것도 줌)은 꺼짐 표시 없이 옛 Low/Out 배지로 보여 줘서 어긋나 보였다. 운영 숫자: 켜진 300개 중 재고없음 6·기준 이하 2 = 카드 숫자 6·2 와 일치. 꺼진 17개 중 재고없음 2·기준 이하 1.
+- Irene 화면은 운영(옛 문구 «Out — can't cover orders»). 개발서버엔 b1905840a(판정 한 함수)가 있지만, 그 코드에선 꺼진 품목이 «OK» 로 보여 더 헷갈린다 → 고칠 것 같음.
+- 코드 변경 0(다른 방 55cb7c4b 가 같은 솔루션 수정 중이라 기다림).
+- **답이 오면**: (가) 다시 켬 → Irene 가 운영 화면 Product & Recipe › Stock Items 에서 두 품목 «Activate»(운영 쓰기라 Irene 행동) → 다음 화면 갱신 때 탭에 나옴. (나) 꺼진 게 맞음 → 할 것 없음. 둘 다 아래 «다음 할 일» 은 한다.
+- **다음 할 일(답과 무관 · 다른 방 끝난 뒤)**: 재고 목록에서 꺼진 재고아이템에 «꺼짐(Off)» 배지 — useInventoryData 브랜드 변환에 is_active 싣기 · stockVerdict 에 'off'(필터·카드 숫자에서 빠짐, «전체»에만 보임) · VerdictBadge 라벨·색 · inventory.json 4개 언어 · Order 버튼 숨김 검토. 빌드 1회 + 브랜드 재고 화면 실브라우저 확인. Fable 안 씀(표시만).
+
+### ✅ (이전) 답 기다림: PurpleHere 운영 배포가 밀림 — «배포» 버튼으로 내보낼까요? → Irene «권고대로» [Claude Code · 작업방 209655a9 · 2026-11-10]
+- 확인: 운영 표식 2026-11-09 08:08(배포 0e6dc6067 성공) 뒤 커밋 18개. 막음 0 · Fable 대기 0 · 배포 스크립트 변경 없음 · 민감 커밋(오너 인보이스·재고 발주·관리자 구독·POS 메뉴 숨김·화면 통일)은 모두 Fable PASS. 정기 점검에서 배포는 11-07 부터 빠져 있어(DEPLOY_STRUCTURE §9) «막힘» 이 아니라 버튼을 안 누른 것.
+- 배포 버튼은 주인(인증코드)만 → Irene 할 일 todomwazyvs6 «PurpleHere 카드 «배포» 누르기» 로 올림. 운영 명령은 실행 안 함.
+
 ### ✅ 완료 (11/11 00:00 정기 점검 · 2026-11-10 16:xx UTC) — /개발완료(11/10 끝난 일 6건 기록) + /개발시작(운영 새 문의 0) [Claude Code · 백그라운드 작업방 f1cf125b]
 - 기록: CHANGELOG [Unreleased] 11-10 5줄 · DEVELOPMENT_PLAN 묶음 섹션(오너 비교 인보이스 0a7aa50e5 · PAR 7280488f3 · 재고 발주 창 공급처 연결 007a3a189 · 관리자 인보이스·구독 할인 424b4b87e · 브랜드 레시피 b31bfed7f · 주방 스테이션 6a152e9cf) · docs/INVOICE_SYSTEM.md §11-4·11-5 · docs/INVENTORY_MANAGEMENT_SYSTEM.md PAR 절
 - verify-all 22/23 — 실패 1 = 배포 준비(기록·SW 버전) = 배포 준비 몫 · check-sensitive-diff = Fable 게이트 대상(운영 미반영 누적 — 건마다 Fable PASS: e089094d8481 · 9015168aec0b · fa637eff38fc · 092e1c6d5d5b) → 배포 때 점검. 이 점검의 변경은 문서뿐 — 마커·skip 안 찍음
 - GTM 보류 4파일 · playwright.config · oneoff · 일시정지 방 2개(55cb7c4b 설계 문서 · 32b658fc) 미커밋은 그대로
 - 운영 확인(prod-query 읽기 전용): 열린 시스템 문의 3건(SUPP-2026-6842-103·1886-062 · 2401-270) 예전 판단 그대로(이미 해결) · 14일 새 문의 0 · 후속 글 0 · 랜딩 문의 0 · operation_tickets closed 4 / in-progress 1
 
-### 나중에 — 일시정지로 멈춤: 프린터 설정을 다른 기기에서 함부로 못 바꾸게 분리 (Irene «레스토랑 프린터 설정을 한 디바이스에서 다른 곳에서 안하게 … 안드로이드앱 윈도우앱 다 사용자가 알기쉽게») [작업방 55cb7c4b · 2026-11-10]
+### ✅ 완료 — 프린터 설정을 다른 기기에서 함부로 못 바꾸게 분리 (Irene «레스토랑 프린터 설정을 한 디바이스에서 다른 곳에서 안하게 … 안드로이드앱 윈도우앱 다 사용자가 알기쉽게») [작업방 55cb7c4b · 2026-11-10]
 - 실측: 설정 › 프린터 칸 54개가 바꾸는 즉시 매장 전체 설정(printer_settings)에 자동저장 → 어느 기기에서 바꿔도 모든 기기에 반영. 프린터 이름은 기기마다 의미가 다름.
 - Fable 설계 요청함 → `.claude/fable-design-20261110-printer-settings-device-scope.md`. 설계 오면 구현·검증.
 - **Fable 설계 도착(일시정지 중):** 결정 = 기기별로 쪼개지 않음 · 매장마다 «프린터 설정 기기» 한 대만 바로 바꿈, 다른 기기는 확인 창 뒤 그 방문 동안만 · 기존 매장도 «아직 없음» 에서 시작 · 서버 판정 `utils/printerSetupDevice.js` + 좁은 쓰기 길 3개(마이그 0) · 🔒 8개 무접촉 · Irene 질문 없음 · 끝난 뒤 Fable 검증 1회.
-- **일시정지(2026-11-10):** 코드 변경 0 · 빌드·커밋 0. 다시 시작하면: ① 설계 문서 §구현 범위·§7 검증 V1~V6 읽기 ② Irene 질문 없음(보고에 «배포 뒤 매장마다 설정 기기 한 번 정해야 칸 열림 — 인쇄 영향 없음» 한 줄) ③ 설계대로 구현 → 빌드 1회 → verify-all --full → print-guard → «배포해도 기존 매장 설정 안 바뀜» 증명.
+- 11-11 다시 시작 — 설계대로 구현 중.
+- **한 것(미커밋):** 서버 `utils/printerSetupDevice.js`(새) · `routes/store.js`(판정 연결 + 길 ①②③) · `routes/restaurants-crud.js PUT /:id`(같은 판정) · `tests/printer-setup-device.test.js`(새) · health-check security 2건 / 화면 `pages/Settings/PrinterDeviceScope.tsx`(새) · `SettingsPage.tsx`(꼬리표·저장 조건·직접 저장 3곳·스테이션 채우기·잠금 래퍼 59곳·상태 줄·창 2개) · 번역 4개 · `scripts/check-printer-settings-roundtrip.js`(꼬리표) · 문서 2곳 · 메모리.
+- **검증 숫자:** V1 jest 34/34 · V2 실호출 20/20(원본 복원) · 서버 고장 주입 3/3 잡힘(기기 판정 제거→c, 꼬리표 보존 제거→i, restaurants-crud 옛 가드→h = «직원이 통째로 덮을 수 있었다» 실측) · health-check 479/479 · print-guard 8/8 · 🔒 8개 안 새 칸 이름 0 · design-guard 신규 0 · i18n 통과 · 화면 반증(옛 번들: 잠긴 기기 결제 저장에 printer_settings 실림 잡음).
+- **나중에 — 무엇·언제:** 빌드가 메모리 자리표에서 2회(17:27·18:27) 3600초 만료 — 서버 스왑 2.3GB > 상한 2GB(우회 금지). Irene 할 일 «서버 창에서 스왑 비우기(sudo)» 올림 → 스왑이 내려가면 아래 «남은 것» 부터.
+- **남은 것:** 빌드(서버 스왑 상한 넘어 자리표 대기 — 1회 3600초 만료, 다시 줄 섬) → `node dev-frontend/scripts/tmp-check-printer-scope-v3.js`(V3, 끝나면 지움) → `OUT_DIR=… node dev-frontend/scripts/check-printer-settings-roundtrip.js`(V5) → `verify-all --full` → Fable 검증 1회.
+- **11-11 이어함 [작업방 4b4ecce8]:** 빌드 2회(1회차 뒤 확인 창 «누가 정함» 문구 4개 언어 고침) · V1 jest 26/26 · V3 47/47(검사 스크립트 결함 3개 고침 — fieldset 안 칸 활성 판정·상태 줄 3곳·40자 정규식, 화면 코드 무변경) · V5 `ONLY_ROUNDTRIP=1` 18/18(앞쪽 A~E 안내 화면 틀 검사는 11-09 EspBluFi 뒤 낡아 건너뛰는 가드만 넣음 — 낡은 검사 고치기는 남음) · print-guard 8/8 · 🔒 8개 새 칸 0 · verify-all --full 23/24(실패 1 = deploy-ready 기록·SW 버전 — 배포 때) · **Fable gate PASS (마커 9866e3502cc3)** — 임시 검사 2개는 방 tmp 로 옮김. 다음에 손볼 것(배포 안 막음): 라운드트립 A~E 를 EspBluFi 기준으로 고치기 · «다른 기기에서 바꿨습니다» 확인 기억이 매장 구분 없음(SA만 영향). /개발완료 커밋은 마커가 죽어 배포를 막으므로 안 함 — 배포 뒤에.
 
-### 나중에 — 일시정지로 멈춤: K-DINE Noodles 안드로이드 앱 «QZ 없음» 잘못된 안내 [작업방 32b658fc · 2026-11-10]
-- **Irene 답(2026-11-10):** «혼란없게 제대로 안내하고 고급 정리된 ui ux해줘» → 고치는 쪽으로 진행.
-- **다시 시작하면:** 상황판이 다시 열어 줄 때.
-- **이어갈 지점:** 지금까지 바뀐 파일 = 작업기록뿐(코드 변경 0). 운영 로그 읽기(ssh `~/.pm2/logs`)는 허락 창에서 두 번 끊겨 결과 없음 — 다시 시도하지 말고 개발서버에서 재현부터.
-  1. 개발 데모 매장에 매장 28과 같은 설정(스테이션 방식 qztray·한 곳 주소 비움)을 넣고, 실브라우저에서 `window.__NATIVE_PRINT`(+안드로이드 UA)로 앱처럼 열어 POS·설정 › 프린터·자동인쇄 실패 띠에서 «QZ» 글자가 보이는 곳을 모두 찾는다.
-  2. 앱일 때는 QZ 문구 대신 앱 안내(이 태블릿에 프린터 등록 · 앱 업데이트 0.4.1)로 바꾼다. 화면 문구만 고치고 인쇄 보호 파일은 건드리지 않는다(`check-print-guard.js` 로 확인). 첫 후보는 `AutoPrintFailureBanner.tsx:99`.
-  3. 스테이션 Noodles(24)에 프린터 지정이 비어 있는 것을 화면이 분명히 알려 주는지 확인한다.
-  4. 빌드 1회 → verify-all --full → Fable ux 점검 1회.
-- 주의: `SettingsPage.tsx` 는 작업방 523e0574 가 고치는 중이었음 — 겹치면 기다린다.
+### ✅ 완료 — K-DINE Noodles 안드로이드 앱 «QZ 없다» 잘못된 안내 [작업방 32b658fc · 2026-11-11]
+- Irene 답: «혼란없게 제대로 안내하고 고급 정리된 ui ux해줘».
+- 원인: 앱엔 QZ 가 없는데 «프린터 안 될 때» 안내 4곳이 기기와 상관없이 «QZ Tray 확인» 고정 — 자동인쇄 실패 띠(AutoPrintFailureBanner) · KDS 인쇄 문제 문구(kitchen.json) · 플로어 돈통 안 열림 · 테이블 QR 인쇄 실패. 앱 자체(mobile-app)엔 QZ 문구 0.
+- 고친 것(코드): 새 `utils/printerHelpHint.ts`(기기 판정 = 자가진단 detectPlatform 하나 → 안드로이드/윈도우/RawBT/QZ/브라우저 안내 키) · 실패 띠·FloorPlanPage 돈통 2곳·TableDetailPanel QR 이 이걸 씀 · common.json `printerHelp.*` 4개 언어 · kitchen.json printProblemBody 기기 중립 문구. 🔒 보호 파일 8개 무접촉(print-guard 8/8).
+- 확인됨(메모리 안 쓰는 것): 기기별 안내 고르기 6/6(안드로이드·윈도우·RawBT·브라우저·판정 실패 = QZ 언급 0 · PC+QZ 만 QZ) · 4개 언어 printerHelp 11키 · KDS 문구 QZ 0 · i18n:verify 오류 0 · print-guard 8/8 · design-guard 신규 0 · 고친 4파일 문법 OK.
+- ❌ 막힘(2026-11-10 17:45 UTC): 서버 스왑 2289/2048MB 초과로 메모리 자리표가 모든 작업을 멈춤(다른 방 purple-build 도 17분째 대기) → 빌드·실브라우저 확인 못 함. 우회 안 함.
+- 다음 할 일(메모리 풀리면): ① build:dev 1회(줄 선 다른 방 빌드가 이 변경도 같이 담음 — 그 빌드가 끝났으면 다시 안 해도 됨) ② `cd $CLAUDE_JOB_DIR/tmp/probe && ~/dev-server/bin/mem-slot run probe32b 900 -- node probe.js` — 안드로이드 앱 흉내로 설정›프린터·POS·플로어·KDS·실패 띠에 QZ 줄 0 확인(MODE=web 으로 PC 는 QZ 안내 그대로인지도) ③ verify-all ④ Fable ux 점검 1회(화면 문구 4곳 · 바뀐 파일 printerHelpHint.ts·AutoPrintFailureBanner.tsx·FloorPlanPage.tsx·TableDetailPanel.tsx·common/kitchen.json).
+- 2026-11-10 19:50 UTC 다시 확인: 스왑 2229/2048MB 그대로(16시대부터) → 빌드 못 함. Irene 할 일 todomwb0wm11(스왑 비우기 sudo · 55cb7c4b 카드에 이 방 이어갈 일 합침).
+- **11-11 이어함 [작업방 4b4ecce8]:** 같은 빌드로 probe 실행 — 안드로이드 앱 흉내 설정›프린터·POS·플로어·KDS·실패 띠 QZ 0/0/0/0/0 · 오류 0 · PC(rawbt 매장)는 RawBT 안내·설정 칸 이름만 QZ · **Fable ux PASS.** 남은 것: POSTerminalPage.tsx(🔒 보호 파일) 3310·3339 돈통 실패 문구 2곳 «QZ Tray or RawBT» 그대로 — Irene 승인 있어야 고침 · 안드로이드 문구가 와이파이 전제(블루투스·내장 프린터 매장엔 어색).
+- 매장 쪽 남은 것(코드 아님): Noodles(24) 스테이션 프린터 미지정 → 앱 설정›프린터에서 두 번째 프린터 고르기 · 앱 0.3.4 → 0.4.1 업데이트.
+- 설정 › 프린터 화면(SettingsPage)은 다른 방 55cb7c4b 가 고치는 중이라 손대지 않음.
 
-### (이전) 답 기다림: 운영 서버 인쇄 기록(읽기 전용)을 읽어도 될지 — K-DINE Noodles 안드로이드 앱 «QZ 없음» 잘못된 안내 [작업방 32b658fc · 2026-11-10]
+### (이전) 답 기다림(끝남 — Irene 답 받음): 운영 서버 인쇄 기록(읽기 전용)을 읽어도 될지 — K-DINE Noodles 안드로이드 앱 «QZ 없음» 잘못된 안내 [작업방 32b658fc · 2026-11-10]
 - **무엇:** 운영 pm2 로그의 `[print-trace] CLIENT` 줄(앱이 남긴 인쇄 기록)을 ssh 로 읽는 명령이 허락 창에서 멈춤 → 실행 안 함.
 - **왜 필요:** 앱 안에서 어떤 화면·어떤 인쇄 경로가 «QZ» 안내를 띄우는지 기록으로 확정하려고(추측 수정 금지 — 인쇄 보호 규칙).
 - **지금까지 확인(운영 DB 읽기만 · 쓰기 0 · 코드 변경 0):**

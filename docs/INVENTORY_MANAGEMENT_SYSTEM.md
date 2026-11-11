@@ -834,3 +834,8 @@ async function updateAvgDailyUsage(ingredientId) {
 ## PAR 추천 공용 창 · 발주 창 공급처 연결 (2026-11-10 · [Claude Code] · 개발서버)
 - PAR 추천 = 공용 창 `components/PurchaseOrders/ParSuggestions.tsx` 하나 — 재고관리(매장·브랜드 `InventoryManager`)·발주 이력·발주 본 화면에서 같이 연다. 줄마다 체크(기본 전부) → «Create PO (n)» 은 고른 줄만 · 발주 본 화면은 «발주에 담기»(장바구니). 계산·서버 변경 0.
 - 브랜드 재고 일괄 발주 창(`modals/BulkOrderModal.tsx` · `hooks/useBulkOrder.ts`): «연결 필요» 줄에서 바로 공급처 연결·새 공급업체 → 연결되면 창 안 발주 줄로 올라가고 발주 전망을 다시 읽음.
+
+## 꺼진 재고아이템 = 상태 «꺼짐(off)» (2026-11-11 · [Claude Code] · 개발서버)
+- 재고 상태 판정 한 함수 `components/Inventory/stockVerdict.ts` 에 `'off'` — `is_active` 가 false/0 이면 다른 판정보다 먼저 «꺼짐». 서버 발주 판정(`brandStockItemSuggestionsFor`·`/purchase-orders/suggestions`)은 꺼진 품목을 세지 않으므로, 화면도 상태 필터(`FILTER_TO_VERDICT`)·띠 숫자에 넣지 않고 «전체»에서만 회색 배지로 보인다.
+- 브랜드 목록은 `/api/product-ingredients` 가 꺼진 품목도 주므로 `useInventoryData` 브랜드 변환이 `is_active` 를 싣는다. 꺼진 행은 발주 칸 대신 «Product & Recipe › Stock Items 에서 켜야 발주» 안내(`inventory:verdict.offHint`).
+- 배경: 운영 SC-450·SC-800(브랜드 owner 23)이 꺼져 있어 «탭에 안 나온다» 로 보였음 — 고장이 아니라 꺼짐. 다시 켜기는 Stock Items «Activate»(운영 쓰기 = 사람 손).
