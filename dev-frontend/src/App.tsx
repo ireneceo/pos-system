@@ -26,6 +26,7 @@ import NativeAppUpdateBanner from './components/Common/NativeAppUpdateBanner';
 import NativeVersionBadge from './components/Common/NativeVersionBadge';
 import InstallGuideModal from './components/Common/InstallGuideModal';
 import AutoPrintFailureBanner from './components/AutoPrintFailureBanner';
+import PrinterSetupGapBanner from './components/PrinterSetupGapBanner';
 import PrintDeviceReporter from './components/PrintDeviceReporter';
 // Login Page (keep static - frequently used, first contact)
 import LoginPage from './pages/Login/LoginPage';
@@ -539,6 +540,7 @@ function App() {
                             passive device reporter. Both are read-only w.r.t. the print
                             pipeline — the protected files stay untouched (print-guard 8/8). */}
                         <AutoPrintFailureBanner />
+                        <PrinterSetupGapBanner />
                         <PrintDeviceReporter />
                       <Suspense fallback={<PageLoader />}>
                       <Routes>

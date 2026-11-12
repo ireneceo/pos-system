@@ -997,5 +997,13 @@
     "drawer_qz": "The drawer opens through the receipt printer. Check that QZ Tray is running, the receipt printer is on, and the drawer cable is plugged into the printer.",
     "drawer_browser": "The browser print window cannot open a cash drawer. Use the PurplePOS app (or a printer connection) for this device in Settings → Printer.",
     "qrFailed": "QR print failed — the QR needs a printer that can print images."
+  },
+  "printerGap": {
+    "title": "No printer chosen: {{names}}",
+    "bodyAdmin": "Tickets for this kitchen will not print until you choose its printer.",
+    "bodyStaff": "Tickets for this kitchen will not print. Only the restaurant admin can choose the printer — please tell them.",
+    "later": "Remind me in 1 hour",
+    "fix": "Choose printer",
+    "kitchenMain": "Kitchen"
   }
 }

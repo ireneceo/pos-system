@@ -997,5 +997,13 @@
     "drawer_qz": "Laci dibuka melalui pencetak resit. Pastikan QZ Tray sedang berjalan, pencetak resit dihidupkan, dan kabel laci dipasang pada pencetak.",
     "drawer_browser": "Tetingkap cetak pelayar tidak boleh membuka laci tunai. Gunakan aplikasi PurplePOS (atau sambungan pencetak) untuk peranti ini di Tetapan → Pencetak.",
     "qrFailed": "Cetakan QR gagal — QR memerlukan pencetak yang boleh mencetak imej."
+  },
+  "printerGap": {
+    "title": "Tiada pencetak dipilih: {{names}}",
+    "bodyAdmin": "Tiket untuk dapur ini tidak akan dicetak sehingga anda memilih pencetaknya.",
+    "bodyStaff": "Tiket untuk dapur ini tidak akan dicetak. Hanya pentadbir restoran boleh memilih pencetak — sila maklumkan kepada mereka.",
+    "later": "Ingatkan dalam 1 jam",
+    "fix": "Pilih pencetak",
+    "kitchenMain": "Dapur"
   }
 }

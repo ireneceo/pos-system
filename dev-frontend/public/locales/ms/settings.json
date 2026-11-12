@@ -1129,7 +1129,7 @@
       "choosePrinter": "Pilih pencetak…"
     },
     "adminOnlyNotice": "Tetapan pencetak hanya boleh diubah oleh Pentadbir Restoran.",
-    "adminOnlyReadonly": "Tetapan pencetak hanya boleh diubah oleh Pentadbir Restoran. Perubahan di sini tidak akan disimpan — kecuali Mod Penghalaan Kecemasan yang boleh ditogol oleh mana-mana kakitangan.",
+    "adminOnlyReadonly": "Lihat sahaja — tetapan pencetak hanya boleh diubah oleh Pentadbir Restoran, jadi medan ini dikunci. Kakitangan masih boleh menghidupkan Mod Penghalaan Kecemasan (dalam \"Apabila cetakan gagal\").",
     "troubleshoot": {
       "openTitle": "Buka panduan penyelesaian masalah pencetak",
       "openBtn": "Panduan penyelesaian masalah ?",
@@ -1447,6 +1447,12 @@
       "otherLine2": "Nama pencetak mestilah nama yang didaftarkan pada peranti yang benar-benar mencetak. Nama yang ditemui pada peranti ini mungkin tiada pada peranti itu.",
       "otherKindWarn": "Peranti ini ({{mine}}) berlainan jenis daripada peranti tetapan ({{theirs}}). Mengubah kaedah sambungan boleh menghentikan cetakan pada peranti itu.",
       "takeOver": "Mulai sekarang guna peranti ini sebagai peranti tetapan pencetak — hanya jika anda menukar peranti atau memasang semula aplikasi"
+    },
+    "gaps": {
+      "title": "Dapur ini tiada pencetak — tiket mereka tidak akan dicetak",
+      "kitchenMain": "Pencetak dapur",
+      "staff": "Hanya pentadbir restoran boleh memilih pencetak — sila maklumkan kepada mereka.",
+      "go": "Pilih pencetak"
     }
   },
   "settingsPage.businessHours.title": "Waktu Operasi & Pesanan Terakhir",

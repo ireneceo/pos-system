@@ -13,6 +13,7 @@ import { CARD_TYPE_OPTIONS, EWALLET_TYPE_OPTIONS } from '../../constants';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import AutoSaveField, { AutoSaveHandle } from '../../components/Common/AutoSaveField';
+import { findPrinterSetupGaps } from '../../utils/printerSetupGaps';
 import { PrinterAutoSave, PrinterLockContext, PrinterScopeBar, SetupDeviceModal, OtherDeviceModal, usePrinterDeviceScope, buildPrinterDevice, deviceKindLabel, SetupDeviceTag } from './PrinterDeviceScope';
 import DateField from '../../components/Common/DateField';
 import ItemScheduleEditor from '../MenuManagement/ItemScheduleEditor';
@@ -6067,7 +6068,7 @@ const SettingsPage: React.FC = () => {
                 <span>
                   {canEditPrinterSettings
                     ? t('settings:printer.adminOnlyNotice', 'Printer settings can only be changed by the Restaurant Admin.')
-                    : t('settings:printer.adminOnlyReadonly', 'Printer settings can only be changed by the Restaurant Admin. Your account is view-only — any changes here will not be saved.')}
+                    : t('settings:printer.adminOnlyReadonly', 'View only — printer settings can only be changed by the Restaurant Admin, so these fields are locked. Staff can still turn on Emergency Routing Mode (in "When printing fails").')}
                 </span>
               </div>
               </>)}
@@ -6135,6 +6136,33 @@ const SettingsPage: React.FC = () => {
                   </UIButton>
                 </div>
               )}
+              {/* 2026-11-12 (Irene «설정 안된 거 있으면 정확히 알려줘서 미싱 못하게»): 프린터가 안 정해진 주방 — 인쇄 코드와 같은 판정(utils/printerSetupGaps) */}
+              {!printerSettingsLoading && !printerSettingsError && (() => {
+                const gaps = findPrinterSetupGaps(printerSettings as any, (printerSettings as any).printerMode, kitchenStations.length > 0 ? kitchenStations.filter((st: any) => st.is_active !== false) : null);
+                if (gaps.length === 0) return null;
+                return (
+                  <div data-testid="printer-gap-box" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '12px 14px', marginBottom: 16, borderRadius: 8, fontSize: 13, background: '#FFFBEB', border: '1px solid #FDE68A', color: '#92400E' }}>
+                    <div style={{ flex: '1 1 260px' }}>
+                      <div style={{ fontWeight: 700, marginBottom: 4 }}>{t('settings:printer.gaps.title', 'These kitchens have no printer — their tickets will not print')}</div>
+                      <ul style={{ margin: 0, paddingLeft: 18 }}>
+                        {gaps.map((g) => (
+                          <li key={g.kind === 'station' ? g.stationId : 'k'}>
+                            {g.kind === 'station' ? g.name : t('settings:printer.gaps.kitchenMain', 'Kitchen printer')}
+                          </li>
+                        ))}
+                      </ul>
+                      {!canEditPrinterSettings && (
+                        <div style={{ marginTop: 6 }}>{t('settings:printer.gaps.staff', 'Only the restaurant admin can choose printers — please tell them.')}</div>
+                      )}
+                    </div>
+                    {canEditPrinterSettings && (
+                      <UIButton variant="primary" size="small" onClick={() => document.getElementById('printer-sec-assign')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                        {t('settings:printer.gaps.go', 'Choose printers')}
+                      </UIButton>
+                    )}
+                  </div>
+                );
+              })()}
               <div style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#6B7280', marginBottom: 8 }}>{t('settings:printer.sections.stripTitle', 'Set up in this order')}</div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

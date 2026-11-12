@@ -1129,7 +1129,7 @@
       "choosePrinter": "Select a printer…"
     },
     "adminOnlyNotice": "Printer settings can only be changed by the Restaurant Admin.",
-    "adminOnlyReadonly": "Printer settings can only be changed by the Restaurant Admin. Your changes here will not be saved — except Emergency Routing Mode, which any staff can toggle.",
+    "adminOnlyReadonly": "View only — printer settings can only be changed by the Restaurant Admin, so these fields are locked. Staff can still turn on Emergency Routing Mode (in \"When printing fails\").",
     "troubleshoot": {
       "openTitle": "Open the printer troubleshooting guide",
       "openBtn": "Troubleshooting guide ?",
@@ -1447,6 +1447,12 @@
       "otherLine2": "Printer names must be the names registered on the device that actually prints. A name found on this device may not exist on that device.",
       "otherKindWarn": "This device ({{mine}}) is a different kind from the setup device ({{theirs}}). Changing the connection method can stop printing on that device.",
       "takeOver": "From now on use this device as the printer setup device — only if you replaced the device or reinstalled the app"
+    },
+    "gaps": {
+      "title": "These kitchens have no printer — their tickets will not print",
+      "kitchenMain": "Kitchen printer",
+      "staff": "Only the restaurant admin can choose printers — please tell them.",
+      "go": "Choose printers"
     }
   },
   "settingsPage.businessHours.title": "Business Hours & Last Order",
