@@ -1,5 +1,14 @@
 ## 현재 작업 상태
 
+### ✅ 완료 — K-DINE Noodles(매장 28) 앱 «QZ 오류»·«저장하면 리셋» 원인 확정 (운영 읽기만 · 코드 변경 0) [Claude Code · 작업방 52e6d237 · 2026-11-12]
+- Irene «K-dine noodles 파빌리온 프린팅이 안드로이드 앱으로 세팅했는데 계속 QZ오류가 나와서 문제야 … 운영에서 저장된 거 파악해주고 … 저장하면 다시 리셋된다는데 이런 이유도 있는지»
+- 근거: 운영 DB(printer_settings·print_device_status) + 운영 로그 `/var/www/logs/production/out.log·error.log`(+ 하루 단위 `out__날짜.log`, 날짜=다음날 0시 회전).
+- ① 저장 리셋 = 직원 계정(user 69, Staff)이 11-11 6번·11-12 4번 프린터 설정 저장 → 서버가 «RA only» 로 프린터 칸만 조용히 건너뜀(나머지 설정은 저장 성공 알림) → 다시 열면 원래대로. 관리자 Kate(user 19)의 11-12 09:37 저장만 반영됨. 운영 화면은 빨간 «보기만» 안내만 있고 칸은 바뀌어서 헷갈림 — 개발엔 이미 고침(직원은 칸 잠김, 프린터 설정 기기 기능 · 다음 배포 때 반영).
+- ② «QZ» = 저장값의 방식 이름이 qztray 지만, 앱 안에서는 «앱에 등록한 프린터 이름» 경로라 정상(로그: 앱 0.3.4 가 «Counter» 로 성공). 브라우저+RawBT 태블릿에선 같은 설정이 «QZ Tray» 로 보임(한 설정을 기기 5대가 같이 씀).
+- ③ 실제 실패 = Noodles(24) 주방 프린터 빈칸 → 앱 기본 프린터로 감 → 11-10 2건·11-11 8건 PRINTER_NOT_FOUND → 운영 실패 안내 띠는 기기 상관없이 «QZ Tray 확인» 문구(개발엔 고침 · 운영 미반영). 11-12 은 실패 0 · 성공 236 · 주문 54건 전부 인쇄.
+- 기기 5대(앱 1 + 브라우저 RawBT 4)가 전부 «Main POS» 자동인쇄 담당 — 오늘은 앱이 다 찍음.
+- Irene 할 일 올림: 관리자 계정으로 앱에서 Noodles 프린터 지정. 운영 반영(직원 칸 잠금·QZ 문구): 다음 배포 때.
+
 ### ✅ 완료 (11/12 00:00 정기 점검 · 2026-11-11 15:xx UTC) — /개발완료(프린터 설정 기기 · 앱 QZ 안내 커밋) + /개발시작(운영 새 문의 0) [Claude Code · 백그라운드 작업방 a2313eed]
 - 커밋: 작업방 55cb7c4b·4b4ecce8 «프린터 설정 기기 한 대»(Fable gate PASS) + 32b658fc·4b4ecce8 «앱 QZ 안내 기기별»(Fable ux PASS) 코드·번역·문서 + 11-11 배포 기록(deploy-manifest · releases archive 이동) · Fable 설계 문서.
 - 기록: CHANGELOG 11-11 2줄 · DEVELOPMENT_PLAN 섹션 · 문서(PRINT_DEVICE_SETUP_STANDARD §7-c · WORKSTATION_DESIGN)는 작업방이 이미 고침.
