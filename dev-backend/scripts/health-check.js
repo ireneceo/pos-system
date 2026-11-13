@@ -11669,6 +11669,106 @@ function defineInvoiceBoundaryTests() {
 }
 
 // ============================================
+// 매장 알림 분리 (2026-11-13 · .claude/fable-design-20261113-notification-store-scope.md §4 V1·V2·V4·V5)
+//   «K-DINE Noodles 화면에 K-DINE IPC 주문 알림» 의 재발 방지.
+//   데모 38 RA(user 23)에게 39 RA 모자를 잠깐 붙여: 받는 사람(소속 ∪ 모자) · 화면 카드는 보는 매장만 · 매장별 끄기 · 남의 매장 번호 버림.
+//   표지 __HC_NOTIF_SCOPE__ 주문(printed_offline) · 시작·끝 정리(멱등) · 모자·설정 원복.
+// ============================================
+function defineStoreScopedNotificationTests() {
+  const MARK = '__HC_NOTIF_SCOPE__';
+  const A = 23;
+  const say = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  let cached = null;
+  async function sweep() {
+    const { sequelize } = require('../config/database');
+    const [rows] = await sequelize.query('SELECT id FROM orders WHERE customer_name = ?', { replacements: [MARK] });
+    const ids = rows.map(r => r.id);
+    if (ids.length) {
+      for (const tbl of ['order_actions', 'order_payments', 'point_transactions', 'order_items']) {
+        await sequelize.query(`DELETE FROM \`${tbl}\` WHERE order_id IN (:ids)`, { replacements: { ids } }).catch(() => {});
+      }
+      await sequelize.query('DELETE FROM orders WHERE id IN (:ids)', { replacements: { ids } });
+    }
+    await sequelize.query("DELETE FROM user_contexts WHERE user_id = :A AND entity_type = 'restaurant' AND entity_id = 39 AND granted_by = 1 AND role = 'Restaurant Admin'", { replacements: { A } });
+    await sequelize.query('UPDATE users SET push_store_off = NULL WHERE id = :A', { replacements: { A } });
+  }
+  async function scenario() {
+    if (cached) return cached;
+    const { sequelize } = require('../config/database');
+    const jwt = require('jsonwebtoken');
+    const { io } = require('socket.io-client');
+    const [[ok]] = await sequelize.query("SELECT COUNT(*) c FROM users u JOIN restaurants r ON r.id = 38 AND r.is_demo = 1 WHERE u.id = :A AND u.restaurant_id = 38 AND u.role = 'Restaurant Admin' AND u.is_active = 1", { replacements: { A } });
+    const [[r39]] = await sequelize.query('SELECT name, is_demo FROM restaurants WHERE id = 39');
+    const [[r38]] = await sequelize.query('SELECT name FROM restaurants WHERE id = 38');
+    if (!Number(ok.c) || !r39 || !r39.is_demo) return (cached = { skip: true });
+    const [[hat]] = await sequelize.query("SELECT COUNT(*) c FROM user_contexts WHERE user_id = :A AND entity_type = 'restaurant' AND entity_id = 39", { replacements: { A } });
+    if (Number(hat.c)) return (cached = { skip: true, why: '이미 39 모자가 있음 — 손대지 않음' });
+    await sweep();
+    const out = { r38: r38.name, r39: r39.name };
+    const socks = [];
+    try {
+      await sequelize.query("INSERT INTO user_contexts (user_id, entity_type, entity_id, role, granted_by, created_at, updated_at) VALUES (:A, 'restaurant', 39, 'Restaurant Admin', 1, NOW(), NOW())", { replacements: { A } });
+      const [[mx]] = await sequelize.query('SELECT COALESCE(MAX(id), 0) m FROM push_logs');
+      const tA = jwt.sign({ userId: A }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      const H = { Authorization: `Bearer ${tA}` };
+      const sw = await request('POST', '/auth/switch-context', { entity_type: 'restaurant', entity_id: 39, role: 'Restaurant Admin' }, H);
+      const t39 = sw.body?.data?.token || sw.body?.token;
+      if (!t39) { out.err = `모자 전환 ${sw.status}`; return (cached = out); }
+      const t38 = jwt.sign({ userId: A, role: 'Restaurant Admin', restaurant_id: 38 }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      const mk = (token) => { const ev = []; const so = io(opts.host + '/notifications', { transports: ['websocket'], auth: { token } }); so.on('connect', () => so.emit('join', {})); so.on('notification', d => ev.push(d)); socks.push(so); return ev; };
+      const ev38 = mk(t38), ev39 = mk(t39);
+      await sleep(1200);
+      const body = (rid) => ({ restaurant_id: rid, customer_name: MARK, order_type: 'takeaway', source: 'pos', payment_method: 'cash', status: 'outstanding', printed_offline: true, order_items: [{ name: 'HC Notif', quantity: 1, price: 1 }] });
+      const o38 = await request('POST', '/orders', body(38), H);
+      const o39 = await request('POST', '/orders', body(39), { Authorization: `Bearer ${t39}` });
+      if (o38.status >= 300 || o39.status >= 300) { out.err = `주문 생성 38:${o38.status} 39:${o39.status}`; return (cached = out); }
+      await sleep(2000);
+      const titles = (ev) => ev.filter(e => e.category === 'order_new').map(e => String(e.title));
+      out.cards38 = titles(ev38); out.cards39 = titles(ev39);
+      const [logs] = await sequelize.query("SELECT user_id, title FROM push_logs WHERE id > :b AND category = 'order_new'", { replacements: { b: mx.m } });
+      out.to39 = logs.filter(l => l.title.includes(r39.name)).map(l => l.user_id);
+      out.to38 = logs.filter(l => l.title.includes(r38.name)).map(l => l.user_id);
+      // V4·V5 — 39 끄기(남의 매장 번호 섞어서) → 저장값 · 다음 39 주문은 기기 알림만 건너뜀
+      const pu = await request('PUT', '/push/preferences', { store_off: [39, 1, 5] }, H);
+      const [[u]] = await sequelize.query('SELECT push_store_off p FROM users WHERE id = :A', { replacements: { A } });
+      out.saved = typeof u.p === 'string' ? JSON.parse(u.p) : u.p; out.putStatus = pu.status;
+      const [[mx2]] = await sequelize.query('SELECT COALESCE(MAX(id), 0) m FROM push_logs');
+      ev39.length = 0;
+      await request('POST', '/orders', body(39), { Authorization: `Bearer ${t39}` });
+      await sleep(2000);
+      const [l2] = await sequelize.query("SELECT user_id, status FROM push_logs WHERE id > :b AND category = 'order_new'", { replacements: { b: mx2.m } });
+      out.offStatus = (l2.find(l => l.user_id === A) || {}).status || null;
+      out.cardAfterOff = titles(ev39).some(x => x.includes(r39.name));
+      return (cached = out);
+    } finally {
+      socks.forEach(so => so.close());
+      await sweep().catch(() => {});
+    }
+  }
+  test('pos', '매장 알림 분리 — 연결(모자) 관리자도 그 매장 주문 알림 받음 · 화면 카드는 지금 보는 매장 것만', async () => {
+    const r = await scenario();
+    if (r.skip) { console.log(c.gray(`      (건너뜀: ${r.why || '데모 38/39 준비 안 됨'})`)); return true; }
+    if (r.err) return say(r.err);
+    const has = (arr, n) => arr.some(x => x.includes(n));
+    if (!r.to39.includes(A)) return say(`39 주문 받는 사람에 모자 관리자 없음 [${r.to39}]`);
+    if (!r.to38.includes(A) || new Set(r.to38).size !== r.to38.length) return say(`38 주문 받는 사람 [${r.to38}]`);
+    if (!has(r.cards38, r.r38) || has(r.cards38, r.r39)) return say(`38 화면 카드 ${JSON.stringify(r.cards38)}`);
+    if (!has(r.cards39, r.r39) || has(r.cards39, r.r38)) return say(`39 화면 카드 ${JSON.stringify(r.cards39)}`);
+    return true;
+  });
+  test('security', '매장 알림 끄기 — 남의 매장 번호는 저장 안 됨 · 끈 매장은 기기 알림만 건너뜀(화면 카드는 옴)', async () => {
+    const r = await scenario();
+    if (r.skip) { console.log(c.gray(`      (건너뜀: ${r.why || '데모 38/39 준비 안 됨'})`)); return true; }
+    if (r.err) return say(r.err);
+    if (r.putStatus !== 200 || JSON.stringify(r.saved) !== '[39]') return say(`저장 ${r.putStatus} ${JSON.stringify(r.saved)}`);
+    if (r.offStatus !== 'store_off') return say(`끈 뒤 기록 ${r.offStatus}`);
+    if (!r.cardAfterOff) return say('끈 뒤 39 화면 카드 안 옴');
+    return true;
+  });
+}
+
+// ============================================
 // 결제 원장 다섯 번째 경로 — «주문 넣는 순간 결제 완료» (2026-10-07 Fable 판정 C ·
 //   .claude/fable-verdict-20261007-structure-backlog.md). POS 먼저 받기 매장(매장8)에서 원장·amount_paid 가 비던 것.
 //   데모 매장 38 · 표지 __HC_LEDGER5__ 주문(printed_offline=true → 인쇄 대기 안 생김) · 시작·끝에 정리(멱등).
@@ -14616,6 +14716,7 @@ async function runTests(allTests, category) {
   definePaymentTests();
   defineInvoiceBoundaryTests();
   defineOrderLedgerTests();
+  defineStoreScopedNotificationTests();
   definePreflightSecurityTests();
   defineReferralTests(ctx);
   definePrintTests(ctx);

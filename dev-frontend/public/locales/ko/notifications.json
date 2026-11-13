@@ -27,5 +27,8 @@
   "notificationSettingsPage.resendVerification": "인증 메일 재발송",
   "notificationSettingsPage.sending": "보내는 중…",
   "notificationSettingsPage.verifySent": "인증 메일을 보냈습니다. 받은편지함을 확인하세요.",
-  "notificationSettingsPage.verifySendFailed": "인증 메일 발송에 실패했습니다. 다시 시도하세요."
+  "notificationSettingsPage.verifySendFailed": "인증 메일 발송에 실패했습니다. 다시 시도하세요.",
+  "pushStores.title": "매장별 알림",
+  "pushStores.desc": "일하는 매장마다 새 주문·예약 기기 알림을 받을지 고릅니다. 화면 안 알림은 지금 보고 있는 매장 것만 뜹니다.",
+  "pushStores.failed": "저장하지 못했습니다. 다시 시도해 주세요."
 }

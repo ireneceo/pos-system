@@ -117,11 +117,25 @@ async function logPush({ user_id, subscription_id, category, title, body, status
  * Send push to a single user across all active subscriptions.
  * Returns { sent, failed, skipped, reason? }.
  */
-async function sendPushToUser(userId, payload) {
+/**
+ * opts.storeScope (매장 번호) — 매장 알림(새 주문·예약)일 때만 준다(sendPushToRestaurant).
+ *   · 화면 카드는 `user:{id}@restaurant:{rid}` 룸 = 그 사람이 «지금 그 매장을 보는» 화면에만 뜬다.
+ *   · 그 사람이 그 매장 기기 알림을 껐으면(push_store_off) OS 푸시만 건너뛴다(로그 store_off).
+ *   안 주면 종전대로 `user:{id}` (어느 화면에서든) — 브랜드 재고 알림·시험 발송 등.
+ *   설계 .claude/fable-design-20261113-notification-store-scope.md (N2).
+ */
+function isStoreMuted(user, rid) {
+  const list = user.push_store_off;
+  if (!Array.isArray(list) || !rid) return false;
+  return list.map(Number).includes(Number(rid));
+}
+
+async function sendPushToUser(userId, payload, opts = {}) {
   if (!payload || !payload.category) throw new Error('payload.category is required');
   ensureInit();
+  const storeScope = opts && opts.storeScope ? Number(opts.storeScope) : null;
 
-  const user = await User.findByPk(userId, { attributes: ['id', 'push_enabled', 'push_muted_hours', 'notification_preferences'] });
+  const user = await User.findByPk(userId, { attributes: ['id', 'push_enabled', 'push_muted_hours', 'notification_preferences', 'push_store_off'] });
   if (!user) return { sent: 0, failed: 0, skipped: 1, reason: 'no_user' };
 
   if (user.push_enabled === false) {
@@ -134,7 +148,12 @@ async function sendPushToUser(userId, payload) {
   }
 
   // In-app socket fires regardless of muted_hours (only OS push is suppressed).
-  emitInApp([`user:${userId}`], payload);
+  emitInApp([storeScope ? `user:${userId}@restaurant:${storeScope}` : `user:${userId}`], payload);
+
+  if (storeScope && isStoreMuted(user, storeScope)) {
+    await logPush({ user_id: userId, category: payload.category, title: payload.title, body: payload.body, status: 'store_off' });
+    return { sent: 0, failed: 0, skipped: 1, reason: 'store_off' };
+  }
 
   if (isMutedNow(user)) {
     await logPush({ user_id: userId, category: payload.category, title: payload.title, body: payload.body, status: 'muted' });
@@ -191,14 +210,19 @@ async function sendPushToRole(role, payload) {
   return { sent, failed, recipients: users.length };
 }
 
+// 매장 알림 받는 사람 = 그 매장 소속 RA·Staff ∪ 그 매장 RA·Staff 모자(연결 계정) · 켜진 계정 · push_enabled.
+// 2026-11-13 전엔 소속만 봐서 연결 관리자(예: K-DINE IPC 계정이 Noodles 를 맡음)는 그 매장 알림을 못 받고,
+// 원래 매장 알림이 다른 매장 화면에 떴다. 설계 .claude/fable-design-20261113-notification-store-scope.md
 async function sendPushToRestaurant(restaurantId, payload) {
-  const users = await User.findAll({
-    where: { restaurant_id: restaurantId, role: { [Op.in]: ['Restaurant Admin', 'Staff'] }, push_enabled: true },
-    attributes: ['id']
-  });
+  const rid = Number(restaurantId);
+  const { listRestaurantPeopleIds } = require('./userContexts');
+  const ids = await listRestaurantPeopleIds(rid);
+  const users = ids.length
+    ? await User.findAll({ where: { id: { [Op.in]: ids }, push_enabled: true }, attributes: ['id'] })
+    : [];
   let sent = 0, failed = 0;
   for (const u of users) {
-    const r = await sendPushToUser(u.id, payload);
+    const r = await sendPushToUser(u.id, payload, { storeScope: rid });
     sent += r.sent; failed += r.failed;
   }
   return { sent, failed, recipients: users.length };

@@ -30,7 +30,7 @@ const PushLog = sequelize.define('PushLog', {
     allowNull: true
   },
   status: {
-    type: DataTypes.ENUM('sent', 'failed', 'expired_endpoint', 'category_off', 'muted', 'no_subscription'),
+    type: DataTypes.ENUM('sent', 'failed', 'expired_endpoint', 'category_off', 'muted', 'no_subscription', 'store_off'),
     allowNull: false
   },
   error_code: {

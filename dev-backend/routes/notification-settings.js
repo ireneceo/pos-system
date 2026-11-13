@@ -72,9 +72,18 @@ router.get('/preferences', authenticateToken, async (req, res) => {
     }
 
     // Filter categories by user role
-    const userRole = user.role;
+    // 원래 역할 + 이 사람이 가진 모자(연결 권한) 역할 — 모자로 매장 알림을 받게 됐으면 끌 항목도 보여야 한다.
+    // 설계 .claude/fable-design-20261113-notification-store-scope.md (N6)
+    const myRoles = new Set([user.role]);
+    try {
+      const [hatRows] = await sequelize.query(
+        'SELECT DISTINCT role FROM user_contexts WHERE user_id = :uid',
+        { replacements: { uid: user.id } }
+      );
+      hatRows.forEach(r => r.role && myRoles.add(r.role));
+    } catch (_) { /* 모자 표가 없으면 원래 역할만 */ }
     const categories = NOTIFICATION_CATEGORIES.filter(c =>
-      c.roles.includes('all') || c.roles.includes(userRole)
+      c.roles.includes('all') || c.roles.some(r => myRoles.has(r))
     );
 
     // Build preferences with defaults (null = all enabled)

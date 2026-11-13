@@ -248,6 +248,9 @@ const StaffPage: React.FC = () => {
   const [myPinError, setMyPinError] = useState('');
   const [myPinBusy, setMyPinBusy] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
+  // 직원 삭제 — DELETE /api/users/:id (서버: RA 는 자기 매장 role=Staff 만 · 2026-11-13 버튼이 없던 것 붙임)
+  const [removeTarget, setRemoveTarget] = useState<Staff | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   const fetchStaff = useCallback(async () => {
     setListError('');
@@ -480,6 +483,31 @@ const StaffPage: React.FC = () => {
     } catch (e) {
       setUnlinkTarget(null);
       setUnlinking(false);
+      setErrorMessage((e as Error).message);
+    }
+  };
+
+  const executeRemove = async () => {
+    const target = removeTarget;
+    if (!target || removing) return;
+    setRemoving(true);
+    try {
+      const res = await fetch(`/api/users/${target.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      const body = await res.json().catch(() => ({}));
+      setRemoveTarget(null);
+      setRemoving(false);
+      if (!res.ok || body?.success === false) {
+        const err = body?.message || body?.error;
+        setErrorMessage((typeof err === 'string' ? err : err?.message) || t('staff:staffPage.removeFailed', 'Failed to remove staff'));
+        return;
+      }
+      await fetchStaff();
+    } catch (e) {
+      setRemoveTarget(null);
+      setRemoving(false);
       setErrorMessage((e as Error).message);
     }
   };
@@ -869,6 +897,11 @@ const StaffPage: React.FC = () => {
                           {staff.role === 'Staff' && (
                             <IconButton onClick={() => setResetPasswordTarget(staff)}>
                               Reset PW
+                            </IconButton>
+                          )}
+                          {staff.role === 'Staff' && canManageRequests && String(staff.id) !== String(user?.id) && (
+                            <IconButton variant="delete" onClick={() => setRemoveTarget(staff)} data-testid="staff-remove">
+                              {t('staff:staffPage.remove', 'Remove')}
                             </IconButton>
                           )}
                         </ActionGroup>}
@@ -1283,6 +1316,24 @@ const StaffPage: React.FC = () => {
         >
           <div style={{ fontSize: 14, color: '#1F2937' }}>
             <strong>{unlinkTarget?.name}</strong> — {t('staff:staffPage.unlinkConfirm')}
+          </div>
+        </Modal>
+
+        {/* ===== 직원 삭제 확인 ===== */}
+        <Modal
+          isOpen={!!removeTarget}
+          onClose={() => setRemoveTarget(null)}
+          title={t('staff:staffPage.removeTitle', 'Remove staff')}
+          size="small"
+          footer={
+            <>
+              <ModalButton variant="secondary" onClick={() => setRemoveTarget(null)}>{t('staff:staffPage.cancel')}</ModalButton>
+              <ModalButton variant="danger" onClick={executeRemove} disabled={removing} data-testid="staff-remove-confirm">{t('staff:staffPage.remove', 'Remove')}</ModalButton>
+            </>
+          }
+        >
+          <div style={{ fontSize: 14, color: '#1F2937' }}>
+            <strong>{removeTarget?.name}</strong> — {t('staff:staffPage.removeConfirm')}
           </div>
         </Modal>
 

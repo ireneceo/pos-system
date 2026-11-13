@@ -27,5 +27,8 @@
   "notificationSettingsPage.resendVerification": "重新发送验证邮件",
   "notificationSettingsPage.sending": "发送中…",
   "notificationSettingsPage.verifySent": "验证邮件已发送，请查收。",
-  "notificationSettingsPage.verifySendFailed": "无法发送验证邮件，请重试。"
+  "notificationSettingsPage.verifySendFailed": "无法发送验证邮件，请重试。",
+  "pushStores.title": "门店",
+  "pushStores.desc": "按门店选择是否在设备上接收新订单和预订通知。页面内提醒只显示您当前查看的门店。",
+  "pushStores.failed": "保存失败，请重试。"
 }

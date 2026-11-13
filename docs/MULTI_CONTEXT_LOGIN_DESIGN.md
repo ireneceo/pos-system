@@ -410,6 +410,12 @@ v1 은 "표준 claim 에 투영값이 있으니 소켓 무변경"이라 했다. 
 - **기본 카드 제목 = 이 아이디의 프로필 이름(`users.full_name`)** (2026-09-25 Irene 「브랜드이름이 왜 나와? 이 아이디
   프로필이름이 나와야지」) — `listContexts` 가 비어 있을 때만 예전처럼 엔티티명 → 역할명으로 폴백. 부여·오너 카드는
   그대로 «들어갈 곳의 이름». §6.1 의 «엔티티명» 은 이 결정으로 기본 카드에 한해 대체됨.
+- **(2026-11-13 대체) 기본 카드 제목 = 그 역할 관리자 화면에서 정한 이름** — Irene «프로필이름이 멀티로그인 역할 리스트에
+  나오네. 이상해. 원래 각 역할마다 각 관리자 페이지에 맞는 이름으로 설정할 수 있어야 하잖아». 위 «프로필 이름» 규칙을 대체한다.
+  `services/userContexts.js resolveDefaultLabel` 한 곳: 브랜드·푸드코트 = Company Info 의 Company Name(`company_name` → `name`,
+  화면 GET 과 같은 행: 스칼라 id → owner_id) · 매장(RA·Staff) = 매장 이름 · 공급업체 = Company Info 이름(`supplier_companies.name`,
+  Admin=owner_id · Staff=supplier_company_id) · 오너 = 오너 카드와 같은 «첫 매장 +N» · System Admin·Referral = 역할명.
+  프로필 이름(`users.full_name`)은 카드 제목에 쓰지 않는다. 이름을 바꾸려면 그 역할 화면의 회사 정보·매장 이름을 고친다.
 
 ### 6.3 POS 현장(공용 단말)과의 관계 (v2 — 검증 F7 보강)
 - POS 단말 화면(POSTerminal/KDS/FloorPlan)에 스위처 **비노출**(§10 Q4 확정). 현장의 "사람 바꾸기"는

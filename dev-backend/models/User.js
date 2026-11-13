@@ -361,6 +361,13 @@ User.init({
     type: DataTypes.JSON,
     allowNull: true,
     comment: '{ "enabled": true, "start": 22, "end": 8, "timezone": "Asia/Kuala_Lumpur" } — OS push only, in-app socket still emits'
+  },
+  // 2026-11-13 매장별 기기 알림 끄기 — 끈 매장 번호 배열(예: [28]). NULL = 내 매장 전부 받음.
+  // 기기(OS) 알림만 건너뛴다 — 그 매장을 보고 있는 화면 카드는 그대로. 설계 .claude/fable-design-20261113-notification-store-scope.md
+  push_store_off: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Restaurant ids whose OS push the user muted. NULL = all my stores on.'
   }
 }, {
   sequelize: database.sequelize,

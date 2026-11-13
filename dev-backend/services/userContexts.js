@@ -240,6 +240,55 @@ async function resolveEntityName(entityType, entityId) {
   }
 }
 
+// 이름 한 줄 읽기 — 표시용이라 실패하면 null(역할명으로 보인다).
+async function readName(sql, replacements) {
+  try {
+    const [rows] = await sequelize.query(sql, { replacements });
+    const v = rows.length ? rows[0].name : null;
+    return typeof v === 'string' && v.trim() ? v.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 기본(본래 역할) 카드 제목 = 그 역할의 관리자 화면에서 정하는 이름. **표시 문자열만** — 판정 무접촉.
+ *   브랜드     — Company Info 의 Company Name (GET /api/brands/company-info 와 같은 행: brand_id → owner_id, company_name → name)
+ *   푸드코트   — Company Info 의 Company Name (foodcourt_id → owner_id, company_name → name)
+ *   매장       — 매장 이름 (restaurants.name — 연결 매장 카드와 같은 칸)
+ *   공급업체   — Company Info 의 Company name (supplier_companies.name — Admin 은 owner_id, Staff 는 supplier_company_id)
+ *   오너       — 오너 카드와 같은 규칙(내 매장 이름 · 여럿이면 «첫 매장 +N»)
+ *   그 밖(System Admin·Referral Partner) — 역할명
+ */
+async function resolveDefaultLabel(user, base) {
+  const uid = normalizeEntityId(user && user.id);
+  switch (base.entity_type) {
+    case 'brand':
+    case 'foodcourt': {
+      const table = base.entity_type === 'brand' ? 'brands' : 'foodcourts';
+      const eid = normalizeEntityId(base.entity_id);
+      const sql = where => `SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS name FROM ${table} WHERE ${where} ORDER BY id LIMIT 1`;
+      return (eid ? await readName(sql('id = :eid'), { eid }) : null)
+        || (uid ? await readName(sql('owner_id = :uid'), { uid }) : null);
+    }
+    case 'restaurant':
+      return resolveEntityName('restaurant', base.entity_id);
+    case 'supplier': {
+      const sid = normalizeEntityId(user.supplier_company_id);
+      return (user.role === 'Supplier Admin' && uid
+        ? await readName('SELECT name FROM supplier_companies WHERE owner_id = :uid ORDER BY id LIMIT 1', { uid })
+        : null)
+        || (sid ? await readName('SELECT name FROM supplier_companies WHERE id = :sid LIMIT 1', { sid }) : null);
+    }
+    case 'owner': {
+      const owned = uid ? await listOwnedRestaurants(uid) : [];
+      return owned.length ? ownerHatLabel(owned) : null;
+    }
+    default:
+      return null;
+  }
+}
+
 /**
  * 이 사용자가 고를 수 있는 컨텍스트 전체 = [파생 기본 컨텍스트, ...부여된 모자].
  *
@@ -251,12 +300,10 @@ async function listContexts(user) {
   const contexts = [];
   const base = deriveDefaultContext(user);
   if (base) {
-    // 기본 카드 제목 = **이 아이디의 프로필 이름** (2026-09-25 Irene 「브랜드이름이 왜 나와?
-    // 이 아이디 프로필이름이 나와야지」). 계정 스칼라가 가리키는 엔티티 하나의 이름은 그 계정이
-    // 가진 전부를 대표하지 못한다(BG 는 owner_id 기준 브랜드가 여럿일 수 있다).
-    // 부여·오너 카드는 그대로 «들어갈 곳의 이름». 프로필 이름이 비면 예전처럼 엔티티명 → 역할명.
-    const profileName = typeof user.full_name === 'string' ? user.full_name.trim() : '';
-    const name = profileName || await resolveEntityName(base.entity_type, base.entity_id);
+    // 기본 카드 제목 = **그 역할 관리자 화면에서 정한 이름** (2026-11-13 Irene «프로필이름이 멀티로그인
+    // 역할 리스트에 나오네. 이상해. 원래 각 역할마다 각 관리자 페이지에 맞는 이름으로 설정할 수 있어야 하잖아»).
+    // 2026-09-25 «프로필 이름» 결정을 대체한다. 프로필 이름(users.full_name)은 쓰지 않는다 — 이름이 없으면 역할명.
+    const name = await resolveDefaultLabel(user, base);
     if (name) base.label = name;
     contexts.push(base);
   }
@@ -553,16 +600,61 @@ async function findRestaurantHat(userId, entityId) {
  * 모자 승인(routes/context-requests.js)이 같이 쓴다([[feedback_check_and_fix_same_sql]]).
  * @returns {Promise<number>}
  */
+// 매장 «사람» 의 두 출처 — 소속(users.restaurant_id) + 매장 모자(user_contexts). 좌석 세기와 알림 받는 사람이 같은 조건을 쓴다.
+const RESTAURANT_NATIVE_PEOPLE_WHERE = 'restaurant_id = :rid AND role IN (:roles)';
+const RESTAURANT_HAT_PEOPLE_WHERE = "entity_type = 'restaurant' AND entity_id = :rid AND role IN (:roles)";
+
 async function countRestaurantSeats(restaurantId) {
   const rid = normalizeEntityId(restaurantId);
   if (!rid) return 0;
   const [[row]] = await sequelize.query(
     `SELECT
-       (SELECT COUNT(*) FROM users WHERE restaurant_id = :rid AND role IN (:roles))
-     + (SELECT COUNT(*) FROM user_contexts WHERE entity_type = 'restaurant' AND entity_id = :rid AND role IN (:roles)) AS seats`,
+       (SELECT COUNT(*) FROM users WHERE ${RESTAURANT_NATIVE_PEOPLE_WHERE})
+     + (SELECT COUNT(*) FROM user_contexts WHERE ${RESTAURANT_HAT_PEOPLE_WHERE}) AS seats`,
     { replacements: { rid, roles: [...RESTAURANT_HAT_ROLES] } }
   );
   return Number(row.seats) || 0;
+}
+
+/**
+ * 그 매장 «사람» 번호 — 소속 RA·Staff ∪ 그 매장 RA·Staff 모자를 가진 사람. 켜진(is_active) 계정만 · 중복 없음.
+ * 매장 알림(새 주문·예약) 받는 사람의 단일 출처(pushService.sendPushToRestaurant).
+ * 오너·브랜드 담당자 모자는 포함하지 않는다(매장 주문 알림 대상 아님 — 종전과 같음).
+ * 설계 .claude/fable-design-20261113-notification-store-scope.md (N1).
+ * @returns {Promise<number[]>}
+ */
+async function listRestaurantPeopleIds(restaurantId) {
+  const rid = normalizeEntityId(restaurantId);
+  if (!rid) return [];
+  const [rows] = await sequelize.query(
+    `SELECT u.id FROM users u
+      WHERE u.is_active = 1
+        AND u.id IN (
+          SELECT id FROM users WHERE ${RESTAURANT_NATIVE_PEOPLE_WHERE}
+          UNION
+          SELECT user_id FROM user_contexts WHERE ${RESTAURANT_HAT_PEOPLE_WHERE}
+        )
+      ORDER BY u.id`,
+    { replacements: { rid, roles: [...RESTAURANT_HAT_ROLES] } }
+  );
+  return rows.map(r => Number(r.id));
+}
+
+/**
+ * 이 사람이 «속한» 매장 번호 — 소속 매장(RA·Staff) ∪ RA·Staff 모자 매장. 알림 설정 «Stores» 목록·저장 검사가 쓴다.
+ * @returns {Promise<number[]>}
+ */
+async function listUserRestaurantIds(userId) {
+  const uid = normalizeEntityId(userId);
+  if (!uid) return [];
+  const [rows] = await sequelize.query(
+    `SELECT restaurant_id rid FROM users WHERE id = :uid AND restaurant_id IS NOT NULL AND role IN (:roles)
+     UNION
+     SELECT entity_id rid FROM user_contexts WHERE user_id = :uid AND entity_type = 'restaurant' AND role IN (:roles)
+     ORDER BY rid`,
+    { replacements: { uid, roles: [...RESTAURANT_HAT_ROLES] } }
+  );
+  return rows.map(r => Number(r.rid)).filter(Boolean);
 }
 
 /**
@@ -728,5 +820,7 @@ module.exports = {
   findGrantableCombination,
   resolveGrantedContext,
   countRestaurantSeats,
+  listRestaurantPeopleIds,
+  listUserRestaurantIds,
   NOT_FOUND_MESSAGE
 };

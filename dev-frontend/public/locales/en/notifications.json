@@ -27,5 +27,8 @@
   "notificationSettingsPage.resendVerification": "Resend verification",
   "notificationSettingsPage.sending": "Sending…",
   "notificationSettingsPage.verifySent": "Verification email sent. Check your inbox.",
-  "notificationSettingsPage.verifySendFailed": "Could not send the verification email. Please try again."
+  "notificationSettingsPage.verifySendFailed": "Could not send the verification email. Please try again.",
+  "pushStores.title": "Stores",
+  "pushStores.desc": "Device alerts for new orders and reservations from each store you work at. On-screen alerts only show for the store you are viewing.",
+  "pushStores.failed": "Could not save. Try again."
 }

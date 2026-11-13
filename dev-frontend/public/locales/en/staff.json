@@ -55,5 +55,9 @@
   "staffPage.myPinFailed": "Could not save the PIN. Please try again.",
   "staffPage.myPinSave": "Save PIN",
   "staffPage.myPinBody": "Use this 4-digit PIN on this store's devices to sign in as restaurant admin. It works only in this store.",
-  "staffPage.myPinLabel": "PIN (4 digits)"
+  "staffPage.myPinLabel": "PIN (4 digits)",
+  "staffPage.remove": "Remove",
+  "staffPage.removeTitle": "Remove staff",
+  "staffPage.removeConfirm": "this staff account will be deleted and can no longer sign in or use a PIN. Past orders keep their name. This cannot be undone.",
+  "staffPage.removeFailed": "Failed to remove staff"
 }

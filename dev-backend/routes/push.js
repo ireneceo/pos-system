@@ -20,6 +20,19 @@ const PushSubscription = require('../models/PushSubscription');
 const PushLog = require('../models/PushLog');
 const User = require('../models/User');
 const pushService = require('../services/pushService');
+const { listUserRestaurantIds } = require('../services/userContexts');
+
+// 매장별 기기 알림 — 내가 속한 매장(소속 + RA·Staff 모자) 목록과 켜짐 여부.
+// 2개 이상일 때만 화면에 목록이 보인다. 설계 .claude/fable-design-20261113-notification-store-scope.md (N4)
+async function loadMyStores(userId, storeOff) {
+  const ids = await listUserRestaurantIds(userId);
+  if (!ids.length) return [];
+  const Restaurant = require('../models/Restaurant');
+  const rows = await Restaurant.findAll({ where: { id: { [Op.in]: ids } }, attributes: ['id', 'name'] });
+  const nameById = new Map(rows.map(r => [Number(r.id), r.name]));
+  const off = new Set((Array.isArray(storeOff) ? storeOff : []).map(Number));
+  return ids.map(id => ({ id, name: nameById.get(id) || `#${id}`, on: !off.has(id) }));
+}
 
 // per-user rate limit on /test (5/min)
 const testLimiter = rateLimit({
@@ -113,13 +126,14 @@ router.delete('/subscribe', authenticateToken, async (req, res) => {
 router.get('/preferences', authenticateToken, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'push_enabled', 'push_muted_hours']
+      attributes: ['id', 'push_enabled', 'push_muted_hours', 'push_store_off']
     });
     res.json({
       success: true,
       data: {
         push_enabled: user.push_enabled,
-        muted_hours: user.push_muted_hours || { enabled: false, start: 22, end: 8, timezone: 'Asia/Kuala_Lumpur' }
+        muted_hours: user.push_muted_hours || { enabled: false, start: 22, end: 8, timezone: 'Asia/Kuala_Lumpur' },
+        stores: await loadMyStores(user.id, user.push_store_off)
       }
     });
   } catch (e) {
@@ -133,7 +147,7 @@ router.get('/preferences', authenticateToken, async (req, res) => {
 // ────────────────────────────────────────────────────────────────────────────
 router.put('/preferences', authenticateToken, async (req, res) => {
   try {
-    const { push_enabled, muted_hours } = req.body || {};
+    const { push_enabled, muted_hours, store_off } = req.body || {};
     const user = await User.findByPk(req.user.id);
     const update = {};
 
@@ -151,12 +165,24 @@ router.put('/preferences', authenticateToken, async (req, res) => {
       };
     }
 
+    if (store_off !== undefined) {
+      if (!Array.isArray(store_off)) {
+        return res.status(400).json({ success: false, message: 'store_off must be an array of store ids' });
+      }
+      // 내가 속한 매장 번호만 남긴다(남의 매장 번호는 조용히 버림 — 저장해도 효과가 없고, 모자가 막 회수된 경우도 안전).
+      const mine = new Set(await listUserRestaurantIds(user.id));
+      const kept = [...new Set(store_off.map(Number).filter(n => Number.isInteger(n) && mine.has(n)))].sort((a, b) => a - b);
+      update.push_store_off = kept.length ? kept : null;
+    }
+
     await user.update(update);
     res.json({
       success: true,
       data: {
         push_enabled: user.push_enabled,
-        muted_hours: user.push_muted_hours
+        // GET 과 같은 기본값 — 화면이 이 응답으로 상태를 갈아 끼우므로(매장별 끄기) 빈 값이면 이어서 «조용한 시간» 저장이 400 난다.
+        muted_hours: user.push_muted_hours || { enabled: false, start: 22, end: 8, timezone: 'Asia/Kuala_Lumpur' },
+        stores: await loadMyStores(user.id, user.push_store_off)
       }
     });
   } catch (e) {

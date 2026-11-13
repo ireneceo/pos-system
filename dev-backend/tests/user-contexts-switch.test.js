@@ -116,11 +116,12 @@ describe('② 목록 — 본래 정체는 항상 있다', () => {
     expect(r.body.data.contexts[0].kind).toBe('default');
   });
 
-  test('기본 카드 제목 = 이 아이디의 프로필 이름 (브랜드명 아님, 2026-09-25 Irene)', async () => {
-    const [u] = await q('SELECT full_name FROM users WHERE id = :id', { id: hatUserId });
-    expect((u.full_name || '').trim()).not.toBe('');
+  test('기본 카드 제목 = 그 역할 관리자 화면(Company Info)의 이름 — 프로필 이름 아님 (2026-11-13 Irene)', async () => {
+    const [u] = await q('SELECT full_name, brand_id FROM users WHERE id = :id', { id: hatUserId });
+    const [b] = await q("SELECT COALESCE(NULLIF(TRIM(company_name), ''), name) AS n FROM brands WHERE id = :id", { id: u.brand_id });
     const r = await http('get', '/api/auth/contexts').set('Authorization', `Bearer ${nativeToken}`);
-    expect(r.body.data.contexts[0].label).toBe(u.full_name.trim());
+    expect(r.body.data.contexts[0].label).toBe(b.n.trim());
+    expect(r.body.data.contexts[0].label).not.toBe((u.full_name || '').trim());
   });
 
   test('모자를 부여하면 2개가 되고, 목록에 뜬 모자는 전환도 된다 (list ⊆ detail)', async () => {

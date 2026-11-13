@@ -27,5 +27,8 @@
   "notificationSettingsPage.resendVerification": "Hantar semula pengesahan",
   "notificationSettingsPage.sending": "Menghantar…",
   "notificationSettingsPage.verifySent": "E-mel pengesahan dihantar. Semak peti masuk anda.",
-  "notificationSettingsPage.verifySendFailed": "Gagal menghantar e-mel pengesahan. Cuba lagi."
+  "notificationSettingsPage.verifySendFailed": "Gagal menghantar e-mel pengesahan. Cuba lagi.",
+  "pushStores.title": "Kedai",
+  "pushStores.desc": "Pilih makluman peranti untuk pesanan dan tempahan baharu bagi setiap kedai anda. Makluman pada skrin hanya untuk kedai yang sedang anda lihat.",
+  "pushStores.failed": "Tidak dapat disimpan. Cuba lagi."
 }

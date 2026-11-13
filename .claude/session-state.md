@@ -1,13 +1,64 @@
 ## 현재 작업 상태
 
-### 🔄 진행 중 — 멀티 로그인(한 아이디 여러 매장 관리자) PIN 빈틈 · Fable 설계 대기 [Claude Code · 작업방 52e6d237 · 2026-11-13]
-- Irene «관리자로 로그인해도 스탭이니까 … 넌 코드문제 해결해» · «멀티로그인 이상한 거잖아.» · «하지 마. 그리고 뭘 옮긴다는 거야. 레스토랑 관리자가 같은 아이디로 다른 레스토랑 2-3곳일 수 있는 거 아니야?»
-- 결정: kdineipc1 소속 매장 옮기기·직원 69 끄기 등 운영 데이터 이동 **안 함**(Irene «하지 마»).
-- 원인: routes/staff.js /verify-pin 이 users.restaurant_id 가 그 매장인 계정만 찾음 → 모자(user_contexts) 관리자는 PIN 으로 관리자가 못 됨 → 같은 이름 직원 계정(r28:Kate · 69)으로 들어감.
-- Fable 설계 요청 중 → `.claude/fable-design-20261113-hat-admin-pin.md`. 오면 구현·검증.
-- 같이 진행 중: «N 잠금» 정정(PrinterDeviceScope.tsx 한 줄 · Fable 판정 fable-verdict-20261113-setup-device-n-lock.md) — 빌드·verify-all 돌아가는 중 → 끝나면 Fable 재판정.
+### ✅ 완료 (11/14 00:00 정기 점검 · 2026-11-13 16:xx UTC) — /개발완료(11-13 끝난 일 4건 커밋) + /개발시작(운영 새 문의 0 · 인쇄 지킴이 확인) [Claude Code · 백그라운드 작업방 669aa5b0]
+- 개발완료: 매장 알림 분리(6e35280f) · PIN 세션 매장 이동(7ed4ec6a) · 멀티 로그인 목록 이름(8eedf966) · 직원 삭제 버튼(d8b17ee6) + 6.19 배포 뒤 기록(deploy-manifest · releases archive) 커밋. Fable 판정 PASS 2건(.claude/fable-verdict-20261113-*.md · 마커 3a03761f7517 — 커밋 전 지문 일치 확인). 커밋으로 지문이 바뀌어 마커는 무효가 됨(코드는 그대로) — 다음 배포 준비 때 Fable 확인 필요 여부는 배포 방 판단. GTM 보류 4파일·playwright.config·oneoff/run 스크립트는 그대로 둠.
+- 검증: verify-all 22/23(실패 = deploy-ready «2026-11-13 배포 기록 파일 없음» — 배포 준비 몫) · health-check 전체 통과 · print-guard 통과 · i18n·타입·IDOR·인스펙션 통과.
+- 개발시작: 운영 문의 — 열린 3건(SUPP-2026-6842-103·1886-062·2401-270) 예전 판단 그대로(이미 해결) · 14일 새 문의 0 · 후속 글 0 · 랜딩 문의 0 · operation_tickets closed 4 / in-progress 1 (확인 2026-11-13 16:03 UTC).
+- 인쇄 지킴이(마지막 실행 15:07 UTC success): 새 문제 0 · 계속 4(28 print_failures critical · 28 multi_auto_print · 8·10·28 old_app 0.3.4) · 풀림 1(28 setup_gap Noodles 07:07 UTC). 28 실패 9건은 전부 앱 0.3.4(uid 19) «(default) 프린터 못 찾음» 06:39~09:21 UTC, 그 뒤 0건 · 07:07 뒤 주문 2건 모두 인쇄됨(needs_print 0).
 
-### ⏸ 답 기다림 — kdineipc1(관리자)이 프린터 설정이 «막혀 있다» (2026-11-13 · 급함) [Claude Code · 작업방 52e6d237]
+### (이전) 나중에 — 일시정지로 멈춤: Noodles 프린터 지정 «했어요» 확인 [Claude Code · 작업방 52e6d237 · 2026-11-13] → 풀림: 11/14 정기 점검이 운영 읽기로 확인 — 인쇄 지킴이 setup_gap(Noodles) 07:07 UTC 풀림 · 그 뒤 주문 2건 인쇄됨
+- 사실: 운영 6.19 배포 끝(04:49 UTC · 커밋 19de5de6f · result ok). 배포 방 산출물(releases archive 이동·deploy-manifest)은 배포 방이 커밋할 몫 — 이 방은 안 건드림.
+- Irene 할 일 «K-DINE Noodles 앱에서 관리자 계정으로 Noodles 주방 프린터 지정» 을 «했어요» 누름 → 운영 DB 확인 필요(이 방은 운영 읽기 허락 없음).
+- 확인용 읽기 스크립트(매장 28 kitchenStationPrinters·setupDevice·Kate 모자 PIN·인쇄 지킴이 발견·오늘 저장 기록)는 만들던 중 세션이 끊겨 **파일이 안 생김** · 상황판 카드도 안 올라갔을 것. 작업 폴더의 다른 미커밋(push·User 모델·notification-settings 등)은 다른 방 작업 — 손대지 않음.
+- 다시 시작하면: ① 방 임시 폴더에 읽기 스크립트(run-store28-noodles-read.sh · oneoff-read-store28-noodles-20261113.js — 운영 읽기만) 다시 만들고 상황판 할 일로 올림 ② 결과로 24(Noodles) address 채워졌는지 확인 → 비었으면 저장 기록으로 원인 보고·새 할 일 ③ 6.19 뒤 Kate 순서(이메일 로그인 → 28 → «Set my PIN» → 프린터 → 직원 69 삭제) 이어서 안내.
+
+### ✅ 완료 — PIN 으로 들어온 상태에서 다른 매장 고르면 비밀번호 창으로 넘어감 · Fable gate PASS · 미커밋(마커 유지) [Claude Code · 작업방 7ed4ec6a · 2026-11-13]
+- Irene «pin으로 관리자 들어가면 다른 레스토랑으로 가려는 좌측 이동(멀티역할 선택 페이지)을 못하잖아 … 관리자가 핀번호 쓸 이유도 없잖아» → Fable 권고 A(관리자 PIN 은 승인·계산대용 유지, 막다른 길만 풂) → Irene «권고대로 진행해 줘».
+- 고친 것: ContextSelectPage.tsx — 전환이 403 PIN_SESSION 이면 비밀번호 창(공용 Modal · 계정 칸 = 지금 토큰의 이메일/아이디 읽기 전용) → 기존 login → 고른 카드로 기존 전환. 틀리면 PIN 세션 그대로. auth.json 4언어 context.pinUnlock.*. 서버 무변경(PIN 토큰 직접 전환 403 그대로).
+- 검증: 실브라우저 2경우(모자 PIN 38→39 · 본래 PIN 39→38: 창 · 틀림 유지 · 맞음 이동 · 재전환 창 없음 · 오류 0) · 첫 빌드에서 Enter 제출 안 됨 발견 → 고침 · verify-all --full 23/24(실패 = deploy-ready 배포 기록 파일 몫) · print-guard 8/8 · 시험 계정 8054 지움(남은 행 0 · push_logs 21 같이).
+- Fable: 판정 .claude/fable-verdict-20261113-pin-unlock.md PASS · 마커 3a03761f7517(매장 알림 분리 판정도 이어서 덮음). 커밋하면 마커가 죽어 커밋 안 함 — 다음 배포 준비 때 같이.
+- 확인 못 함: 429·비활성 문구 · 아이디만 있는 계정 · 실기기 화면 키보드 · 좌측 메뉴로 들어가는 경로(주소 직접으로만 시험).
+- 다음 할 일: 옛 문구 키 context.pinSessionSwitch 는 다음 화면 변경 때 정리(Fable). Kate 뒷일(운영 · Irene 지시 때만): kdineipc1 이 28 에서 본인 PIN 정하기 → 28 직원 계정 69 PIN 비우거나 지우기(비활성만으론 PIN 안 막혔음).
+- 운영 반영: 다음 배포 때(운영은 이미 6.19 — 이 수정은 6.19 에 못 들어감).
+
+### ✅ 완료 — 멀티 로그인 목록 이름 = 역할별 관리자 화면 이름 (프로필 이름 아님) [Claude Code · 작업방 8eedf966 · 2026-11-13]
+- Irene «프로필이름이 멀티로그인 역할 리스트에 나오네. 이상해. 원래 각 역할마다 각 관리자 페이지에 맞는 이름으로 설정할 수 있어야 하잖아. 멀티로그인에 대한 이름 설정 다시 정비해줘.»
+- 원인: 2026-09-25 결정으로 본래 역할 카드 제목이 users.full_name(프로필 이름). 연결(추가 권한) 카드는 원래 매장·브랜드 이름.
+- 고친 것: `services/userContexts.js` resolveDefaultLabel(새) — 브랜드·푸드코트 Company Info 회사 이름 · 매장 이름 · 공급업체 Company Info 이름 · 오너 «첫 매장 +N» · SA·Referral 역할명. 서버만(화면은 주석 1줄 — 빌드 불필요). 테스트 1건 새 규칙으로 · 설계 문서 §6.2 갱신.
+- 확인: 시험 역할 8개 + SA 실계산(예 BG «Sarah Kim (Demo)» → «K-Taste Holdings Sdn Bhd» · RA → FOODCOURT CENTRAL · 공급업체 → Demo Supplier Co.) · jest 컨텍스트 4묶음 81/81(옛 규칙 코드로는 새 테스트 실패 = 반증) · health auth 24/24 · security 111/111 · print-guard 8/8.
+- Fable 안 씀 — 표시 문자열만(전환·권한 판정 무접촉).
+- 미커밋: userContexts.js 에 다른 방(6e35280f 알림 분리)의 미커밋 변경이 같이 있어 따로 커밋 안 함 — 다음 /개발완료 때 함께.
+- 운영 반영: 다음 배포 때.
+
+### ✅ 완료 — 매장 알림 분리(연결 관리자도 그 매장 알림 · 화면 카드는 보는 매장만 · 매장별 끄기) · Fable gate PASS · 미커밋(마커 유지) [Claude Code · 작업방 6e35280f · 2026-11-13]
+- Irene «왜 K-DINE 누들 레스토랑 페이지에 왔는데 알림이 K-DINE IPC가 나와? … 알림이 새 레스토랑에 제대로 나오긴 하는 건지»
+- 원인: 새 주문·예약 알림(pushService.sendPushToRestaurant)이 «계정의 원래 매장» 사람에게만 가고 화면 카드는 사람 단위 룸 → Kate(원래 IPC · 28 연결 관리자)는 28 화면에서 IPC 카드, 28 알림은 못 받음.
+- 설계 `.claude/fable-design-20261113-notification-store-scope.md` · 요청 `.claude/fable-gate-request-20261113-notification-store-scope.md` · 판정 `.claude/fable-verdict-20261113-notification-store-scope.md`(PASS · 마커 3dbc90418e37). Fable 이 검증 중 routes/push.js PUT 응답 muted_hours 기본값 1줄 고침(조용한 시간 400 회귀).
+- 만든 것: userContexts.listRestaurantPeopleIds/listUserRestaurantIds · pushService storeScope(룸 user:{id}@restaurant:{rid} · push_store_off → store_off) · socketService 룸 1줄 · users.push_store_off + push_logs ENUM store_off(migrate-push-store-off.js deploy 등록) · /api/push/preferences stores/store_off · PushPreferencesCard «매장별 알림»(2개 이상만 · 4언어) · notification-settings 항목에 모자 역할 · health-check 2건.
+- 검증: 실호출 14/14 · 고장 주입 2건 잡힘 · health-check 2/2 · 실브라우저 1366·390 · verify-all --full 23/24(deploy-ready 몫) · Fable 직접: 전 매장 전후 비교(달라진 곳 2 — 38 에 모자 2001 추가 · 158 꺼진 계정 369 빠짐) · 진짜 토큰 · 예약 V7 · 새로고침 없는 전환 V3 12/12.
+- **커밋 안 함** — 커밋하면 마커가 죽음. 배포 때 같이 나가고 /개발완료 가 기록. CHANGELOG 줄 초안: «매장 알림 분리 — 연결된 관리자·직원도 그 매장 새 주문·예약 알림을 받고, 화면 안 알림은 지금 보는 매장 것만 · 설정에서 매장별로 기기 알림 끄기»
+- 배포 뒤 할 일: 운영에 users.push_store_off 칸·push_logs store_off 값 생겼는지 확인. Fable 권고: 직원 r28:Kate(69) 삭제는 이 변경이 운영에 나간 뒤로.
+- 확인 못 함: 실제 기기 OS 알림(개발 구독 0) · 운영 28·IPC 실제 받는 사람 · health-check 전체 1회차 [cash] 2건 실패(묶음 단독 재실행 15/15 · 이 변경과 무관 영역, 원인 미확정).
+- 운영 반영: 다음 배포 때.
+
+### ✅ 완료 — 매장 직원 화면에 «삭제» 버튼 (연결 관리자 포함) [Claude Code · 작업방 d8b17ee6 · 2026-11-13]
+- Irene «내가 관리자로 로그인했는데 왜 스탭 삭제를 못해?» (Kate · Linked account · Restaurant Admin · Full Access)
+- 원인: 연결 계정 제한이 아니라 매장 «직원» 화면(StaffPage.tsx)에 삭제 버튼이 처음부터 없었음(Edit·Reset PW 만). 서버 DELETE /api/users/:id 는 RA 가 자기 매장 Staff 를 지우게 이미 열려 있었고 연결 관리자도 매장으로 투영돼 통과.
+- 고친 것: 일반 직원 줄에 «삭제»(빨강 IconButton delete) + 확인 창(되돌릴 수 없음·지난 주문 이름은 남음) · 4개 언어 staffPage.remove/removeTitle/removeConfirm/removeFailed. 관리자 줄·연결 계정 줄(→ 기존 «연결 해제»)·본인엔 없음. 서버 변경 0.
+- 확인: API — 연결 관리자 토큰(38 모자)로 38 직원 200 · 39 직원 403 · 38 관리자 403 · 본인 403 · 익명 401. 실브라우저 데모 38 — 버튼 4개(일반 직원 수와 같음) · 확인 → 삭제 → 줄 사라짐 · 화면 오류 0. print-guard 8/8 · design-guard 신규 0 · i18n 오류 0 · check-sensitive-diff 비대상.
+- Fable 안 씀 — 서버 삭제 규칙 무변경(이미 RA 용으로 설계·운영 중), 화면에 버튼만 붙임.
+- Irene 덧붙임 «PIN 전환(/verify-pin)이 연결 관리자(user_contexts)를 찾지 않습니다» → 개발서버엔 이미 19de5de6f(utils/storePin findStorePinHolder)로 고쳐져 있음. 실호출: 매장 38 연결 관리자 PIN → 200 Restaurant Admin rid=38 · 그 PIN 으로 본래 매장 39 → 401. 운영은 아직 6.18 이라 이 고침이 없음(6.19 배포 준비됨). PIN 이 «****» 인 건 설계대로(연결 관리자 PIN 은 숨김 · 본인 Change my PIN 만).
+- 운영 DB 직원 삭제는 Irene 가 직접(«운영서버 디비 삭제는 알아서 할게»).
+- 운영 반영: 다음 배포 때. 그 전까지 운영에서 Kate 가 직원을 지우려면 배포 뒤 가능.
+
+### ✅ 완료 — 멀티 로그인 PIN(연결 관리자 매장 PIN) · 배포 준비 6.19 [Claude Code · 작업방 52e6d237 · 2026-11-13]
+- Irene «Kate는 kdineipc1 아이디이고 관리자인데 왜 스탭이야?» · «멀티로그인 이상한 거잖아» · «하지 마(운영 데이터 옮기기)» · «빨리 고쳐서 배포 준비해»
+- 커밋: b3b2bbc1b(인쇄 지킴이 + N 잠금) · 65f206101(배포 준비 6.19) · 19de5de6f(PIN 수정 · 배포 기록 갱신). 배포 준비 검사 통과 — 상황판 «배포» 로 나감(운영 6.18 → 6.19 · 새 마이그 2).
+- Fable: hat-admin-pin 설계 → gate 조건부(회수된 PIN 세션이 본래 매장으로 내려감) → 고침 → 재판정 PASS(verify-all --full 실패 0 조건).
+- verify-all --full 24/24 전 게이트 통과(실브라우저 sweep 포함 · Fable PASS 조건 충족) · 운영 매장 28 연결 행(user_contexts id 3) = Restaurant Admin 확인(Irene 읽기 명령 11-13) · setupDevice 없음.
+- 배포 뒤 Kate 순서: 28번 기기 «Use email sign-in» → kdineipc1 → 28 고르기(확인) → 직원 화면 «Set my PIN»(69 와 다른 번호) → 설정 › 프린터 Noodles 지정 → 그 뒤 직원 계정 r28:Kate(69) 삭제. 운영 데이터 옮기기 안 함.
+
+### (이전) 답 기다림 — kdineipc1(관리자)이 프린터 설정이 «막혀 있다» (2026-11-13 · 급함) [Claude Code · 작업방 52e6d237]
 - Irene «지금 급해. kdingipc1이 관리자인데 설정 안되는 거로 막혀있대.»
 - 원인(코드 실측 · 운영 6.18 = ebfe97b36): «프린터 설정 기기» 기능이 운영에 들어가 기존 매장은 «아직 안 정함» 에서 시작 → 그 상태에선 관리자도 칸이 잠김(PrinterDeviceScope.tsx:74 editable = M 또는 O+풀기). 화면 맨 위 회색 줄의 «이 기기를 프린터 설정 기기로 정하기» 를 눌러야 풀림. 운영 DB 로 매장 28 상태는 확인 못 함(운영 읽기 허락 없음).
 - 안내함: 프린터 연결된 앱 기기에서 kdineipc1 로 → 설정 › 프린터 맨 위 «이 기기를 프린터 설정 기기로 정하기». 빨간 «보기 전용» 이면 직원 PIN 으로 들어온 것 → kdineipc1 로 다시 로그인.

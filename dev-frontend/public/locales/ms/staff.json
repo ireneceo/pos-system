@@ -55,5 +55,9 @@
   "staffPage.myPinFailed": "Tidak dapat menyimpan PIN. Sila cuba lagi.",
   "staffPage.myPinSave": "Simpan PIN",
   "staffPage.myPinBody": "Gunakan PIN 4 digit ini pada peranti kedai ini untuk log masuk sebagai pentadbir restoran. Ia hanya berfungsi di kedai ini.",
-  "staffPage.myPinLabel": "PIN (4 digit)"
+  "staffPage.myPinLabel": "PIN (4 digit)",
+  "staffPage.remove": "Buang",
+  "staffPage.removeTitle": "Buang kakitangan",
+  "staffPage.removeConfirm": "akaun kakitangan ini akan dipadam dan tidak boleh log masuk atau guna PIN lagi. Pesanan lalu kekal dengan nama mereka. Tindakan ini tidak boleh dibatalkan.",
+  "staffPage.removeFailed": "Gagal membuang kakitangan"
 }

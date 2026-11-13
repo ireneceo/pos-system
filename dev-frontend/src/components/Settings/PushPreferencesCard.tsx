@@ -45,7 +45,10 @@ const PushPreferencesCard: React.FC = () => {
   const [prefs, setPrefs] = useState<{
     push_enabled: boolean;
     muted_hours: { enabled: boolean; start: number; end: number; timezone?: string };
+    // 내가 속한 매장(소속 + 연결 권한)마다 기기 알림 켜짐 여부 — 2개 이상일 때만 목록을 보인다(2026-11-13)
+    stores?: Array<{ id: number; name: string; on: boolean }>;
   } | null>(null);
+  const [storeError, setStoreError] = useState('');
   const [testStatus, setTestStatus] = useState<string>('');
 
   const load = useCallback(async () => {
@@ -85,6 +88,21 @@ const PushPreferencesCard: React.FC = () => {
     const next = { ...prefs.muted_hours, ...patch };
     setPrefs({ ...prefs, muted_hours: next });
     try { await updatePreferences({ muted_hours: next }); } catch {}
+  };
+
+  const handleStoreToggle = async (storeId: number, on: boolean) => {
+    if (!prefs?.stores) return;
+    const prev = prefs;
+    const stores = prefs.stores.map(s => (s.id === storeId ? { ...s, on } : s));
+    setPrefs({ ...prefs, stores });
+    setStoreError('');
+    try {
+      const data = await updatePreferences({ store_off: stores.filter(s => !s.on).map(s => s.id) });
+      setPrefs(data);
+    } catch {
+      setPrefs(prev);
+      setStoreError(t('notifications:pushStores.failed'));
+    }
   };
 
   const handleTest = async () => {
@@ -151,6 +169,29 @@ const PushPreferencesCard: React.FC = () => {
           {testStatus && <span style={{ marginLeft: 12, fontSize: 13, color: '#4B5563' }}>{testStatus}</span>}
         </div>
       </Section>
+
+      {prefs?.stores && prefs.stores.length >= 2 && (
+        <Section title={t('notifications:pushStores.title')}>
+          <div style={{ fontSize: 12, color: '#4B5563', marginBottom: 4 }}>{t('notifications:pushStores.desc')}</div>
+          {prefs.stores.map(store => (
+            <Row
+              key={store.id}
+              label={store.name}
+              right={
+                <input
+                  type="checkbox"
+                  data-testid={`push-store-${store.id}`}
+                  checked={store.on}
+                  onChange={(e) => handleStoreToggle(store.id, e.target.checked)}
+                  disabled={!prefs.push_enabled}
+                  style={{ width: 18, height: 18, accentColor: '#635BFF' }}
+                />
+              }
+            />
+          ))}
+          {storeError && <div style={{ fontSize: 13, color: '#EF4444', marginTop: 8 }}>{storeError}</div>}
+        </Section>
+      )}
 
       <Section title="Muted hours">
         <Row

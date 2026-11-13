@@ -373,6 +373,10 @@ function initSocketServer(server) {
       // user:{id} 룸이 한 번도 만들어지지 않았다(2026-10-16 실측 — 개인 신호가 아무에게도 안 갔다).
       const userId = auth.userId || auth.id;
       if (userId) socket.join(`user:${userId}`);
+      // 매장 알림(새 주문·예약) 화면 카드 룸 — «이 사람이 지금 이 매장을 보는» 화면만. 모자 전환 토큰이면 투영 매장.
+      // 받는 사람 판정은 보내는 쪽(pushService.sendPushToRestaurant)이 하고, 이 룸은 «어느 화면에 띄울지» 만 정한다.
+      // 설계 .claude/fable-design-20261113-notification-store-scope.md (N3)
+      if (userId && auth.restaurant_id) socket.join(`user:${userId}@restaurant:${auth.restaurant_id}`);
       if (auth.restaurant_id) socket.join(`restaurant:${auth.restaurant_id}`);
       if (auth.brand_id) socket.join(`brand:${auth.brand_id}`);
       if (auth.foodcourt_id) socket.join(`foodcourt:${auth.foodcourt_id}`);

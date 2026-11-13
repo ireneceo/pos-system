@@ -9,7 +9,7 @@ import { useStore } from '../../contexts/StoreContext';
 import { formatDate } from '../../utils/dateFormat';
 import { getAuthToken } from '../../utils/auth';
 import ContextRequestModal from './ContextRequestModal';
-import { Modal, ModalButton, FormGroup, FormLabel, FormTextArea } from '../../components/UI/Modal';
+import { Modal, ModalButton, FormGroup, FormLabel, FormTextArea, FormInput } from '../../components/UI/Modal';
 import { MENU_GROUPS, WORK_ACCESS } from '../../components/Staff/StaffPermissionPicker';
 import { DEMO_BUNDLE, DemoBundleAccount, isDemoBundleUser, switchToDemoAccount } from '../../utils/demoAccountSwitch';
 
@@ -303,7 +303,7 @@ const ContextSelectPage: React.FC = () => {
   const location = useLocation();
   // 알림 버튼(/go)이 «이 계정엔 그 자격이 없다» 며 보낸 안내 한 줄 (2026-10-22 notification-addressee)
   const entryNotice = typeof (location.state as any)?.notice === 'string' ? (location.state as any).notice as string : null;
-  const { contexts, refreshContexts, switchContext, logout, user } = useAuth();
+  const { contexts, refreshContexts, switchContext, logout, user, login } = useAuth();
   const { getStoreInfo } = useStore();
 
   const [list, setList] = useState<UserContextOption[]>(contexts);
@@ -326,6 +326,13 @@ const ContextSelectPage: React.FC = () => {
   const [permsOpen, setPermsOpen] = useState<number | null>(null);
   const [declineTarget, setDeclineTarget] = useState<Invitation | null>(null);
   const [declineNote, setDeclineNote] = useState('');
+  // PIN 으로 들어온 세션에서 다른 매장을 고르면 — 그 자리에서 비밀번호를 받아 넘어간다
+  // (2026-11-13 Irene «다시 핀을 풀던지 하면서 안내를 하던지 해야지» · Fable 권고 A).
+  // 서버 새 길 없음: 기존 비밀번호 로그인 → 기존 매장 전환. PIN 세션 전환 차단(403 PIN_SESSION)은 그대로.
+  const [pwTarget, setPwTarget] = useState<UserContextOption | null>(null);
+  const [pwValue, setPwValue] = useState('');
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwBusy, setPwBusy] = useState(false);
 
   const loadMyRequests = useCallback(async () => {
     if (!canRequest) return;
@@ -464,7 +471,10 @@ const ContextSelectPage: React.FC = () => {
     setBusyKey(null);
     if (!res.ok && res.error === 'PIN_SESSION') {
       // PIN 으로 들어온 세션은 매장·권한을 못 바꾼다(서버 403 PIN_SESSION · 2026-11-13 hat-admin-pin §2.4-1)
-      setError(t('context.pinSessionSwitch', 'You signed in with a PIN. To switch stores, sign out and sign in with your email or username.'));
+      // → 막다른 오류 대신 비밀번호 확인 창. 맞으면 비밀번호 세션이 되고 고른 곳으로 다시 전환한다.
+      setPwTarget(ctx);
+      setPwValue('');
+      setPwError(null);
       return;
     }
     if (!res.ok) {
@@ -486,6 +496,44 @@ const ContextSelectPage: React.FC = () => {
     }
     navigate(res.path || '/pos', { replace: true });
   }, [switchContext, refreshContexts, navigate, t]);
+
+  // PIN 토큰에 실린 이 계정의 로그인 아이디(이메일 → 없으면 아이디). 화면 user 에는 아이디가 없어서 토큰에서 읽는다.
+  // 고정값이라 다른 계정으로 넘어가는 길이 아니다 — 같은 사람이 비밀번호로 자기 확인만 한다.
+  const pinIdentifier = useMemo(() => {
+    try {
+      const tok = getAuthToken();
+      const part = tok ? tok.split('.')[1] : '';
+      if (!part) return '';
+      const json = JSON.parse(decodeURIComponent(escape(atob(part.replace(/-/g, '+').replace(/_/g, '/')))));
+      return String(json.email || json.username || '');
+    } catch {
+      return '';
+    }
+  }, [pwTarget]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const submitPassword = useCallback(async () => {
+    const ctx = pwTarget;
+    if (!ctx || !pinIdentifier || !pwValue || pwBusy) return;
+    setPwBusy(true);
+    setPwError(null);
+    try {
+      // 틀리면 login 이 false 를 돌려주고 토큰·화면 주인은 그대로(PIN 세션 유지).
+      const ok = await login(pinIdentifier, pwValue);
+      if (!ok) {
+        setPwError(t('context.pinUnlock.wrong', 'Incorrect password.'));
+        setPwBusy(false);
+        return;
+      }
+    } catch (e: any) {
+      setPwError(e?.message || t('context.pinUnlock.failed', 'Could not sign in. Please try again.'));
+      setPwBusy(false);
+      return;
+    }
+    setPwBusy(false);
+    setPwTarget(null);
+    setPwValue('');
+    applySwitch(ctx);
+  }, [pwTarget, pinIdentifier, pwValue, pwBusy, login, applySwitch, t]);
 
   const onPick = useCallback((ctx: UserContextOption) => {
     const deviceRid = deviceRestaurant?.id ? String(deviceRestaurant.id) : null;
@@ -510,7 +558,7 @@ const ContextSelectPage: React.FC = () => {
 
         <List>
           {orderedList.map((ctx) => (
-            // 카드 제목은 서버가 정한다 — 기본 카드 = 이 아이디의 프로필 이름, 부여·오너 카드 = 들어갈 곳의 이름.
+            // 카드 제목은 서버가 정한다 — 기본 카드 = 그 역할 관리자 화면(회사 정보·매장)에서 정한 이름, 부여·오너 카드 = 들어갈 곳의 이름.
             // "기본" 배지는 두지 않는다 — 고르는 사람에겐 3장이 전부 동등한 선택지라 아무 질문에도
             // 답하지 않는 라벨이었다. "내 원래 자리"라는 정보는 **맨 위 고정**으로 전달한다.
             <Card key={contextKey(ctx)} onClick={() => onPick(ctx)} disabled={busyKey !== null}>
@@ -661,6 +709,43 @@ const ContextSelectPage: React.FC = () => {
           <FormLabel>{t('context.invite.declineNote')}</FormLabel>
           <FormTextArea rows={3} maxLength={300} value={declineNote} onChange={(e) => setDeclineNote(e.target.value)} />
         </FormGroup>
+      </Modal>
+
+      <Modal
+        isOpen={pwTarget !== null}
+        onClose={() => { if (!pwBusy) { setPwTarget(null); setPwValue(''); setPwError(null); } }}
+        title={t('context.pinUnlock.title', 'Enter your password')}
+        size="small"
+        footer={
+          <>
+            <ModalButton variant="secondary" disabled={pwBusy} onClick={() => { setPwTarget(null); setPwValue(''); setPwError(null); }}>{t('context.requests.cancel')}</ModalButton>
+            <ModalButton variant="primary" disabled={pwBusy || !pwValue || !pinIdentifier} onClick={submitPassword}>{t('context.pinUnlock.continue', 'Continue')}</ModalButton>
+          </>
+        }
+      >
+        <p style={{ margin: '0 0 12px', fontSize: 14, color: 'var(--pos-text-muted, #425466)' }}>
+          {t('context.pinUnlock.body', 'You signed in with a PIN. To go to {{place}}, enter the password for this account.', { place: pwTarget?.label || '' })}
+        </p>
+        <form onSubmit={(e) => { e.preventDefault(); submitPassword(); }}>
+          <FormGroup>
+            <FormLabel>{t('context.pinUnlock.account', 'Account')}</FormLabel>
+            <FormInput value={pinIdentifier} readOnly autoComplete="username" />
+          </FormGroup>
+          <FormGroup>
+            <FormLabel>{t('context.pinUnlock.password', 'Password')}</FormLabel>
+            <FormInput
+              type="password"
+              autoFocus
+              autoComplete="current-password"
+              value={pwValue}
+              onChange={(e) => { setPwValue(e.target.value); setPwError(null); }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitPassword(); } }}
+              data-testid="pin-unlock-password"
+            />
+          </FormGroup>
+          {!pinIdentifier && <p style={{ margin: 0, fontSize: 13, color: '#B45309' }}>{t('context.pinUnlock.noAccount', 'This sign-in has no email or username. Sign out and sign in with your email or username.')}</p>}
+          {pwError && <p role="alert" style={{ margin: 0, fontSize: 13, color: '#DC2626' }}>{pwError}</p>}
+        </form>
       </Modal>
 
       <ConfirmModal

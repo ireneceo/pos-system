@@ -55,5 +55,9 @@
   "staffPage.myPinFailed": "PIN 을 저장하지 못했습니다. 다시 시도하세요.",
   "staffPage.myPinSave": "PIN 저장",
   "staffPage.myPinBody": "이 매장 기기에서 이 4자리 PIN 으로 레스토랑 관리자로 들어옵니다. 이 매장에서만 쓰입니다.",
-  "staffPage.myPinLabel": "PIN (4자리)"
+  "staffPage.myPinLabel": "PIN (4자리)",
+  "staffPage.remove": "삭제",
+  "staffPage.removeTitle": "직원 삭제",
+  "staffPage.removeConfirm": "이 직원 계정을 지웁니다. 더 이상 로그인·PIN 을 쓸 수 없고, 지난 주문에는 이름이 그대로 남습니다. 되돌릴 수 없습니다.",
+  "staffPage.removeFailed": "직원을 삭제하지 못했습니다"
 }
