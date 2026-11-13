@@ -1,0 +1,48 @@
+{
+  "tag": "print-watch",
+  "sw_version": "6.19-print-watch-20261113",
+  "date": "2026-11-13",
+  "in_progress": [
+    "연결(추가 권한) 관리자도 매장 기기 PIN 으로 관리자 로그인 — Fable 설계 완료(fable-design-20261113-hat-admin-pin) · 구현 중 · 다음 배포",
+    "GTM 태그 묶음(보류 4파일 · Irene 게시 확인 대기 — 미커밋이라 이번 배포에서 빠짐)"
+  ],
+  "completed": [
+    "인쇄 문제 자동 점검(인쇄 지킴이) — 1시간마다 전 매장 규칙 6개 점검 · 관리자 Print Health 맨 위 «봐야 할 매장»(b3b2bbc1b)",
+    "앱 인쇄 실패 보고를 인쇄 기록 표에 남김 — Print Health «최근 실패»·자가진단이 실제 실패를 셈(b3b2bbc1b)",
+    "프린터 설정 기기를 아직 안 정한 매장은 관리자가 바로 프린터 칸을 바꿀 수 있음(b3b2bbc1b)"
+  ],
+  "issues": [
+    "6.18 뒤 관리자도 프린터 설정이 잠겨 보이던 문제(설정 기기 «아직 안 정함» 상태 — K-DINE Noodles kdineipc1)",
+    "앱 인쇄 실패(예: 주방 프린터 빈칸 PRINTER_NOT_FOUND)가 텍스트 로그에만 남아 아무도 모르던 문제"
+  ],
+  "upcoming": [
+    "연결 관리자 PIN 로그인 · 기기 매장 기억 · 로그인 실패 안내 문구(Fable 설계 완료 · 구현 중)",
+    "배포 뒤 첫 정기 점검: 인쇄 지킴이 기준선 기록 · 오탐 조정(Fable 판정서 §4)",
+    "GTM 태그 묶음 — Irene 게시 확인 뒤(todomvjvib2x)"
+  ],
+  "behavior_changes": [
+    "프린터 설정: 설정 기기를 아직 안 정한 매장은 관리자에게 칸이 바로 열림(설정 기기 버튼은 그대로 · 자동 지정 없음)",
+    "관리자(System Admin) Print Health 맨 위에 «봐야 할 매장» 목록 — 1시간마다 자동 갱신",
+    "새 정기 작업 print_watch_hourly(매시 7분 · 읽기 위주 · 60일 지난 인쇄 기록 정리)",
+    "직원 등 관리자 아닌 계정이 프린터 칸을 바꾸려 하면 기록이 남음(설정은 여전히 안 바뀜)"
+  ],
+  "check_areas": [
+    "설정 › 프린터 — 관리자 · 설정 기기 미지정 매장에서 칸 열림 / 지정된 다른 기기면 확인 창",
+    "Admin › Print Health 맨 위 «봐야 할 매장»(데모 매장 보기 토글)",
+    "운영 로그 [PrintWatch] · scheduler_runs print_watch_hourly"
+  ],
+  "verification": {
+    "api": "health-check print 14/14(새 3: 앱 실패 기록·발견 열림→풀림·/watch SA 전용) · jest 서버 print-watch 18 + printer-setup-device 26 · 화면 printerSetupGaps 14 + PrinterDeviceScope 5 · 직원 저장 소음 실측 0/0/1",
+    "fault_injection": "관측 줄 제거 → health-check 실패 · 기록 throw → 응답 200 그대로 · 화면 판정 폴백 제거 → jest 실패 · N 줄 되돌림 → 훅 jest 실패 (4건 모두 원복)",
+    "browser": "실브라우저 데모 38: 설정 기기 V1~V5(관리자 N 열림·저장 유지·자동 지정 없음 / 직원 잠김 / O 확인 뒤만 / M 열림 / 불러오기 실패 잠김) · Print Health 1366·390 오류 0 · verify-all --full 23/24(나머지 1 = 이 기록·SW 버전)",
+    "printer": "인쇄 동작 무변경 — 🔒 보호 파일 8개 무접촉(print-guard 8/8) · print-debug 는 관측만",
+    "migrations": "새 마이그 1: migrate-create-print-watch-findings.js(새 표만 · 멱등 · registry deploy)",
+    "sw_version": "6.19-print-watch-20261113",
+    "fable_note": "인쇄 지킴이 Fable 설계 + gate PASS(fable-verdict-20261113-print-monitoring) · N 잠금 Fable 판정 + 재판정 PASS(fable-verdict-20261113-setup-device-n-lock · 마커 93df382ce774)"
+  },
+  "notes": "배포 준비 11/13 · 범위 ebfe97b36..b3b2bbc1b · SW 6.18→6.19 · 새 마이그 1(새 표) · 미커밋(GTM 보류 4파일·playwright 설정·oneoff)은 깨끗한 사본에서 빠짐 · 배포 뒤 첫 정기 점검이 인쇄 지킴이 기준선",
+  "irene_actions_after_deploy": [
+    "K-DINE Noodles: kdineipc1 로 이메일 로그인 → 매장 고르기 28 → 설정 › 프린터에서 Noodles 주방 프린터 지정(todomwdr3gcx)"
+  ],
+  "fable_note": "Fable 대기 0 · 민감 변경(새 표 마이그 · 🔒 라우트 옆 관측 · SA 새 라우트)은 Fable gate PASS"
+}
