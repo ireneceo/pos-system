@@ -1,0 +1,55 @@
+{
+  "tag": "printer-device-scope",
+  "sw_version": "6.18-printer-device-scope-20261113",
+  "date": "2026-11-13",
+  "in_progress": [
+    "GTM 태그 묶음(보류 4파일 · Irene 게시 확인 대기 — 미커밋이라 이번 배포에서 빠짐)"
+  ],
+  "completed": [
+    "프린터 설정은 매장 «프린터 설정 기기» 한 대만 바로 바꿈 · 다른 기기는 확인 창 뒤(05c5d90f5)",
+    "프린터 안 될 때 안내를 기기별로(앱이면 «QZ» 대신 앱 안내)(05c5d90f5)",
+    "프린터 안 정해진 주방 알림 + 직원은 프린터 설정 «보기 전용»(184388306)",
+    "POS 입구 «Different store on this device» 차단 화면 제거 · 직원 PIN 전환은 지금 보는 매장 기준(922a95e33)",
+    "꺼진 재고아이템에 «꺼짐» 배지 · 필터·숫자에서 빠지고 «전체»에만(e420d8ae4)"
+  ],
+  "issues": [
+    "K-DINE Noodles(매장 28) 직원 계정으로 프린터 저장하면 서버가 프린터 칸만 건너뛰어 «저장하면 리셋»처럼 보이던 문제",
+    "앱 기기에서도 실패 띠가 «QZ Tray» 고정 문구로 나오던 문제",
+    "여러 기기로 일하는 매장에서 POS 입구가 «다른 매장 기기»로 막히던 문제",
+    "꺼진 재고아이템이 상태 탭 목록에 안 보이던 문제"
+  ],
+  "upcoming": [
+    "K-DINE Noodles 주방 프린터 지정(Irene · todomwdr3gcx)",
+    "K-DINE Noodles 세트 구성품 옵션(운영 읽기 명령 답 기다림)",
+    "GTM 태그 묶음 — Irene 게시 확인 뒤(todomvjvib2x)"
+  ],
+  "behavior_changes": [
+    "프린터 설정: 매장마다 «설정 기기» 한 대 — 그 기기만 바로 저장, 다른 기기는 확인 창 뒤 · 관리자만",
+    "직원 계정은 프린터 칸 잠김(보기 전용) · 비상 모드만 켤 수 있음",
+    "프린터 없는 주방이 있으면 매장 화면 왼쪽 아래 알림(관리자 «프린터 정하기» / 직원 «관리자에게 알리기»)",
+    "프린터 실패 안내가 기기별(앱/QZ/브라우저) 문구",
+    "POS·플로어·주방 입구의 «다른 매장 기기» 차단 화면 없음",
+    "재고 목록: 꺼진 재고아이템은 «꺼짐» 배지 · «전체» 탭에만"
+  ],
+  "check_areas": [
+    "설정 › 프린터(관리자 · 설정 기기 지정/다른 기기 확인 창 · 직원 보기 전용 · 프린터 없는 주방 상자)",
+    "매장 화면 왼쪽 아래 프린터 빠짐 알림",
+    "POS·플로어·주방 진입(차단 화면 없음) · 직원 PIN 전환",
+    "재고 목록 꺼짐 배지·필터"
+  ],
+  "verification": {
+    "api": "프린터 설정 기기 판정 jest(printer-setup-device.test.js) + health-check 프린터 설정 길 추가분 · store.js 좁은 길 3개·restaurants-crud PUT 같은 판정 실호출(작업방 55cb7c4b·4b4ecce8 기록)",
+    "fault_injection": "printerSetupGaps 판정 고장 주입 잡힘(184388306) · 설정 기기 판정은 각 방 작업기록 기준",
+    "browser": "실브라우저 데모 38: 관리자 알림·버튼/직원 없음 · 기기 표시 39/38/없음 → 차단 0·오류 0 · verify-all --full 23/24(나머지 1 = 배포 기록, 이 파일) · mount sweep 크래시 0 은 배포 게이트에서 다시",
+    "printer": "인쇄 동작 무변경 — 🔒 보호 파일 8개 무접촉(print-guard 8/8) · 설정 저장 길만 · 게이트에서 다시",
+    "migrations": "새 마이그 0 · 모델 변경 0",
+    "sw_version": "6.18-printer-device-scope-20261113",
+    "fable_note": "프린터 설정 기기 설계+gate PASS · 앱 안내 ux PASS · POS 입구 차단 제거 Fable 판단 1회(구현 뒤 자체 검증) · 프린터 빠짐 알림·꺼짐 배지 Fable 안 씀(표시만)"
+  },
+  "notes": "배포 준비 11/13(버전·릴리즈노트·공지 없음) · 범위 a365f3cbd..184388306 7커밋 · wip 커밋 0 · SW 6.17→6.18(프론트 변경 있음) · 미커밋(GTM 보류 4파일·playwright 설정·oneoff·작업기록)은 깨끗한 사본에서 저절로 빠짐",
+  "irene_actions_after_deploy": [
+    "K-DINE Noodles 앱에서 관리자 계정으로 Noodles 주방 프린터 지정(todomwdr3gcx)",
+    "K-DINE Noodles 브랜드 메뉴: 잠금 + 순서 + Push All Changes + 매장 28 삭제됨 2개(todomw8d4pcg)"
+  ],
+  "fable_note": "Fable 대기 0 · 민감 변경(프린터 설정 저장 권한 길)은 Fable gate PASS"
+}
