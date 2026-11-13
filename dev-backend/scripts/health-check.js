@@ -12048,6 +12048,79 @@ function defineSettingsTests() {
   });
 }
 
+// 연결(모자) 관리자 매장 PIN (2026-11-13 · Fable 설계 .claude/fable-design-20261113-hat-admin-pin.md §4)
+// 데모 매장 둘(본래 B · 연결 A)에 시험 계정 하나 → 모자 PIN 정하기 · PIN 로그인 · 경계. 끝에 시험 계정·기록 지움(멱등 sweep).
+function defineHatPinTests() {
+  const jwt = require('jsonwebtoken');
+  const USERNAME = 'hc-hatpin-probe';
+  async function sweep(sequelize) {
+    const ids = (await sequelize.query('SELECT id FROM users WHERE username = ?', { replacements: [USERNAME], type: sequelize.QueryTypes.SELECT })).map((r) => r.id);
+    for (const id of ids) {
+      for (const sql of ['DELETE FROM activity_logs WHERE user_id = ?', 'DELETE FROM user_contexts WHERE user_id = ?', 'DELETE FROM users WHERE id = ?']) {
+        try { await sequelize.query(sql, { replacements: [id] }); } catch (_) { /* 표 없음 */ }
+      }
+    }
+  }
+  test('auth', '연결 관리자 PIN: 모자 PIN 으로 그 매장 관리자 로그인 · 겹침 400 · PIN 세션 매장 바꾸기 403 · 회수 401', async () => {
+    const { sequelize } = require('../config/database');
+    const demos = await sequelize.query("SELECT r.id FROM restaurants r WHERE r.is_demo = 1 ORDER BY r.id LIMIT 2", { type: sequelize.QueryTypes.SELECT });
+    if (demos.length < 2) return true; // 데모 매장 둘 없음 → 검증 불가 skip
+    const A = demos[0].id, B = demos[1].id;
+    const granter = (await sequelize.query("SELECT id FROM users WHERE role = 'System Admin' ORDER BY id LIMIT 1", { type: sequelize.QueryTypes.SELECT }))[0];
+    // 그 매장에서 비어 있는 PIN 을 고른다(본래 ∪ 모자 — 헛실패 방지)
+    const { isPinTaken } = require('../utils/storePin');
+    let pin = null;
+    for (let n = 8000; n < 9999 && !pin; n++) { if (!(await isPinTaken(A, String(n)))) pin = String(n); }
+    if (!pin) return true;
+    await sweep(sequelize);
+    try {
+      await sequelize.query("INSERT INTO users (username,email,password,role,restaurant_id,is_active,is_test,createdAt,updatedAt) VALUES (?, ?, 'x', 'Restaurant Admin', ?, 1, 1, NOW(), NOW())", { replacements: [USERNAME, USERNAME + '@example.com', B] });
+      const X = (await sequelize.query('SELECT id FROM users WHERE username = ?', { replacements: [USERNAME], type: sequelize.QueryTypes.SELECT }))[0].id;
+      await sequelize.query("INSERT INTO user_contexts (user_id,entity_type,entity_id,role,granted_by,created_at,updated_at) VALUES (?, 'restaurant', ?, 'Restaurant Admin', ?, NOW(), NOW())", { replacements: [X, A, granter ? granter.id : X] });
+      const pw = jwt.sign({ userId: X }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      const sw = await request('POST', '/auth/switch-context', { entity_type: 'restaurant', entity_id: A, role: 'Restaurant Admin' }, { Authorization: `Bearer ${pw}` });
+      const T1 = sw.body?.data?.token;
+      // 같은 매장 본래 계정 PIN 과 겹치면 400 (본래 PIN 이 하나라도 있을 때만 검사)
+      const nat = (await sequelize.query("SELECT pin_code FROM users WHERE restaurant_id = ? AND pin_code IS NOT NULL AND pin_code <> '' LIMIT 1", { replacements: [A], type: sequelize.QueryTypes.SELECT }))[0];
+      const dup = nat ? await request('PUT', '/auth/context-pin', { pin_code: nat.pin_code }, { Authorization: `Bearer ${T1}` }) : { status: 400 };
+      const set = await request('PUT', '/auth/context-pin', { pin_code: pin }, { Authorization: `Bearer ${T1}` });
+      const login = await request('POST', '/staff/verify-pin', { restaurant_id: A, pin_code: pin });
+      const T2 = login.body?.token;
+      const asAdmin = login.status === 200 && login.body?.user?.role === 'Restaurant Admin' && Number(login.body?.user?.restaurant_id) === A;
+      const switchBlocked = await request('POST', '/auth/switch-context', { target: 'default' }, { Authorization: `Bearer ${T2}` });
+      const wrongStore = await request('POST', '/staff/verify-pin', { restaurant_id: B, pin_code: pin });
+      await sequelize.query('DELETE FROM user_contexts WHERE user_id = ? AND entity_id = ?', { replacements: [X, A] });
+      const revoked = await request('POST', '/staff/verify-pin', { restaurant_id: A, pin_code: pin });
+      // 회수 뒤 이미 받은 PIN 토큰 → 401(본래 매장 B 로 내려가지 않음) · 비밀번호로 전환한 토큰은 지금처럼 본래로 폴백 200
+      const pinAfter = await request('GET', '/auth/me', null, { Authorization: `Bearer ${T2}` });
+      const pinNative = await request('GET', `/restaurants/${B}`, null, { Authorization: `Bearer ${T2}` });
+      const pwAfter = await request('GET', '/auth/me', null, { Authorization: `Bearer ${T1}` });
+      return sw.status === 200 && dup.status === 400 && set.status === 200 && asAdmin
+        && switchBlocked.status === 403 && switchBlocked.body?.error?.code === 'PIN_SESSION'
+        && wrongStore.status === 401 && revoked.status === 401
+        && pinAfter.status === 401 && pinNative.status !== 200 && pwAfter.status === 200;
+    } finally {
+      await sweep(sequelize);
+    }
+  });
+  test('auth', '연결 관리자 PIN: 직원 만들 때 모자 PIN 과 겹치면 400(isPinTaken 양쪽)', async () => {
+    const { isPinTaken } = require('../utils/storePin');
+    const { sequelize } = require('../config/database');
+    const demo = (await sequelize.query("SELECT id FROM restaurants WHERE is_demo = 1 ORDER BY id LIMIT 1", { type: sequelize.QueryTypes.SELECT }))[0];
+    if (!demo) return true;
+    const granter = (await sequelize.query("SELECT id FROM users WHERE role = 'System Admin' ORDER BY id LIMIT 1", { type: sequelize.QueryTypes.SELECT }))[0];
+    await sweep(sequelize);
+    try {
+      await sequelize.query("INSERT INTO users (username,email,password,role,restaurant_id,is_active,is_test,createdAt,updatedAt) VALUES (?, ?, 'x', 'Restaurant Admin', NULL, 1, 1, NOW(), NOW())", { replacements: [USERNAME, USERNAME + '@example.com'] });
+      const X = (await sequelize.query('SELECT id FROM users WHERE username = ?', { replacements: [USERNAME], type: sequelize.QueryTypes.SELECT }))[0].id;
+      await sequelize.query("INSERT INTO user_contexts (user_id,entity_type,entity_id,role,granted_by,pin_code,created_at,updated_at) VALUES (?, 'restaurant', ?, 'Restaurant Admin', ?, '9917', NOW(), NOW())", { replacements: [X, demo.id, granter ? granter.id : X] });
+      return (await isPinTaken(demo.id, '9917')) === true && (await isPinTaken(demo.id, '9917', { exceptContextId: (await sequelize.query('SELECT id FROM user_contexts WHERE user_id = ?', { replacements: [X], type: sequelize.QueryTypes.SELECT }))[0].id })) === false;
+    } finally {
+      await sweep(sequelize);
+    }
+  });
+}
+
 function definePrintTests({ adminToken, demoRestId, demoRaToken, demoBgToken }) {
   const adminAuth = { Authorization: `Bearer ${adminToken}` };
 
@@ -14535,6 +14608,7 @@ async function runTests(allTests, category) {
   defineContextRequestTests(ctx);
   defineOfflineEventsTests();
   defineSecurityTests(ctx);
+  defineHatPinTests();
   definePosTests(ctx);
   defineMobileTests(ctx);
   defineSeoHtmlTests();

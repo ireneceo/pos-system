@@ -116,10 +116,9 @@ async function checkNetwork(req, store, restaurantId, adminPin, transaction) {
   }
   if (adminPin) {
     if (!/^\d{4}$/.test(String(adminPin))) return { error: [401, 'INVALID_ADMIN_PIN', 'Invalid manager PIN'] };
-    const ra = await User.findOne({
-      where: { restaurant_id: restaurantId, role: 'Restaurant Admin', pin_code: String(adminPin) },
-      attributes: ['id', 'is_active'], transaction,
-    });
+    // PIN 조회 한 곳(utils/storePin · 2026-11-13) — 본래 관리자 → 매장 관리자 모자 · 비활성 제외. 관리자 역할만 통과.
+    const holder = await require('../utils/storePin').findStorePinHolder(restaurantId, String(adminPin), { nativeRoles: ['Restaurant Admin'], transaction });
+    const ra = holder && holder.role === 'Restaurant Admin' ? holder.user : null;
     if (!ra || !isActiveUser(ra)) return { error: [401, 'INVALID_ADMIN_PIN', 'Invalid manager PIN'] };
     if (store.settings.pin_override_registers_network) {
       await registerNetwork(restaurantId, ip, { source: 'pin_override', label: 'Auto (manager PIN)', userId: ra.id, transaction });

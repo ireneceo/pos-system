@@ -113,6 +113,23 @@ module.exports = {
     add('UC-008 같은 매장 RA↔Staff 겹침 0건', overlap === 0,
       overlap === 0 ? '0건' : `${overlap}쌍 — 같은 매장에 매장 모자 두 장`);
 
+    // UC-011 (2026-11-13 hat-admin-pin §4-5): 같은 매장에서 PIN 이 본래 계정 ∪ 매장 모자에 두 번 나오면 누구인지 못 가른다 → 0건.
+    if (await hasCol('user_contexts', 'pin_code')) {
+      const pinDup = await cnt(
+        `SELECT COUNT(*) c FROM (
+           SELECT rid, pin FROM (
+             SELECT restaurant_id AS rid, CONVERT(pin_code USING utf8mb4) COLLATE utf8mb4_unicode_ci AS pin FROM users WHERE restaurant_id IS NOT NULL AND pin_code IS NOT NULL AND pin_code <> ''
+             UNION ALL
+             SELECT entity_id AS rid, CONVERT(pin_code USING utf8mb4) COLLATE utf8mb4_unicode_ci AS pin FROM user_contexts WHERE entity_type = 'restaurant' AND pin_code IS NOT NULL AND pin_code <> ''
+           ) a GROUP BY rid, pin HAVING COUNT(*) > 1
+         ) t`
+      );
+      add('UC-011 같은 매장 PIN 겹침 0건(본래 계정 ∪ 연결 모자)', pinDup === 0,
+        pinDup === 0 ? '0건' : `${pinDup}쌍 — 같은 매장에서 같은 PIN 을 두 사람이 씀`);
+    } else {
+      add('UC-011 같은 매장 PIN 겹침', true, 'user_contexts.pin_code 미생성 — 마이그 이전 환경이라 스킵');
+    }
+
     const [reqExists] = await q(
       `SELECT COUNT(*) c FROM information_schema.tables
         WHERE table_schema = DATABASE() AND table_name = 'user_context_requests'`

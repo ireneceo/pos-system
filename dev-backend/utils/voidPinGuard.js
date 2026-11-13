@@ -13,7 +13,6 @@
  * 🔒 인쇄 무관: 이 모듈은 권한 판정만 한다. 인쇄/취소표 로직과 무관.
  */
 
-const User = require('../models/User');
 const Restaurant = require('../models/Restaurant');
 
 // 할인 PIN(routes/staff.js)과 동일한 권한 그룹 — Admin/Owner/Manager 는 자동 허용.
@@ -59,10 +58,9 @@ async function enforceVoidPin(restaurantId, voidPin) {
     return { ok: false, status: 400, code: 'VOID_PIN_REQUIRED', message: 'A manager PIN is required to void or cancel.' };
   }
 
-  const staff = await User.findOne({
-    where: { restaurant_id: restaurantId, pin_code: String(voidPin) },
-    attributes: ['id', 'full_name', 'email', 'role', 'permissions']
-  });
+  // PIN 조회 한 곳(utils/storePin · 2026-11-13) — 본래 계정(지금과 같은 조건) → 매장 모자 → 비활성 제외.
+  const holder = await require('./storePin').findStorePinHolder(restaurantId, String(voidPin), { nativeRoles: null });
+  const staff = holder ? { id: holder.user.id, full_name: holder.user.full_name, email: holder.user.email, role: holder.role, permissions: holder.permissions } : null;
 
   if (!staffHasVoidAuthority(staff)) {
     return { ok: false, status: 403, code: 'VOID_PIN_INVALID', message: 'This PIN is not authorized to void or cancel.' };

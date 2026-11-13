@@ -55,6 +55,12 @@ const UserContext = sequelize.define('UserContext', {
     type: DataTypes.JSON,
     allowNull: true
   },
+  // 매장 모자의 PIN (2026-11-13 Fable 설계 .claude/fable-design-20261113-hat-admin-pin.md §2.1) — PIN 은 «사람 × 매장» 값.
+  // entity_type='restaurant' 행에만 값. 조회·겹침 검사는 utils/storePin.js 한 곳.
+  pin_code: {
+    type: DataTypes.STRING(8),
+    allowNull: true
+  },
   // 픽커 정렬용 (최근 쓴 모자 우선). P1 에서는 아무도 쓰지 않는다.
   last_used_at: {
     type: DataTypes.DATE,

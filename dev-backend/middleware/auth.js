@@ -108,9 +108,17 @@ const authenticateToken = async (req, res, next) => {
       is_demo: user.is_demo || false
     };
 
+    // 로그인 방식 — PIN 으로 받은 토큰은 'pin'(routes/staff.js verify-pin · 2026-11-13). PIN 세션은 권한 바꾸기·PIN 바꾸기 불가.
+    req.authMethod = decoded.amr || null;
+
     // 컨텍스트 투영 (decoded.ctx 없으면 위 req.user 그대로 = 기존 경로 무변경).
     if (decoded.ctx) {
       const projection = await projectContext(req.user, decoded.ctx);
+      // PIN 세션의 모자가 회수되면 본래 계정으로 내려가지 않고 끝낸다 — 매장 A 기기의 4자리 PIN 이
+      // 그 사람의 본래 매장 전체를 여는 길이 되지 않게(2026-11-13 Fable 판정 hat-admin-pin). 비밀번호 세션은 그대로 폴백.
+      if (projection.fallback && decoded.amr === 'pin') {
+        return res.status(401).json({ success: false, error: { message: 'Session expired', code: 'PIN_CONTEXT_REVOKED' } });
+      }
       req.user = projection.user;
       req.contextProjected = projection.projected;
       if (projection.fallback) markContextFallback(res);
@@ -386,9 +394,16 @@ const optionalAuthenticateToken = async (req, res, next) => {
         is_demo: user.is_demo || false
       };
 
+      req.authMethod = decoded.amr || null;
       // 컨텍스트 투영 — authenticateToken 과 동일 규칙(공유 헬퍼).
       if (decoded.ctx) {
         const projection = await projectContext(req.user, decoded.ctx);
+        if (projection.fallback && decoded.amr === 'pin') {
+          // 회수된 모자의 PIN 세션 = 로그인 안 한 것으로(본래 계정을 싣지 않음 · 2026-11-13 Fable 판정)
+          req.user = null;
+          req.authMethod = null;
+          return next();
+        }
         req.user = projection.user;
         req.contextProjected = projection.projected;
         if (projection.fallback) markContextFallback(res);

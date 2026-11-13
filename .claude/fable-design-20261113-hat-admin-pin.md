@@ -114,7 +114,7 @@ D1 의 5곳이 전부 이 함수만 부른다(각자 `User.findOne` 금지). 역
 2. **모자 관리자 실호출(데모 매장만):** 데모 계정에 데모 매장 RA 모자 → 비밀번호 로그인 → 전환 → `context-pin` 설정 → 로그아웃 → verify-pin → 토큰으로 그 매장 관리자 전용 API 200(예: 프린터 설정 저장이 «skipped role=Staff» 가 아니라 저장됨) · 다른 매장 API 403 · `/switch-context` 403 `PIN_SESSION`.
 3. **승인 PIN:** 같은 PIN 으로 void·cash·discount(verify-pin-permission)·출퇴근 관리자 통과.
 4. **경계·반증(고장주입 — pm2 restart 뒤 HTTP 로):**
-   - 모자 회수 뒤 같은 PIN → 401, 이미 받은 토큰 → 본래로 폴백(권한 확대 0)
+   - 모자 회수 뒤 같은 PIN → 401, 이미 받은 **PIN 토큰 → 401**(본래로 폴백 금지 — 2026-11-13 gate 판정으로 정정: 폴백하면 PIN 세션이 본래 계정 전체가 된다. 비밀번호 세션의 폴백은 그대로)
    - 비활성 계정 PIN → 401(본래·모자 둘 다)
    - 겹치는 PIN 설정 3경로 전부 400
    - PIN 세션으로 `context-pin` → 403

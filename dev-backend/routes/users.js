@@ -180,11 +180,12 @@ router.get('/', authenticateToken, async (req, res) => {
       const rid = req.user.restaurant_id;
       const linked = await sequelize.query(`
         SELECT u.id, u.username, u.email, u.full_name, u.phone, u.role AS native_role, u.is_active,
-               uc.id AS context_id, uc.permissions, uc.created_at AS linked_at, r.name AS restaurant_name
+               uc.id AS context_id, uc.permissions, uc.created_at AS linked_at, r.name AS restaurant_name,
+               uc.role AS hat_role, (uc.pin_code IS NOT NULL AND uc.pin_code <> '') AS has_pin
           FROM user_contexts uc
           JOIN users u ON u.id = uc.user_id
           LEFT JOIN restaurants r ON r.id = uc.entity_id
-         WHERE uc.entity_type = 'restaurant' AND uc.entity_id = ? AND uc.role = 'Staff'
+         WHERE uc.entity_type = 'restaurant' AND uc.entity_id = ? AND uc.role IN ('Staff', 'Restaurant Admin')
          ORDER BY u.full_name
       `, { replacements: [rid], type: sequelize.QueryTypes.SELECT });
       const term = searchTerm.toLowerCase();
@@ -198,7 +199,11 @@ router.get('/', authenticateToken, async (req, res) => {
           email: l.email,
           full_name: l.full_name,
           phone: l.phone,
-          role: 'Staff',
+          // 연결 관리자(2026-11-13 hat-admin-pin §2.7): 읽기 전용 행 — 역할·PIN 있음/없음만(PIN 값은 안 내려보냄)
+          role: l.hat_role === 'Restaurant Admin' ? 'Restaurant Admin' : 'Staff',
+          linked_admin: l.hat_role === 'Restaurant Admin',
+          has_pin: !!Number(l.has_pin),
+          is_self: l.id === req.user.id,
           restaurant_id: rid,
           restaurant_name: l.restaurant_name,
           permissions: Array.isArray(perms) ? perms : [],
@@ -509,9 +514,8 @@ router.post('/', authenticateToken, async (req, res) => {
 
     // PIN duplicate check within same restaurant
     if (pin_code && finalRestaurantId) {
-      const pinExists = await User.findOne({
-        where: { restaurant_id: finalRestaurantId, pin_code }
-      });
+      // 겹침 = 본래 계정 ∪ 연결(모자) PIN — utils/storePin 한 곳(2026-11-13)
+      const pinExists = await require('../utils/storePin').isPinTaken(finalRestaurantId, pin_code);
       if (pinExists) {
         return res.status(400).json({
           success: false,
@@ -895,13 +899,8 @@ router.put('/:id', authenticateToken, demoProtection, async (req, res) => {
 
     // PIN duplicate check within same restaurant (only if pin_code is being changed)
     if (updateData.pin_code && user.restaurant_id) {
-      const pinExists = await User.findOne({
-        where: {
-          restaurant_id: user.restaurant_id,
-          pin_code: updateData.pin_code,
-          id: { [Op.ne]: user.id }
-        }
-      });
+      // 겹침 = 본래 계정(자기 제외) ∪ 연결(모자) PIN — utils/storePin 한 곳(2026-11-13)
+      const pinExists = await require('../utils/storePin').isPinTaken(user.restaurant_id, updateData.pin_code, { exceptUserId: user.id });
       if (pinExists) {
         return res.status(400).json({
           success: false,

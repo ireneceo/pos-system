@@ -45,5 +45,15 @@
   "staffPage.unlink": "Nyahpaut",
   "staffPage.unlinkConfirm": "akaun ini akan hilang akses ke kedai ini. Akaun mereka sendiri kekal seperti biasa.",
   "staffPage.attendanceLinkHelp": "Kehadiran hanya mengira staf yang ditambah di sini. Beri setiap orang PIN 4 digit — mereka menaipnya di Jam Kehadiran. Apabila selesai, kembali ke Kehadiran.",
-  "staffPage.backToAttendance": "Kembali ke Kehadiran"
+  "staffPage.backToAttendance": "Kembali ke Kehadiran",
+  "staffPage.setMyPin": "Tetapkan PIN saya",
+  "staffPage.changeMyPin": "Tukar PIN saya",
+  "staffPage.linkedAdminHint": "Pentadbir restoran yang dipautkan dari kedai lain. Hanya mereka boleh menetapkan PIN sendiri di sini.",
+  "staffPage.myPinTitle": "PIN saya untuk kedai ini",
+  "staffPage.myPinInUse": "PIN ini sudah digunakan di kedai ini. Pilih yang lain.",
+  "staffPage.myPinPinSession": "Anda log masuk dengan PIN. Log masuk dengan e-mel atau nama pengguna untuk menukar PIN.",
+  "staffPage.myPinFailed": "Tidak dapat menyimpan PIN. Sila cuba lagi.",
+  "staffPage.myPinSave": "Simpan PIN",
+  "staffPage.myPinBody": "Gunakan PIN 4 digit ini pada peranti kedai ini untuk log masuk sebagai pentadbir restoran. Ia hanya berfungsi di kedai ini.",
+  "staffPage.myPinLabel": "PIN (4 digit)"
 }

@@ -45,5 +45,15 @@
   "staffPage.unlink": "解除关联",
   "staffPage.unlinkConfirm": "该账户将失去本门店的访问权限。其本人账户保持不变。",
   "staffPage.attendanceLinkHelp": "考勤只计算在此添加的员工。请为每位员工设置 4 位 PIN —— 员工在打卡机上输入。添加完成后返回考勤。",
-  "staffPage.backToAttendance": "返回考勤"
+  "staffPage.backToAttendance": "返回考勤",
+  "staffPage.setMyPin": "设置我的 PIN",
+  "staffPage.changeMyPin": "更改我的 PIN",
+  "staffPage.linkedAdminHint": "从其他门店关联的餐厅管理员。只有本人可以在此设置自己的 PIN。",
+  "staffPage.myPinTitle": "我在本店的 PIN",
+  "staffPage.myPinInUse": "此 PIN 已在本店使用。请选择其他号码。",
+  "staffPage.myPinPinSession": "您使用 PIN 登录。要更改 PIN，请用邮箱或用户名登录。",
+  "staffPage.myPinFailed": "无法保存 PIN。请重试。",
+  "staffPage.myPinSave": "保存 PIN",
+  "staffPage.myPinBody": "在本店设备上用这个 4 位 PIN 以餐厅管理员身份登录。仅在本店有效。",
+  "staffPage.myPinLabel": "PIN（4 位）"
 }

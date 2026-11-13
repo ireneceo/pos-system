@@ -45,5 +45,15 @@
   "staffPage.unlink": "연결 해제",
   "staffPage.unlinkConfirm": "이 계정의 이 매장 접근을 끊습니다. 본인 계정은 그대로입니다.",
   "staffPage.attendanceLinkHelp": "출퇴근은 여기 추가된 직원만 셉니다. 직원마다 4자리 PIN 을 넣어 주세요 — 타임클락에서 이 PIN 을 누릅니다. 다 추가했으면 출퇴근으로 돌아가세요.",
-  "staffPage.backToAttendance": "출퇴근으로 돌아가기"
+  "staffPage.backToAttendance": "출퇴근으로 돌아가기",
+  "staffPage.setMyPin": "내 PIN 정하기",
+  "staffPage.changeMyPin": "내 PIN 바꾸기",
+  "staffPage.linkedAdminHint": "다른 매장에서 연결된 레스토랑 관리자입니다. 이 매장 PIN 은 본인만 정할 수 있습니다.",
+  "staffPage.myPinTitle": "이 매장에서 쓸 내 PIN",
+  "staffPage.myPinInUse": "이 매장에서 이미 쓰는 PIN 입니다. 다른 번호를 고르세요.",
+  "staffPage.myPinPinSession": "PIN 으로 들어왔습니다. PIN 을 바꾸려면 이메일이나 아이디로 로그인하세요.",
+  "staffPage.myPinFailed": "PIN 을 저장하지 못했습니다. 다시 시도하세요.",
+  "staffPage.myPinSave": "PIN 저장",
+  "staffPage.myPinBody": "이 매장 기기에서 이 4자리 PIN 으로 레스토랑 관리자로 들어옵니다. 이 매장에서만 쓰입니다.",
+  "staffPage.myPinLabel": "PIN (4자리)"
 }

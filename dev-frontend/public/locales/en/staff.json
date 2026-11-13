@@ -45,5 +45,15 @@
   "staffPage.unlink": "Unlink",
   "staffPage.unlinkConfirm": "this account will lose access to this store. Their own account stays as it is.",
   "staffPage.attendanceLinkHelp": "Attendance only counts staff added here. Give each person a 4-digit PIN — they type it on the Time Clock. When you are done, go back to Attendance.",
-  "staffPage.backToAttendance": "Back to Attendance"
+  "staffPage.backToAttendance": "Back to Attendance",
+  "staffPage.setMyPin": "Set my PIN",
+  "staffPage.changeMyPin": "Change my PIN",
+  "staffPage.linkedAdminHint": "Restaurant admin linked from another store. Only they can set their own PIN here.",
+  "staffPage.myPinTitle": "My PIN for this store",
+  "staffPage.myPinInUse": "This PIN is already used in this store. Choose another.",
+  "staffPage.myPinPinSession": "You signed in with a PIN. Sign in with your email or username to change your PIN.",
+  "staffPage.myPinFailed": "Could not save the PIN. Please try again.",
+  "staffPage.myPinSave": "Save PIN",
+  "staffPage.myPinBody": "Use this 4-digit PIN on this store's devices to sign in as restaurant admin. It works only in this store.",
+  "staffPage.myPinLabel": "PIN (4 digits)"
 }

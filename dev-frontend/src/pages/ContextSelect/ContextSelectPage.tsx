@@ -462,11 +462,27 @@ const ContextSelectPage: React.FC = () => {
 
     const res = await switchContext(target);
     setBusyKey(null);
+    if (!res.ok && res.error === 'PIN_SESSION') {
+      // PIN 으로 들어온 세션은 매장·권한을 못 바꾼다(서버 403 PIN_SESSION · 2026-11-13 hat-admin-pin §2.4-1)
+      setError(t('context.pinSessionSwitch', 'You signed in with a PIN. To switch stores, sign out and sign in with your email or username.'));
+      return;
+    }
     if (!res.ok) {
       setError(t('context.switchFailed'));
       // 실패 원인이 "회수됨"일 수 있으므로 목록을 다시 읽는다.
       refreshContexts().then((fresh) => { if (fresh) setList(fresh); });
       return;
+    }
+    // 기기 매장 기억(2026-11-13 hat-admin-pin §2.5 · D2): 매장으로 넘어갔으면 — 기억이 비어 있으면 채우고,
+    // 다른 매장이 적혀 있으면(onPick 의 «다른 매장 기기» 확인을 거친 경우만 여기 옴) 확정한 매장으로 바꾼다.
+    if (ctx.entity_type === 'restaurant' && ctx.entity_id != null) {
+      try {
+        const raw = localStorage.getItem('pos_device_restaurant');
+        const cur = raw ? JSON.parse(raw) : null;
+        if (!cur?.id || String(cur.id) !== String(ctx.entity_id)) {
+          localStorage.setItem('pos_device_restaurant', JSON.stringify({ id: String(ctx.entity_id), name: ctx.kind === 'default' ? '' : (ctx.label || '') }));
+        }
+      } catch { /* blocked storage */ }
     }
     navigate(res.path || '/pos', { replace: true });
   }, [switchContext, refreshContexts, navigate, t]);

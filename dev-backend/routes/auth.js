@@ -340,6 +340,10 @@ router.get('/me', async (req, res, next) => {
     if (decoded.ctx) {
       const { projectContext, markContextFallback } = require('../middleware/auth');
       const projection = await projectContext(effective, decoded.ctx);
+      // 회수된 모자의 PIN 세션은 본래 계정으로 내려가지 않는다(middleware/auth 와 같은 규칙 · 2026-11-13 Fable 판정)
+      if (projection.fallback && decoded.amr === 'pin') {
+        return errorResponse(res, 'Session expired', 401, 'PIN_CONTEXT_REVOKED');
+      }
       effective = projection.user;
       if (projection.fallback) markContextFallback(res);
     }
@@ -701,6 +705,41 @@ router.get('/contexts', authenticateToken, async (req, res, next) => {
   }
 });
 
+// 내 매장 PIN 정하기(연결 매장) — 2026-11-13 Fable 설계 hat-admin-pin §2.4-2.
+// 대상 = 지금 토큰의 모자 행 하나(주소·본문으로 행을 고르지 않음 → IDOR 여지 없음) · 비밀번호 세션만 · 4자리 숫자 또는 null(지우기).
+router.put('/context-pin', authenticateToken, async (req, res, next) => {
+  try {
+    if (req.authMethod === 'pin') {
+      return errorResponse(res, 'Sign in with email or username to change your PIN', 403, 'PIN_SESSION');
+    }
+    if (!req.contextProjected || !req.user.restaurant_id) {
+      return errorResponse(res, 'Switch to the linked store first', 400, 'NOT_IN_LINKED_STORE');
+    }
+    // 이번 범위는 연결 «관리자» 본인만(연결 직원 PIN 은 2단계 — 설계 §2.7)
+    if (req.user.role !== 'Restaurant Admin') {
+      return errorResponse(res, 'Only a linked restaurant admin can set a PIN here', 403, 'NOT_LINKED_ADMIN');
+    }
+    const raw = req.body ? req.body.pin_code : undefined;
+    const pin = raw === null || raw === '' ? null : String(raw);
+    if (pin !== null && !/^\d{4}$/.test(pin)) {
+      return errorResponse(res, 'PIN must be 4 digits', 400, 'VALIDATION_ERROR');
+    }
+    const { UserContext } = require('../models');
+    const row = await UserContext.findOne({ where: {
+      user_id: req.user.id, entity_type: 'restaurant', entity_id: req.user.restaurant_id, role: req.user.role,
+    } });
+    if (!row) return errorResponse(res, 'Linked store not found', 404, 'CONTEXT_NOT_FOUND');
+    if (pin !== null) {
+      const taken = await require('../utils/storePin').isPinTaken(req.user.restaurant_id, pin, { exceptContextId: row.id });
+      if (taken) return errorResponse(res, 'PIN already used in this restaurant', 400, 'PIN_IN_USE');
+    }
+    await row.update({ pin_code: pin });
+    return successResponse(res, { has_pin: pin !== null }, pin === null ? 'PIN removed' : 'PIN saved');
+  } catch (error) {
+    next(error);
+  }
+});
+
 // 컨텍스트 전환 — `{ target: 'default' }` 또는 `{ entity_type, entity_id, role }`.
 router.post('/switch-context', authenticateToken, async (req, res, next) => {
   try {
@@ -719,6 +758,11 @@ router.post('/switch-context', authenticateToken, async (req, res, next) => {
     // 비활성 계정은 전환도 불가([[reference_user_deactivation]]).
     if (user.is_active === false) {
       return errorResponse(res, 'Account is deactivated', 403, 'ACCOUNT_DEACTIVATED');
+    }
+    // PIN 으로 들어온 세션은 다른 자격(본래 계정·다른 모자)으로 못 넘어간다 — 4자리 PIN 이 계정 전체 열쇠가 되지 않게
+    // (2026-11-13 Fable 설계 hat-admin-pin §2.4-1). 매장을 바꾸려면 이메일·아이디로 로그인.
+    if (req.authMethod === 'pin') {
+      return errorResponse(res, 'Sign in with email or username to switch stores', 403, 'PIN_SESSION');
     }
 
     const expiresIn = process.env.JWT_EXPIRES_IN || '24h';

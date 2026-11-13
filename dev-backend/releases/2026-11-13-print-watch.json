@@ -3,46 +3,57 @@
   "sw_version": "6.19-print-watch-20261113",
   "date": "2026-11-13",
   "in_progress": [
-    "연결(추가 권한) 관리자도 매장 기기 PIN 으로 관리자 로그인 — Fable 설계 완료(fable-design-20261113-hat-admin-pin) · 구현 중 · 다음 배포",
     "GTM 태그 묶음(보류 4파일 · Irene 게시 확인 대기 — 미커밋이라 이번 배포에서 빠짐)"
   ],
   "completed": [
+    "연결(추가 권한) 관리자가 그 매장 기기 PIN 으로 관리자 로그인 · 직원 화면 «내 PIN 정하기» · 연결 관리자 행 표시(PIN 커밋)",
+    "이메일 로그인이 기기의 매장 기억을 덮어쓰지 않음 · 로그인 실패를 «비밀번호 틀림/시도 한도/일시 오류»로 구분해 안내(PIN 커밋)",
+    "비활성 계정 PIN 은 로그인·승인 PIN 에서 거부(PIN 커밋)",
     "인쇄 문제 자동 점검(인쇄 지킴이) — 1시간마다 전 매장 규칙 6개 점검 · 관리자 Print Health 맨 위 «봐야 할 매장»(b3b2bbc1b)",
     "앱 인쇄 실패 보고를 인쇄 기록 표에 남김 — Print Health «최근 실패»·자가진단이 실제 실패를 셈(b3b2bbc1b)",
     "프린터 설정 기기를 아직 안 정한 매장은 관리자가 바로 프린터 칸을 바꿀 수 있음(b3b2bbc1b)"
   ],
   "issues": [
+    "K-DINE Noodles: kdineipc1(연결 관리자)이 매장 기기 PIN 을 치면 직원 계정 r28:Kate 로 들어가 프린터 설정이 «보기 전용»이던 문제",
+    "다른 매장 관리자가 이메일 로그인하면 기기 매장이 바뀌어 그 매장 직원 PIN 이 전부 «Invalid PIN»이던 문제",
     "6.18 뒤 관리자도 프린터 설정이 잠겨 보이던 문제(설정 기기 «아직 안 정함» 상태 — K-DINE Noodles kdineipc1)",
     "앱 인쇄 실패(예: 주방 프린터 빈칸 PRINTER_NOT_FOUND)가 텍스트 로그에만 남아 아무도 모르던 문제"
   ],
   "upcoming": [
-    "연결 관리자 PIN 로그인 · 기기 매장 기억 · 로그인 실패 안내 문구(Fable 설계 완료 · 구현 중)",
+    "배포 뒤 Kate: kdineipc1 로 이메일 로그인 → 매장 28 → 직원 화면 «내 PIN 정하기» → 그 뒤 직원 계정 r28:Kate(69) 삭제",
     "배포 뒤 첫 정기 점검: 인쇄 지킴이 기준선 기록 · 오탐 조정(Fable 판정서 §4)",
     "GTM 태그 묶음 — Irene 게시 확인 뒤(todomvjvib2x)"
   ],
   "behavior_changes": [
+    "매장 PIN: 본래 계정 다음 연결(모자) 계정 PIN 도 찾음 → 연결 관리자는 그 매장 관리자로 들어감 · 비활성 계정 PIN 거부",
+    "PIN 으로 들어온 세션은 «매장·권한 바꾸기» 불가(이메일·아이디 로그인만) — 동작 변경",
+    "기기 매장 기억: 비어 있을 때만 로그인으로 채움 · 매장 고르기에서 확정할 때만 바뀜",
+    "로그인 실패 문구: 시도 한도(15분)·비활성·일시 오류를 «비밀번호 틀림»과 구분",
     "프린터 설정: 설정 기기를 아직 안 정한 매장은 관리자에게 칸이 바로 열림(설정 기기 버튼은 그대로 · 자동 지정 없음)",
     "관리자(System Admin) Print Health 맨 위에 «봐야 할 매장» 목록 — 1시간마다 자동 갱신",
     "새 정기 작업 print_watch_hourly(매시 7분 · 읽기 위주 · 60일 지난 인쇄 기록 정리)",
     "직원 등 관리자 아닌 계정이 프린터 칸을 바꾸려 하면 기록이 남음(설정은 여전히 안 바뀜)"
   ],
   "check_areas": [
+    "매장 기기 PIN 패드(연결 관리자 PIN → 관리자 화면)",
+    "직원 화면 — 연결 관리자 행 · «내 PIN 정하기»",
+    "이메일 로그인 실패 문구",
     "설정 › 프린터 — 관리자 · 설정 기기 미지정 매장에서 칸 열림 / 지정된 다른 기기면 확인 창",
     "Admin › Print Health 맨 위 «봐야 할 매장»(데모 매장 보기 토글)",
     "운영 로그 [PrintWatch] · scheduler_runs print_watch_hourly"
   ],
   "verification": {
-    "api": "health-check print 14/14(새 3: 앱 실패 기록·발견 열림→풀림·/watch SA 전용) · jest 서버 print-watch 18 + printer-setup-device 26 · 화면 printerSetupGaps 14 + PrinterDeviceScope 5 · 직원 저장 소음 실측 0/0/1",
-    "fault_injection": "관측 줄 제거 → health-check 실패 · 기록 throw → 응답 200 그대로 · 화면 판정 폴백 제거 → jest 실패 · N 줄 되돌림 → 훅 jest 실패 (4건 모두 원복)",
-    "browser": "실브라우저 데모 38: 설정 기기 V1~V5(관리자 N 열림·저장 유지·자동 지정 없음 / 직원 잠김 / O 확인 뒤만 / M 열림 / 불러오기 실패 잠김) · Print Health 1366·390 오류 0 · verify-all --full 23/24(나머지 1 = 이 기록·SW 버전)",
+    "api": "연결 관리자 PIN 실호출 19항목(로그인·저장·다른 매장 403·PIN 세션 403·겹침 400·비활성/회수 401·본래 직원 무회귀 · 회수 뒤 PIN 세션 401·비밀번호 세션 폴백 200) · health-check auth 24/24(새 2) · health-check print 14/14(새 3: 앱 실패 기록·발견 열림→풀림·/watch SA 전용) · jest 서버 print-watch 18 + printer-setup-device 26 · 화면 printerSetupGaps 14 + PrinterDeviceScope 5 · 직원 저장 소음 실측 0/0/1",
+    "fault_injection": "PIN 세션 차단 제거·isPinTaken 한쪽 → health-check 실패 · 인스펙션 UC-011 겹침 주입 실패 · 관측 줄 제거 → health-check 실패 · 기록 throw → 응답 200 그대로 · 화면 판정 폴백 제거 → jest 실패 · N 줄 되돌림 → 훅 jest 실패 (4건 모두 원복)",
+    "browser": "D2 고치기 전 재현(기억 38→39)·고친 뒤 38 유지·직원 PIN 200 · D3 429 문구 · Kate 시나리오(내 PIN 정하기 → PIN 패드 관리자 → 프린터 칸 열림) · 실브라우저 데모 38: 설정 기기 V1~V5(관리자 N 열림·저장 유지·자동 지정 없음 / 직원 잠김 / O 확인 뒤만 / M 열림 / 불러오기 실패 잠김) · Print Health 1366·390 오류 0 · verify-all --full 23/24(나머지 1 = 이 기록·SW 버전)",
     "printer": "인쇄 동작 무변경 — 🔒 보호 파일 8개 무접촉(print-guard 8/8) · print-debug 는 관측만",
-    "migrations": "새 마이그 1: migrate-create-print-watch-findings.js(새 표만 · 멱등 · registry deploy)",
+    "migrations": "새 마이그 2: migrate-create-print-watch-findings.js(새 표) · migrate-add-user-context-pin.js(user_contexts.pin_code 칸 추가 · NULL · 멱등) — 둘 다 registry deploy",
     "sw_version": "6.19-print-watch-20261113",
-    "fable_note": "인쇄 지킴이 Fable 설계 + gate PASS(fable-verdict-20261113-print-monitoring) · N 잠금 Fable 판정 + 재판정 PASS(fable-verdict-20261113-setup-device-n-lock · 마커 93df382ce774)"
+    "fable_note": "연결 관리자 PIN Fable 설계 + gate 조건부 → 회수된 PIN 세션 401 고침 → 재판정 PASS(fable-verdict-20261113-hat-admin-pin · 마커 1ff7a31d99fc · verify-all --full 실패 0 조건) · 인쇄 지킴이 Fable 설계 + gate PASS(fable-verdict-20261113-print-monitoring) · N 잠금 Fable 판정 + 재판정 PASS(fable-verdict-20261113-setup-device-n-lock · 마커 93df382ce774)"
   },
-  "notes": "배포 준비 11/13 · 범위 ebfe97b36..b3b2bbc1b · SW 6.18→6.19 · 새 마이그 1(새 표) · 미커밋(GTM 보류 4파일·playwright 설정·oneoff)은 깨끗한 사본에서 빠짐 · 배포 뒤 첫 정기 점검이 인쇄 지킴이 기준선",
+  "notes": "배포 준비 11/13 · 범위 ebfe97b36..(PIN 커밋) · SW 6.18→6.19 · 새 마이그 2 · 미커밋(GTM 보류 4파일·playwright 설정·oneoff)은 깨끗한 사본에서 빠짐 · 배포 뒤 첫 정기 점검이 인쇄 지킴이 기준선",
   "irene_actions_after_deploy": [
-    "K-DINE Noodles: kdineipc1 로 이메일 로그인 → 매장 고르기 28 → 설정 › 프린터에서 Noodles 주방 프린터 지정(todomwdr3gcx)"
+    "K-DINE Noodles: kdineipc1 이메일 로그인 → 매장 28 → 직원 화면 «내 PIN 정하기» → 설정 › 프린터 Noodles 주방 프린터 지정 → 직원 계정 r28:Kate(69) 삭제(비활성만으로는 PIN 이 안 막히던 옛 동작 — 이번 배포로 비활성도 막힘)"
   ],
   "fable_note": "Fable 대기 0 · 민감 변경(새 표 마이그 · 🔒 라우트 옆 관측 · SA 새 라우트)은 Fable gate PASS"
 }

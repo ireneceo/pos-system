@@ -16,54 +16,44 @@ router.post('/verify-pin', async (req, res) => {
       return res.status(400).json({ success: false, error: { message: 'PIN code and restaurant ID are required', code: 'VALIDATION_ERROR' } });
     }
 
-    const staff = await User.findOne({
-      where: {
-        restaurant_id: restaurantId,
-        pin_code: pin_code,
-        role: ['Restaurant Admin', 'Staff']
-      },
-      attributes: ['id', 'full_name', 'role', 'department', 'email', 'username',
-        'brand_id', 'foodcourt_id', 'restaurant_id', 'manager_id', 'permissions']
-    });
-
-    if (!staff) {
+    // PIN 조회 한 곳(utils/storePin · 2026-11-13 Fable 설계 hat-admin-pin §2.2): 본래 계정 먼저(지금과 같은 조건) → 매장 모자 → 비활성 제외.
+    const holder = await require('../utils/storePin').findStorePinHolder(restaurantId, pin_code, { nativeRoles: ['Restaurant Admin', 'Staff'] });
+    if (!holder) {
       return res.status(401).json({ success: false, error: { message: 'Invalid PIN', code: 'UNAUTHORIZED' } });
     }
-
-    // JWT 발급 (authService.js와 동일 패턴)
-    const token = jwt.sign({
-      userId: staff.id,
-      email: staff.email,
-      role: staff.role,
-      username: staff.username,
-      brand_id: staff.brand_id,
-      foodcourt_id: staff.foodcourt_id,
-      restaurant_id: staff.restaurant_id,
-      manager_id: staff.manager_id
-    }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN || '24h' });
-
-    // permissions 파싱 (JSON string → array)
-    let permissions = [];
-    if (staff.permissions) {
-      try {
-        permissions = typeof staff.permissions === 'string'
-          ? JSON.parse(staff.permissions)
-          : staff.permissions;
-      } catch (e) {
-        permissions = [];
-      }
-    }
-
-    res.json({
-      success: true,
-      data: {
-        id: staff.id,
-        name: staff.full_name || staff.email,
+    const staff = holder.user;
+    const expiresIn = process.env.JWT_EXPIRES_IN || '24h';
+    let token;
+    let userOut;
+    if (holder.via === 'hat') {
+      // 연결(모자) 관리자·직원 — /api/auth/switch-context 가 내는 것과 같은 모양(투영값 + ctx). 권한은 매 요청 서버가 user_contexts 로 다시 확인.
+      const rid = holder.context.entity_id;
+      token = jwt.sign({
+        userId: staff.id, email: staff.email, username: staff.username, branch_id: staff.branch_id, manager_id: staff.manager_id,
+        role: holder.role, restaurant_id: rid, brand_id: null, foodcourt_id: null,
+        ctx: { v: 1, t: 'restaurant', id: rid, r: holder.role },
+        amr: 'pin'
+      }, process.env.JWT_SECRET, { expiresIn });
+      try { await require('../services/userContexts').touchContextUsage(holder.context.id); } catch (_) { /* 정렬용 · 실패 무시 */ }
+      userOut = {
+        id: staff.id, email: staff.email, role: holder.role, username: staff.username,
+        name: staff.full_name || staff.email, restaurant_id: rid, manager_id: null,
+        brand_id: null, foodcourt_id: null, permissions: holder.permissions
+      };
+    } else {
+      // JWT 발급 (authService.js와 동일 패턴) — 본래 계정은 지금과 같고 amr 만 더한다.
+      token = jwt.sign({
+        userId: staff.id,
+        email: staff.email,
         role: staff.role,
-        department: staff.department
-      },
-      token,
-      user: {
+        username: staff.username,
+        brand_id: staff.brand_id,
+        foodcourt_id: staff.foodcourt_id,
+        restaurant_id: staff.restaurant_id,
+        manager_id: staff.manager_id,
+        amr: 'pin'
+      }, process.env.JWT_SECRET, { expiresIn });
+      userOut = {
         id: staff.id,
         email: staff.email,
         role: staff.role,
@@ -73,8 +63,20 @@ router.post('/verify-pin', async (req, res) => {
         manager_id: staff.manager_id,
         brand_id: staff.brand_id,
         foodcourt_id: staff.foodcourt_id,
-        permissions
-      }
+        permissions: holder.permissions
+      };
+    }
+
+    res.json({
+      success: true,
+      data: {
+        id: staff.id,
+        name: staff.full_name || staff.email,
+        role: userOut.role,
+        department: staff.department
+      },
+      token,
+      user: userOut
     });
   } catch (error) {
     console.error('Error verifying PIN:', error);
@@ -130,13 +132,12 @@ router.post('/verify-pin-permission', async (req, res) => {
     if (!pin_code || !restaurantId) {
       return res.status(400).json({ success: false, message: 'PIN code and restaurant ID are required' });
     }
-    const staff = await User.findOne({
-      where: { restaurant_id: restaurantId, pin_code },
-      attributes: ['id', 'full_name', 'email', 'role', 'permissions']
-    });
-    if (!staff) {
+    // PIN 조회 한 곳(utils/storePin) — 본래 계정(지금과 같은 조건: 역할 조건 없음) → 매장 모자 → 비활성 제외.
+    const holder = await require('../utils/storePin').findStorePinHolder(restaurantId, pin_code, { nativeRoles: null });
+    if (!holder) {
       return res.json({ success: true, data: { authorized: false } });
     }
+    const staff = { id: holder.user.id, full_name: holder.user.full_name, email: holder.user.email, role: holder.role, permissions: holder.permissions };
     // 권한: Admin/Owner/Manager 는 자동 허용, 그 외엔 permissions 에 해당 권한 보유 시.
     const privilegedRoles = ['Restaurant Admin', 'Restaurant Owner', 'Restaurant Manager', 'Manager', 'System Admin'];
     let perms = [];

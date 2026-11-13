@@ -13,7 +13,6 @@
  * 🔒 인쇄 무관: 권한 판정만. 인쇄/주문 로직과 무관.
  */
 
-const User = require('../models/User');
 const Restaurant = require('../models/Restaurant');
 
 // 결제권한 자동 허용 역할 — middleware/auth.js PAYMENT_VOID_ROLES 와 동일 그룹.
@@ -59,10 +58,9 @@ async function enforceCashPin(restaurantId, cashPin) {
     return { ok: false, status: 400, code: 'CASH_PIN_REQUIRED', message: 'A payment-authorized PIN is required for cash management.' };
   }
 
-  const staff = await User.findOne({
-    where: { restaurant_id: restaurantId, pin_code: String(cashPin) },
-    attributes: ['id', 'full_name', 'email', 'role', 'permissions']
-  });
+  // PIN 조회 한 곳(utils/storePin · 2026-11-13) — 본래 계정(지금과 같은 조건) → 매장 모자 → 비활성 제외.
+  const holder = await require('./storePin').findStorePinHolder(restaurantId, String(cashPin), { nativeRoles: null });
+  const staff = holder ? { id: holder.user.id, full_name: holder.user.full_name, email: holder.user.email, role: holder.role, permissions: holder.permissions } : null;
 
   if (!staffHasPaymentAuthority(staff)) {
     return { ok: false, status: 403, code: 'CASH_PIN_INVALID', message: 'This PIN is not authorized for cash management.' };

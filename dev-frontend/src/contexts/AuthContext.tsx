@@ -672,8 +672,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // JWT 토큰 저장
           setAuthToken(result.data.token);
           // 공용 단말이 자기 매장을 기억 → 이후 직원 PIN 로그인에서 매장코드 입력 없이 PIN만.
+          // 2026-11-13 (Fable hat-admin-pin §2.5 · D2): 기억이 **비어 있을 때만** 채운다. 다른 매장 관리자(연결 계정)의
+          // 이메일 로그인이 이 기기의 매장을 조용히 바꾸지 않게 — 바꾸는 길은 매장 고르기에서 사용자가 확정할 때 하나.
           if (userData.restaurantId) {
-            try { localStorage.setItem('pos_device_restaurant', JSON.stringify({ id: userData.restaurantId, name: userData.restaurantName || '' })); } catch {}
+            try {
+              if (!localStorage.getItem('pos_device_restaurant')) {
+                localStorage.setItem('pos_device_restaurant', JSON.stringify({ id: userData.restaurantId, name: userData.restaurantName || '' }));
+              }
+            } catch {}
           }
           // i18n 언어 동기화
           if (apiUser.preferred_language) {
@@ -693,6 +699,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const err: any = new Error(errorResult.error.message || 'Please verify your email address.');
         err.code = 'EMAIL_NOT_VERIFIED';
         err.email = errorResult.error.email;
+        throw err;
+      }
+      // 2026-11-13 (Fable hat-admin-pin §2.6 · D3): 실패를 전부 «비밀번호 틀림» 으로 보이지 않게 가른다.
+      // 429 = 로그인 시도 한도(15분 · 같은 인터넷 기준) · 403 비활성 · 그 밖(5xx 등) = 일시 오류. 401 만 «틀림»(false).
+      if (response.status === 429) {
+        const err: any = new Error(i18n.t('auth:loginError.tooMany', 'Too many login attempts from this network. Please wait 15 minutes and try again.'));
+        err.code = 'LOGIN_RATE_LIMITED';
+        throw err;
+      }
+      const errCode = errorResult?.error?.code || errorResult?.code;
+      if (response.status === 403 && errCode === 'ACCOUNT_DEACTIVATED') {
+        const err: any = new Error(i18n.t('auth:loginError.deactivated', 'This account has been deactivated. Contact your administrator.'));
+        err.code = 'ACCOUNT_DEACTIVATED';
+        throw err;
+      }
+      if (response.status !== 401 && response.status !== 400) {
+        const err: any = new Error(i18n.t('auth:loginError.failed', 'Login failed. Please try again.'));
+        err.code = 'LOGIN_FAILED';
         throw err;
       }
 

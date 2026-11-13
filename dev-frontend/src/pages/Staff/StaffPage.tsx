@@ -38,6 +38,10 @@ interface Staff {
   /** 'context' = 승인·부여로 이 매장 Staff 모자를 가진 다른 계정(«연결 계정») — Staff ID·PIN 없음, 남의 계정이라 수정 버튼 없음 */
   accessKind?: 'native' | 'context';
   contextId?: number;
+  /** 연결 관리자(Restaurant Admin 모자) — 읽기 전용 행 · 본인 줄만 «Set PIN» (2026-11-13 hat-admin-pin §2.7) */
+  linkedAdmin?: boolean;
+  hasPin?: boolean;
+  isSelf?: boolean;
 }
 
 const StaffContainer = styled.div`
@@ -238,6 +242,11 @@ const StaffPage: React.FC = () => {
   const [linkedError, setLinkedError] = useState('');
   const [linkedSaving, setLinkedSaving] = useState(false);
   const [unlinkTarget, setUnlinkTarget] = useState<Staff | null>(null);
+  // 내 매장 PIN(연결 관리자 본인) — PUT /api/auth/context-pin (2026-11-13 hat-admin-pin §2.4-2·§2.7)
+  const [myPinOpen, setMyPinOpen] = useState(false);
+  const [myPin, setMyPin] = useState('');
+  const [myPinError, setMyPinError] = useState('');
+  const [myPinBusy, setMyPinBusy] = useState(false);
   const [unlinking, setUnlinking] = useState(false);
 
   const fetchStaff = useCallback(async () => {
@@ -286,6 +295,9 @@ const StaffPage: React.FC = () => {
         status: 'active' as const,
         accessKind: u.access_kind === 'context' ? 'context' as const : 'native' as const,
         contextId: u.context_id ?? undefined,
+        linkedAdmin: !!u.linked_admin,
+        hasPin: !!u.has_pin,
+        isSelf: !!u.is_self,
         joinDate: u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
         permissions: (() => {
           let p = u.permissions;
@@ -779,7 +791,7 @@ const StaffPage: React.FC = () => {
                             <StaffName>
                               {staff.name}
                               {staff.accessKind === 'context' && (
-                                <DataTableStatus variant="info" style={{ marginLeft: 8 }} title={t('staff:staffPage.linkedNoPin')}>
+                                <DataTableStatus variant="info" style={{ marginLeft: 8 }} title={staff.linkedAdmin ? t('staff:staffPage.linkedAdminHint', 'Restaurant admin linked from another store. Only they can set their own PIN here.') : t('staff:staffPage.linkedNoPin')}>
                                   {t('staff:staffPage.linkedAccount')}
                                 </DataTableStatus>
                               )}
@@ -804,9 +816,9 @@ const StaffPage: React.FC = () => {
                       <DataTableCell data-label="PIN" align="center">
                         <span
                           style={{ fontSize: '14px', color: '#4B5563', fontFamily: 'monospace', letterSpacing: '2px' }}
-                          title={staff.accessKind === 'context' ? t('staff:staffPage.linkedNoPin') : undefined}
+                          title={staff.accessKind === 'context' && !staff.linkedAdmin ? t('staff:staffPage.linkedNoPin') : undefined}
                         >
-                          {staff.pin_code ? '****' : '—'}
+                          {(staff.accessKind === 'context' ? staff.hasPin : staff.pin_code) ? '****' : '—'}
                         </span>
                       </DataTableCell>
 
@@ -833,7 +845,14 @@ const StaffPage: React.FC = () => {
                       </DataTableCell>
 
                       <DataTableCell data-label="" align="right" mobileFullWidth>
-                        {staff.accessKind === 'context' && canManageRequests && staff.contextId != null && (
+                        {staff.linkedAdmin && staff.isSelf && (
+                          <ActionGroup>
+                            <IconButton onClick={() => { setMyPin(''); setMyPinError(''); setMyPinOpen(true); }} data-testid="staff-set-my-pin">
+                              {staff.hasPin ? t('staff:staffPage.changeMyPin', 'Change my PIN') : t('staff:staffPage.setMyPin', 'Set my PIN')}
+                            </IconButton>
+                          </ActionGroup>
+                        )}
+                        {staff.accessKind === 'context' && !staff.linkedAdmin && canManageRequests && staff.contextId != null && (
                           <ActionGroup>
                             <IconButton onClick={() => openLinkedEdit(staff)}>
                               {t('staff:staffPage.editPermissions')}
@@ -1265,6 +1284,60 @@ const StaffPage: React.FC = () => {
           <div style={{ fontSize: 14, color: '#1F2937' }}>
             <strong>{unlinkTarget?.name}</strong> — {t('staff:staffPage.unlinkConfirm')}
           </div>
+        </Modal>
+
+        {/* ===== 내 매장 PIN (연결 관리자 본인 · 2026-11-13 hat-admin-pin) ===== */}
+        <Modal
+          isOpen={myPinOpen}
+          onClose={() => setMyPinOpen(false)}
+          title={t('staff:staffPage.myPinTitle', 'My PIN for this store')}
+          size="small"
+          footer={
+            <>
+              <ModalButton variant="secondary" onClick={() => setMyPinOpen(false)}>{t('staff:staffPage.cancel')}</ModalButton>
+              <ModalButton
+                variant="primary"
+                disabled={myPinBusy || !/^\d{4}$/.test(myPin)}
+                data-testid="staff-my-pin-save"
+                onClick={async () => {
+                  setMyPinBusy(true); setMyPinError('');
+                  try {
+                    const r = await fetch('/api/auth/context-pin', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+                      body: JSON.stringify({ pin_code: myPin }),
+                    });
+                    const body = await r.json().catch(() => ({} as any));
+                    if (!r.ok || !body?.success) {
+                      const code = body?.error?.code;
+                      setMyPinError(code === 'PIN_IN_USE' ? t('staff:staffPage.myPinInUse', 'This PIN is already used in this store. Choose another.')
+                        : code === 'PIN_SESSION' ? t('staff:staffPage.myPinPinSession', 'You signed in with a PIN. Sign in with your email or username to change your PIN.')
+                        : t('staff:staffPage.myPinFailed', 'Could not save the PIN. Please try again.'));
+                      return;
+                    }
+                    setMyPinOpen(false);
+                    fetchStaff();
+                  } finally { setMyPinBusy(false); }
+                }}
+              >{t('staff:staffPage.myPinSave', 'Save PIN')}</ModalButton>
+            </>
+          }
+        >
+          <div style={{ fontSize: 14, color: '#1F2937', lineHeight: 1.6, marginBottom: 12 }}>
+            {t('staff:staffPage.myPinBody', 'Use this 4-digit PIN on this store\'s devices to sign in as restaurant admin. It works only in this store.')}
+          </div>
+          <FormGroup>
+            <FormLabel>{t('staff:staffPage.myPinLabel', 'PIN (4 digits)')}</FormLabel>
+            <FormInput
+              type="password"
+              inputMode="numeric"
+              maxLength={4}
+              value={myPin}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setMyPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              data-testid="staff-my-pin-input"
+            />
+          </FormGroup>
+          {myPinError && <ModalWarning>{myPinError}</ModalWarning>}
         </Modal>
 
         {/* Promote modal removed - 1:1 admin constraint */}
