@@ -1842,6 +1842,7 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
         guard: guardPrinterSettings, restaurantId: req.params.id,
       });
       if (r.skipped) printerSettingsSkipped = r.skipped;
+      if (r.blockedChange) require('../utils/printerSetupDevice').recordBlockedPrinterChange(req.user, req.params.id); // 인쇄 지킴이 settings_blocked
       if (r.action === 'save') updateData.printer_settings = r.value;
       else console.warn(`[restaurant update] printer_settings skipped (${r.reason}, role=${req.user.role}, restaurant=${req.params.id})`);
     }

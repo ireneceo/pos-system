@@ -156,7 +156,8 @@
       "critical": "Attention",
       "warn": "Warning",
       "unknown": "Unknown",
-      "ok": "OK"
+      "ok": "OK",
+      "info": "Info"
     },
     "drill": {
       "title": "Details",
@@ -171,6 +172,38 @@
       "lastReport": "Last check-in",
       "autoPrint": "Auto-print",
       "guideStore": "To run device checks, ask the store to open Settings > Printer and tap Run full check."
+    },
+    "watch": {
+      "title": "Needs attention",
+      "subtitle": "Checked automatically every hour across all stores",
+      "lastRun": "last check {{ago}}",
+      "showDemo": "Show demo stores",
+      "empty": "No print problems found.",
+      "resolvedTitle": "Resolved in the last 7 days ({{n}})",
+      "fleetTitle": "All stores",
+      "demoTag": "demo",
+      "col": {
+        "problem": "Problem",
+        "detail": "Details",
+        "since": "Since",
+        "resolved": "Resolved"
+      },
+      "code": {
+        "setup_gap": "Kitchen with no printer",
+        "print_failures": "Print failures reported",
+        "unprinted_orders": "Auto-print on, orders not printed",
+        "multi_auto_print": "Several auto-print devices",
+        "old_app": "Old app version",
+        "settings_blocked": "Blocked printer setting changes"
+      },
+      "detail": {
+        "setup_gap": "Tickets will not print: {{kitchens}}",
+        "print_failures": "{{n}} in 24h — {{top}}",
+        "unprinted_orders": "{{n}} orders waiting over 10 min — {{orders}}",
+        "multi_auto_print": "{{n}} devices set to auto-print",
+        "old_app": "{{devices}} — update to {{min}} or later",
+        "settings_blocked": "{{n}} attempts by non-admin accounts in 24h"
+      }
     }
   }
 }

@@ -27,11 +27,25 @@ interface FleetRow {
   autoDevice: { label: string; appVersion: string | null; lastReportSec: number | null } | null;
 }
 
+// 인쇄 지킴이 발견(2026-11-13 · .claude/fable-design-20261113-print-monitoring.md §4-1) — GET /api/print-diagnostics/watch
+interface WatchFinding {
+  id: number;
+  restaurant_id: number;
+  code: string;
+  severity: 'critical' | 'warn' | 'info';
+  evidence: any;
+  first_seen_at: string;
+  last_seen_at: string;
+  resolved_at: string | null;
+  seen_count: number;
+}
+
 const SEV_STYLE: Record<string, { color: string; bg: string }> = {
   critical: { color: '#DC2626', bg: '#FEF2F2' },
   warn:     { color: '#B45309', bg: '#FFFBEB' },
   unknown:  { color: '#4B5563', bg: '#F3F4F6' },
   ok:       { color: '#059669', bg: '#ECFDF5' },
+  info:     { color: '#4B5563', bg: '#F3F4F6' },
 };
 
 const PrintHealthPage: React.FC = () => {
@@ -42,6 +56,9 @@ const PrintHealthPage: React.FC = () => {
   const [drill, setDrill] = useState<FleetRow | null>(null);
   const [drillData, setDrillData] = useState<{ devices: any[]; pollerSinceSec: number | null; checks: any[] } | null>(null);
   const [drillLoading, setDrillLoading] = useState(false);
+  const [watch, setWatch] = useState<{ open: WatchFinding[]; resolved: WatchFinding[]; lastRun: { started_at: string; status: string } | null } | null>(null);
+  const [watchError, setWatchError] = useState(false);
+  const [showDemo, setShowDemo] = useState(false);
 
   const authHeaders = () => ({ 'Authorization': `Bearer ${getAuthToken()}` });
 
@@ -60,7 +77,19 @@ const PrintHealthPage: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { loadFleet(); }, [loadFleet]);
+  const loadWatch = useCallback(async () => {
+    setWatchError(false);
+    try {
+      const res = await fetch('/api/print-diagnostics/watch', { headers: authHeaders() });
+      const data = await res.json();
+      if (data?.success && data.data) setWatch(data.data);
+      else setWatchError(true);
+    } catch {
+      setWatchError(true);
+    }
+  }, []);
+
+  useEffect(() => { loadFleet(); loadWatch(); }, [loadFleet, loadWatch]);
 
   const openDrill = useCallback(async (row: FleetRow) => {
     setDrill(row);
@@ -91,11 +120,57 @@ const PrintHealthPage: React.FC = () => {
   const sevBadge = (sev: string) => {
     const s = SEV_STYLE[sev] || SEV_STYLE.unknown;
     return (
-      <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, color: s.color, background: s.bg }}>
+      <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, color: s.color, background: s.bg, whiteSpace: 'nowrap' }}>
         {t(`admin.severity.${sev}`)}
       </span>
     );
   };
+
+  const agoOf = (iso: string | null) => fmtAgo(iso ? Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000)) : null);
+  const watchDetail = (f: WatchFinding): string => {
+    const e = f.evidence || {};
+    switch (f.code) {
+      case 'setup_gap': return t('admin.watch.detail.setup_gap', { kitchens: (e.kitchens || []).join(', ') });
+      case 'print_failures': return t('admin.watch.detail.print_failures', { n: e.count, top: (e.top || []).map((x: any) => `${x.reason} ×${x.n} (${x.printer})`).join(', ') });
+      case 'unprinted_orders': return t('admin.watch.detail.unprinted_orders', { n: e.count, orders: (e.orders || []).join(', ') });
+      case 'multi_auto_print': return t('admin.watch.detail.multi_auto_print', { n: e.count });
+      case 'old_app': return t('admin.watch.detail.old_app', { devices: (e.devices || []).join(', '), min: e.min });
+      case 'settings_blocked': return t('admin.watch.detail.settings_blocked', { n: e.count });
+      default: return '';
+    }
+  };
+  const visible = (list: WatchFinding[]) => list.filter((f) => showDemo || !f.evidence?.demo);
+  const openFindings = watch ? visible(watch.open) : [];
+  const resolvedFindings = watch ? visible(watch.resolved) : [];
+  const findingRows = (list: WatchFinding[], resolved: boolean) => (
+    <DataTableContainer>
+      <DataTable>
+        <DataTableHead>
+          <tr>
+            <DataTableHeaderCell align="left">{t('admin.col.restaurant')}</DataTableHeaderCell>
+            <DataTableHeaderCell>{t('admin.col.status')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="left">{t('admin.watch.col.problem')}</DataTableHeaderCell>
+            <DataTableHeaderCell align="left">{t('admin.watch.col.detail')}</DataTableHeaderCell>
+            <DataTableHeaderCell>{resolved ? t('admin.watch.col.resolved') : t('admin.watch.col.since')}</DataTableHeaderCell>
+          </tr>
+        </DataTableHead>
+        <tbody>
+          {list.map((f) => (
+            <DataTableRow key={f.id}>
+              <DataTableCell align="left" data-label={t('admin.col.restaurant')}>
+                {f.evidence?.name || `#${f.restaurant_id}`}
+                {f.evidence?.demo && <span style={{ marginLeft: 6, fontSize: 11, color: '#6B7280' }}>{t('admin.watch.demoTag')}</span>}
+              </DataTableCell>
+              <DataTableCell align="center" data-label={t('admin.col.status')}>{sevBadge(resolved ? 'ok' : f.severity)}</DataTableCell>
+              <DataTableCell align="left" data-label={t('admin.watch.col.problem')}>{t(`admin.watch.code.${f.code}`, f.code)}</DataTableCell>
+              <DataTableCell align="left" data-label={t('admin.watch.col.detail')}><span style={{ fontSize: 13, color: '#374151' }}>{watchDetail(f)}</span></DataTableCell>
+              <DataTableCell align="center" data-label={resolved ? t('admin.watch.col.resolved') : t('admin.watch.col.since')}>{agoOf(resolved ? f.resolved_at : f.first_seen_at)}</DataTableCell>
+            </DataTableRow>
+          ))}
+        </tbody>
+      </DataTable>
+    </DataTableContainer>
+  );
 
   return (
     <Container>
@@ -104,11 +179,41 @@ const PrintHealthPage: React.FC = () => {
           <Title>{t('admin.title')}</Title>
           <div style={{ fontSize: 13, color: '#6B7280', marginTop: 4 }}>{t('admin.subtitle')}</div>
         </div>
-        <Button variant="secondary" size="small" onClick={loadFleet} disabled={loading}>
+        <Button variant="secondary" size="small" onClick={() => { loadFleet(); loadWatch(); }} disabled={loading}>
           {loading ? t('admin.loading') : t('admin.refresh')}
         </Button>
       </Header>
 
+      <section data-testid="print-watch" style={{ marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 10 }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540' }}>{t('admin.watch.title')}</div>
+            <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>
+              {t('admin.watch.subtitle')}
+              {watch?.lastRun && <> · {t('admin.watch.lastRun', { ago: agoOf(watch.lastRun.started_at) })}</>}
+            </div>
+          </div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#374151', cursor: 'pointer' }}>
+            <input type="checkbox" checked={showDemo} onChange={(e) => setShowDemo(e.target.checked)} />
+            {t('admin.watch.showDemo')}
+          </label>
+        </div>
+        {watchError ? (
+          <DataTableEmpty>{t('admin.error')}</DataTableEmpty>
+        ) : !watch ? (
+          <DataTableEmpty>{t('admin.loading')}</DataTableEmpty>
+        ) : openFindings.length === 0 ? (
+          <DataTableEmpty>{t('admin.watch.empty')}</DataTableEmpty>
+        ) : findingRows(openFindings, false)}
+        {watch && resolvedFindings.length > 0 && (
+          <details style={{ marginTop: 12 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#374151' }}>{t('admin.watch.resolvedTitle', { n: resolvedFindings.length })}</summary>
+            <div style={{ marginTop: 8 }}>{findingRows(resolvedFindings, true)}</div>
+          </details>
+        )}
+      </section>
+
+      <div style={{ fontSize: 16, fontWeight: 700, color: '#0A2540', marginBottom: 10 }}>{t('admin.watch.fleetTitle')}</div>
       {error ? (
         <DataTableEmpty>{t('admin.error')}</DataTableEmpty>
       ) : loading ? (

@@ -156,7 +156,8 @@
       "critical": "Perhatian",
       "warn": "Amaran",
       "unknown": "Tidak diketahui",
-      "ok": "OK"
+      "ok": "OK",
+      "info": "Makluman"
     },
     "drill": {
       "title": "Butiran",
@@ -171,6 +172,38 @@
       "lastReport": "Daftar masuk terakhir",
       "autoPrint": "Cetak automatik",
       "guideStore": "Untuk menjalankan semakan peranti, minta kedai buka Tetapan > Pencetak dan ketik Jalankan semakan penuh."
+    },
+    "watch": {
+      "title": "Perlu perhatian",
+      "subtitle": "Disemak secara automatik setiap jam untuk semua kedai",
+      "lastRun": "semakan terakhir {{ago}}",
+      "showDemo": "Tunjuk kedai demo",
+      "empty": "Tiada masalah cetakan ditemui.",
+      "resolvedTitle": "Diselesaikan dalam 7 hari lepas ({{n}})",
+      "fleetTitle": "Semua kedai",
+      "demoTag": "demo",
+      "col": {
+        "problem": "Masalah",
+        "detail": "Butiran",
+        "since": "Sejak",
+        "resolved": "Diselesaikan"
+      },
+      "code": {
+        "setup_gap": "Dapur tiada pencetak",
+        "print_failures": "Laporan cetakan gagal",
+        "unprinted_orders": "Cetak automatik hidup, pesanan tidak dicetak",
+        "multi_auto_print": "Beberapa peranti cetak automatik",
+        "old_app": "Versi aplikasi lama",
+        "settings_blocked": "Perubahan tetapan pencetak disekat"
+      },
+      "detail": {
+        "setup_gap": "Tiket tidak akan dicetak: {{kitchens}}",
+        "print_failures": "{{n}} dalam 24 jam — {{top}}",
+        "unprinted_orders": "{{n}} pesanan menunggu lebih 10 minit — {{orders}}",
+        "multi_auto_print": "{{n}} peranti ditetapkan cetak automatik",
+        "old_app": "{{devices}} — kemas kini ke {{min}} atau lebih baharu",
+        "settings_blocked": "{{n}} percubaan oleh akaun bukan pentadbir dalam 24 jam"
+      }
     }
   }
 }

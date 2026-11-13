@@ -316,4 +316,24 @@ router.get('/fleet', authenticateToken, requireRole('System Admin', 'Brand Gener
   }
 });
 
+// ─── GET /watch — 인쇄 지킴이 발견 목록 (System Admin 만 · 2026-11-13 Fable 설계 §4) ───
+// 열린 발견 전부 + 지난 7일에 풀린 것. 판정·기록은 services/printWatch(매시 정기 작업). 이 라우트는 읽기만.
+router.get('/watch', authenticateToken, requireRole('System Admin'), async (req, res) => {
+  try {
+    const { PrintWatchFinding } = require('../models');
+    const weekAgo = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+    const sevRank = { critical: 0, warn: 1, info: 2 };
+    const open = await PrintWatchFinding.findAll({ where: { status: 'open' }, order: [['first_seen_at', 'ASC']], limit: 500 });
+    const resolved = await PrintWatchFinding.findAll({ where: { status: 'resolved', resolved_at: { [Op.gte]: weekAgo } }, order: [['resolved_at', 'DESC']], limit: 200 });
+    const plain = (rows) => rows.map((r) => r.get({ plain: true }));
+    const openRows = plain(open).sort((a, b) => (sevRank[a.severity] ?? 9) - (sevRank[b.severity] ?? 9));
+    const { SchedulerRun } = require('../models');
+    const lastRun = await SchedulerRun.findOne({ where: { job_name: 'print_watch_hourly' }, order: [['started_at', 'DESC']], attributes: ['started_at', 'status'] }).catch(() => null);
+    res.json({ success: true, data: { open: openRows, resolved: plain(resolved), lastRun: lastRun ? lastRun.get({ plain: true }) : null } });
+  } catch (e) {
+    console.error('[print-diagnostics/watch]', e.message);
+    res.status(500).json({ success: false, message: 'Failed to load print watch' });
+  }
+});
+
 module.exports = router;

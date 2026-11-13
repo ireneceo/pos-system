@@ -4,7 +4,8 @@
  * 설계: .claude/fable-design-20261110-printer-settings-device-scope.md (Fable)
  * Irene «레스토랑 프린터 설정을 한 디바이스에서 다른 곳에서 안하게. 하려면 확인을 하고 바꾸게 조심스럽게 잘 분리해줘야 해»
  *
- * - 상태 N(아직 없음) · M(이 기기) · O(다른 기기). 열림 = 관리자 && (M || O 에서 확인한 이번 방문).
+ * - 상태 N(아직 없음) · M(이 기기) · O(다른 기기). 열림 = 관리자 && (N || M || O 에서 확인한 이번 방문).
+ *   N 은 관리자에게 바로 연다(2026-11-13 Fable 정정 .claude/fable-verdict-20261113-setup-device-n-lock.md — 6.18 에서 기존 매장 관리자가 전부 잠김). 자동 지정은 없음 · 지정은 버튼으로만.
  * - «이번 방문 확인함» 은 화면 상태뿐 — 새로 고침하면 다시 잠긴다.
  * - 기기 번호 = 인쇄 자가진단의 getDeviceId() (새로 만들지 않음). 인쇄 경로(🔒 billPrint 등)는 이 파일을 읽지 않는다.
  * - 서버 판정 = dev-backend/utils/printerSetupDevice.js (화면은 실수 방지, 경계는 서버).
@@ -71,7 +72,7 @@ export function usePrinterDeviceScope(opts: { canEdit: boolean; tag: SetupDevice
   const hasId = !!device.id && device.id !== 'dev-ephemeral';
   const [unlocked, setUnlocked] = useState(false);
   const state: ScopeState = !tag || !tag.id ? 'N' : (hasId && tag.id === device.id ? 'M' : 'O');
-  const editable = canEdit && !loading && !error && (state === 'M' || (state === 'O' && unlocked));
+  const editable = canEdit && !loading && !error && (state === 'N' || state === 'M' || (state === 'O' && unlocked));
   return { device, hasId, state, unlocked, setUnlocked, editable };
 }
 

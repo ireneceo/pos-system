@@ -156,7 +156,8 @@
       "critical": "需注意",
       "warn": "警告",
       "unknown": "未知",
-      "ok": "正常"
+      "ok": "正常",
+      "info": "提示"
     },
     "drill": {
       "title": "详情",
@@ -171,6 +172,38 @@
       "lastReport": "最近签到",
       "autoPrint": "自动打印",
       "guideStore": "如需运行设备检查，请让门店打开 设置 > 打印机 并点击 运行完整检查。"
+    },
+    "watch": {
+      "title": "需要关注",
+      "subtitle": "每小时自动检查所有门店",
+      "lastRun": "上次检查 {{ago}}",
+      "showDemo": "显示演示门店",
+      "empty": "未发现打印问题。",
+      "resolvedTitle": "最近 7 天已解决（{{n}}）",
+      "fleetTitle": "所有门店",
+      "demoTag": "演示",
+      "col": {
+        "problem": "问题",
+        "detail": "详情",
+        "since": "开始时间",
+        "resolved": "解决时间"
+      },
+      "code": {
+        "setup_gap": "厨房未设置打印机",
+        "print_failures": "打印失败报告",
+        "unprinted_orders": "已开启自动打印但订单未打印",
+        "multi_auto_print": "多台自动打印设备",
+        "old_app": "旧版应用",
+        "settings_blocked": "被拦截的打印机设置更改"
+      },
+      "detail": {
+        "setup_gap": "单据不会打印：{{kitchens}}",
+        "print_failures": "24 小时 {{n}} 次 — {{top}}",
+        "unprinted_orders": "等待超过 10 分钟 {{n}} 单 — {{orders}}",
+        "multi_auto_print": "{{n}} 台设备设为自动打印",
+        "old_app": "{{devices}} — 请更新到 {{min}} 或更高",
+        "settings_blocked": "24 小时内非管理员账号尝试 {{n}} 次"
+      }
     }
   }
 }

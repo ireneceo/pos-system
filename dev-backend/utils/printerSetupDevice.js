@@ -88,6 +88,30 @@ function stableStringify(v) {
   return '{' + Object.keys(v).sort().map(k => JSON.stringify(k) + ':' + stableStringify(v[k])).join(',') + '}';
 }
 
+/** 비상 모드 두 칸을 뺀 프린터 설정 — 직원도 바꿀 수 있는 칸이라 «막힌 변경» 비교에서 뺀다 */
+function withoutEmergency(ps) {
+  const o = { ...parsePs(ps) };
+  delete o.emergencyMode;
+  delete o.emergencyEnabledAt;
+  return o;
+}
+
+/**
+ * «권한 없는 사람이 프린터 설정을 바꾸려다 막힘» 한 줄 — print_events (인쇄 지킴이 규칙 settings_blocked).
+ * applyPrinterWrite 결과의 blockedChange 가 true 일 때 두 저장 라우트가 부른다. fire-and-forget · 실패는 삼킴.
+ */
+function recordBlockedPrinterChange(user, restaurantId) {
+  try {
+    const rid = parseInt(restaurantId, 10);
+    if (!rid) return;
+    const { PrintEvent } = require('../models');
+    Promise.resolve().then(() => PrintEvent.create({
+      restaurant_id: rid, outcome: 'skipped', reason_code: 'settings_write_blocked',
+      reason_detail: `uid=${(user && (user.id ?? user.userId)) ?? '-'} role=${(user && user.role) || '-'}`,
+    })).catch((e) => console.warn('[printer-scope] blocked record failed:', e && e.message));
+  } catch (_) { /* 기록 실패는 저장에 닿지 않는다 */ }
+}
+
 function printerSettingsDiffer(a, b) {
   return stableStringify(withoutTags(a)) !== stableStringify(withoutTags(b));
 }
@@ -111,8 +135,10 @@ function applyPrinterWrite({ user, body, existingRaw, guard, restaurantId }) {
   if (decision.mode === 'emergency') {
     const { value, changed } = mergeEmergencyOnly(existingRaw, body.printer_settings);
     const skipped = decision.reason === 'other_device' ? 'other_device' : undefined;
-    if (!changed) return { action: 'skip', skipped, reason: decision.reason };
-    return { action: 'save', value: keepSetupDevice(value, existingRaw), skipped, reason: decision.reason + '+emergency' };
+    // 인쇄 지킴이(2026-11-13 §2-2): 역할 때문에 막혔고, 비상 모드 말고 실제로 다른 값을 보냈을 때만 «막힌 변경»
+    const blockedChange = decision.reason === 'role' && printerSettingsDiffer(withoutEmergency(body.printer_settings), withoutEmergency(existingRaw));
+    if (!changed) return { action: 'skip', skipped, blockedChange, reason: decision.reason };
+    return { action: 'save', value: keepSetupDevice(value, existingRaw), skipped, blockedChange, reason: decision.reason + '+emergency' };
   }
   if (decision.reason === 'no_device_info') {
     console.warn(`[printer-scope] no device info — restaurant ${restaurantId} role=${user && user.role} (old bundle?)`);
@@ -161,6 +187,7 @@ module.exports = {
   keepSetupDevice,
   printerSettingsDiffer,
   applyPrinterWrite,
+  recordBlockedPrinterChange,
   seedMissingStations,
   makeSetupDevice,
   parsePs,

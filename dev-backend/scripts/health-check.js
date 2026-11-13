@@ -12048,8 +12048,72 @@ function defineSettingsTests() {
   });
 }
 
-function definePrintTests({ adminToken }) {
+function definePrintTests({ adminToken, demoRestId, demoRaToken, demoBgToken }) {
   const adminAuth = { Authorization: `Bearer ${adminToken}` };
+
+  // 인쇄 지킴이(2026-11-13 · .claude/fable-design-20261113-print-monitoring.md §6-2·5):
+  // ① 앱이 보낸 인쇄 실패(print-debug ok:false)가 print_events 에 한 줄 남는다(관측 middleware/printTraceTee).
+  //    server.js 의 관측 한 줄을 빼면 이 케이스가 실패한다(고장주입 확인). 데모 매장만 · 시험 줄은 지움.
+  test('print', '인쇄 지킴이: 앱 인쇄 실패 보고가 print_events 에 기록됨(ok:true·ok 없음·익명은 안 남음)', async () => {
+    if (!demoRestId || !demoRaToken) return true; // 데모 매장 관리자 없음 → 검증 불가 skip
+    const { sequelize } = require('../config/database');
+    const CODE = 'HC_WATCH_PROBE';
+    const count = async () => Number((await sequelize.query(
+      'SELECT COUNT(*) n FROM print_events WHERE restaurant_id = ? AND reason_code = ?',
+      { replacements: [demoRestId, CODE], type: sequelize.QueryTypes.SELECT }))[0].n);
+    const auth = { Authorization: `Bearer ${demoRaToken}` };
+    const wait = () => new Promise((r) => setTimeout(r, 400));
+    try {
+      const before = await count();
+      const fail = await request('POST', '/orders/print-debug', { type: 'raw', printer: 'HC', ok: false, info: `ver=hc err=${CODE}` }, auth);
+      await wait(); const a1 = await count();
+      const okTrue = await request('POST', '/orders/print-debug', { type: 'raw', printer: 'HC', ok: true, info: `err=${CODE}` }, auth);
+      const noOk = await request('POST', '/orders/print-debug', { type: 'route-qz', printer: 'HC', info: `err=${CODE}` }, auth);
+      const anon = await request('POST', '/orders/print-debug', { ok: false, info: `err=${CODE}` });
+      await wait(); const a2 = await count();
+      return fail.status === 200 && fail.body && fail.body.success === true && a1 === before + 1
+        && okTrue.status === 200 && noOk.status === 200 && anon.status === 401 && a2 === a1;
+    } finally {
+      await sequelize.query('DELETE FROM print_events WHERE restaurant_id = ? AND reason_code = ?', { replacements: [demoRestId, CODE] });
+    }
+  });
+
+  // ③ 발견 목록(/print-diagnostics/watch)은 System Admin 만 — 매장 관리자·브랜드 403 · 익명 401
+  test('print', '인쇄 지킴이: 발견 목록은 System Admin 만 (RA·BG 403 · 익명 401)', async () => {
+    const sa = await request('GET', '/print-diagnostics/watch', null, adminAuth);
+    const ra = demoRaToken ? await request('GET', '/print-diagnostics/watch', null, { Authorization: `Bearer ${demoRaToken}` }) : { status: 403 };
+    const bg = demoBgToken ? await request('GET', '/print-diagnostics/watch', null, { Authorization: `Bearer ${demoBgToken}` }) : { status: 403 };
+    const anon = await request('GET', '/print-diagnostics/watch');
+    return sa.status === 200 && Array.isArray(sa.body?.data?.open) && ra.status === 403 && bg.status === 403 && anon.status === 401;
+  });
+
+  // ② 발견 수명: 빈칸 → 열림 → 다시 돌려도 같은 행(관측 횟수 +1) → 채우면 풀림. 원본 설정 먼저 저장·끝에 복원.
+  test('print', '인쇄 지킴이: 발견 열림 → 같은 행 유지 → 풀림 (setup_gap · 데모 매장)', async () => {
+    if (!demoRestId) return true;
+    const { sequelize } = require('../config/database');
+    const { PrintWatchFinding } = require('../models');
+    const { runWatch } = require('../services/printWatch');
+    const orig = (await sequelize.query('SELECT printer_settings FROM restaurants WHERE id = ?',
+      { replacements: [demoRestId], type: sequelize.QueryTypes.SELECT }))[0].printer_settings;
+    const setPs = (ps) => sequelize.query('UPDATE restaurants SET printer_settings = ? WHERE id = ?', { replacements: [JSON.stringify(ps), demoRestId] });
+    const base = { printerMode: 'rawbt', kitchenPrinter: { enabled: true, autoPrint: false, method: 'qztray', address: 'HC-PRINTER' }, kitchenStationPrinters: {} };
+    const openGap = () => PrintWatchFinding.findAll({ where: { restaurant_id: demoRestId, code: 'setup_gap', status: 'open' } });
+    const run = (min) => runWatch({ now: new Date(Date.now() + min * 1000), restaurantIds: [demoRestId], cleanup: false });
+    try {
+      await setPs(base); await run(1);
+      const none = (await openGap()).length === 0;
+      await setPs({ ...base, kitchenPrinter: { ...base.kitchenPrinter, address: '' } }); await run(2);
+      const o1 = await openGap();
+      await run(3);
+      const o2 = await openGap();
+      await setPs(base); await run(4);
+      const after = o1[0] ? await PrintWatchFinding.findByPk(o1[0].id) : null;
+      return none && o1.length === 1 && o2.length === 1 && o2[0].id === o1[0].id && o2[0].seen_count === 2
+        && after && after.status === 'resolved' && !!after.resolved_at;
+    } finally {
+      await sequelize.query('UPDATE restaurants SET printer_settings = ? WHERE id = ?', { replacements: [orig, demoRestId] });
+    }
+  });
   // 테스트 주문 고정 마커. 프로세스가 create~finally 사이에서 죽어도(파이프
   // 조기종료/크래시) 다음 실행의 sweep 가 orphan 을 쓸어담아 데모 매장에
   // 누적되지 않게 한다 (idempotent). 운영 주문엔 이 customer_name 이 없다.

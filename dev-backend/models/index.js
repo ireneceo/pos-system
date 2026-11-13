@@ -172,6 +172,7 @@ const Reservation = require('./Reservation');
 // Print Visibility & Diagnostics (2026-06-26) — additive log, no print-path change
 const PrintEvent = require('./PrintEvent');
 const PrintDeviceStatus = require('./PrintDeviceStatus');
+const PrintWatchFinding = require('./PrintWatchFinding');
 // 배포 기록 — 회차별 개발 현황(소스는 releases/*.json, 배포 스크립트가 적재)
 const DeployRecord = require('./DeployRecord');
 
@@ -1226,5 +1227,6 @@ module.exports = {
   // Print Visibility & Diagnostics (2026-06-26)
   PrintEvent,
   PrintDeviceStatus,
+  PrintWatchFinding,
   StockLedgerBatchItem
 };

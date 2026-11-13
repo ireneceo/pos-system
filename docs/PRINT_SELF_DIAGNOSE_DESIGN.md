@@ -314,3 +314,24 @@ print_device_status
 - [ ] 원격뷰 = Admin 신규 "Print Health" 페이지(SA 먼저, BG는 Phase 2) 승인
 - [ ] MVP 1뭉치 범위(§7-③) + 매장 실물 확인은 테스트 인쇄 1회로 묶기 승인
 - [ ] (별도 트랙) PRINT_VISIBILITY_DIAGNOSTICS 잔여 보호파일 배선은 이번에 안 함 — 확인
+
+## 9. 자동 점검 «인쇄 지킴이» (2026-11-13 · Fable 설계 `.claude/fable-design-20261113-print-monitoring.md`)
+
+> Irene «다시 프린터 사용에 문제 생기는 것에 대해 로그 심어서 파악하고 우리가 알아서 체크할 수 없어?» — 계기: K-DINE Noodles(매장 28) 주방 칸 빈칸으로 앱 PRINTER_NOT_FOUND 10건이 텍스트 로그에만 남고 아무도 몰랐음.
+
+🔒 인쇄 보호 파일 8개 무접촉 · 인쇄 동작 무변경.
+
+| 무엇 | 어디 |
+|---|---|
+| 앱 인쇄 실패 → `print_events`(failed · reason_code=err=) | `middleware/printTraceTee.js` — `POST /api/orders/print-debug` 응답을 관측만(pollerObserver 와 같은 방식) · ok===false 만 · 매장당 하루 200행 |
+| 직원 등 권한 없는 계정의 프린터 설정 변경 시도 → `print_events`(skipped · settings_write_blocked) | `utils/printerSetupDevice.applyPrinterWrite` 의 `blockedChange`(비상 모드 칸 제외하고 실제로 다를 때만) → `recordBlockedPrinterChange` (store.js · restaurants-crud.js) |
+| 규칙 6개 판정 | `services/printWatch.js` — setup_gap(critical) · print_failures(1~4 warn / 5+ critical) · unprinted_orders(자동 인쇄 켜짐 + 10분~24시간 needs_print · critical) · multi_auto_print(24h 자동 인쇄 기기 2대+ · warn) · old_app(warn) · settings_blocked(24h 3회+ · info) |
+| 발견 이력 | 표 `print_watch_findings`(마이그 `migrate-create-print-watch-findings.js` · deploy) — 계속 걸리면 같은 행, 풀리면 resolved, 재발은 새 행 |
+| 정기 작업 | `services/printWatchScheduler.js` — 매시 7분 · 주인 프로세스만 · SchedulerRun `print_watch_hourly` · 60일 지난 print_events / 90일 지난 resolved 정리 |
+| SA 화면 | Admin › Print Health 맨 위 «Needs attention» (`GET /api/print-diagnostics/watch` · System Admin 만) |
+| 우리 정기 점검 | `/개발시작` 0-C단계 — prod-query 로 `print_watch_findings` 읽기 · 보고 «인쇄 지킴이: 새 N · 계속 M · 풀림 K» |
+| 사람이 돌리는 보고 | `scripts/print-watch-report.js` (`--dry-run` 판정만 · `--all` 데모 포함) |
+
+- **setup_gap 규칙은 두 벌**(화면 `dev-frontend/src/utils/printerSetupGaps.ts` · 서버 `dev-backend/utils/printerSetupGaps.js`) — 같은 입력·기대값 `dev-backend/tests/fixtures/printer-setup-gaps.json` 을 양쪽 테스트가 읽는다. 화면 테스트는 🔒 billPrint.js 의 해당 줄과도 대조한다.
+- **옛 앱 기준판** = `services/printWatch.js` `MIN_APP_VERSION`(android-app `0.4.1`). 새 앱을 내면 같이 올린다.
+- 못 잡는 것: 브라우저(QZ·RawBT) 매장의 «찍혔다는데 종이 안 나옴»(클라이언트가 안 보냄 — 🔒 billPrint 관찰 줄 필요, Irene 결정 대기) · 1시간 간격(실시간은 KDS 미인쇄 알림·매장 화면 설정 알림).

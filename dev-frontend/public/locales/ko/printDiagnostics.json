@@ -156,7 +156,8 @@
       "critical": "주의",
       "warn": "경고",
       "unknown": "확인 불가",
-      "ok": "정상"
+      "ok": "정상",
+      "info": "참고"
     },
     "drill": {
       "title": "상세",
@@ -171,6 +172,38 @@
       "lastReport": "최근 접속",
       "autoPrint": "자동 인쇄",
       "guideStore": "기기 점검은 매장에서 설정 > 프린터를 열고 전체 점검 실행을 눌러야 합니다."
+    },
+    "watch": {
+      "title": "봐야 할 매장",
+      "subtitle": "모든 매장을 1시간마다 자동 점검",
+      "lastRun": "마지막 점검 {{ago}}",
+      "showDemo": "데모 매장도 보기",
+      "empty": "인쇄 문제가 없습니다.",
+      "resolvedTitle": "지난 7일에 풀린 것 ({{n}})",
+      "fleetTitle": "전체 매장",
+      "demoTag": "데모",
+      "col": {
+        "problem": "문제",
+        "detail": "자세히",
+        "since": "언제부터",
+        "resolved": "풀린 때"
+      },
+      "code": {
+        "setup_gap": "프린터 안 정해진 주방",
+        "print_failures": "인쇄 실패 보고",
+        "unprinted_orders": "자동 인쇄인데 안 나간 주문",
+        "multi_auto_print": "자동 인쇄 기기 여러 대",
+        "old_app": "옛 앱 버전",
+        "settings_blocked": "막힌 프린터 설정 변경"
+      },
+      "detail": {
+        "setup_gap": "주문서가 안 나감: {{kitchens}}",
+        "print_failures": "24시간 {{n}}건 — {{top}}",
+        "unprinted_orders": "10분 넘게 대기 {{n}}건 — {{orders}}",
+        "multi_auto_print": "자동 인쇄로 설정된 기기 {{n}}대",
+        "old_app": "{{devices}} — {{min}} 이상으로 업데이트",
+        "settings_blocked": "24시간 관리자 아닌 계정의 시도 {{n}}회"
+      }
     }
   }
 }

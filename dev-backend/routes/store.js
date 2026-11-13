@@ -232,6 +232,7 @@ router.put('/settings', authenticateToken, async (req, res) => {
               guard: guardPrinterSettings, restaurantId,
             });
             if (r.skipped) printerSettingsSkipped = r.skipped;
+            if (r.blockedChange) printerScope.recordBlockedPrinterChange(req.user, restaurantId); // 인쇄 지킴이 settings_blocked
             if (r.action === 'save') {
               restaurant.printer_settings = r.value;
               console.log(`  ✏️  printer_settings (${r.reason})`);

@@ -473,6 +473,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+// 인쇄 지킴이(2026-11-13): 앱의 «인쇄 실패» 보고(POST /api/orders/print-debug · ok:false)를 print_events 에도 한 줄.
+// 위 pollerObserver 와 같은 «관측만» — 🔒 orders-crud 무접촉 · 요청·응답 무변경 (middleware/printTraceTee.js)
+app.use(require('./middleware/printTraceTee').printTraceTee);
 // 키오스크 기기(등록된 매장 태블릿) — 헤더 X-Kiosk-Token 이 있으면 req.kioskDevice 를 싣고, 주문 생성은 출처를 서버가 'kiosk' 로 정한다.
 // 🔒 orders-crud 밖에서 정확한 경로로 주입(Fable 판정 .claude/fable-verdict-20261007-kiosk-payment-split.md D6).
 const { authenticateKioskDevice, stampKioskOrderSource } = require('./middleware/kioskDevice');
@@ -789,6 +792,9 @@ async function startServer() {
 
       // Start PO auto-receive scheduler — hourly, delivered + 72h → received (2026-10-30 po-auto-complete)
       require('./services/poAutoReceiveScheduler').start(io);
+
+      // 인쇄 지킴이 — 매시 7분, 전 매장 인쇄 문제 규칙 6개 점검 → print_watch_findings (2026-11-13 Fable 설계)
+      require('./services/printWatchScheduler').start();
 
       // Start base64 image sweep — weekly Sunday 04:00 UTC, detects inline base64
       // images in DB columns and alerts System Admins (v3.30 perf incident guard).

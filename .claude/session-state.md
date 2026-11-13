@@ -1,5 +1,28 @@
 ## 현재 작업 상태
 
+### 🔄 진행 중 — 멀티 로그인(한 아이디 여러 매장 관리자) PIN 빈틈 · Fable 설계 대기 [Claude Code · 작업방 52e6d237 · 2026-11-13]
+- Irene «관리자로 로그인해도 스탭이니까 … 넌 코드문제 해결해» · «멀티로그인 이상한 거잖아.» · «하지 마. 그리고 뭘 옮긴다는 거야. 레스토랑 관리자가 같은 아이디로 다른 레스토랑 2-3곳일 수 있는 거 아니야?»
+- 결정: kdineipc1 소속 매장 옮기기·직원 69 끄기 등 운영 데이터 이동 **안 함**(Irene «하지 마»).
+- 원인: routes/staff.js /verify-pin 이 users.restaurant_id 가 그 매장인 계정만 찾음 → 모자(user_contexts) 관리자는 PIN 으로 관리자가 못 됨 → 같은 이름 직원 계정(r28:Kate · 69)으로 들어감.
+- Fable 설계 요청 중 → `.claude/fable-design-20261113-hat-admin-pin.md`. 오면 구현·검증.
+- 같이 진행 중: «N 잠금» 정정(PrinterDeviceScope.tsx 한 줄 · Fable 판정 fable-verdict-20261113-setup-device-n-lock.md) — 빌드·verify-all 돌아가는 중 → 끝나면 Fable 재판정.
+
+### ⏸ 답 기다림 — kdineipc1(관리자)이 프린터 설정이 «막혀 있다» (2026-11-13 · 급함) [Claude Code · 작업방 52e6d237]
+- Irene «지금 급해. kdingipc1이 관리자인데 설정 안되는 거로 막혀있대.»
+- 원인(코드 실측 · 운영 6.18 = ebfe97b36): «프린터 설정 기기» 기능이 운영에 들어가 기존 매장은 «아직 안 정함» 에서 시작 → 그 상태에선 관리자도 칸이 잠김(PrinterDeviceScope.tsx:74 editable = M 또는 O+풀기). 화면 맨 위 회색 줄의 «이 기기를 프린터 설정 기기로 정하기» 를 눌러야 풀림. 운영 DB 로 매장 28 상태는 확인 못 함(운영 읽기 허락 없음).
+- 안내함: 프린터 연결된 앱 기기에서 kdineipc1 로 → 설정 › 프린터 맨 위 «이 기기를 프린터 설정 기기로 정하기». 빨간 «보기 전용» 이면 직원 PIN 으로 들어온 것 → kdineipc1 로 다시 로그인.
+- 물은 것: 처음 한 번 누르는 단계를 없앨지(관리자가 처음 바꾸면 그 기기가 자동으로 설정 기기) — 답이 오면 Fable 설계 확인 후 고침.
+
+### ✅ 완료 — 인쇄 지킴이(인쇄 문제 기록 + 1시간마다 자동 점검) · Fable gate PASS · 미커밋(마커 유지) [Claude Code · 작업방 52e6d237 · 2026-11-13]
+- Irene «다시 프린터 사용에 문제 생기는 것에 대해 로그 심어서 파악하고 우리가 알아서 체크할 수 없어?»
+- 설계 `.claude/fable-design-20261113-print-monitoring.md` · 검증 요청 `.claude/fable-gate-request-20261113-print-monitoring.md` · 판정 `.claude/fable-verdict-20261113-print-monitoring.md`(PASS · 마커 7198db408ef7).
+- 만든 것: 앱 인쇄 실패 → print_events(middleware/printTraceTee · 🔒 무접촉 관측) · 직원 프린터 설정 변경 시도 기록(printerSetupDevice blockedChange) · 규칙 6개 판정 services/printWatch · 매시 7분 정기 작업 printWatchScheduler · 표 print_watch_findings(마이그 deploy 등록) · SA Print Health 맨 위 «봐야 할 매장»(GET /api/print-diagnostics/watch · SA 만) · scripts/print-watch-report.js · /개발시작 0-C단계(prod-query 로 읽기) · docs/PRINT_SELF_DIAGNOSE_DESIGN.md §9.
+- 검증: print-guard 8/8 · health-check print 14/14(새 3) · jest 서버 18 + 26 · 화면 14 · 고장 주입 3건 잡힘 · 소음 실측 0/0/1 · Print Health 실브라우저 1366·390 오류 0 · verify-all --full 23/24(배포 준비 몫).
+- **커밋 안 함** — 커밋하면 Fable 마커가 죽어 배포가 막힘. 배포 때 이 미커밋분이 같이 나가고, 배포 뒤 /개발완료 가 커밋·CHANGELOG·DEVELOPMENT_PLAN 기록. (CHANGELOG 줄 초안: «인쇄 문제 자동 점검 — 1시간마다 전 매장을 살펴 프린터 빈 주방·인쇄 실패·안 나간 주문·옛 앱 등을 관리자 Print Health 맨 위에 표시»)
+- 배포 뒤 첫 정기 점검(0-C) 할 일 = Fable 판정서 §4(기준선 기록 · 설정 미저장 매장 오탐이면 info 로 낮춤 · multi_auto_print 절반 이상이면 좁힘 · 5초 넘으면 order_date 하한) — Fable 재호출 불필요.
+- 정할 것(권고대로 진행 중): ① 새 인쇄 문제 메일 알림 — Fable 권고 지금은 아니오(2주 뒤) ② 브라우저 매장 종이 실패 기록용 🔒 billPrint 관찰 줄 — Fable 권고 지금은 안 넣음.
+- 운영 6.18(11-13 배포)에 11-12 일(직원 보기 전용·프린터 빠짐 알림·QZ 안내)은 이미 반영됨. 이 작업분: 다음 배포 때.
+
 ### ✅ 완료 — 프린터 빠짐 알림 + 직원은 프린터 설정 «보기 전용» [Claude Code · 작업방 52e6d237 · 2026-11-12]
 - Irene «Kate 가 관리자가 맞는 거지? 그리고 직원이 설정하면 안된다고 그냥 아예 막아야지 되는 것처럼 하니까 혼란이잖아. 그리고 설정 안된 거 있으면 정확히 알려줘서 미싱 못하게 해야 하고» · «kdineipc1이 레스토랑 관리자로 제대로 작동하는지가 중요해.»
 - Kate(사용자 19): 운영 로그 11-12 09:37 저장이 printer_settings 를 실제로 바꿈(직원 건은 «skipped (role=Staff)») = 서버가 관리자로 처리. 운영 DB 재확인 명령은 허락 창 «아니오» → 다시 안 함.
