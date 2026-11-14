@@ -588,6 +588,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               preferred_language: apiUser.preferred_language || 'en'
             };
             setUser(userData);
+            // 세션 복원 때도 이 기기 알림을 지금 계정으로 맞춘다 — 이미 다른 계정에 묶여 있던 기기(배포 전부터)도 고쳐진다.
+            import('../services/push').then(m => m.attachPushToCurrentUser()).catch(() => {});
             // 세션 복원 시에도 컨텍스트 목록을 다시 읽는다.
             // ⚠ 안 하면 **새로고침(F5) 후 헤더 스위처와 대시보드 진입점이 사라진다** — 목록이 로그인
             //    시점에만 채워지기 때문(실측: e2e ⑨ 가 검출). 실사용자는 새로고침을 하므로 치명적이다.
@@ -681,6 +683,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               }
             } catch {}
           }
+          // 이 기기 알림을 지금 계정으로 옮긴다(PIN 세션·허락 없음·구독 없음이면 아무것도 안 함) — 2026-11-14
+          import('../services/push').then(m => m.attachPushToCurrentUser()).catch(() => {});
           // i18n 언어 동기화
           if (apiUser.preferred_language) {
             i18n.changeLanguage(apiUser.preferred_language);
@@ -836,6 +840,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   userRef.current = user;
 
   const logout = async () => {
+    // 이 기기를 지금 계정 알림에서 뗀다 — 토큰을 지우기 전에(2026-11-14). 브라우저 구독은 남겨 다음 로그인 계정이 이어받는다.
+    try {
+      const { detachPushOnLogout } = await import('../services/push');
+      await detachPushOnLogout();
+    } catch { /* 로그아웃을 막지 않는다 */ }
     try {
       // /api/auth/logout은 httpClient의 POS_BYPASS_PATHS에 포함되어 토큰 주입/401 처리 모두 건너뜀
       await window.fetch('/api/auth/logout', {

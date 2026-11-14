@@ -66,7 +66,7 @@ sendPushToSupplier(supplierCompanyId, payload)
 | auth | VARCHAR(255) | NO | — |
 | user_agent | VARCHAR(500) | YES | — |
 | expired_at | DATETIME | YES | (활성 조회용 composite) |
-| deleted_at | DATETIME | YES | soft delete (endpoint reassign 추적) |
+| deleted_at | DATETIME | YES | 로그아웃·알림 끄기로 뗀 줄. endpoint 는 지운 줄 포함 고유 — 다시 등록하면 같은 줄을 되살림 |
 | created_at / updated_at | DATETIME | NO | — |
 
 복합 인덱스: `(user_id, expired_at, deleted_at)` — 활성 구독 조회
@@ -151,7 +151,7 @@ socket handshake 의 JWT 만 신뢰 (클라이언트가 보낸 user_id 등은 �
 | # | PlanQ 결함 | POS 적용 |
 |---|---|---|
 | 1 | `/test` rate-limit 없음 → abuse | `express-rate-limit` per-user 5/min |
-| 2 | endpoint cross-user reassign 만 (audit X) | endpoint 재등록 시 이전 user row `deleted_at` soft-delete |
+| 2 | endpoint cross-user reassign 만 (audit X) | ~~이전 user row soft-delete 후 새 줄~~ → **2026-11-14: 같은 줄을 지금 계정으로 옮김**(아래 §9) |
 | 3 | endpoint URL 검증 없음 | host 화이트리스트 (`isValidEndpoint`) |
 | 4 | 권한 회수 자동 감지 없음 | `reconcilePermissionState` on focus → denied 면 자동 unsubscribe |
 | 5 | ping spam (debounce 없음) | `NotificationToaster` 200ms debounce |
@@ -175,3 +175,16 @@ VAPID_SUBJECT=mailto:noreply@purplehere.com
 - `/api/push/admin/stats` — active subscriptions / 24h sent/failed / by_browser / by_role
 - `/api/push/admin/logs` — paginated PushLog
 - 90일 PushLog cron 정리는 별도 sprint
+
+## 9. 기기 알림 = 지금 로그인한 계정 (2026-11-14 · Irene «권고대로» A안)
+
+> 사고: 같은 브라우저로 누들·위드민 등 다른 계정에 들어가도 기기 알림이 «New order · K-DINE IPC» 로만 왔다.
+> 원인 ① 구독은 알림 설정에서 켤 때만 등록 · 로그인/로그아웃 때 안 옮김 ② 서버의 «다른 계정 줄 soft-delete → 새 줄» 이
+> `push_sub_endpoint_uniq`(지운 줄 포함 고유)에 걸려 **늘 500** — 설정에서 다시 켜도 기기가 처음 켠 계정에 묶여 있었다.
+
+- 서버 `POST /api/push/subscribe`: 같은 endpoint 줄이 있으면 (지운 줄이어도) **그 줄을 지금 계정으로 옮긴다**(keys·user_agent 갱신, expired_at·deleted_at 비움). 없을 때만 새 줄.
+- 화면 `services/push.ts`
+  - `attachPushToCurrentUser()` — 비밀번호 로그인 성공 · 세션 복원(새로고침) 때. 브라우저 허락 granted + 이 기기 구독이 이미 있을 때만(허락을 새로 묻지 않음). **직원 PIN 세션(토큰 amr='pin')은 옮기지 않는다** — 매장 공용 기기가 PIN 전환마다 알림 주인이 바뀌지 않게.
+  - `detachPushOnLogout()` — 로그아웃 때 토큰 지우기 전에 서버 줄만 뗀다. 브라우저 구독은 남겨 다음 로그인 계정이 이어받는다.
+- 알림 설정 «켜기»는 허락이 이미 있어도 `subscribeToPush()`(이 기기 등록)를 부른다 — 예전엔 건너뛰어 껐다 켜면 알림이 끊겼다.
+- 검증: 실브라우저(가짜 구독 주소) 7단계 — A 로그인 A · 새로고침 줄 1개 · 로그아웃 0 · B 로그인 B · 로그아웃 없이 A 로그인 A · PIN 세션 새로고침 그대로 · 화면 오류 0. 서버 고치기 전엔 ④⑤ 실패(반증).

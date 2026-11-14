@@ -64,7 +64,9 @@ const PushPreferencesCard: React.FC = () => {
     setBusy(true);
     setTestStatus('');
     try {
-      if (next && permission !== 'granted') {
+      // 켤 때는 허락이 이미 있어도 이 기기를 이 계정으로 등록한다 (2026-11-14) — 예전엔 허락이 있으면 등록을
+      // 건너뛰어, 껐다 켜면(끄기에서 브라우저 구독을 지움) 기기 알림이 아예 끊기고 다른 계정에 묶인 기기도 안 옮겨졌다.
+      if (next) {
         const result = await subscribeToPush();
         if (!result.ok) {
           setTestStatus(`Failed to enable: ${result.reason}`);

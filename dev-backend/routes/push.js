@@ -69,33 +69,32 @@ router.post('/subscribe', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid push endpoint' });
     }
 
-    // Soft-delete any existing row owned by a different user (device handoff audit).
-    const existing = await PushSubscription.findOne({ where: { endpoint, deleted_at: null } });
-    if (existing && existing.user_id !== req.user.id) {
-      await existing.update({ deleted_at: new Date() });
-    }
-
-    // Idempotent upsert for the same user.
-    const [sub, created] = await PushSubscription.findOrCreate({
-      where: { endpoint, deleted_at: null, user_id: req.user.id },
-      defaults: {
+    // 기기(endpoint) 1개 = 줄 1개 — 표에 endpoint 고유 규칙(push_sub_endpoint_uniq)이 있고 지운 줄도 그 규칙에 걸린다.
+    // 예전엔 «다른 계정 줄을 지움 표시 → 새 줄 만들기» 였는데 새 줄이 고유 규칙에 걸려 늘 500 이었다 → 기기가 처음 켠
+    // 계정(예: K-DINE IPC)에서 영영 안 옮겨졌다(2026-11-14 Irene «죄다 K-DIND IPC로 나와»).
+    // 이제 같은 줄을 지금 계정으로 옮긴다(지운 줄이면 되살린다). 구독 주소는 그 브라우저만 아는 값이라 옮기는 범위는 예전 의도와 같다.
+    const ua = user_agent || req.get('User-Agent') || null;
+    const existing = await PushSubscription.findOne({ where: { endpoint } });
+    if (existing) {
+      await existing.update({
         user_id: req.user.id,
-        endpoint,
         p256dh: keys.p256dh,
         auth: keys.auth,
-        user_agent: user_agent || req.get('User-Agent') || null
-      }
-    });
-    if (!created) {
-      await sub.update({
-        p256dh: keys.p256dh,
-        auth: keys.auth,
-        user_agent: user_agent || req.get('User-Agent') || null,
-        expired_at: null
+        user_agent: ua,
+        expired_at: null,
+        deleted_at: null
       });
+      return res.json({ success: true, data: { id: existing.id, created: false } });
     }
+    const sub = await PushSubscription.create({
+      user_id: req.user.id,
+      endpoint,
+      p256dh: keys.p256dh,
+      auth: keys.auth,
+      user_agent: ua
+    });
 
-    res.json({ success: true, data: { id: sub.id, created } });
+    res.json({ success: true, data: { id: sub.id, created: true } });
   } catch (e) {
     console.error('[Push] subscribe error:', e);
     res.status(500).json({ success: false, message: 'Failed to register subscription' });

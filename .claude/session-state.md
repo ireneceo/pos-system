@@ -1,5 +1,25 @@
 ## 현재 작업 상태
 
+### ✅ 완료 — 기기 알림이 로그인한 계정을 따라감(K-DINE IPC 알림 오표시) · 미커밋 [Claude Code · 작업방 79718791 · 2026-11-14]
+- Irene «레스토랑 우측 상담 알림이 왜 죄다 K-DIND IPC로 나와?» → 질문 askmwfvj87u → Irene «권고대로 진행해 줘»(A · PIN 전환 제외).
+- 원인 2겹: ① 기기 구독은 알림 설정에서 켤 때만 등록 · 로그인/로그아웃 때 안 옮김 ② 서버 POST /api/push/subscribe 의 «다른 계정 줄 지움 → 새 줄» 이 endpoint 고유 규칙(push_sub_endpoint_uniq · 지운 줄 포함)에 걸려 늘 500 → 설정에서 다시 켜도 기기가 처음 켠 계정에서 영영 못 옮겨짐. ③ 덤: 알림 설정 카드는 허락이 이미 있으면 «켜기» 에서 등록을 건너뛰어 껐다 켜면 알림이 아예 끊김.
+- 고친 것: routes/push.js subscribe — 같은 endpoint 줄을 지금 계정으로 옮김(지운 줄은 되살림) · services/push.ts attachPushToCurrentUser(허락+구독 있을 때만 · PIN 세션 amr=pin 은 안 옮김)/detachPushOnLogout(서버 줄만 지움 · 브라우저 구독은 남겨 다음 로그인이 이어받음) · AuthContext 비밀번호 로그인·세션 복원에서 attach · logout 에서 토큰 지우기 전 detach · PushPreferencesCard 켜기는 늘 subscribeToPush.
+- 검증: 실브라우저(가짜 구독 주소 · 임시 계정 3개 → 지움, 남은 행 0) 7/7 — A 로그인 A · 새로고침 줄 1개 · 로그아웃 0 · B 로그인 B · 덮어 로그인 A · PIN 세션 새로고침 그대로 A · 화면 오류 0. 서버 고치기 전 실행에서 ④⑤ 실패(반증). print-guard 8/8 · design-guard 신규 0.
+- 확인 못 함: 실제 OS 알림 수신(헤드리스엔 푸시 서비스 없음) · 운영 데이터 확증(할 일 todomwfvj20s 읽기 대기 — 결과 오면 IPC 계정에 묶인 기기 확인만) · 세션 복원 경로가 실제로 옮기는지는 PIN 쪽(안 옮김)만 시험.
+- Fable 안 씀 — 알림 기기 주인 옮기기(되돌릴 수 있음 · 인증·권한 판정 무변경 · 옮기는 범위는 예전 설계 의도와 같음).
+- 운영 반영: 다음 배포 때. 배포 뒤 이미 IPC 에 묶인 브라우저는 그 기기에서 다른 계정으로 화면을 한 번 열면(새로고침 포함) 옮겨짐.
+
+### (이전) 답 기다림 — 기기 알림이 로그인한 계정을 따라가게 할까요? [Claude Code · 작업방 79718791 · 2026-11-14]
+- Irene «레스토랑 우측 상담 알림이 왜 죄다 K-DIND IPC로 나와? 누들에서 봐도 위드민 아예 다른 계정에서 봐도»
+- 원인(코드 확인 · 운영 데이터 미확인): 기기 알림(OS 알림 «New order · K-DINE IPC» — orderNotificationService 제목)은 push_subscriptions 의 «알림을 켠 계정» 에 묶임. 구독 등록은 알림 설정 카드(PushPreferencesCard)에서만 하고, 로그인·로그아웃(AuthContext.logout) 때 다시 묶거나 끊지 않음 → 같은 브라우저로 누들·위드민에 들어가도 IPC 계정 알림이 계속 옴. 화면 안 알림함(InboxBell)·토스트는 계정별이라 해당 없음.
+- 운영 읽기(prod-query)가 이 방 권한에서 막힘 → 상황판 할 일 todomwfvj20s(«!» 읽기 명령 2개: 살아 있는 구독 · 최근 발송).
+- 질문 askmwfvj87u: A) 비밀번호 로그인 때 이 기기 구독을 지금 계정으로 옮기고 로그아웃 때 끔(PIN 전환은 그대로) / B) 그대로 두고 설정에 «이 기기는 ○○ 계정 알림 받는 중 · 바꾸기» 표시. Opus 의견 A.
+- 답이 오면: 읽기 결과로 원인 확증 → services/push.ts(현재 구독 다시 등록 함수) + AuthContext 로그인 성공·logout 연결 → 빌드 1회 · 실브라우저 두 계정 전환으로 push_subscriptions user_id 바뀜 확인. 서버 POST /api/push/subscribe 는 이미 다른 계정 행을 지우고 새로 묶음(변경 불필요).
+
+### ✅ 완료 — K-DINE Noodles(매장 28) Kate 정리 [Claude Code · 작업방 52e6d237 · 2026-11-14]
+- Irene «지웠어» — 직원 계정 r28:Kate(69) 삭제(Irene 이 직접 · 운영). Noodles 주방 프린터 지정은 11-13 07:07 UTC 저장 확인(정기 점검 방 운영 읽기) · 그 뒤 주문 인쇄 정상.
+- 남은 것(급하지 않음): Kate 가 «Set my PIN» 으로 매장 28 관리자 PIN 을 정했는지는 확인 안 함(안 정했으면 매장 기기에서는 이메일 로그인만) · 매장 28 앱 0.3.4 → 0.4.1 업데이트(인쇄 지킴이 old_app).
+
 ### ✅ 완료 (11/14 00:00 정기 점검 · 2026-11-13 16:xx UTC) — /개발완료(11-13 끝난 일 4건 커밋) + /개발시작(운영 새 문의 0 · 인쇄 지킴이 확인) [Claude Code · 백그라운드 작업방 669aa5b0]
 - 개발완료: 매장 알림 분리(6e35280f) · PIN 세션 매장 이동(7ed4ec6a) · 멀티 로그인 목록 이름(8eedf966) · 직원 삭제 버튼(d8b17ee6) + 6.19 배포 뒤 기록(deploy-manifest · releases archive) 커밋. Fable 판정 PASS 2건(.claude/fable-verdict-20261113-*.md · 마커 3a03761f7517 — 커밋 전 지문 일치 확인). 커밋으로 지문이 바뀌어 마커는 무효가 됨(코드는 그대로) — 다음 배포 준비 때 Fable 확인 필요 여부는 배포 방 판단. GTM 보류 4파일·playwright.config·oneoff/run 스크립트는 그대로 둠.
 - 검증: verify-all 22/23(실패 = deploy-ready «2026-11-13 배포 기록 파일 없음» — 배포 준비 몫) · health-check 전체 통과 · print-guard 통과 · i18n·타입·IDOR·인스펙션 통과.
@@ -11,6 +31,10 @@
 - Irene 할 일 «K-DINE Noodles 앱에서 관리자 계정으로 Noodles 주방 프린터 지정» 을 «했어요» 누름 → 운영 DB 확인 필요(이 방은 운영 읽기 허락 없음).
 - 확인용 읽기 스크립트(매장 28 kitchenStationPrinters·setupDevice·Kate 모자 PIN·인쇄 지킴이 발견·오늘 저장 기록)는 만들던 중 세션이 끊겨 **파일이 안 생김** · 상황판 카드도 안 올라갔을 것. 작업 폴더의 다른 미커밋(push·User 모델·notification-settings 등)은 다른 방 작업 — 손대지 않음.
 - 다시 시작하면: ① 방 임시 폴더에 읽기 스크립트(run-store28-noodles-read.sh · oneoff-read-store28-noodles-20261113.js — 운영 읽기만) 다시 만들고 상황판 할 일로 올림 ② 결과로 24(Noodles) address 채워졌는지 확인 → 비었으면 저장 기록으로 원인 보고·새 할 일 ③ 6.19 뒤 Kate 순서(이메일 로그인 → 28 → «Set my PIN» → 프린터 → 직원 69 삭제) 이어서 안내.
+
+### ✅ 완료 — 직접 할 일 정기 점검(todo-check mwfiuzpvpu) [Claude Code · 작업방 3c4ae0a0 · 2026-11-13]
+- todomw841vpg 그대로 — 운영 restaurants 28 address·city 빈 칸 · 위도/경도 NULL(prod-query 읽기 + 공개 주소).
+- todomwb3vve6 그대로 — 운영 product_ingredients 304·305 is_active=0(마지막 변경 11-10).
 
 ### ✅ 완료 — PIN 으로 들어온 상태에서 다른 매장 고르면 비밀번호 창으로 넘어감 · Fable gate PASS · 미커밋(마커 유지) [Claude Code · 작업방 7ed4ec6a · 2026-11-13]
 - Irene «pin으로 관리자 들어가면 다른 레스토랑으로 가려는 좌측 이동(멀티역할 선택 페이지)을 못하잖아 … 관리자가 핀번호 쓸 이유도 없잖아» → Fable 권고 A(관리자 PIN 은 승인·계산대용 유지, 막다른 길만 풂) → Irene «권고대로 진행해 줘».
