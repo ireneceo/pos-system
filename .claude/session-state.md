@@ -1,5 +1,17 @@
 ## 현재 작업 상태
 
+### 답 기다림 (2026-11-15) — 운영 매장 28 주소: 시스템 관리자 › Restaurants 에서 매장 28 주소를 저장하고 «했어요» 라고 답해 주실래요? [Claude Code · 백그라운드 작업방 820e7473]
+- 무엇: Irene «했어요» 뒤 운영 읽기 — 매장 28 address 빈칸 · 좌표 NULL · updatedAt 11/13 그대로(저장 안 됨). 프랜차이즈맵 주소 칸(e47347c94)은 운영 미배포(운영 SW 6.20 · 새 문구 0).
+- 왜: 실제 매장 주소는 Irene 만 앎. 상황판 act 질문 askmwhsjxlj.
+- 답이 오면: 운영 읽기로 28 address·latitude·longitude 확인 → 좌표 비면 주소 형식 보고 원인(운영은 옛 위치 찾기 — 앞 호수·주 이름이면 실패 가능, 새 코드는 배포 뒤).
+
+### ✅ 완료 (11/16 00:00 정기 점검 · 2026-11-15 16:00 UTC) — /개발완료(메타 픽셀·메모리 게이트 기록 + 하드코딩 검사 표시) + /개발시작(운영 새 문의 0 · 인쇄 지킴이) [Claude Code · 백그라운드 작업방 4ccbeefc]
+- 개발완료: 마지막 개발완료(ec226f617) 뒤 새 커밋 2(32d852501 메모리 게이트 · 94dc4f70e 메타 픽셀) → DEVELOPMENT_PLAN 완료 절 · CHANGELOG 11-15 메타 픽셀 1줄. 민감 판정 비대상(안전망 health-check.js 는 문의 접수 확인 건 · Fable PASS 받은 것).
+- verify-all: i18n-hardcoded 실패 1 — utils/parseAddressLine.ts 나라 알아보는 낱말(대한민국·한국·말레이시아·싱가포르)이 «화면 문구» 로 잡힘(오탐) → 같은 줄에 `/* i18n-ok: 이유 */` 표시(동작 변경 0 · 시험 10/10) · 번들 신선도 때문에 빌드 1회. deploy-ready 실패는 배포 준비 몫(기록 파일·SW 버전).
+- 운영 문의(확인 2026-11-15 16:04 UTC · prod-query 읽기 전용): 열린 3건(SUPP-2026-6842-103·1886-062·2401-270) 이미 해결 그대로 · 14일 새 문의 0 · 후속 글 0 · 랜딩 문의 0 · operation_tickets closed 4 / in-progress 1 · 상황판 «들어온 문의» 칸에 3건 올림(200).
+- 인쇄 지킴이(마지막 실행 15:07 UTC success): 새 문제 0 · 계속 4(28 print_failures critical 12건 PRINTER_NOT_FOUND «기본 프린터» · 28 multi_auto_print 3대 · 8·28 old_app 0.3.4) · 풀림 1(10 with MIN Cafe old_app — 11-15 07:07). 해결 길 그대로(28 앱 0.4.1 · 자동 인쇄 기기 정리).
+- 그대로 둔 미커밋: playwright.config(오래된 보류) · .claude/oneoff-*·run-*.sh.
+
 ### ✅ 완료 (2026-11-15) — 메타 픽셀 2307431686720469 붙임 · 도메인 인증 확인 · GTM 없이 코드로 직접 (Fable 안 씀 — 되돌리기 쉬움, 설계 §1 결정 3·4·5 그대로) [Claude Code · 백그라운드 작업방 ce272c08]
 - Irene 한 일 확인(읽기): purplehere.com TXT 에 facebook-domain-verification=arxe2lpbkv7y556c8vccu0gl7ocabv 있음 · signals/config/2307431686720469 → 200(유효 픽셀). Meta 화면 «Verified» 는 Irene 화면 기준(이 서버에서 못 봄).
 - 싣는 길: GTM 안 씀(§11-3)이라 `dev-frontend/src/utils/tracking.ts` 에 직접 — 운영(개발은 ?meta_debug=1 탭만) · 쿠키 «모두 수락» 뒤에만 로드 · 마케팅 화면 page_view→PageView · sign_up→CompleteRegistration · generate_lead→Lead · try_demo→TryDemo · autoConfig 끔 · 고급 매칭 없음 · disablePushState+allowDuplicatePageViews(실측 함정 2개). GTM 번호가 생기면 코드 픽셀은 저절로 꺼짐.
@@ -881,6 +893,11 @@
 - 답이 오면: 운영 기록(그 시각 switch-context·health 응답 시간·재시작·부하)으로 서버 쪽인지 회선 쪽인지 가름 → 서버 쪽이면 개발서버에서 고침(원인 여러 갈래면 Fable 원인 판정) · 회선 쪽이면 6.03 기록이 배포된 뒤 System Logs offline-detect 로 판독 + 전환 때 겹치는 요청 줄이기
 - 측정 스크립트: $CLAUDE_JOB_DIR/tmp/pw/run.js (임시)
 
+### ✅ 완료 (2026-11-15) — 직영점 «Settle 2 as internal» Irene «했어요» [Claude Code · 백그라운드 작업방 0c838bc5]
+- Irene 가 운영 with MIN Cafe Billing 창에서 Settle 을 눌렀다고 답함(메모 없음)
+- 운영 읽기 확인 = 권한 거부(이번 3번째 · 재시도 안 함) → 실제 정리 여부 확인 못 함
+- 다음 할 일: 다음 점검 때 새 납품 청구서가 처음부터 Paid · Internal 로 나오는지 · 11/06 청구서가 미지급으로 났던 이유(Internal 저장 시점) — 운영 읽기가 되는 방에서
+
 ### ✅ 완료 (2026-11-10) — 직영점 «설정 바꿔도 기존 결제 남음» 답 [Claude Code · 백그라운드 작업방 0c838bc5]
 - Irene 원문: «설정변경해도 기존 결제가 그대로 남아있어. 어떻게 해야 해? 없어져야 하는건데...» (SOA-BRD1-2026-10-R10 RM 245.40 + 묶인 TRD 3장 + 안 묶인 TRD-BRD1-20261106-001AUTO RM 150.10)
 - 원인 아님 — 설계대로: 설정은 앞으로 오는 납품만 결제됨 · 기존 건은 Billing 창 «Settle N as internal» 1회(되돌릴 수 없어 자동 안 함). 11/02 운영 배포에 포함 확인(3047fd7bf ⊂ 22568bad8)
@@ -947,7 +964,7 @@
 - 검증: API 6/6 · 고장주입 2/2 · 실브라우저 저장(Korean BBQ → 새 재고 카테고리 연결 · console.error 0) · 빌드 1회 · verify-all --full 23/24(남은 1 = 배포 기록, 배포 준비 몫) · mount sweep 8역할 크래시 0 · print-guard 8/8 · design-guard 신규 0 · i18n 통과 · 시험 데이터 전부 지움
 - Fable: 설계 1회(끝난 뒤 게이트 불필요 판정 — ①~⑤ 해당 없음) · 정지 훅 건너뛰기 표시는 권한 거부(우회 안 함)
 - 매니저 목록 느림: 운영 서버 응답(aidan=소유자, 상품 166 17/18ms · 재고 311 27/26ms) · 개발 실브라우저 0.8/0.9초 → 재현 못 함 — 느린 화면·기기 정보 대기
-- 별건: kiyullaw.kr 썸네일 비율 CSS → Irene 할 일 todomvxh0hyz
+- 별건: kiyullaw.kr 썸네일 비율 CSS 카드(todomvxh0hyz) — 2026-11-15 Irene «취소해» 로 뺌(이 솔루션 일 아님)
 - 운영 반영: 다음 배포 때(마이그 0)
 
 ### 후속 후보 (아이디어 메모, 확정 X — /개발시작 자동 추천 대상 아님)
@@ -961,7 +978,7 @@
 - 속도 실측: 운영 서버 응답 aidan(65 매니저) = 소유자(23)와 같음(상품 166개 17ms/18ms · 재고아이템 311개 27ms/26ms) · 개발 실브라우저 /pos/brand-products 목록 표시 매니저 0.8초 = 소유자 0.9초 · 매니저 전용 서버 처리 차이 0 → 재현 못 함(어느 화면·어느 기기인지 필요)
 - 질문: **Fable 권고대로(만들 때 한 번만 연결 · 기본값 «같은 이름으로 새로 만들기», 칸에서 바꿀 수 있음 · 반대 방향은 이번엔 안 함) 진행할까요?** (+ 느린 화면 주소·기기)
 - 답이 오면: «예» → ⑫ 3절 파일만 구현 → API 5건 + 고장주입 2 → 빌드 1회 → verify-all --full → 보고 (확인할 곳 https://dev.purplehere.com/pos/brand-products [as=brand]). 속도는 받은 화면으로 다시 측정.
-- 별건(이 솔루션 밖): kiyullaw.kr 글 목록 썸네일 비율 CSS → Irene 할 일 todomvxh0hyz
+- 별건(이 솔루션 밖): kiyullaw.kr 썸네일 CSS 카드 — 2026-11-15 Irene «취소해» 로 뺌
 
 ### 답 기다림 (이전) (2026-11-01) — 정기 점검 배포 뺌: «배포 전 확인 완료» 설정 · 확인 안 된 끝난 일 22개 → Irene «권고대로 진행해 줘» [Claude Code · 백그라운드 작업방 a1a74cee]
 - 상황판 질문(상황판이 직접 올림): 지난 18개 + «아이폰 PWA 설치 오류» · «할 일 점검: 2장» · «답: 정기 점검 배포 뺌(18개)» · «오프라인 화면 원인 점검» · 권고 = 각 일의 «확인할 곳» 을 본 뒤 솔루션 카드 «배포» 버튼(확인 완료하고 배포)

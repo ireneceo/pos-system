@@ -21,7 +21,7 @@ const COUNTRY_ALIASES: Record<string, string> = {
   'USA': 'US', 'U.S.A.': 'US', 'UNITED STATES': 'US', 'UK': 'GB', 'U.K.': 'GB', 'ENGLAND': 'GB',
   'UAE': 'AE', 'CHINA': 'CN', 'HONG KONG': 'HK', 'TAIWAN': 'TW', 'VIETNAM': 'VN', 'INDONESIA': 'ID',
   'THAILAND': 'TH', 'PHILIPPINES': 'PH', 'JAPAN': 'JP', 'AUSTRALIA': 'AU', 'INDIA': 'IN', 'CANADA': 'CA',
-  '대한민국': 'KR', '한국': 'KR', '말레이시아': 'MY', '싱가포르': 'SG', '中国': 'CN', '日本': 'JP',
+  '대한민국': 'KR', '한국': 'KR', '말레이시아': 'MY', '싱가포르': 'SG', '中国': 'CN', '日本': 'JP', /* i18n-ok: 화면 문구가 아니라 붙여 넣은 주소에서 나라를 알아보는 낱말이다 — 번역하면 인식이 깨진다 */
 };
 
 function detectCountry(token: string): string | null {
