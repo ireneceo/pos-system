@@ -1,6 +1,35 @@
 ## 현재 작업 상태
 
-### 답 기다림 (2026-11-15) — 운영 매장 28 주소: 시스템 관리자 › Restaurants 에서 매장 28 주소를 저장하고 «했어요» 라고 답해 주실래요? [Claude Code · 백그라운드 작업방 820e7473]
+### ✅ 완료 (2026-11-15) — 해결된 자동 오류 신고는 점검 방이 닫는다 + 운영 3건 닫음 + 문의 상태 변경 권한 구멍 고침 [Claude Code · 백그라운드 작업방 a711f9c2]
+- Irene «권고대로»(Fable 권고 ①). 코드: utils/inquiryAck.js isAutoReport · routes/support-tickets.js PUT 자동 신고 메일 생략 + 소유 검사 403·상태값 400 · scripts/close-auto-reports.js(기본 미리보기 · --apply · [auto] 만 · 고친 시각 뒤 같은 화면 재신고 0 일 때만 · resolved · DB 직접이라 메일 0) · .claude/run-close-auto-reports.sh(배포 전 사본 실행) · 개발시작.md 0-B «예외» 절 · 설계 §7.
+- 시험: 개발 DB 4갈래(닫힘 · 재신고 있어 거절 · 사람 글 거절 · 고친 시각 뒤 신고 거절 · 다시 실행 그대로) · health-check 2건 추가(반증 둘 다 ✗→✓) · 전체 490/490 · print-guard 8/8 · 민감 판정 비대상.
+- 운영 쓰기(Irene 지시): 19:10 UTC SUPP-2026-6842-103·1886-062(/pos/purchase-orders · 고친 시각 9/18 기준 재신고 0) · SUPP-2026-2401-270(/pos/recipes · 9/11 기준 재신고 0) → resolved · 다시 읽음: 열린 문의 0 · 메일 0(DB 직접) · 상황판 문의 칸 0건으로 올림(200).
+- Fable: 권한 고침 PASS + 권고 1회. 메일 생략·닫기 스크립트는 Fable 이 정한 그대로 구현이라 추가 판정 안 씀.
+- 운영 반영(코드): 다음 배포 때. 남은 뒷일: 같은 파일 POST 가 req.body 통째 저장(자기 문의 status·priority 넣기 가능) — 다음에 이 파일 열 때.
+
+### 답 기다림 (이전) (Irene «권고대로» → 위 ✅) (2026-11-15) — «이미 해결» 로 판정된 화면 자동 오류 신고는 정기 점검 방이 운영에서 바로 «해결됨» 으로 닫게 할까요? [Claude Code · 백그라운드 작업방 a711f9c2]
+- 원인: 상황판 문의 칸 = 운영 support_tickets open/in-progress 그대로. 3건(SUPP-2026-6842-103·1886-062·2401-270 — 화면 자동 오류 신고)은 10-07 부터 «이미 해결» 판정인데 방은 상태 변경 금지(운영 쓰기·메일) · 닫는 사람 없음 → 40일째 남음. 제품 닫는 길 = 시스템 관리자 › System Inquiry «Close»(신고 계정에 설명 없는 «상태 바뀜» 메일).
+- 선택: ① 자동 신고만 방이 resolved 로 닫기(조건: 고친 커밋 운영 배포 + 재신고 0 · 근거 보고 · 사람이 쓴 문의 제외) — Fable 권고, 단 «자동 신고 닫을 땐 메일 안 보냄» 을 먼저 만들어 배포 뒤 시작 ② 상황판 «닫기» 버튼(server 방 개발 먼저) ③ 이번 3건만 Irene 이 관리자 화면에서 Close(메일 3통).
+- 답이 오면: ① → support-tickets PUT 에 자동 신고 메일 생략 + 개발시작.md 0-B 예외 한 줄 + 설계 §3 · 배포 뒤 운영 3건 다시 읽고 닫기(백그라운드 운영 쓰기가 막히면 act 안내) ② → server 방 대기열 ③ → 끝.
+- 같이 한 일(✅ 개발): PUT /api/support-tickets/:id 소유 검사 없음(아무 계정이나 남의 문의 상태 변경+메일) → 본인·System Admin 만 + 상태값 검사. health-check security 1건(반증: 옛 코드 ✗ · 새 코드 112/112). 실호출 본인 200 · SA 200 · 남 403. Fable 판정 PASS(게이트 비대상이라 마커 없음). 운영 반영: 다음 배포 때.
+- Fable 남긴 뒷일: 같은 파일 POST 가 req.body 통째 저장(자기 문의 status·priority 직접 넣기 가능) — 다음에 이 파일 열 때 정리.
+- 운영 읽기(prod-query)는 이번 방에서 권한 거부 — 우회 안 함, 11-15 16:04 UTC 기록 기준.
+
+### ✅ 완료 (2026-11-15) — 운영 매장 28 «K-DINE Noodles Pavilion» 주소·지도 위치 넣음 (Irene 지시 «권고대로»(가) + 주소 답 · 운영 쓰기 1줄) [Claude Code · 백그라운드 작업방 820e7473]
+- 넣은 값: address «1, Jalan Damanlela, Bukit Damansara» · line2 «Lot 1.01.00, Level 2» · Kuala Lumpur · Federal Territory of Kuala Lumpur · 50490 · MY · 좌표 3.1447771, 101.6617841(새 geocoding 으로 계산 — Jalan Damanlela, Pusat Bandar Damansara) · 17:44 UTC.
+- 방법: `.claude/run-store28-address.sh IRENE`(이름 확인·빈칸일 때만·바뀐 줄 1·다시 읽음) + prod-query 로 재확인.
+- 남은 것: 매장 27 좌표 없음(주소 «Unit 2-15, …» — 옛 위치 찾기 실패) → 다음 배포 뒤 `node scripts/backfill-restaurant-coords.js` 1회로 채워짐(다음 할 일).
+
+### 답 기다림 (이전) (Irene 답: Lot 1.01.00, Level 2, 1 Jalan Damanlela, Bukit Damansara 50490 KL → 운영에 넣음 ✅) (2026-11-15) — 매장 28 은 KL·BJ·DH 중 어디인가요(다른 곳이면 주소를 적어 주세요)? [Claude Code · 백그라운드 작업방 820e7473]
+- 무엇: Irene (가) 운영에 넣기 승인 · 주소 미제공 · 운영 28 기록엔 법인 주소(2 Jalan PJU 7/2 IPC — 매장 8 과 같은 건물)뿐 → 매장 자리 아님.
+- 준비됨: `.claude/oneoff-store28-address-20261115.js` + `.claude/run-store28-address.sh KL|BJ|DH` (이름 확인·주소 빈칸일 때만 씀·쓴 뒤 다시 읽음 · 좌표는 새 geocoding 으로 미리 계산: KL 3.149154,101.7129531 · BJ 3.051063,101.6705112 · DH 3.1460036,101.6633326).
+- 답이 오면: 그 값으로 run 스크립트 실행 → 운영 읽기로 확인 → 프랜차이즈맵 핀 확인 · 다른 주소면 스크립트 PICK 에 추가 후 실행.
+
+### 답 기다림 (이전) (Irene «권고대로»=(가) · 주소는 안 옴) (2026-11-15) — 매장 28 실제 주소를 적어 주실래요, 아니면 (나) 배포 뒤 직접·(다) 그대로 중 어느 쪽인가요? [Claude Code · 백그라운드 작업방 820e7473]
+- 무엇: «했어요» 2번 뒤 운영 읽기 — 28 address 빈칸·updatedAt 11/13 · 최근 2일 수정된 매장 0(저장 시도 없음).
+- 답이 오면: (가) 주소 → 운영 매장 28 에 address·city·postal_code·state 넣는 일회성 스크립트(읽기 확인 포함)로 쓰기 → 운영 읽기로 좌표 확인(옛 위치 찾기라 비면 새 geocoding 으로 좌표 계산해 같이 넣기) · (나) 배포 뒤 확인 · (다) 종료.
+
+### 답 기다림 (이전) (Irene «했어요» 2번 — 운영 저장 기록 0) (2026-11-15) — 운영 매장 28 주소: 시스템 관리자 › Restaurants 에서 매장 28 주소를 저장하고 «했어요» 라고 답해 주실래요? [Claude Code · 백그라운드 작업방 820e7473]
 - 무엇: Irene «했어요» 뒤 운영 읽기 — 매장 28 address 빈칸 · 좌표 NULL · updatedAt 11/13 그대로(저장 안 됨). 프랜차이즈맵 주소 칸(e47347c94)은 운영 미배포(운영 SW 6.20 · 새 문구 0).
 - 왜: 실제 매장 주소는 Irene 만 앎. 상황판 act 질문 askmwhsjxlj.
 - 답이 오면: 운영 읽기로 28 address·latitude·longitude 확인 → 좌표 비면 주소 형식 보고 원인(운영은 옛 위치 찾기 — 앞 호수·주 이름이면 실패 가능, 새 코드는 배포 뒤).

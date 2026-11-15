@@ -150,3 +150,8 @@ PurpleHere 카드 안 «들어온 문의» 칸. **열린 문의 1건 = 1줄.**
 ## 6. Fable 사용
 
 - 이 문서 = 설계 1회. 접수 확인 구현 뒤 완료 검증 1회(외부 발송)가 남는다. 2단계는 승인되면 별도 사안.
+
+## 7. 추가 (2026-11-15 · Irene «권고대로» = Fable 권고 ①)
+- 해결된 화면 자동 오류 신고(`[auto]`)는 점검 방이 `resolved` 로 닫는다 — 조건: 고친 커밋 운영 배포 + 그 뒤 같은 화면 재신고 0 · 근거 한 줄씩 보고 · 사람이 쓴 문의는 제외(나중에 상황판 «닫기» 버튼 = 2단계).
+- 메일: 자동 신고는 상태가 바뀌어도 메일 안 보냄(routes/support-tickets.js PUT · utils/inquiryAck.js isAutoReport). 닫기 스크립트 `dev-backend/scripts/close-auto-reports.js` 는 DB 직접이라 메일 0.
+- 절차: `.claude/commands/개발시작.md` 0-B «예외» 절.

@@ -722,7 +722,7 @@ function defineContextRequestTests({ adminToken }) {
 // ============================================
 // 카테고리 2: 보안 가드 (회귀 방지)
 // ============================================
-function defineSecurityTests({ customerToken, member, restId }) {
+function defineSecurityTests({ customerToken, member, restId, adminToken }) {
   // 익명 차단
   test('security', '익명 customers/:rid → 401', async () => (await request('GET', '/customers/1')).status === 401);
   // 2026-09-24 ⑥ 브랜드 공급업체 «매장에 공유» = 복사본 · 상속 종료 (utils/supplierShare.js).
@@ -1501,6 +1501,24 @@ function defineSecurityTests({ customerToken, member, restId }) {
     const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
     const r = await request('GET', `/categories?restaurantId=${otherRid}`, null, { Authorization: `Bearer ${tk}` });
     return r.status === 403;
+  });
+  // 2026-11-15: PUT /support-tickets/:id 가 로그인만 확인 → 아무 계정이나 남의 문의 상태를 바꾸고 주인에게 메일이 나갔다.
+  //   403·400 경로만 부른다(성공 경로는 문의 주인에게 메일이 나가므로 여기서 안 부름).
+  test('security', '남의 시스템 문의 상태 변경 → 403 · 엉뚱한 상태값 → 400 (문의 IDOR)', async () => {
+    const SupportTicket = require('../models/SupportTicket');
+    const User = require('../models/User');
+    const ra = await User.findOne({ where: { role: 'Restaurant Admin' } });
+    if (!ra) return true;
+    const t = await SupportTicket.create({ ticketNumber: `SUPP-HC-${Date.now()}`, customerId: '999999999', customerName: 'hc', customerEmail: 'hc@example.com', subject: '[hc] idor', description: 'hc' });
+    try {
+      const tk = jwt.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+      const r1 = await request('PUT', `/support-tickets/${t.id}`, { status: 'closed' }, { Authorization: `Bearer ${tk}` });
+      const r2 = await request('PUT', `/support-tickets/${t.id}`, { status: 'hacked' }, { Authorization: `Bearer ${adminToken}` });
+      await t.reload();
+      if (r1.status !== 403) { console.log(`    ↳ 남의 문의 변경 ${r1.status}`); return false; }
+      if (r2.status !== 400) { console.log(`    ↳ 엉뚱한 상태값 ${r2.status}`); return false; }
+      return t.status === 'open';
+    } finally { await t.destroy({ force: true }); }
   });
   test('security', '다른 RA가 cross-tenant /import/history?restaurant_id → 403 (대량입력 IDOR)', async () => {
     const User = require('../models/User');
@@ -12125,6 +12143,18 @@ function defineSettingsTests() {
       const m = inquiryAcknowledgedEmail({ ticketNumber: 'SUPP-HC', subject: 's', description: 'd' }, lang);
       if (!m.subject.includes('SUPP-HC') || /inquiryAck\./.test(m.subject + m.html)) { console.log(`    ↳ ${lang} 문구 키 빠짐`); return false; }
     }
+    return true;
+  });
+
+  // 2026-11-15 Irene «권고대로»(Fable 권고 ①): 해결된 자동 오류 신고는 점검 방이 resolved 로 닫는다 — 신고 계정에 메일 0
+  test('settings', '자동 오류 신고 — 상태 바꿔도 메일 안 나감 · 닫기 스크립트는 [auto] 만 · resolved', async () => {
+    const { isAutoReport } = require('../utils/inquiryAck');
+    if (isAutoReport({ subject: '[auto] /pos/x — e' }) !== true || isAutoReport({ subject: 'Printer [auto]' }) !== false) { console.log('    ↳ isAutoReport 판정 틀림'); return false; }
+    const fs = require('fs'); const path = require('path');
+    const rt = fs.readFileSync(path.join(__dirname, '../routes/support-tickets.js'), 'utf8');
+    if (!/req\.body\.status && ticket\.customerId && !isAutoReport\(ticket\)/.test(rt)) { console.log('    ↳ 상태 변경 메일에 자동 신고 제외 없음'); return false; }
+    const sc = fs.readFileSync(path.join(__dirname, 'close-auto-reports.js'), 'utf8');
+    if (!/SET status='resolved'[^"]*subject LIKE '\[auto\]%'/.test(sc)) { console.log('    ↳ 닫기 스크립트가 [auto]·resolved 조건을 잃음'); return false; }
     return true;
   });
 

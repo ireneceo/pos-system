@@ -13,7 +13,7 @@ const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const { sendNotification, sendNotificationBatch, getSystemAdminIds } = require('../utils/notificationService');
 const { inquiryReceivedEmail, ticketStatusChangedEmail, inquiryAcknowledgedEmail } = require('../utils/notificationTemplates');
-const { shouldAcknowledgeTicket } = require('../utils/inquiryAck');
+const { shouldAcknowledgeTicket, isAutoReport } = require('../utils/inquiryAck');
 
 // Get all support tickets (filtered by role)
 router.get('/', authenticateToken, async (req, res) => {
@@ -158,6 +158,16 @@ router.put('/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: { message: 'Ticket not found', code: 'NOT_FOUND' } });
     }
 
+    // 2026-11-15: 예전엔 로그인만 하면 아무 문의나 상태를 바꿀 수 있었다(+ 문의 주인에게 메일).
+    // 삭제와 같은 기준 — System Admin 또는 문의를 올린 본인만.
+    if (req.user.role !== 'System Admin' && ticket.customerId !== String(req.user.id)) {
+      return res.status(403).json({ success: false, error: { message: 'Access denied', code: 'FORBIDDEN' } });
+    }
+    const ALLOWED_STATUS = ['open', 'in-progress', 'resolved', 'closed'];
+    if (req.body.status && !ALLOWED_STATUS.includes(req.body.status)) {
+      return res.status(400).json({ success: false, error: { message: 'Invalid status', code: 'VALIDATION_ERROR' } });
+    }
+
     const updateData = {};
     if (req.body.status) {
       updateData.status = req.body.status;
@@ -166,7 +176,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
     await ticket.update(updateData);
 
     // Email notification on status change (non-blocking)
-    if (req.body.status && ticket.customerId) {
+    // 자동 오류 신고는 메일 안 보냄 — 신고 계정은 글을 쓴 적이 없다(2026-11-15 Irene «권고대로» · Fable 권고 ①)
+    if (req.body.status && ticket.customerId && !isAutoReport(ticket)) {
       (async () => {
         try {
           await require('../utils/notificationService').sendWithNativeAddressee(parseInt(ticket.customerId), 'ticket_status_changed', (link) => ticketStatusChangedEmail(
