@@ -12106,6 +12106,28 @@ function defineSettingsTests() {
   const { Restaurant } = require('../models');
   const guard = require('../utils/settingsGuard');
 
+  // 2026-11-15 시스템 문의 접수 확인(Fable 설계 .claude/fable-design-20261115-inquiry-autoreply-board.md §2-3)
+  //   라우트 단위 실호출(보냄 1건·제외 3경우·실패해도 201)은 tests/inquiry-ack.test.js — 여기는 상시 계약만
+  test('settings', '문의 접수 확인 — 제외 규칙([auto]·diagnostic·SA) · 알림 종류 등록 · 4개 언어 문구 · 접수 라우트 연결', async () => {
+    const { shouldAcknowledgeTicket } = require('../utils/inquiryAck');
+    const base = { customerId: '5', subject: 'Printer', category: 'technical', customerRole: 'Restaurant Admin' };
+    if (shouldAcknowledgeTicket(base) !== true) { console.log('    ↳ 보통 문의에 접수 확인이 안 나감'); return false; }
+    for (const [why, t] of [['[auto]', { ...base, subject: '[auto] TypeError' }], ['diagnostic', { ...base, category: 'diagnostic' }], ['SA', { ...base, customerRole: 'System Admin' }]]) {
+      if (shouldAcknowledgeTicket(t) !== false) { console.log(`    ↳ ${why} 문의에도 접수 확인이 나감`); return false; }
+    }
+    const fs = require('fs'); const path = require('path');
+    const ns = fs.readFileSync(path.join(__dirname, '../routes/notification-settings.js'), 'utf8');
+    if (!/key: 'inquiry_acknowledged'[^\n]*roles: \['all'\]/.test(ns)) { console.log('    ↳ 알림 종류 inquiry_acknowledged(전체) 없음'); return false; }
+    const rt = fs.readFileSync(path.join(__dirname, '../routes/support-tickets.js'), 'utf8');
+    if (!/shouldAcknowledgeTicket\(ticket\)/.test(rt) || !/'inquiry_acknowledged'/.test(rt)) { console.log('    ↳ 문의 접수 라우트에 접수 확인 연결 없음'); return false; }
+    const { inquiryAcknowledgedEmail } = require('../utils/notificationTemplates');
+    for (const lang of ['en', 'ko', 'zh', 'ms']) {
+      const m = inquiryAcknowledgedEmail({ ticketNumber: 'SUPP-HC', subject: 's', description: 'd' }, lang);
+      if (!m.subject.includes('SUPP-HC') || /inquiryAck\./.test(m.subject + m.html)) { console.log(`    ↳ ${lang} 문구 키 빠짐`); return false; }
+    }
+    return true;
+  });
+
   test('settings', '결제설정 — 모든 결제수단에 label 존재 (첫 항목 이름 누락 방지)', async () => {
     const rows = await Restaurant.findAll({ attributes: ['id', 'payment_settings'], limit: 50 });
     for (const r of rows) {

@@ -1,5 +1,22 @@
 ## 현재 작업 상태
 
+### ✅ 완료 (2026-11-15) — PlanQ GTM 번호(GTM-5WQHW96L) 걷어냄 · PurpleHere 는 GTM 안 씀 · 전환 이벤트는 gtag 로 직접 (Fable 안 씀 — 되돌리기 쉬움·추적 코드 몇 줄) [Claude Code · 백그라운드 작업방 94ff3d8f]
+- Irene 원문 요지: «GTM-5WQHW96L 은 GTM 계정 «PlanQ» 의 컨테이너 «planq.kr» · PurpleHere 용 컨테이너 없음 · «Purple Here» 는 구글 태그 G-63F78ZL72X · (a) GTM 필요? (b) 아니면 카드 내려 (c) 코드·문서·미커밋 파일의 그 번호 지워 — 배포되면 PlanQ 측정에 섞임»
+- 실측: 커밋판(운영에 나갈 판)은 늘 자리표시 GTM-XXXXXXX — 운영에 PlanQ 번호 나간 적 0. 미커밋 tracking.ts·가져오기 파일·개발 빌드(main.3cf5db8f.js)에만 있었음 → 개발 사이트 방문이 PlanQ 컨테이너를 불렀음.
+- 고침: tracking.ts 상수 자리표시 + GTM 없을 때 track() 이 gtag('event') 로 직접(page_view 제외) · index.html = 커밋판(gtag G-63F78ZL72X 유지) · 가져오기 파일 publicId 자리표시 · docs/MARKETING_TRACKING.md §11-1 취소 표시 + §11-3 · 사본 $CLAUDE_JOB_DIR/tmp/gtm-revert-*.
+- /개발완료(이 방): DEVELOPMENT_PLAN 완료 절 · CHANGELOG 11-15 3줄 · 커밋 = 기록 + 62a20955 문의 접수 확인 묶음(Fable PASS · 마커는 다른 커밋으로 이미 무효였고 민감 판정 비대상이라 기다릴 이유 없음) + 배포 뒤 기록(deploy-manifest · releases archive). 그대로 둔 미커밋: playwright.config · .claude/oneoff-*·run-*.sh(오래된 보류). 진행 중 0 · 다음 확정 작업: 없음 — 지시 대기.
+- 카드: todomvjvib2x(GTM 가져오기·게시) 뺌 · todomvdahbik(GA4 «페이지 변경» 끄기) 뺌 — GTM 안 쓰면 그 설정이 화면 전환 page_view 를 보내야 함.
+- 커밋 5f8f17bb1(tracking.ts · MARKETING_TRACKING.md · gtm json 경로 지정 · index.html 은 커밋판과 같아짐) — «GTM 보류» 끝. 개발 빌드 main.1b10bd5c · 실브라우저: GTM 요청 0 · page_view 화면마다 1(/ · /pricing · /contact · /demo) · try_demo 1(demo_restaurant_admin) · 데모 관리 화면도 page_view 1(gtag 가 모든 화면에 실림 — 운영도 전부터 그럼) · print-guard 8/8 · design-guard 신규 0. 운영 반영: 다음 배포 때.
+
+### ✅ 완료 (2026-11-15) — GA4 28일 이벤트 0 원인: 운영이 불러오는 GA4 스크립트 번호가 404 → 구글 태그 번호로 고침 (Fable 안 씀 — 번호 두 곳·되돌리기 쉬움) [Claude Code · 백그라운드 작업방 762e324f]
+- Irene: GA4 관리 5가지 중 4가지 함(개발자 트래픽 필터 새로 만들어 활성 · 주요 이벤트 4 · 맞춤 측정기준 9 · 보관 14개월) · «페이지 변경 끄기» 보류 · «28일 이벤트 0 이유 확인» · «GTM 의 Google 태그 G-63F78ZL72X 는 다른 번호»
+- 실측: `gtag/js?id=G-LTTLKH1J85` 404(2회) · `gtag/js?id=G-63F78ZL72X` 200 + 그 안 전송 대상 목록 = [G-LTTLKH1J85]. 운영 HTML 은 404 스크립트를 불러 와 GA4 로 아무것도 안 감. 게시된 GTM-5WQHW96L 은 태그 0(빈 판 — 게시 전 그대로).
+- 고침: 커밋 297498e28 — index.html HEAD 판의 번호 두 곳만 G-63F78ZL72X(작업 사본의 GTM 보류 변경 = gtag 삭제는 그대로 미커밋). GTM 가져오기 파일 상수 `const - GA4 measurement id` → G-63F78ZL72X(저장소 미커밋 보류 파일 + 개발서버 내려받기 사본). docs/MARKETING_TRACKING.md §11-2(보류 파일에 추가).
+- 사고 1건(바로잡음): 처음 `git commit -- 파일` 이 작업 사본(=gtag 삭제 판)을 커밋함 → push 전 `reset --soft` 로 되돌리고 번호만 바꾼 판으로 다시 커밋. 작업 사본은 안 건드림.
+- 할 일 카드 todomvdahbik → 남은 1가지(페이지 변경 끄기)로 고쳐 다시 올림 · waitFor todomvjvib2x(GTM 게시) — 화면 전환 page_view 를 코드가 보내는 판이 운영에 나간 뒤에 꺼야 함.
+- 확인 못 함: 배포 뒤 GA4 실시간에 실제로 들어오는지(배포 뒤 Irene GA4 실시간 화면) · Irene 가 GTM 작업 공간에 옛 파일을 이미 가져왔는지(가져왔으면 상수만 G-63F78ZL72X 로 바꿔야 함).
+- 운영 반영: 다음 배포 때.
+
 ### ✅ 완료 (2026-11-15) — 매장 편집 주소 저장 403 고침 + 한 줄 주소 붙여 넣으면 칸 자동 나누기 (Fable 안 씀 — 권한 판정은 그대로·브랜드 «변경» 때만 검사로 좁힘 · 민감 판정 비대상 · 마이그 0 · SW 그대로) [Claude Code · 백그라운드 작업방 59a8b200]
 - Irene 원문: «https://purplehere.com/pos/manager/restaurants 여기서 레스토랑 주소가 등록이 안돼. 그리고 주소를 검색 안되면 한번에 넣으면 알아서 항목 맞춰서 넣어줄 수 없어? … Lot 1.01.00, Level 2, 1, Jalan Damanlela, Bukit Damansara, 50490 Kuala Lumpur, Federal Territory of Kuala Lumpur» + 403 «You can only set brand for restaurants you manage» (매장 28)
 - 원인: 편집 창이 브랜드 총괄일 때 brand_id 를 늘 같이 보냄 → `restaurants-crud.js` PUT 이 brand_id 만 보이면 «매장 담당 줄(restaurant_managers)» 을 요구 → 브랜드 소유로만 닿는 매장(담당 줄 없음)은 주소 하나도 저장 못 함.
@@ -21,13 +38,24 @@
 - 만든 것: 시스템 문의(support_tickets — 기능 요청·버그 신고 포함)를 올리면 문의한 사람에게 고정 문구 메일 «문의가 접수되었습니다 — 번호 · 1~2 영업일 안에 답변드립니다»(그 사람 언어 4개 · 고객 글 인용은 태그 제거+이스케이프). 새 알림 종류 inquiry_acknowledged(전체 · 설정에서 끌 수 있음). 안 보냄: [auto] 자동 신고 · diagnostic · System Admin 본인 문의 · **관리자가 고객 대신 만든 문의**(Fable 검증 중 발견·수정). 문의 답글 줄·상태는 안 바꿈. **메일로만 나감**(앱 알림 없음 — 다른 문의 알림과 같음).
 - 파일: utils/inquiryAck.js(새) · routes/support-tickets.js · utils/notificationTemplates.js · routes/notification-settings.js · locales/*/email.json · tests/inquiry-ack.test.js(새) · scripts/health-check.js(settings 1건) · .claude/commands/개발시작.md 0-B(상황판 올리기 · 판단 5종).
 - 검증: jest 10/10 · 고장주입 제외 조건 3개 각각 실패 확인 · health-check 반증 · 개발서버 실호출(보통 문의 → 접수 확인 길 → 데모라 발송 가드에서 멈춤 · [auto] → 안 탐 · 설정 목록에 보임 · 시험 문의 지움 0행) · verify-all 22/23(deploy-ready 몫) · Fable 재실행 health-check 488/488 · print-guard 8/8.
-- Fable: 설계 `.claude/fable-design-20261115-inquiry-autoreply-board.md` · 판정 `.claude/fable-verdict-20261115-inquiry-ack.md` PASS · 마커 6f1dcbcca87d. 커밋하면 마커가 죽어 커밋 안 함 — 배포 준비 때 같이.
+- Fable: 설계 `.claude/fable-design-20261115-inquiry-autoreply-board.md` · 판정 `.claude/fable-verdict-20261115-inquiry-ack.md` PASS · 마커 6f1dcbcca87d. 커밋하면 마커가 죽어 커밋 안 함 — 배포 준비 때 같이. → 11-15 94ff3d8f /개발완료에서 커밋(마커는 그 전에 이미 무효).
 - 확인 못 함: 실제 받은편지함 모양 · «끄면 안 감» 실호출(공용 관문 코드 대조만) · 접수 직후 화면 문구.
 - 상황판 «들어온 문의» 칸: server 대기열에 넣음(상황판 코드는 server 방 몫) — 칸이 생기면 정기 점검이 0-B 대로 열린 문의 전부를 올림.
 - 다음 할 일: 2단계(AI 답장 초안 → 상황판에서 «이대로 보내기») — 상황판 칸이 생긴 뒤 별도 설계·Fable 검증(운영 답글 쓰기 스크립트 필요).
 - 운영 반영: 다음 배포 때.
 
-### 답 기다림: K-DINE Noodles «했어요» 두 번째인데 운영 그대로 — 버튼을 실제로 눌렀는데 안 바뀐 걸까요? [Claude Code · 작업방 1bba5f14 · 2026-11-15]
+### 답 기다림: K-DINE Noodles Settings «Apply these locks to all menus now» 만 남음 — 눌러서 초록 글씨 뜨는지 «했어요/안 떠요» 답해 주실래요? [Claude Code · 작업방 1bba5f14 · 2026-11-15]
+- 09:09 Irene «했어요» 뒤 운영 읽기: 카테고리 순서 저장(PUT reorder/bulk 200 ×2) · Push(POST push-pending 200) 됨 → 5 브랜드13·매장28 카테고리 1..8 같음 ✅ · 3·4·6=0 · 7 true ✅.
+- 안 됨: 1 잠금 이름·가격·카테고리 0/39 · 2 스냅샷 0/39 — 운영 기록에 PUT /api/brand-menus/settings 0건(버튼 안 눌림). 화면 코드는 누르면 바로 보냄.
+- 답이 오면: «했어요» → run-brand13-after-push-check.sh 로 1·2=39 확인(잠금은 서버가 바로 매장 39개에도 적용 → Push 다시 필요 없음). «안 떠요» → 운영 nginx 로 요청 닿았는지 보고, 안 닿으면 화면 고장으로 개발서버 재현.
+
+### ✅ 완료 (2026-11-15 · 작업방 1bba5f14) — K-DINE Noodles 잠금·순서 안 바뀐 까닭 확인 → 버튼 누름이 운영 서버에 안 닿음 (Irene «권고대로»)
+- 운영 읽기(쓰기 0, `.claude/run-brand13-why-check.sh`): 운영 백엔드·화면 둘 다 «Apply these locks» 코드 있음 · 브랜드 13 설정 마지막 저장 11-08 20:19(오늘 저장 없음) · 설정 잠금 이름·가격·카테고리 켬.
+- 운영 nginx 기록 11-14~15: 브랜드 메뉴 PUT/POST(설정 저장·카테고리 순서·Push) **0건**(누구에게서도). Irene 접속은 07:43 Settings 탭 · 08:02 Categories 탭 열기(GET 만).
+- 화면 코드 대조: 버튼 누르면 PUT /api/brand-menus/settings 를 바로 보냄 → 세 가지 다른 버튼이 다 안 닿은 것이라 화면 고장보다 «안 눌림» 쪽. 실브라우저 재현은 안 함(확인 못 함).
+- 따로 카드 todomwhlcx84 는 뺌 → 이 방 질문(act)으로 안내. «했어요» 오면 run-brand13-after-push-check.sh 로 확인.
+
+### (이전) 답 기다림: K-DINE Noodles «했어요» 두 번째인데 운영 그대로 — 버튼을 실제로 눌렀는데 안 바뀐 걸까요? [Claude Code · 작업방 1bba5f14 · 2026-11-15]
 - 무엇: 카드 todomwhizmmq «했어요» 뒤 운영 읽기(`.claude/run-brand13-after-push-check.sh`) 결과가 첫 번째와 같음 — 1 잠금 이름·가격·카테고리 0/39(순서만 39) · 2 스냅샷 0/39 · 5 브랜드13 «Shop - Taky Way»=0(매장28 은 8, 맨 뒤) · 3·4·6 = 0 · 7 true.
 - 왜 묻나: 같은 일 두 번 «했어요» 인데 안 돼 있음 → 규칙상 카드 다시 안 올리고 묻는다. 운영에 그 버튼 코드가 있는지·마지막 저장 시각을 읽는 확인(`.claude/run-brand13-why-check.sh`, 읽기만)은 허락 창에서 멈춰 실행 안 됨(결과 모름).
 - 답이 오면: ① «눌렀는데 안 됨» → why-check 실행(운영 코드 apply_locks_to_all 있는지 · brands.menu_settings default_locks · 카테고리 updated_at) → 개발서버에서 재현·고침 ② «아직 안 눌렀음/다른 곳» → 같은 카드 다시 올림 ③ «지금대로 둠» → 카드 닫고 끝.

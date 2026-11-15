@@ -180,6 +180,42 @@ function inquiryRepliedEmail(ticket, reply, replierName, link = null) {
 }
 
 /**
+ * Inquiry received — fixed acknowledgement to the person who submitted a system inquiry
+ * (2026-11-15 Irene «권고대로» · Fable 설계 .claude/fable-design-20261115-inquiry-autoreply-board.md §2-3).
+ * 고정 문구만 — AI 가 쓴 답이 아니다. 고객이 쓴 제목·본문은 이스케이프해 인용한다.
+ */
+function inquiryAcknowledgedEmail(ticket, lang = 'en', link = null) {
+  const { getEmailText } = require('./i18n');
+  const t = (key, params) => getEmailText(lang, key, params);
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const plain = (v) => String(v || '').replace(/<[^>]*>/g, '');
+  const subjectText = plain(ticket.subject || ticket.title).slice(0, 120);
+  const message = plain(ticket.description).slice(0, 500);
+  const number = ticket.ticketNumber || '';
+
+  const title = t('inquiryAck.heading');
+  const body = `
+    <p style="color: #374151; font-size: 16px; margin: 0 0 12px;">${esc(t('inquiryAck.intro'))}</p>
+    <p style="color: #111827; font-size: 15px; font-weight: 600; margin: 0 0 16px;">${esc(t('inquiryAck.promise'))}</p>
+    ${infoTable(
+      infoRow(esc(t('inquiryAck.number')), esc(number)) +
+      infoRow(esc(t('inquiryAck.subjectLabel')), esc(subjectText))
+    )}
+    <div style="background: #F9FAFB; border-left: 4px solid #635BFF; padding: 16px; margin: 0 0 16px; border-radius: 0 8px 8px 0;">
+      <p style="color: #6B7280; font-size: 13px; margin: 0 0 8px;"><strong>${esc(t('inquiryAck.yourMessage'))}</strong></p>
+      <p style="color: #374151; font-size: 14px; margin: 0;">${esc(message).replace(/\n/g, '<br>')}</p>
+    </div>
+    <p style="color: #6B7280; font-size: 14px; margin: 0 0 24px;">${esc(t('inquiryAck.follow'))}</p>
+    ${ctaButton(t('inquiryAck.viewButton'), link || `${BASE_URL}/pos/dashboard`)}`;
+
+  return withRenderMeta({
+    subject: t('inquiryAck.subject', { number }),
+    html: wrapTemplate(title, body, lang),
+    text: `${t('inquiryAck.intro')} ${t('inquiryAck.promise')}\n${t('inquiryAck.number')}: ${number}\n${t('inquiryAck.subjectLabel')}: ${subjectText}\n\n${message}\n\n${t('inquiryAck.follow')}`
+  }, title, body, lang, { action: { state: 'fyi', key: 'no_action' } });
+}
+
+/**
  * Ticket status changed
  */
 function ticketStatusChangedEmail(ticket, newStatus, link = null) {
@@ -1360,6 +1396,7 @@ module.exports = {
   commentReceivedEmail,
   inquiryReceivedEmail,
   inquiryRepliedEmail,
+  inquiryAcknowledgedEmail,
   ticketStatusChangedEmail,
   invoiceCreatedEmail,
   invoiceOverdueEmail,

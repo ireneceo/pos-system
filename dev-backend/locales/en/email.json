@@ -379,5 +379,16 @@
     "terminated": "Terminated",
     "accepted": "Accepted",
     "declined": "Declined"
+  },
+  "inquiryAck": {
+    "subject": "We've received your inquiry — {{number}}",
+    "heading": "Inquiry Received",
+    "intro": "Thank you for contacting us. We have received your inquiry and will review it.",
+    "promise": "We reply within 1–2 business days.",
+    "follow": "You can follow this inquiry and add details any time from Support in your dashboard.",
+    "number": "Inquiry no.",
+    "subjectLabel": "Subject",
+    "yourMessage": "Your message",
+    "viewButton": "View Inquiry"
   }
 }

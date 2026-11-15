@@ -12,7 +12,8 @@ const User = require('../models/User');
 const { Op } = require('sequelize');
 const { authenticateToken } = require('../middleware/auth');
 const { sendNotification, sendNotificationBatch, getSystemAdminIds } = require('../utils/notificationService');
-const { inquiryReceivedEmail, ticketStatusChangedEmail } = require('../utils/notificationTemplates');
+const { inquiryReceivedEmail, ticketStatusChangedEmail, inquiryAcknowledgedEmail } = require('../utils/notificationTemplates');
+const { shouldAcknowledgeTicket } = require('../utils/inquiryAck');
 
 // Get all support tickets (filtered by role)
 router.get('/', authenticateToken, async (req, res) => {
@@ -123,6 +124,24 @@ router.post('/', authenticateToken, async (req, res) => {
         console.error('[SupportTicket notification error]', e.message);
       }
     })();
+
+    // 문의한 사람에게 고정 문구 접수 확인(«접수했습니다 · 1~2 영업일 안에 답변») — 실패해도 접수는 성공 (2026-11-15 · Fable 설계 §2-3)
+    //   System Admin 이 고객 대신 만든 문의는 주인이 고객이어도 보내지 않는다 — 고객이 쓴 글이 아니라 «보내 주신 내용» 이 틀린 말이 된다(Fable 검증 2026-11-15)
+    if (req.user.role !== 'System Admin' && shouldAcknowledgeTicket(ticket)) {
+      (async () => {
+        try {
+          const ownerId = parseInt(ticket.customerId, 10);
+          if (!ownerId) return;
+          console.log(`[SupportTicket ack] ${ticket.ticketNumber} → user ${ownerId}`);
+          const owner = await User.findByPk(ownerId, { attributes: ['id', 'preferred_language'] });
+          const lang = (owner && owner.preferred_language) || 'en';
+          await require('../utils/notificationService').sendWithNativeAddressee(ownerId, 'inquiry_acknowledged', (link) =>
+            inquiryAcknowledgedEmail(ticket, lang, link));
+        } catch (e) {
+          console.error('[SupportTicket ack error]', e.message);
+        }
+      })();
+    }
 
     res.status(201).json({ success: true, data: ticket });
   } catch (error) {

@@ -379,5 +379,16 @@
     "terminated": "Ditamatkan",
     "accepted": "Diterima",
     "declined": "Ditolak"
+  },
+  "inquiryAck": {
+    "subject": "Kami telah menerima pertanyaan anda — {{number}}",
+    "heading": "Pertanyaan Diterima",
+    "intro": "Terima kasih kerana menghubungi kami. Kami telah menerima pertanyaan anda dan akan menyemaknya.",
+    "promise": "Kami akan membalas dalam 1–2 hari bekerja.",
+    "follow": "Anda boleh mengikuti pertanyaan ini dan menambah butiran pada bila-bila masa melalui Support di papan pemuka anda.",
+    "number": "No. pertanyaan",
+    "subjectLabel": "Subjek",
+    "yourMessage": "Mesej anda",
+    "viewButton": "Lihat Pertanyaan"
   }
 }

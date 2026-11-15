@@ -379,5 +379,16 @@
     "terminated": "已终止",
     "accepted": "已接受",
     "declined": "已拒绝"
+  },
+  "inquiryAck": {
+    "subject": "我们已收到您的咨询 — {{number}}",
+    "heading": "咨询已收到",
+    "intro": "感谢您联系我们。我们已收到您的咨询，并会进行审核。",
+    "promise": "我们会在 1–2 个工作日内回复。",
+    "follow": "您可以随时在控制台的支持（Support）中查看此咨询并补充说明。",
+    "number": "咨询编号",
+    "subjectLabel": "主题",
+    "yourMessage": "您的留言",
+    "viewButton": "查看咨询"
   }
 }
