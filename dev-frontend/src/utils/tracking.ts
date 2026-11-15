@@ -1,12 +1,11 @@
-// Marketing tracking — single source (docs/MARKETING_TRACKING.md · 2026-10-17 Fable 설계).
-// 코드는 dataLayer 에 «사실» 만 올린다. GA4·Meta Pixel 은 전부 GTM 안의 태그다.
+// Marketing tracking — single source (docs/MARKETING_TRACKING.md · 2026-10-17 Fable 설계 · 2026-11-15 §11-3).
+// 코드는 dataLayer 에 «사실» 만 올린다. GTM 이 없을 때(지금)는 track() 이 같은 이벤트를 gtag 로 GA4 에 바로 보낸다.
 // 마케팅 경로 판정은 여기 하나 — 쿠키 배너 표시 · GTM 로드 · page_view 가 같은 함수를 쓴다.
 import i18n from '../i18n';
 
-// Irene 발급 값으로 교체. 코드에 들어가는 외부 ID 는 이것 하나.
-// 교체할 때 같은 커밋에서 public/index.html 의 gtag.js 직접 삽입 블록을 지운다(GTM 이 GA4 를 대신 싣는다).
-// 그 전까지는 GA4 가 지금처럼 index.html 로 돈다 — GTM 게시 전에 운영에 나가도 GA4 가 끊기지 않게.
-export const GTM_CONTAINER_ID = 'GTM-XXXXXXX';
+// PurpleHere 전용 GTM 컨테이너는 없다(2026-11-15). 예전에 넣었던 번호는 PlanQ 컨테이너라 지웠다 — PlanQ 번호를 넣지 말 것.
+// GA4 는 public/index.html 의 gtag.js(구글 태그 G-63F78ZL72X)가 싣는다. GTM 을 쓰게 되면 PurpleHere 전용 컨테이너 번호로.
+export const GTM_CONTAINER_ID: string = 'GTM-XXXXXXX';
 const GTM_PLACEHOLDER = 'GTM-XXXXXXX';
 
 type DataLayerEntry = Record<string, unknown> | IArguments;
@@ -76,6 +75,12 @@ export function track(event: string, params: TrackParams = {}): void {
     entry[key] = value;
   });
   dataLayer().push(entry);
+  // GTM 이 없으면 dataLayer 의 이벤트 객체는 아무도 안 읽는다 → gtag 로 직접. page_view 는 index.html 의
+  // gtag config + GA4 향상된 측정(페이지 변경)이 이미 보내므로 빼야 두 번이 안 된다.
+  if (GTM_CONTAINER_ID === GTM_PLACEHOLDER && event !== 'page_view' && typeof window.gtag === 'function') {
+    const { event: _event, ...eventParams } = entry;
+    window.gtag('event', event, eventParams);
+  }
 }
 
 const ROLE_KEYS: Record<string, string> = {
@@ -119,7 +124,7 @@ export function setConsent(choice: ConsentChoice): void {
     // 저장 못 해도 이번 방문의 동의는 적용한다
   }
   updateConsent(choice === 'accept_all' ? 'granted' : 'denied');
-  // GTM 이 Meta 픽셀을 이 이벤트로 다시 평가한다(ad_storage granted 뒤에만 로드)
+  // 동의 선택률 측정(GTM 을 쓰게 되면 Meta 픽셀도 이 이벤트로 다시 평가)
   track('cookie_consent', { consent_choice: choice });
 }
 

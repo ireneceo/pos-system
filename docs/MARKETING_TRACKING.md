@@ -298,3 +298,21 @@ Fable 권고: **그대로 진행.** 이 설계는 코드 변경을 «사실을 �
 
 **남은 것 (Irene 할 일 → 상황판 카드)**: §6 #1~#4. #5 서치콘솔(사이트맵·GA4 연결)은 Irene 가 이미 해 둠(2026-10-17 답) — 이 서버엔 서치콘솔 API 열쇠가 없어 직접 확인은 못 함. #1(GTM ID) 이 오면: 상수 교체 + index.html 19~23줄 삭제 → 빌드 1회 → dataLayer·GTM 로드 재검증 → #3(미리보기·게시) 카드.
 **운영 반영**: 지금 코드는 다음 배포 때 나가도 안전(위 1). GTM 게시 뒤 ID 커밋이 나가야 GTM 이 운영에서 돈다.
+
+### 11-1. GTM 번호 반영 (2026-10-22 · Opus · 개발서버) [Claude Code · 백그라운드 작업방 32ee9bd5] — ⛔ 취소됨, §11-3
+- (취소) 그때 받은 번호를 `tracking.ts` `GTM_CONTAINER_ID` 에 넣었으나 PlanQ 컨테이너였다 — §11-3 에서 지움.
+- 같은 변경에서 `public/index.html` gtag.js 직접 삽입(`G-LTTLKH1J85` 스크립트 + `gtag('js')`·`gtag('config')`) 삭제 — 위 «설계와 다르게 한 것 1» 해소. Consent Mode 기본값 블록은 §3-2 대로 그대로(주석만 «GTM 은 tracking.ts 가 로드»).
+- 이제 GA4 는 GTM 안의 `GA4 - Config` 태그로만 실린다 → **GTM 컨테이너 첫 게시 전에는 GA4 가 아무 데도 안 간다**(개발서버는 지금 이 상태가 정상 — gtm.js 는 실리지만 게시된 버전이 없음).
+- **운영 반영 조건(§8)**: Irene 가 GTM 가져오기 → 미리보기 §5 확인 → 게시를 끝낸 뒤에만 이 두 파일이 운영에 나가야 한다. 그 전에 나가면 운영 GA4 페이지뷰가 끊긴다. 그래서 이 두 파일은 게시 확인(상황판 check 할 일 «GTM 가져오기·미리보기·게시») 전까지 **커밋하지 않고** 둔다 — 정기 점검이 커밋된 것을 자동 배포하기 때문.
+- 남은 Irene 할 일: §6 #2 메타 픽셀 · #3 가져오기·미리보기·게시(check) · #4 GA4 관리.
+
+### 11-2. GA4 번호 — 스크립트는 구글 태그 G-63F78ZL72X 로 (2026-11-15 · Opus) [Claude Code · 백그라운드 작업방 762e324f]
+- 실측: `gtag/js?id=G-LTTLKH1J85` → **404**(2회) · `gtag/js?id=G-63F78ZL72X` → 200, 그 안의 전송 대상 목록에 `G-LTTLKH1J85`. 즉 GA4 속성 «Purple Here»(526723792) 의 측정 ID 는 그대로 G-LTTLKH1J85 이지만, 페이지가 불러올 스크립트 번호는 구글 태그 G-63F78ZL72X 다. 운영은 404 스크립트를 불러 와 GA4 이벤트 28일 0건(Irene 관리 화면 확인)이었다.
+- 고침: 운영 index.html 의 번호 두 곳만 G-63F78ZL72X 로 커밋(다음 배포 때 반영). GTM 가져오기 파일 상수 `const - GA4 measurement id` 도 G-63F78ZL72X 로(저장소 + 개발서버 내려받기 사본).
+- 향상된 측정 «브라우저 기록 이벤트 기반 페이지 변경» 끄기는 tracking.ts 의 page_view 가 운영에 나간 뒤에만(지금 운영은 화면 전환 page_view 를 그 설정이 보냄).
+
+### 11-3. GTM 안 씀 — PlanQ 번호 걷어냄 · 이벤트는 gtag 로 직접 (2026-11-15 · Opus) [Claude Code · 백그라운드 작업방 94ff3d8f]
+- Irene 확인: §11-1 의 GTM 번호는 GTM 계정 «PlanQ» 의 컨테이너 «planq.kr»(planq.kr 운영이 쓰고 PlanQ GA4 태그가 들어 있음). 이 Google 계정에 PurpleHere 용 GTM 컨테이너는 없다. GTM 화면의 «Purple Here» 는 컨테이너가 아니라 구글 태그 G-63F78ZL72X.
+- 걷어냄: `tracking.ts` `GTM_CONTAINER_ID` → 자리표시 `GTM-XXXXXXX` · `public/index.html` = 커밋판(gtag.js G-63F78ZL72X 직접 삽입 유지) · 가져오기 파일 `publicId` → `GTM-XXXXXXX` · 개발 사이트 다시 빌드(개발 방문이 PlanQ 측정에 섞이던 것 멈춤). 운영에는 그 번호가 나간 적 없다(커밋판은 늘 자리표시).
+- 결정(Opus 의견 · Fable 안 씀 — 되돌리기 쉬움): **GTM 은 지금 안 쓴다.** 태그가 GA4 하나뿐이고 메타 픽셀 번호도 없어서 GTM 이 더해 주는 게 없다. 대신 §3-5 전환 7개가 GA4 에 실제로 가도록 `track()` 이 GTM 없을 때 `gtag('event', …)` 로 직접 보낸다(page_view 는 빼고 — gtag config + 향상된 측정이 보낸다. 그래서 «브라우저 기록 이벤트 기반 페이지 변경» 은 **켜 둔다**).
+- 결정 1(GTM 한 길)·결정 2(마케팅 경로에서만)는 보류: 지금 gtag 는 index.html 하나라 앱 화면에서도 실린다(전부터 그랬음). 메타 픽셀을 붙이거나 태그가 늘면 그때 PurpleHere 전용 컨테이너를 새로 만들고 이 문서 §1~§5 대로 다시 한다.

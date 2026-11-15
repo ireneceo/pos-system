@@ -625,7 +625,8 @@
               }
             ]
           }
-        }
+        },
+        "paused": true
       },
       {
         "accountId": "0",
@@ -671,7 +672,8 @@
             "tagName": "Meta - Base (init)",
             "stopOnSetupFailure": true
           }
-        ]
+        ],
+        "paused": true
       },
       {
         "accountId": "0",
@@ -716,7 +718,8 @@
             "tagName": "Meta - Base (init)",
             "stopOnSetupFailure": true
           }
-        ]
+        ],
+        "paused": true
       },
       {
         "accountId": "0",
@@ -761,7 +764,8 @@
             "tagName": "Meta - Base (init)",
             "stopOnSetupFailure": true
           }
-        ]
+        ],
+        "paused": true
       },
       {
         "accountId": "0",
@@ -806,7 +810,8 @@
             "tagName": "Meta - Base (init)",
             "stopOnSetupFailure": true
           }
-        ]
+        ],
+        "paused": true
       }
     ],
     "trigger": [
@@ -1239,7 +1244,7 @@
           {
             "type": "TEMPLATE",
             "key": "value",
-            "value": "G-LTTLKH1J85"
+            "value": "G-63F78ZL72X"
           }
         ],
         "parentFolderId": "1"
