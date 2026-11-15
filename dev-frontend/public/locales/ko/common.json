@@ -620,7 +620,10 @@
     "selectCountry": "국가 선택",
     "latitude": "위도",
     "longitude": "경도",
-    "latLngHint": "저장 시 주소로 자동 조회됩니다 (비워두기 가능)"
+    "latLngHint": "저장 시 주소로 자동 조회됩니다 (비워두기 가능)",
+    "pasteHint": "한 줄로 된 전체 주소를 여기에 붙여 넣으면 아래 칸에 나눠 넣습니다.",
+    "pasteSplitDone": "전체 주소를 아래 칸에 나눠 넣었습니다 — 맞는지 확인해 주세요.",
+    "pasteSplitUndo": "한 줄 그대로 두기"
   },
   "welcomeModal": {
     "greeting": "환영합니다",

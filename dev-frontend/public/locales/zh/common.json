@@ -620,7 +620,10 @@
     "selectCountry": "选择国家",
     "latitude": "纬度",
     "longitude": "经度",
-    "latLngHint": "留空则保存时自动定位"
+    "latLngHint": "留空则保存时自动定位",
+    "pasteHint": "提示：在此粘贴完整地址，系统会自动拆分到下方各栏。",
+    "pasteSplitDone": "已将完整地址拆分到下方各栏，请核对。",
+    "pasteSplitUndo": "保留为一行"
   },
   "welcomeModal": {
     "greeting": "欢迎",

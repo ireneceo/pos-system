@@ -1525,8 +1525,18 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       }
     });
 
-    // Validate brand_id permission if being changed
-    if (req.body.brand_id !== undefined && req.body.brand_id) {
+    const restaurant = await Restaurant.findByPk(req.params.id);
+    if (!restaurant) {
+      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
+    }
+
+    // Validate brand_id permission only when it actually changes.
+    // The edit form always re-sends the current brand_id; a Brand General who reaches the
+    // restaurant through brand ownership (no RestaurantManager row) was blocked from saving
+    // unrelated fields like the address (2026-11-15 «주소가 등록이 안돼» · 403).
+    const brandChanging = req.body.brand_id !== undefined && req.body.brand_id
+      && Number(req.body.brand_id) !== Number(restaurant.brand_id);
+    if (brandChanging) {
       const brandCheck = await validateBrandPermission(req.body.brand_id, req.user.id, req.user.role);
       if (!brandCheck.valid) {
         return res.status(403).json({ error: brandCheck.error });
@@ -1550,11 +1560,6 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       // are flexible attributes of the restaurant that can change over time.
       // Existing contracts and plan assignments remain as historical records and are
       // NOT re-validated here — see docs/ADDRESS_STANDARDIZATION.md §2 (retrospective).
-    }
-
-    const restaurant = await Restaurant.findByPk(req.params.id);
-    if (!restaurant) {
-      return res.status(404).json({ success: false, error: { message: 'Restaurant not found', code: 'NOT_FOUND' } });
     }
 
     // Branch-scoped Foodcourt Manager: block edits outside their branch + block moving to another branch

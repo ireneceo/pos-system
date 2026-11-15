@@ -620,7 +620,10 @@
     "selectCountry": "Select country",
     "latitude": "Latitude",
     "longitude": "Longitude",
-    "latLngHint": "Leave blank to auto-geocode on save"
+    "latLngHint": "Leave blank to auto-geocode on save",
+    "pasteHint": "Tip: paste a full address here and it will be split into the fields.",
+    "pasteSplitDone": "Full address split into the fields below — please check.",
+    "pasteSplitUndo": "Keep as one line"
   },
   "welcomeModal": {
     "greeting": "Welcome",

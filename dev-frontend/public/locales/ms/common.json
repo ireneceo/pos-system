@@ -620,7 +620,10 @@
     "selectCountry": "Pilih negara",
     "latitude": "Latitud",
     "longitude": "Longitud",
-    "latLngHint": "Biarkan kosong untuk geokod automatik"
+    "latLngHint": "Biarkan kosong untuk geokod automatik",
+    "pasteHint": "Petua: tampal alamat penuh di sini dan ia akan dipecahkan ke ruangan di bawah.",
+    "pasteSplitDone": "Alamat penuh telah dipecahkan ke ruangan di bawah — sila semak.",
+    "pasteSplitUndo": "Kekalkan satu baris"
   },
   "welcomeModal": {
     "greeting": "Selamat Datang",

@@ -1,5 +1,14 @@
 ## 현재 작업 상태
 
+### ✅ 완료 (2026-11-15) — 매장 편집 주소 저장 403 고침 + 한 줄 주소 붙여 넣으면 칸 자동 나누기 (Fable 안 씀 — 권한 판정은 그대로·브랜드 «변경» 때만 검사로 좁힘 · 민감 판정 비대상 · 마이그 0 · SW 그대로) [Claude Code · 백그라운드 작업방 59a8b200]
+- Irene 원문: «https://purplehere.com/pos/manager/restaurants 여기서 레스토랑 주소가 등록이 안돼. 그리고 주소를 검색 안되면 한번에 넣으면 알아서 항목 맞춰서 넣어줄 수 없어? … Lot 1.01.00, Level 2, 1, Jalan Damanlela, Bukit Damansara, 50490 Kuala Lumpur, Federal Territory of Kuala Lumpur» + 403 «You can only set brand for restaurants you manage» (매장 28)
+- 원인: 편집 창이 브랜드 총괄일 때 brand_id 를 늘 같이 보냄 → `restaurants-crud.js` PUT 이 brand_id 만 보이면 «매장 담당 줄(restaurant_managers)» 을 요구 → 브랜드 소유로만 닿는 매장(담당 줄 없음)은 주소 하나도 저장 못 함.
+- 고침: 브랜드가 **실제로 바뀔 때만** 검사(매장 접근 검사 checkRestaurantAccess 는 그대로). 실호출(담당 줄 잠시 지우고): 같은 브랜드+주소 200 · 브랜드 17 로 바꾸기 403(그대로) · 남의 매장 1 403. 반증: 옛 코드로 같은 호출 403.
+- 주소: 새 `utils/parseAddressLine.ts`(+시험 10개: MY·US·GB·SG·쉼표 없는 한국식·우편번호 없음·글자 안 잃음) · 공용 `AddressFields` 주소 1줄 칸에 붙여 넣기 → 쉼표 2개+칸 2개 이상 채워질 때만 자동 나눔 · 초록 안내 «… please check» + «Keep as one line»(되돌리기) · 평소엔 회색 도움말 한 줄 · 4언어 common address.paste*.
+- 실브라우저(브랜드 계정·담당 줄 없음·데모 39): Irene 예시 붙여 넣기 → 1줄 «Lot 1.01.00, Level 2, 1, Jalan Damanlela» · 2줄 Bukit Damansara · KL · 50490 · Federal Territory of Kuala Lumpur · MY → 저장 200 → DB 같음 → 복원 · 화면 오류 0. health-check 488/488 · print-guard 8/8 · design-guard 신규 0 · i18n 통과 · 빌드 성공.
+- 확인 못 함: 나라 이름 없는 다른 나라 주소는 매장 나라 기준으로만 우편번호를 찾음(틀리면 사용자가 칸 고침) · «Federal Territory of Kuala Lumpur» 를 «WP Kuala Lumpur» 로 바꾸지 않음(적은 그대로).
+- 운영 반영: 다음 배포 때. 배포 뒤 Irene 할 일 todomw841vpg(매장 28 주소 넣기)가 이 화면에서 됨.
+
 ### ✅ 완료 (2026-11-15) — 프랜차이즈맵: 지도 위치 없는 매장도 누르면 오른쪽 창(기본 정보 + 그 자리 주소 넣기) (Fable 안 씀 — 기존 화면 안 작은 창·저장은 기존 매장 수정 경로(권한 그대로) · 개발서버·미배포 · 마이그 0 · SW 그대로) [Claude Code · 백그라운드 작업방 820e7473]
 - Irene 원문: «Franchise Map 에 주소가 없으면 클릭했을 때 레스토랑 정보는 기본 나오게 하고 우측에서 주소 넣으라고 못해? 아니면 레스토랑 편집으로 보내던지. 아무 반응이 없어서 나쁜 UI잖아»
 - 화면: `BrandFranchiseMapPage.tsx` — 위치 없는 카드도 선택 → 오른쪽 창 · 맨 위 노란 칸 «이 매장은 아직 지도에 없습니다» + 공용 주소 입력 + «주소 저장» → 저장 뒤 지도를 2·3·5초에 다시 불러 핀 확인(찾음/못 찾음/권한 없음 안내) · 새 파일 `FranchiseMapLocationForm.tsx` · 다시 불러오기는 고른 매장 유지 · 4언어 `map.location.*`.
@@ -17,6 +26,11 @@
 - 상황판 «들어온 문의» 칸: server 대기열에 넣음(상황판 코드는 server 방 몫) — 칸이 생기면 정기 점검이 0-B 대로 열린 문의 전부를 올림.
 - 다음 할 일: 2단계(AI 답장 초안 → 상황판에서 «이대로 보내기») — 상황판 칸이 생긴 뒤 별도 설계·Fable 검증(운영 답글 쓰기 스크립트 필요).
 - 운영 반영: 다음 배포 때.
+
+### 답 기다림: K-DINE Noodles «했어요» 두 번째인데 운영 그대로 — 버튼을 실제로 눌렀는데 안 바뀐 걸까요? [Claude Code · 작업방 1bba5f14 · 2026-11-15]
+- 무엇: 카드 todomwhizmmq «했어요» 뒤 운영 읽기(`.claude/run-brand13-after-push-check.sh`) 결과가 첫 번째와 같음 — 1 잠금 이름·가격·카테고리 0/39(순서만 39) · 2 스냅샷 0/39 · 5 브랜드13 «Shop - Taky Way»=0(매장28 은 8, 맨 뒤) · 3·4·6 = 0 · 7 true.
+- 왜 묻나: 같은 일 두 번 «했어요» 인데 안 돼 있음 → 규칙상 카드 다시 안 올리고 묻는다. 운영에 그 버튼 코드가 있는지·마지막 저장 시각을 읽는 확인(`.claude/run-brand13-why-check.sh`, 읽기만)은 허락 창에서 멈춰 실행 안 됨(결과 모름).
+- 답이 오면: ① «눌렀는데 안 됨» → why-check 실행(운영 코드 apply_locks_to_all 있는지 · brands.menu_settings default_locks · 카테고리 updated_at) → 개발서버에서 재현·고침 ② «아직 안 눌렀음/다른 곳» → 같은 카드 다시 올림 ③ «지금대로 둠» → 카드 닫고 끝.
 
 ### ✅ 완료 (2026-11-15 · 작업방 1a4facda) — 브랜드 13 «했어요» 뒤 운영 읽기 확인
 - 운영 배포 확인(brandCategoryOrder.js 11-15 06:48). 읽기 결과(`.claude/run-brand13-after-push-check.sh`): 내용 차이 0 · 메뉴 순서 차이 0 · 삭제됨 2개 지움 · 브랜드 2 push_frozen true ✅.

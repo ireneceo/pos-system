@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { FormRow, FormGroup, FormLabel, FormInput, FormSelect, FormHelperText } from './FormComponents';
 import { Address, getCountryList, AppLocale, normalizePlaceName, validatePostalCode } from '../../utils/formatAddress';
 import { getAuthToken } from '../../utils/auth';
+import { parseAddressLine } from '../../utils/parseAddressLine';
 
 export interface AddressFieldsProps {
   value: Address;
@@ -25,6 +26,28 @@ const Section = styled.div<{ $compact?: boolean }>`
 const Required = styled.span`color: #DC2626; margin-left: 2px;`;
 
 const WarnText = styled(FormHelperText)`color: #B45309;`;
+
+const SplitNote = styled(FormHelperText)`
+  color: #059669;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+`;
+
+const UndoLink = styled.span`
+  color: #635BFF;
+  cursor: pointer;
+  text-decoration: underline;
+`;
+
+// 붙여 넣은 글이 «한 줄 전체 주소» 인지 — 쉼표 2개 이상 + 주소 1줄 말고도 칸이 2개 이상 채워질 때만 나눈다.
+function splitIfFullAddress(text: string, country: string): Address | null {
+  if ((text.match(/,/g) || []).length < 2) return null;
+  const p = parseAddressLine(text, country);
+  const filled = (['address_line_2', 'city', 'state', 'postal_code', 'country'] as const).filter(k => p[k]).length;
+  return filled >= 2 ? p : null;
+}
 
 const LatLngRow = styled(FormRow)`
   input { font-family: monospace; font-size: 13px; }
@@ -83,6 +106,8 @@ const AddressFields: React.FC<AddressFieldsProps> = ({
   const [citySuggestions, setCitySuggestions] = useState<string[]>([]);
   const [stateSuggestions, setStateSuggestions] = useState<string[]>([]);
   const fetchSeqRef = useRef(0);
+  // 한 줄 주소를 칸에 나눠 넣은 뒤 «되돌리기» 용 (나누기 전 값 + 붙여 넣은 글)
+  const [splitUndo, setSplitUndo] = useState<{ before: Address; pasted: string } | null>(null);
 
   // Fetch datalist suggestions whenever country changes
   useEffect(() => {
@@ -115,11 +140,43 @@ const AddressFields: React.FC<AddressFieldsProps> = ({
           type="text"
           value={value.address || ''}
           disabled={disabled}
-          onChange={e => set({ address: sanitizeSingleLine(e.target.value) })}
+          onChange={e => { setSplitUndo(null); set({ address: sanitizeSingleLine(e.target.value) }); }}
+          onPaste={e => {
+            const text = e.clipboardData.getData('text');
+            const p = splitIfFullAddress(text, country);
+            if (!p) return;
+            e.preventDefault();
+            const before = { ...value };
+            onChange({
+              ...value,
+              address: p.address || '',
+              address_line_2: p.address_line_2 || '',
+              city: p.city || '',
+              state: p.state || '',
+              postal_code: p.postal_code || '',
+              country: p.country || value.country || country,
+            });
+            setSplitUndo({ before, pasted: sanitizeSingleLine(text).trim() });
+          }}
           placeholder={t('address.line1Placeholder', 'Street, building, area')}
           maxLength={500}
           autoComplete="street-address"
         />
+        {splitUndo ? (
+          <SplitNote>
+            {t('address.pasteSplitDone', 'Full address split into the fields below — please check.')}
+            <UndoLink
+              role="button"
+              tabIndex={0}
+              onClick={() => { onChange({ ...splitUndo.before, address: splitUndo.pasted }); setSplitUndo(null); }}
+              onKeyDown={e => { if (e.key === 'Enter') { onChange({ ...splitUndo.before, address: splitUndo.pasted }); setSplitUndo(null); } }}
+            >
+              {t('address.pasteSplitUndo', 'Keep as one line')}
+            </UndoLink>
+          </SplitNote>
+        ) : (
+          <FormHelperText>{t('address.pasteHint', 'Tip: paste a full address here and it will be split into the fields.')}</FormHelperText>
+        )}
       </FormGroup>
 
       <FormGroup>
