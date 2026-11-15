@@ -32,6 +32,24 @@ build_running() {
 heavy_node_running() {
   ps -eo comm,rss --no-headers | awk '$1 == "node" && $2 > 1536000 { found = 1 } END { exit !found }'
 }
+# 2026-11-15: PlanQ 시연 영상 렌더(video-engine)는 크롬 2개 ≈ 2GB 를 쓰는데 크롬은 node 가 아니라
+#   heavy_node_running() 에 안 보인다. 렌더는 도는 동안 표시 파일에 자기 pid 를 남긴다(render.js markRunning).
+#   pid 가 살아 있고 그 프로세스가 video-engine 의 node(명령줄 또는 작업 폴더)일 때만 «렌더 중» — 죽은 pid·남은 파일·
+#   재사용된 pid 는 무시. 경로는 VIDEO_RENDER_PIDFILE 로 바꿀 수 있다(시험용).
+VIDEO_RENDER_PIDFILE=${VIDEO_RENDER_PIDFILE:-/opt/planq/logs/video-render-running.pid}
+video_render_pid() {
+  local p
+  [ -r "$VIDEO_RENDER_PIDFILE" ] || return 1
+  p=$(tr -dc '0-9' < "$VIDEO_RENDER_PIDFILE" 2>/dev/null)
+  [ -n "$p" ] && [ -d "/proc/$p" ] || return 1
+  # node 프로세스만 — 셸 명령줄에 «video-engine» 글자가 들어 있는 것(자기매칭 오탐, 07-14 와 같은 꼴)은 잡지 않는다.
+  [ "$(cat "/proc/$p/comm" 2>/dev/null)" = "node" ] || return 1
+  if tr '\0' '\n' < "/proc/$p/cmdline" 2>/dev/null | grep -q '/video-engine/' \
+     || readlink "/proc/$p/cwd" 2>/dev/null | grep -q '/video-engine$'; then
+    echo "$p"; return 0
+  fi
+  return 1
+}
 
 case "$ROLE" in
   build)
@@ -50,6 +68,11 @@ case "$ROLE" in
       ps -eo pid,rss,comm,args --no-headers | awk '$3 == "node" && $2 > 1536000 { line=""; for (i=4; i<=NF && i<=9; i++) line = line " " $i; printf "            %sMB  pid %s %s\n", int($2/1024), $1, line }'
       exit 1
     fi
+    if VPID=$(video_render_pid); then
+      echo "GATE 차단: PlanQ 시연 영상 렌더가 실행 중입니다(pid $VPID · 크롬 ≈2GB) — 겹치면 서버가 얼어붙습니다."
+      echo "          렌더가 끝나면 다시 빌드하세요. (표시: $VIDEO_RENDER_PIDFILE)"
+      exit 1
+    fi
     MIN=2500
     ;;
   emulator)
@@ -62,6 +85,11 @@ case "$ROLE" in
       echo "GATE 차단: 메모리를 크게 쓰는 node 작업(빌드 등)이 실행 중입니다 — 에뮬레이터와 겹치면 서버가 얼어붙습니다."
       echo "          해당 작업 완료 후 다시 실행하세요. 지금 도는 것:"
       ps -eo pid,rss,comm,args --no-headers | awk '$3 == "node" && $2 > 1536000 { line=""; for (i=4; i<=NF && i<=9; i++) line = line " " $i; printf "            %sMB  pid %s %s\n", int($2/1024), $1, line }'
+      exit 1
+    fi
+    if VPID=$(video_render_pid); then
+      echo "GATE 차단: PlanQ 시연 영상 렌더가 실행 중입니다(pid $VPID · 크롬 ≈2GB) — 에뮬레이터와 겹치면 서버가 얼어붙습니다."
+      echo "          렌더가 끝나면 다시 실행하세요. (표시: $VIDEO_RENDER_PIDFILE)"
       exit 1
     fi
     MIN=3000
