@@ -2048,6 +2048,8 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
       address: restaurant.address, city: restaurant.city, state: restaurant.state,
       postal_code: restaurant.postal_code, country: restaurant.country
     };
+    // 좌표가 없는 매장은 주소가 그대로여도 주소를 보내면 다시 찾는다(2026-11-15 — 옛 찾기가 실패해 비어 있던 매장 27 같은 경우)
+    const hadNoCoords = restaurant.latitude == null || restaurant.longitude == null;
 
     await restaurant.update(updateData);
 
@@ -2063,7 +2065,8 @@ router.put('/:id', authenticateToken, checkRestaurantAccess, async (req, res) =>
     // Auto-geocode in background when address changed and coords not manually set
     const { addressChanged, geocodeAddress } = require('../utils/geocoding');
     const latLngManuallyProvided = updateData.latitude !== undefined || updateData.longitude !== undefined;
-    if (!latLngManuallyProvided && addressChanged(prevAddr, updateData)) {
+    const retryMissingCoords = hadNoCoords && updateData.address !== undefined && !!String(restaurant.address || '').trim();
+    if (!latLngManuallyProvided && (addressChanged(prevAddr, updateData) || retryMissingCoords)) {
       geocodeAddress({
         address: restaurant.address, city: restaurant.city, state: restaurant.state,
         postal_code: restaurant.postal_code, country: restaurant.country

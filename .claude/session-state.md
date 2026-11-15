@@ -1,6 +1,48 @@
 ## 현재 작업 상태
 
-### ✅ 완료 — 기기 알림이 로그인한 계정을 따라감(K-DINE IPC 알림 오표시) · 미커밋 [Claude Code · 작업방 79718791 · 2026-11-14]
+### ✅ 완료 (2026-11-15) — 프랜차이즈맵: 지도 위치 없는 매장도 누르면 오른쪽 창(기본 정보 + 그 자리 주소 넣기) (Fable 안 씀 — 기존 화면 안 작은 창·저장은 기존 매장 수정 경로(권한 그대로) · 개발서버·미배포 · 마이그 0 · SW 그대로) [Claude Code · 백그라운드 작업방 820e7473]
+- Irene 원문: «Franchise Map 에 주소가 없으면 클릭했을 때 레스토랑 정보는 기본 나오게 하고 우측에서 주소 넣으라고 못해? 아니면 레스토랑 편집으로 보내던지. 아무 반응이 없어서 나쁜 UI잖아»
+- 화면: `BrandFranchiseMapPage.tsx` — 위치 없는 카드도 선택 → 오른쪽 창 · 맨 위 노란 칸 «이 매장은 아직 지도에 없습니다» + 공용 주소 입력 + «주소 저장» → 저장 뒤 지도를 2·3·5초에 다시 불러 핀 확인(찾음/못 찾음/권한 없음 안내) · 새 파일 `FranchiseMapLocationForm.tsx` · 다시 불러오기는 고른 매장 유지 · 4언어 `map.location.*`.
+- 서버: `brands-core.js` franchise-map 응답에 address_line_2·postal_code(읽기) · `restaurants-crud.js` PUT — 좌표 없는 매장은 주소가 그대로여도 주소를 보내면 다시 찾음 · `utils/geocoding.js` — 못 찾으면 주 이름(«WP Kuala Lumpur»)을 빼고 한 번 더.
+- 권한(실호출): 브랜드 총괄 38·39 저장 200 · 남의 매장 1 403 · 브랜드 매니저 39 200·38 403 · 푸드코트 총괄 403 → 서버 그대로.
+- 검증: 데모 39 좌표 지우고 같은 주소 브랜드 계정 PUT → 5초 안 지도에 올라옴 → 복원 · 좌표 있는 38 은 다시 안 찾음 · tsc 이번 파일 오류 0 · i18n 통과.
+
+### ✅ 완료 — 시스템 문의·피드백 접수 확인 메일 자동 발송 · Fable gate PASS · 미커밋(마커 유지) [Claude Code · 작업방 62a20955 · 2026-11-15]
+- Irene «권고대로 진행해 줘»(질문 askmwhich3s · Fable 권고 ①).
+- 만든 것: 시스템 문의(support_tickets — 기능 요청·버그 신고 포함)를 올리면 문의한 사람에게 고정 문구 메일 «문의가 접수되었습니다 — 번호 · 1~2 영업일 안에 답변드립니다»(그 사람 언어 4개 · 고객 글 인용은 태그 제거+이스케이프). 새 알림 종류 inquiry_acknowledged(전체 · 설정에서 끌 수 있음). 안 보냄: [auto] 자동 신고 · diagnostic · System Admin 본인 문의 · **관리자가 고객 대신 만든 문의**(Fable 검증 중 발견·수정). 문의 답글 줄·상태는 안 바꿈. **메일로만 나감**(앱 알림 없음 — 다른 문의 알림과 같음).
+- 파일: utils/inquiryAck.js(새) · routes/support-tickets.js · utils/notificationTemplates.js · routes/notification-settings.js · locales/*/email.json · tests/inquiry-ack.test.js(새) · scripts/health-check.js(settings 1건) · .claude/commands/개발시작.md 0-B(상황판 올리기 · 판단 5종).
+- 검증: jest 10/10 · 고장주입 제외 조건 3개 각각 실패 확인 · health-check 반증 · 개발서버 실호출(보통 문의 → 접수 확인 길 → 데모라 발송 가드에서 멈춤 · [auto] → 안 탐 · 설정 목록에 보임 · 시험 문의 지움 0행) · verify-all 22/23(deploy-ready 몫) · Fable 재실행 health-check 488/488 · print-guard 8/8.
+- Fable: 설계 `.claude/fable-design-20261115-inquiry-autoreply-board.md` · 판정 `.claude/fable-verdict-20261115-inquiry-ack.md` PASS · 마커 6f1dcbcca87d. 커밋하면 마커가 죽어 커밋 안 함 — 배포 준비 때 같이.
+- 확인 못 함: 실제 받은편지함 모양 · «끄면 안 감» 실호출(공용 관문 코드 대조만) · 접수 직후 화면 문구.
+- 상황판 «들어온 문의» 칸: server 대기열에 넣음(상황판 코드는 server 방 몫) — 칸이 생기면 정기 점검이 0-B 대로 열린 문의 전부를 올림.
+- 다음 할 일: 2단계(AI 답장 초안 → 상황판에서 «이대로 보내기») — 상황판 칸이 생긴 뒤 별도 설계·Fable 검증(운영 답글 쓰기 스크립트 필요).
+- 운영 반영: 다음 배포 때.
+
+### ✅ 완료 (2026-11-15 · 작업방 1a4facda) — 브랜드 13 «했어요» 뒤 운영 읽기 확인
+- 운영 배포 확인(brandCategoryOrder.js 11-15 06:48). 읽기 결과(`.claude/run-brand13-after-push-check.sh`): 내용 차이 0 · 메뉴 순서 차이 0 · 삭제됨 2개 지움 · 브랜드 2 push_frozen true ✅.
+- 빠짐: 메뉴 39개 잠금 이름·가격·카테고리 0(스냅샷 0) · 브랜드 13 «Shop - Taky Way» sort_order 0 → 매장 28 맨 뒤(8, 전엔 맨 앞).
+- Irene 할 일 다시 올림: todomwhizmmq(잠금 적용 + 카테고리 순서 + Push All · then = 같은 확인 명령).
+
+### (이전) 답 기다림: 시스템 문의·피드백 자동 첫 답변 — 접수 확인 자동 + 답변은 초안 한 번 눌러 보냄으로 할까요? [Claude Code · 작업방 62a20955 · 2026-11-15]
+- Irene «문의랑 피드백을 고객에게 자동으로 먼저 답변하게 할 수 있어? 그리고 해야할 일 중 내 컨펌이 필요하던 안하던 여기 서버 상환판으로 가져와서 리스트업 하는 거 연결해줘.»
+- 사실: 랜딩 문의(contact_inquiries)는 이미 접수 확인 메일 나감 · 시스템 문의(support_tickets — 피드백=feature-request/bug-report)는 고객에게 접수 확인 없음(관리자 알림만).
+- Fable 설계 `.claude/fable-design-20261115-inquiry-autoreply-board.md` · 질문 askmwhich3s · Fable 권고 ①(접수 확인 자동 + AI 초안은 Irene 이 상황판에서 눌러 보냄 · AI 자동 발송 권고 안 함).
+- 한 것(답과 무관): ① `.claude/commands/개발시작.md` 0-B — 판단 낱말 5종 고정 + 열린 문의 전부를 상황판 `/api/inquiries` 로 올리는 단계(404 면 건너뜀) ② server 대기열에 «상황판 «들어온 문의» 칸 (/api/inquiries)» 넣음(상황판 코드는 server 방 몫).
+- 답이 오면: ①·② → routes/support-tickets.js POST 에 접수 확인(새 알림 종류 inquiry_acknowledged · 4언어 · [auto]·diagnostic·SA 주인 제외 · 답글 줄·상태 안 바꿈 — 설계 §2-3 완료 기준 6개) 개발서버 구현 → Fable 검증 1회(외부 발송). ① 이면 2단계(초안 보내기) 설계는 상황판 칸 생긴 뒤. ③ 이면 Fable 재설계. ④ 면 아무것도 안 함.
+- 접수 확인 구현을 답 전에 안 한 까닭: 정기 점검이 자동 배포하므로 커밋해 두면 답 전에 운영으로 나갈 수 있음(Fable 주의).
+
+### ✅ (이전) 답 기다림: PurpleHere 운영 배포가 밀림 — «배포» 버튼으로 내보낼까요? → Irene «권고대로» [Claude Code · 작업방 1108c204 · 2026-11-15]
+- 확인: 운영 표식 2026-11-13 04:35(배포 19de5de6f 성공) 뒤 커밋 2개(ed0e6f928 개발완료 묶음 · aefc17d23 기기 알림). 11-13 06:06 버튼이 «new-commits» 로 멈춘 뒤 다시 안 눌림 — 정기 점검은 배포를 빼 둔 상태(DEPLOY_STRUCTURE §9)라 «막힘» 이 아니라 버튼 차례.
+- 배포 준비 몫: ed0e6f928 에 마이그 1(migrate-push-store-off · users.push_store_off · push_logs ENUM store_off) — Fable PASS 판정서 있음(fable-verdict-20261113-*), 커밋으로 마커 지문만 무효. aefc17d23 은 Fable 안 씀. 판단은 배포 준비 방.
+- 배포 버튼은 주인(인증코드)만 → Irene 할 일 todomwhc7rkq «PurpleHere 카드 «배포» 버튼 누르기» 로 올림. 운영 명령은 실행 안 함.
+
+### ✅ 완료 (11/15 00:00 정기 점검 · 2026-11-14 16:00 UTC) — /개발완료 건너뜀(새 변경 없음) + /개발시작(운영 새 문의 0 · 인쇄 지킴이 확인) [Claude Code · 백그라운드 작업방 02be6c97]
+- 개발완료 건너뜀: 마지막 개발완료 커밋 aefc17d23 뒤 새 커밋 0 · 미커밋은 그 기록 한 줄(session-state)과 예전부터 보류 중인 GTM 4파일·playwright.config·oneoff/run 스크립트뿐(그대로 둠).
+- 운영 문의(확인 2026-11-14 16:00 UTC): 열린 3건(SUPP-2026-6842-103·1886-062·2401-270) 예전 판단 그대로(이미 해결) · 14일 새 문의 0 · 후속 글 0 · 랜딩 문의 0 · operation_tickets closed 4 / in-progress 1.
+- 인쇄 지킴이(마지막 실행 15:07 UTC success): 새 문제 0 · 계속 5(28 print_failures critical · 28 multi_auto_print 4대 · 8·10·28 old_app 0.3.4) · 풀림 0.
+  - 28 실패가 오늘 다시 15건(03:40~10:55 UTC) — 전부 같은 앱 0.3.4 기기(uid 19)가 주문 넣는 그 초에 «기본 프린터»로 직접 찍으려다 PRINTER_NOT_FOUND. 오늘 주문 20건 인쇄 대기 0(다른 자동 인쇄 기기가 처리). 해결 = 그 기기 앱 0.4.1 업데이트(기존 남은 일) · 자동 인쇄 기기 4대 정리.
+
+### ✅ 완료 — 기기 알림이 로그인한 계정을 따라감(K-DINE IPC 알림 오표시) · 커밋 aefc17d23(/개발완료 · 푸시 · 백업 backups/dev-daily/20261114) [Claude Code · 작업방 79718791 · 2026-11-14]
 - Irene «레스토랑 우측 상담 알림이 왜 죄다 K-DIND IPC로 나와?» → 질문 askmwfvj87u → Irene «권고대로 진행해 줘»(A · PIN 전환 제외).
 - 원인 2겹: ① 기기 구독은 알림 설정에서 켤 때만 등록 · 로그인/로그아웃 때 안 옮김 ② 서버 POST /api/push/subscribe 의 «다른 계정 줄 지움 → 새 줄» 이 endpoint 고유 규칙(push_sub_endpoint_uniq · 지운 줄 포함)에 걸려 늘 500 → 설정에서 다시 켜도 기기가 처음 켠 계정에서 영영 못 옮겨짐. ③ 덤: 알림 설정 카드는 허락이 이미 있으면 «켜기» 에서 등록을 건너뛰어 껐다 켜면 알림이 아예 끊김.
 - 고친 것: routes/push.js subscribe — 같은 endpoint 줄을 지금 계정으로 옮김(지운 줄은 되살림) · services/push.ts attachPushToCurrentUser(허락+구독 있을 때만 · PIN 세션 amr=pin 은 안 옮김)/detachPushOnLogout(서버 줄만 지움 · 브라우저 구독은 남겨 다음 로그인이 이어받음) · AuthContext 비밀번호 로그인·세션 복원에서 attach · logout 에서 토큰 지우기 전 detach · PushPreferencesCard 켜기는 늘 subscribeToPush.
@@ -130,7 +172,7 @@
 ### ✅ 완료 (2026-11-11 03:3x UTC) — 꺼진 재고아이템 «꺼짐» 표시 + /개발완료 기록 [Claude Code · 백그라운드 작업방 2fbb75b6]
 - e420d8ae4: 재고 목록 «Turned off» 배지 · 상태 필터·띠 숫자 제외 · 발주 칸 대신 Stock Items 안내 — 빌드 1회 · 실브라우저 확인 · health 480/480 · print-guard 8/8. 운영 반영: 다음 배포 때.
 - /개발완료: CHANGELOG 11-11 2줄 · DEVELOPMENT_PLAN 섹션(e420d8ae4 · 84b4d8813) · docs/INVENTORY_MANAGEMENT_SYSTEM.md «꺼짐» 절. 다른 방 미커밋 코드(프린터 설정 분리 55cb7c4b 등)는 커밋하지 않음.
-- 남은 Irene 할 일: todomwb3vve6 운영 SC-450·SC-800 Activate.
+- SC-450·SC-800 켜기: 11-15 운영 읽기로 아직 꺼짐(is_active=0) 확인 → Irene «그냥 넘겨. 알아서 관리자가 할 일» — 추적 종료(매장·브랜드 관리자 몫). 운영 기록 조회는 하지 않음.
 - 다음 확정 작업: 없음 — 지시 대기.
 
 ### ✅ 완료 — «Different store on this device» 계산대 입구 차단 제거 (커밋 922a95e33) [Claude Code · 작업방 d877e7cc · 2026-11-11]

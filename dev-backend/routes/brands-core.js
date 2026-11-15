@@ -487,7 +487,7 @@ router.get('/:id/franchise-map', authenticateToken, async (req, res) => {
 
     const restaurants = await Restaurant.findAll({
       where: { brand_id: id },
-      attributes: ['id', 'name', 'branch_name', 'status', 'address', 'city', 'state', 'country',
+      attributes: ['id', 'name', 'branch_name', 'status', 'address', 'address_line_2', 'city', 'state', 'postal_code', 'country',
                    'phone', 'email', 'latitude', 'longitude', 'logo_url', 'is_demo'],
       order: [['name', 'ASC']]
     });

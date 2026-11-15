@@ -179,7 +179,18 @@
       "sales30d": "Jualan 30 hari"
     },
     "noLocation": "Tiada lokasi peta — tambah alamat",
-    "salesAmount30d": "Jualan 30 hari: {{n}}"
+    "salesAmount30d": "Jualan 30 hari: {{n}}",
+    "location": {
+      "title": "Restoran ini belum ada di peta",
+      "help": "Tambah alamat jalan dan simpan. Pin peta diletakkan secara automatik berdasarkan alamat.",
+      "save": "Simpan alamat",
+      "saving": "Menyimpan…",
+      "locating": "Disimpan. Mencari lokasi di peta…",
+      "found": "Disimpan dan diletakkan di peta.",
+      "notFound": "Disimpan, tetapi alamat ini tidak ditemui di peta. Semak nama jalan, poskod dan bandar, kemudian simpan semula.",
+      "noPermission": "Anda tiada kebenaran untuk mengedit restoran ini. Minta pentadbir restoran menambah alamat dalam Tetapan.",
+      "saveFailed": "Alamat tidak dapat disimpan. Sila cuba lagi."
+    }
   },
   "franchiseTabs": {
     "contracts": "Kontrak",

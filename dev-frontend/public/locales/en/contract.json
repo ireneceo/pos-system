@@ -179,7 +179,18 @@
       "sales30d": "Sales 30d"
     },
     "noLocation": "No map location — add an address",
-    "salesAmount30d": "{{n}} sales 30d"
+    "salesAmount30d": "{{n}} sales 30d",
+    "location": {
+      "title": "This restaurant is not on the map yet",
+      "help": "Add the street address and save. The map pin is placed automatically from the address.",
+      "save": "Save address",
+      "saving": "Saving…",
+      "locating": "Saved. Finding the location on the map…",
+      "found": "Saved and placed on the map.",
+      "notFound": "Saved, but this address could not be found on the map. Check the street name, postcode and city, then save again.",
+      "noPermission": "You don't have permission to edit this restaurant. Ask the restaurant admin to add the address in Settings.",
+      "saveFailed": "Could not save the address. Please try again."
+    }
   },
   "franchiseTabs": {
     "contracts": "Contracts",

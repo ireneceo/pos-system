@@ -14,6 +14,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 import { getCurrencySymbol } from '../../utils/currency';
 import { Button } from '../../components/Button';
+import FranchiseMapLocationForm, { PlacedNote } from './FranchiseMapLocationForm';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -390,6 +391,8 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  // 오른쪽 창에서 주소를 넣어 방금 지도에 올라간 매장 — 성공 안내 한 줄용
+  const [justPlacedId, setJustPlacedId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
 
   // Serialize array dep so useEffect re-runs only on actual brand id changes.
@@ -399,55 +402,69 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
   );
   const brandIdKey = brandIdList.join(',');
 
+  // 브랜드 여러 개(All Brands)면 각각 불러 합친다. 실패면 오류 글자를 돌려준다.
+  const fetchMerged = useCallback(async (): Promise<FranchiseMapData | string> => {
+    const token = getAuthToken();
+    const ids = brandIdKey.split(',').filter(Boolean).map(Number);
+    if (ids.length === 0) return { brand: { id: 0, name: '', code: '' }, mapped: [], unmapped: [], total: 0 };
+    const results = await Promise.all(
+      ids.map(id =>
+        fetch(`/api/brands/${id}/franchise-map`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(r => r.json())
+      )
+    );
+    const okResults = results.filter(r => r && r.success && r.data);
+    if (okResults.length === 0) return results.find(r => r && r.message)?.message || 'Failed to load map';
+    // Merge: concat mapped/unmapped, sum total, keep max of max_sales_30d.
+    // Top-level `brand` becomes unused for multi-brand view (per-pin brand comes from each restaurant's own record).
+    const merged: FranchiseMapData = {
+      brand: okResults[0].data.brand,
+      mapped: okResults.flatMap(r => r.data.mapped || []),
+      unmapped: okResults.flatMap(r => r.data.unmapped || []),
+      total: okResults.reduce((sum, r) => sum + (r.data.total || 0), 0),
+      max_sales_30d: Math.max(0, ...okResults.map(r => r.data.max_sales_30d || 0))
+    };
+    return merged;
+  }, [brandIdKey]);
+
   useEffect(() => {
     (async () => {
       try {
         setLoading(true);
-        const token = getAuthToken();
-        const ids = brandIdKey.split(',').filter(Boolean).map(Number);
-        if (ids.length === 0) {
-          setData({ brand: { id: 0, name: '', code: '' }, mapped: [], unmapped: [], total: 0 });
-          setError(null);
-          setSelectedId(null);
-          return;
-        }
-        const results = await Promise.all(
-          ids.map(id =>
-            fetch(`/api/brands/${id}/franchise-map`, {
-              headers: { Authorization: `Bearer ${token}` }
-            }).then(r => r.json())
-          )
-        );
-        const okResults = results.filter(r => r && r.success && r.data);
-        if (okResults.length === 0) {
-          setError(results.find(r => r && r.message)?.message || 'Failed to load map');
-          return;
-        }
-        // Merge: concat mapped/unmapped, sum total, keep max of max_sales_30d.
-        // Top-level `brand` becomes unused for multi-brand view (per-pin brand comes from each restaurant's own record).
-        const merged: FranchiseMapData = {
-          brand: okResults[0].data.brand,
-          mapped: okResults.flatMap(r => r.data.mapped || []),
-          unmapped: okResults.flatMap(r => r.data.unmapped || []),
-          total: okResults.reduce((sum, r) => sum + (r.data.total || 0), 0),
-          max_sales_30d: Math.max(0, ...okResults.map(r => r.data.max_sales_30d || 0))
-        };
-        setData(merged);
+        const got = await fetchMerged();
+        if (typeof got === 'string') { setError(got); return; }
+        setData(got);
         setError(null);
         setSelectedId(null);
       } catch { setError('Failed to load map'); }
       finally { setLoading(false); }
     })();
-  }, [brandIdKey]);
+  }, [fetchMerged]);
+
+  // 오른쪽 창에서 주소를 저장한 뒤: 고른 매장은 그대로 두고 지도만 다시 불러, 그 매장에 핀이 생겼는지 돌려준다.
+  const reloadAndCheck = useCallback(async (rid: number): Promise<boolean> => {
+    try {
+      const got = await fetchMerged();
+      if (typeof got === 'string') return false;
+      setData(got);
+      const placed = got.mapped.some(r => r.id === rid);
+      if (placed) setJustPlacedId(rid);
+      return placed;
+    } catch { return false; }
+  }, [fetchMerged]);
 
   const mapped = useMemo(() => data?.mapped || [], [data]);
   const unmapped = useMemo(() => data?.unmapped || [], [data]);
   const allRestaurants = useMemo(() => [...mapped, ...unmapped], [mapped, unmapped]);
 
+  // 지도 위치가 없는 매장도 고를 수 있다 — 오른쪽 창에서 기본 정보 + 주소 넣기(2026-11-15 Irene «아무 반응이 없어서 나쁜 UI»)
   const selected = useMemo(
-    () => mapped.find(r => r.id === selectedId) || null,
-    [mapped, selectedId]
+    () => allRestaurants.find(r => r.id === selectedId) || null,
+    [allRestaurants, selectedId]
   );
+  const selectedHasCoords = !!selected && selected.latitude != null && selected.longitude != null;
+  const selectedMapped = selectedHasCoords ? (selected as MappedRestaurant) : null;
 
   const filteredList = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -509,8 +526,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                 <RestaurantCard
                   key={r.id}
                   $selected={isSelected}
-                  onClick={() => hasCoords ? setSelectedId(isSelected ? null : r.id) : undefined}
-                  style={!hasCoords ? { cursor: 'default' } : {}}
+                  onClick={() => setSelectedId(isSelected ? null : r.id)}
                 >
                   <h4>
                     {typeMark && <span className="type-mark" title={typeTitle}>{typeMark}</span>}
@@ -563,7 +579,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                 selectedId={selectedId}
                 onPinClick={(id) => setSelectedId(id === selectedId ? null : id)}
               />
-              <MapView points={mapped} selected={selected} />
+              <MapView points={mapped} selected={selectedMapped} />
             </MapContainer>
           </MapWrap>
         ) : (
@@ -640,6 +656,15 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                 <button className="close" onClick={() => setSelectedId(null)} aria-label={t('common.close', 'Close')} type="button">✕</button>
               </DetailHeader>
               <DetailBody>
+                {selectedHasCoords && justPlacedId === selected.id && (
+                  <PlacedNote>{t('map.location.found', 'Saved and placed on the map.')}</PlacedNote>
+                )}
+                {!selectedHasCoords && (
+                  <FranchiseMapLocationForm
+                    restaurant={selected as any}
+                    reloadAndCheck={() => reloadAndCheck(selected.id)}
+                  />
+                )}
                 {/* Restaurant basics */}
                 <DetailSection>
                   <DetailSectionTitle>{t('map.restaurant', 'Restaurant')}</DetailSectionTitle>
