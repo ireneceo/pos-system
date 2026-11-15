@@ -81,6 +81,100 @@ export function track(event: string, params: TrackParams = {}): void {
     const { event: _event, ...eventParams } = entry;
     window.gtag('event', event, eventParams);
   }
+  sendMetaEvent(event, entry);
+}
+
+// ── Meta 픽셀 (2026-11-15 §11-4) ─────────────────────────────────────────────
+// GTM 이 없으므로 GTM 가져오기 파일의 Meta 태그 5개와 같은 일을 여기서 한다(GTM 을 쓰게 되면 여기는 저절로 꺼짐).
+// 조건(§1 결정 3·4·5): 운영 사이트(개발은 ?meta_debug=1 일 때만) · 쿠키 «모두 수락» 뒤에만 로드 ·
+// 마케팅 화면의 page_view/전환만(page_view 는 PageViewTracker 가 마케팅 경로에서만 올림) · 고급 매칭·자동 수집 끔.
+export const META_PIXEL_ID = '2307431686720469';
+
+type Fbq = ((...args: unknown[]) => void) & { callMethod?: (...a: unknown[]) => void; queue?: unknown[];
+  push?: unknown; loaded?: boolean; version?: string; disablePushState?: boolean;
+  allowDuplicatePageViews?: boolean };
+
+declare global {
+  interface Window {
+    fbq?: Fbq;
+    _fbq?: Fbq;
+  }
+}
+
+let metaLoaded = false;
+
+function metaDebugOn(): boolean {
+  try {
+    if (new URLSearchParams(window.location.search).get('meta_debug') === '1') sessionStorage.setItem('meta_debug', '1');
+    return sessionStorage.getItem('meta_debug') === '1';
+  } catch {
+    return false;
+  }
+}
+
+function metaAllowed(): boolean {
+  if (GTM_CONTAINER_ID !== GTM_PLACEHOLDER) return false; // GTM 이 맡으면 두 번 보내지 않는다
+  if (getStoredConsent() !== 'true') return false; // ad_storage 동의(모두 수락) 전에는 로드도 안 함
+  return getTrackingEnv() === 'production' || metaDebugOn();
+}
+
+function ensureMetaPixel(): Fbq | null {
+  if (metaLoaded) return window.fbq || null;
+  if (!metaAllowed()) return null;
+  metaLoaded = true;
+  if (!window.fbq) {
+    // Meta 표준 기본 코드(fbevents.js) — 원문과 같은 동작
+    const n: Fbq = function (...args: unknown[]) {
+      if (n.callMethod) n.callMethod(...args);
+      else n.queue!.push(args);
+    } as Fbq;
+    window.fbq = n;
+    if (!window._fbq) window._fbq = n;
+    n.push = n;
+    n.loaded = true;
+    n.version = '2.0';
+    n.queue = [];
+    // fbevents.js 는 화면 이동(history)마다 PageView 를 스스로 보낸다 → 끈다. 안 끄면 마케팅 화면은 두 번,
+    // 앱 화면(/pos 등)에서도 PageView 가 나간다(2026-11-15 실측). PageView 는 PageViewTracker 하나만.
+    n.disablePushState = true;
+    // 대신 한 페이지(SPA)에서 PageView 를 한 번만 받는 기본값을 풀어 화면마다 1번(중복은 PageViewTracker 가 막음).
+    n.allowDuplicatePageViews = true;
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
+    document.head.appendChild(script);
+  }
+  window.fbq('set', 'autoConfig', false, META_PIXEL_ID); // 자동 이벤트·자동 고급 매칭 끔
+  window.fbq('init', META_PIXEL_ID); // 사용자 정보(고급 매칭) 안 넘김
+  return window.fbq;
+}
+
+function compact(params: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+}
+
+function sendMetaEvent(event: string, entry: Record<string, unknown>): void {
+  if (event === 'cookie_consent' && entry.consent_choice === 'essential_only') {
+    if (window.fbq) window.fbq('consent', 'revoke');
+    return;
+  }
+  let call: unknown[] | null = null;
+  if (event === 'page_view') call = ['track', 'PageView'];
+  else if (event === 'cookie_consent') {
+    // «모두 수락» 직후 지금 화면의 PageView 1회(그 전 page_view 는 동의 전이라 안 보냈다)
+    if (entry.consent_choice === 'accept_all' && isMarketingPath(window.location.pathname)) call = ['track', 'PageView'];
+  } else if (event === 'sign_up') {
+    call = ['track', 'CompleteRegistration', compact({ content_name: entry.account_type, status: 'pending_verification' })];
+  } else if (event === 'generate_lead') {
+    call = ['track', 'Lead', compact({ content_category: entry.lead_type, value: entry.value, currency: entry.currency })];
+  } else if (event === 'try_demo') {
+    call = ['trackCustom', 'TryDemo', compact({ content_name: entry.demo_account })];
+  }
+  if (!call) return;
+  const fbq = ensureMetaPixel();
+  if (!fbq) return;
+  if (event === 'cookie_consent') fbq('consent', 'grant');
+  fbq(...call);
 }
 
 const ROLE_KEYS: Record<string, string> = {
@@ -124,7 +218,7 @@ export function setConsent(choice: ConsentChoice): void {
     // 저장 못 해도 이번 방문의 동의는 적용한다
   }
   updateConsent(choice === 'accept_all' ? 'granted' : 'denied');
-  // 동의 선택률 측정(GTM 을 쓰게 되면 Meta 픽셀도 이 이벤트로 다시 평가)
+  // 동의 선택률 측정 + Meta 픽셀이 이 이벤트로 다시 평가(수락=로드·PageView / 필수만=revoke)
   track('cookie_consent', { consent_choice: choice });
 }
 

@@ -1,5 +1,19 @@
 ## 현재 작업 상태
 
+### ✅ 완료 (2026-11-15) — 메타 픽셀 2307431686720469 붙임 · 도메인 인증 확인 · GTM 없이 코드로 직접 (Fable 안 씀 — 되돌리기 쉬움, 설계 §1 결정 3·4·5 그대로) [Claude Code · 백그라운드 작업방 ce272c08]
+- Irene 한 일 확인(읽기): purplehere.com TXT 에 facebook-domain-verification=arxe2lpbkv7y556c8vccu0gl7ocabv 있음 · signals/config/2307431686720469 → 200(유효 픽셀). Meta 화면 «Verified» 는 Irene 화면 기준(이 서버에서 못 봄).
+- 싣는 길: GTM 안 씀(§11-3)이라 `dev-frontend/src/utils/tracking.ts` 에 직접 — 운영(개발은 ?meta_debug=1 탭만) · 쿠키 «모두 수락» 뒤에만 로드 · 마케팅 화면 page_view→PageView · sign_up→CompleteRegistration · generate_lead→Lead · try_demo→TryDemo · autoConfig 끔 · 고급 매칭 없음 · disablePushState+allowDuplicatePageViews(실측 함정 2개). GTM 번호가 생기면 코드 픽셀은 저절로 꺼짐.
+- GTM 가져오기 파일 상수 REPLACE_ME → 2307431686720469 (docs + dev-apps 사본) · docs/MARKETING_TRACKING.md §6 #2 ✅ · §11-4.
+- 실측(개발 · /tr 가로채 메타 전송 0): 수락 → PageView / · /pricing · /contact · /pricing · /demo 각 1 · /pos/login 0 · TryDemo 1 / 필수만 → 0 / meta_debug 없음 → 0. 개발 빌드 main.984d0e73.
+- 운영 반영: 다음 배포 때.
+
+### ✅ 완료 (2026-11-15) — 공용 메모리 게이트에 «PlanQ 시연 영상 렌더 중이면 build·emulator 막기» (서버 방 패치 그대로 · Fable 안 씀 — 서버 내부 도구 작은 수정) [Claude Code · 백그라운드 작업방 bde964c6]
+- `git apply ~/dev-server/patches/2026-11-15-heavy-task-gate-video-render.patch` → 커밋 32d852501 (scripts/heavy-task-gate.sh 만).
+- 시험: bash -n 통과 · 표시 파일 없을 때 build·emulator 출력이 적용 전과 같음(메모리 숫자만 다름) · video-engine 폴더의 살아 있는 node pid → build·emulator 둘 다 차단 · 죽은 pid·빈 파일·셸 pid·끝난 뒤 → 무시(통과).
+
+### ✅ 확인 (2026-11-15) — PlanQ 방 9572baa2 가 넘긴 «GTM-5WQHW96L 막기» 는 이미 끝난 일 [Claude Code · 백그라운드 작업방 c187152f]
+- 실측: 커밋판 tracking.ts = GTM-XXXXXXX · git 기록 전체에 GTM-5WQHW96L 커밋된 적 0 · 개발 빌드 폴더 0건 · index.html = gtag G-63F78ZL72X. 배포 막기 불필요. GTM 쓸지 결정은 아래 94ff3d8f 에서 «지금 안 씀» 으로 끝남 — 새 질문 안 올림.
+
 ### ✅ 완료 (2026-11-15) — PlanQ GTM 번호(GTM-5WQHW96L) 걷어냄 · PurpleHere 는 GTM 안 씀 · 전환 이벤트는 gtag 로 직접 (Fable 안 씀 — 되돌리기 쉬움·추적 코드 몇 줄) [Claude Code · 백그라운드 작업방 94ff3d8f]
 - Irene 원문 요지: «GTM-5WQHW96L 은 GTM 계정 «PlanQ» 의 컨테이너 «planq.kr» · PurpleHere 용 컨테이너 없음 · «Purple Here» 는 구글 태그 G-63F78ZL72X · (a) GTM 필요? (b) 아니면 카드 내려 (c) 코드·문서·미커밋 파일의 그 번호 지워 — 배포되면 PlanQ 측정에 섞임»
 - 실측: 커밋판(운영에 나갈 판)은 늘 자리표시 GTM-XXXXXXX — 운영에 PlanQ 번호 나간 적 0. 미커밋 tracking.ts·가져오기 파일·개발 빌드(main.3cf5db8f.js)에만 있었음 → 개발 사이트 방문이 PlanQ 컨테이너를 불렀음.
@@ -44,7 +58,17 @@
 - 다음 할 일: 2단계(AI 답장 초안 → 상황판에서 «이대로 보내기») — 상황판 칸이 생긴 뒤 별도 설계·Fable 검증(운영 답글 쓰기 스크립트 필요).
 - 운영 반영: 다음 배포 때.
 
-### 답 기다림: K-DINE Noodles Settings «Apply these locks to all menus now» 만 남음 — 눌러서 초록 글씨 뜨는지 «했어요/안 떠요» 답해 주실래요? [Claude Code · 작업방 1bba5f14 · 2026-11-15]
+### ✅ 완료 (2026-11-15 · 작업방 1bba5f14) — K-DINE Noodles 브랜드 메뉴 후속 확인 종료: 순서·Push 됨 · 잠금은 관리자 몫으로 넘김
+- Irene «이걸 왜해? 관리자에서 알아서 할게. 개발에 필요한거야?» → 잠금 적용은 고객 관리자 설정이라 추적 끝. 준비한 운영 쓰기 스크립트(run-brand13-apply-locks.sh) 지움·실행 안 함.
+- 개발 쪽 결론: 버튼 고장 아님(개발 실브라우저 2폭 PUT·초록 문구 정상, 운영 화면 파일 같은 코드).
+
+### (이전) 답 기다림: K-DINE Noodles 잠금 — 이 방에 명령 붙여 넣기 → Irene «관리자에서 알아서 할게» [Claude Code · 작업방 1bba5f14 · 2026-11-15]
+- 무엇: «했어요» 2번(09:09 뒤 · 09:5x) 모두 운영 nginx 에 PUT /api/brand-menus/settings 0건. 순서(reorder/bulk 200×2)·Push(push-pending 200)는 들어옴 → 5·카테고리 ✅.
+- 개발서버 실브라우저(데모 브랜드 10, 1440·390): 버튼 보임·눌림 → PUT 감 → 초록 «Applied to 0 menus…» — 화면 코드 정상. 운영 화면 파일에도 같은 코드(81.303265d6.chunk.js 06:54).
+- 준비: `.claude/run-brand13-apply-locks.sh`(운영 쓰기 · 버튼과 같은 applyBrandLocksToMenus · brand 13 이름 확인·push_frozen 이면 멈춤 · BEFORE/AFTER 찍고 확인 스크립트 이어서). 실행 안 함.
+- 답이 오면: 결과에서 1 n·p·c=39 · 2 스냅샷 39 확인하고 ✅. «버튼 다시» 면 Irene 화면 캡처(누른 뒤)로 원인 찾기.
+
+### (이전) 답 기다림: K-DINE Noodles Settings «Apply these locks to all menus now» 만 남음 — 눌러서 초록 글씨 뜨는지 «했어요/안 떠요» 답해 주실래요? [Claude Code · 작업방 1bba5f14 · 2026-11-15]
 - 09:09 Irene «했어요» 뒤 운영 읽기: 카테고리 순서 저장(PUT reorder/bulk 200 ×2) · Push(POST push-pending 200) 됨 → 5 브랜드13·매장28 카테고리 1..8 같음 ✅ · 3·4·6=0 · 7 true ✅.
 - 안 됨: 1 잠금 이름·가격·카테고리 0/39 · 2 스냅샷 0/39 — 운영 기록에 PUT /api/brand-menus/settings 0건(버튼 안 눌림). 화면 코드는 누르면 바로 보냄.
 - 답이 오면: «했어요» → run-brand13-after-push-check.sh 로 1·2=39 확인(잠금은 서버가 바로 매장 39개에도 적용 → Push 다시 필요 없음). «안 떠요» → 운영 nginx 로 요청 닿았는지 보고, 안 닿으면 화면 고장으로 개발서버 재현.
@@ -811,7 +835,7 @@
 - 다음 할 일(Fable 권고 §5): ① applySubmitGate 의 expectedDeliveryPatch→resolveSellers 에 t 전달 + isApprovalRequiredForRestaurant t + 발주 «전체 확정» submitAll 동시성 제한(순차 또는 3~5개) 한 묶음 — 동시 20건 이상이면 재발 가능 ② 개발 MySQL 천장 50(오늘 Max_used 47) — «Too many connections» 나면 개발만 낮추는 env 스위치 ③ health [payment] 직영 INTERNAL ④ = 데모 38 열린 브랜드 청구서 1건 데이터 전제로 멈춤(변경 무관)
 - 운영 반영: 다음 배포 때 (배포 뒤 운영 pm2 시작 기록에 «Pool max: 20 (server)» 확인)
 
-### 다음 할 일 — 안드로이드 앱 0.4.1 사이드로드 피드 올리기 · 언제: Irene 가 끝난 일 «확인할 곳»(태블릿 0.4.1 + 와이파이 프린터 종이) 보고 «확인 완료» 한 뒤(11-07 규칙으로 확인 카드 todomvzdy6cs 는 상황판이 뺌) · 그때 할 일: mobile-app/scripts/build-release.sh --publish-feed(AAB sha256 61411e48…6be3 그대로) → dev-frontend-build/desktop/ 피드 0.4.1 → 다음 배포 때 운영 · ANDROID_APP_DESIGN.md §10 0.4.1 행에 «예외 1회: Play 게시 전 피드(Irene 11-02 «권고대로»)» · Play 0.4.1 AAB 제출을 Irene 할 일로 · 한글 매장 앱 자동인쇄 허용으로 안내 갱신 [Claude Code · 백그라운드 작업방 45252426]
+### 다음 할 일 — 안드로이드 앱 0.4.2(11-08 에 0.4.1 대체) 사이드로드 피드 올리기 · 언제: Irene 가 끝난 일 «확인할 곳»(태블릿 0.4.2 + 와이파이 프린터 종이) 보고 «확인 완료» 한 뒤(11-07 규칙으로 확인 카드 todomvzdy6cs 는 상황판이 뺌) · 그때 할 일: mobile-app/scripts/build-release.sh --publish-feed(0.4.2 AAB sha256 4ad55d5b…0a06) → dev-frontend-build/desktop/ 피드 0.4.2 → 다음 배포 때 운영 · ANDROID_APP_DESIGN.md §10 0.4.2 행에 «예외 1회: Play 게시 전 피드(Irene 11-02 «권고대로»)» · Play 0.4.2 AAB 제출을 Irene 할 일로 · 한글 매장 앱 자동인쇄 허용으로 안내 갱신 [Claude Code · 백그라운드 작업방 45252426]
 - «✗ 문제 있어요» 면: 적어 준 «어디서 어떻게» 로 원인 판정(Fable cause) → 피드 올리지 않음
 
 ### 답 기다림 (이전) (2026-11-02) — 안드로이드 앱 0.4.1: 종이 확인 뒤 Play 심사 안 기다리고 사이드로드 피드에 바로 올릴까요? [Claude Code · 백그라운드 작업방 45252426]
@@ -824,8 +848,8 @@
 - 답이 오면: ① 예 → (Irene 할 일 todomvzdy6cs 종이 ✓ 뒤) mobile-app/scripts/build-release.sh --publish-feed → 다음 배포 때 운영 · §10 예외 기록 · Play 0.4.1 AAB 제출 Irene 할 일 / ② → Play 게시 뒤 피드
 - 운영 반영: 다음 배포 때(웹 안내·찾기) · 앱은 Irene 할 일 뒤
 
-### Irene 할 일
-- todomvzdy6cs — 태블릿에 Purple POS 0.4.1 깔고 와이파이 프린터로 종이 9가지 확인하기(check)
+### Irene 할 일 (이전)
+- (2026-11-15 뺌) todomvzdy6cs 태블릿 종이 확인 — 0.4.1 은 지워졌고 0.4.2 로 바뀜 · 확인은 할 일 카드가 아니라 «확인할 곳»(https://dev.purplehere.com/dev-apps/PurplePOS-0.4.2.apk)
 
 ### ✅ 완료 (11/03 00:00 정기 점검 · 2026-11-02 UTC) — /개발완료 건너뜀(일하는 다른 방 있음) + /개발시작(운영 문의 읽기 권한 거부) [Claude Code · 백그라운드 작업방 e1d6d40b]
 - /개발완료 건너뜀: 시작 직전 `claude agents --json` — 97e48743 «운영 서버 느림 점검» 이 같은 폴더에서 working(pid 410378). 미커밋 = GTM 보류 4파일 · playwright.config · index.html · oneoff 스크립트 · 이 기록 파일 → 커밋 안 함
@@ -1168,7 +1192,8 @@
 - 근거: .claude/fable-design-20261029-store-direct-path.md §4
 - 카나리 dev: dev 를 다시 Proxied 로 돌린 뒤에만 가능 · 개발서버 인증서 만료(2026-05-03) 갱신은 sudo 필요
 
-### Irene 할 일 (2026-10-29) — Cloudflare purplehere.com·www «DNS only» 로 (지금 끊김 해결) [Claude Code · 백그라운드 작업방 5a299bf3]
+### ✅ 끝남 (2026-10-29 Irene 전환 · 2026-11-15 재확인) — Cloudflare purplehere.com·www «DNS only» 로 (지금 끊김 해결) [Claude Code · 백그라운드 작업방 5a299bf3]
+- 2026-11-15 재확인(실측): purplehere.com·www → 87.106.78.146 직접(1.1.1.1·8.8.8.8) · server: nginx (cloudflare 아님) · 인증서 Let's Encrypt 2026-11-08~2027-02-06(자동 갱신 됨) · dev 만 Cloudflare(의도대로) → 할 일 없음, 카드 4장 정리
 - Irene 원문: «이거 걸계를 하는 건 하는데 지금 당장 문제가 있다고 이걸 해걀해야지 클라우드플레어 빼버려?»
 - 빼도 되는 근거(실측): 운영 인증서 Let's Encrypt purplehere.com+www (~2026-12-08 · certbot nginx 방식이라 직접 접속에서도 자동 갱신) · 직접 접속 200 0.03초 · www→301 · http→https 301 · socket.io 200 · nginx 에 Cloudflare 전용 허용/차단 없음 · 백엔드 Cloudflare 헤더 의존은 utils/clientIp 뿐(직접이면 X-Real-IP 사용) · 서버 IPv6 없음(AAAA 지움) · 4코어 부하 0.07
 - 잃는 것: Cloudflare 캐시(HTML 5분·정적 파일) → 운영서버가 다 받음(현재 규모 문제 없음) · DDoS 가림막 · 운영 IP 공개(이미 직접 접속 가능 상태)
@@ -1198,7 +1223,7 @@
 - ⚠ 운영서버 주소(87.106.78.146)를 옮기면 그 PC 의 hosts 2줄을 반드시 지울 것 — 안 지우면 그 PC 만 접속 불가
 - 안드로이드 태블릿(매장 8)은 hosts 를 못 고침 → 따로 «Cloudflare 안 거치는 별도 주소»(DNS·인증서·nginx·허용 주소 작업 + 기기 재로그인·프린터 재설정) 가 필요 — Irene 지시 있으면 설계부터
 
-### 답 기다림 (2026-10-29) — 요청 횟수 제한을 매장 실제 주소 기준으로 고칠까요? [Claude Code · 백그라운드 작업방 5a299bf3]
+### 답 기다림 (이전) (2026-10-29) — 요청 횟수 제한을 매장 실제 주소 기준으로 고칠까요? → 2026-11-15 확인: 이미 다른 방이 고쳐 운영에 나감(3dc0ac5e5 limiterKey=clientIp · 운영 server.js limiterKey 6곳 · SW 6.20) — 할 일 없음 [Claude Code · 백그라운드 작업방 5a299bf3]
 - 무엇을: server.js apiLimiter(15분 5000번)가 Cloudflare 주소 기준이라 여러 매장이 한도 공유 → utils/clientIp 기준으로 바꿀지 · 오프라인 원인은 아님(Cloudflare 경로) · Irene 원문 «하는거야 어쩌라도»
 - 왜: 보안 경계 변경 · 지금 미발생(163/5000)
 - 답이 오면: ① 개발서버에서 keyGenerator=clientIp 로 변경 → 고장주입·health-check → Fable 게이트 → 운영 반영 다음 배포 때 ② 기록만 남기고 끝

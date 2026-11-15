@@ -234,7 +234,7 @@ Meta 태그 전부: «태그 순서 → `Meta - Base + PageView` 가 먼저 실�
 | # | 할 일 | 왜 Irene 만 | 끝나면 |
 |---|---|---|---|
 | 1 | **GTM 계정·컨테이너(Web, purplehere.com) 만들고 `GTM-XXXXXXX` 를 이 방에 답** — tagmanager.google.com | 계정 소유 | 코드 상수 교체·빌드 |
-| 2 | **Meta Events Manager 에서 픽셀(데이터 세트) 만들고 ID 를 GTM 상수에 입력** · Business 설정 → 브랜드 안전 → 도메인에 `purplehere.com` 추가 → **DNS TXT 로 인증**(Cloudflare) | 계정·DNS | GTM 미리보기 |
+| 2 | ✅ 2026-11-15 (§11-4 · 픽셀 2307431686720469 · 도메인 Verified) — **Meta Events Manager 에서 픽셀(데이터 세트) 만들고 ID 를 GTM 상수에 입력** · Business 설정 → 브랜드 안전 → 도메인에 `purplehere.com` 추가 → **DNS TXT 로 인증**(Cloudflare) | 계정·DNS | GTM 미리보기 |
 | 3 | **GTM 가져오기 → 미리보기 §5 확인 → 승인 → 게시** | 게시 = 외부 발행 | 운영 반영(다음 배포) |
 | 4 | **GA4 관리 4개**: ① 데이터 설정 → 데이터 필터 → «개발자 트래픽» → **활성** ② 데이터 스트림 → 향상된 측정 → «브라우저 기록 이벤트 기반 페이지 변경» **끄기**(나머지 켜 둠) ③ 관리 → 이벤트 → `sign_up` `email_verified` `generate_lead` `try_demo` 를 **주요 이벤트**로 ④ 맞춤 정의 9개(§4-1) · 데이터 보관 14개월 | 관리 화면 | — |
 | 5 | **Search Console**: ① 속성 `purplehere.com`(도메인) 이 Irene 계정에 보이는지 ② Sitemaps → `https://purplehere.com/sitemap.xml` 제출(미제출이면) ③ 색인 생성 → 페이지: 색인 수·미색인 이유 캡처(= SEO_OPERATIONS «10-15 재판독» 을 이때 같이) ④ GA4 관리 → 제품 링크 → Search Console 연결 | 관리 화면 | ③ 결과는 SEO 방이 읽음 |
@@ -316,3 +316,12 @@ Fable 권고: **그대로 진행.** 이 설계는 코드 변경을 «사실을 �
 - 걷어냄: `tracking.ts` `GTM_CONTAINER_ID` → 자리표시 `GTM-XXXXXXX` · `public/index.html` = 커밋판(gtag.js G-63F78ZL72X 직접 삽입 유지) · 가져오기 파일 `publicId` → `GTM-XXXXXXX` · 개발 사이트 다시 빌드(개발 방문이 PlanQ 측정에 섞이던 것 멈춤). 운영에는 그 번호가 나간 적 없다(커밋판은 늘 자리표시).
 - 결정(Opus 의견 · Fable 안 씀 — 되돌리기 쉬움): **GTM 은 지금 안 쓴다.** 태그가 GA4 하나뿐이고 메타 픽셀 번호도 없어서 GTM 이 더해 주는 게 없다. 대신 §3-5 전환 7개가 GA4 에 실제로 가도록 `track()` 이 GTM 없을 때 `gtag('event', …)` 로 직접 보낸다(page_view 는 빼고 — gtag config + 향상된 측정이 보낸다. 그래서 «브라우저 기록 이벤트 기반 페이지 변경» 은 **켜 둔다**).
 - 결정 1(GTM 한 길)·결정 2(마케팅 경로에서만)는 보류: 지금 gtag 는 index.html 하나라 앱 화면에서도 실린다(전부터 그랬음). 메타 픽셀을 붙이거나 태그가 늘면 그때 PurpleHere 전용 컨테이너를 새로 만들고 이 문서 §1~§5 대로 다시 한다.
+
+### 11-4. 메타 픽셀 번호 · 도메인 인증 · 코드로 직접 싣기 (2026-11-15 · Opus) [Claude Code · 백그라운드 작업방 ce272c08]
+- Irene 한 일(§6 #2): Meta 비즈니스 포트폴리오 «GIT Consulting»(ID 1185081857413307 · GIT CONSULTING SDN. BHD. · SSM 202201012250 — 비즈니스 이메일 확인·비즈니스 인증(서류)은 아직) 안에 픽셀(데이터 세트) «PurpleHere» **2307431686720469** 생성. 설치 방법 안 고름 · 자동 고급 매칭(자동 웹사이트 매칭) 꺼짐 · «Meta 를 통한 전환 API 자동 연결» 해제.
+- 도메인 인증: `purplehere.com` → GIT Consulting 포트폴리오 · DNS TXT `facebook-domain-verification=arxe2lpbkv7y556c8vccu0gl7ocabv` (Cloudflare) · **Verified**(Irene 화면). 이 방 실측: 8.8.8.8 TXT 조회에 그 값이 있음 · `connect.facebook.net/signals/config/2307431686720469` → 200(유효한 픽셀).
+- 싣는 길(Opus 의견 · Fable 안 씀 — 되돌리기 쉬움, 설계 결정 3·4·5 그대로이고 «누가 싣나»만 GTM → 코드): §11-3 대로 GTM 이 없으므로 `utils/tracking.ts` 가 GTM 가져오기 파일의 Meta 태그 5개와 같은 일을 한다. 조건 = 운영 사이트(개발은 `?meta_debug=1` 이 붙은 탭만 — §1 결정 3 의 «미리보기» 자리) · 쿠키 «모두 수락» 뒤에만 fbevents.js 로드(필수만 → `consent revoke`) · 마케팅 화면의 page_view → PageView · «모두 수락» 직후 PageView 1 · sign_up → CompleteRegistration · generate_lead → Lead · try_demo → TryDemo(trackCustom) · `autoConfig false`(자동 이벤트·자동 고급 매칭 끔) · init 에 사용자 정보 없음. PurpleHere 전용 GTM 컨테이너를 만들면 `GTM_CONTAINER_ID` 가 자리표시가 아니게 되는 순간 코드 쪽 픽셀은 저절로 꺼진다(두 번 안 감).
+- 함정 2개(실측으로 잡음): ① fbevents.js 는 화면 이동(history)마다 PageView 를 스스로 보낸다 → 마케팅 화면은 두 번, 앱 화면(`/pos/login`)에서도 PageView 가 나갔다 → `fbq.disablePushState = true`. ② 그러면 한 페이지에서 PageView 를 1번만 받는 기본값이 남아 두 번째 화면부터 빠진다 → `fbq.allowDuplicatePageViews = true`(중복은 PageViewTracker 가 막음). 덤: 헤드리스 브라우저 표시(HeadlessChrome)면 메타가 전송을 안 한다 — 시험 때는 일반 크롬 표시로.
+- 개발 실측(메타로 가는 /tr 요청은 가로채서 실제 전송 0): `?meta_debug=1` + 모두 수락 → 동의 전 요청 0 · fbevents.js 1 · PageView `/`·`/pricing`·`/contact`·`/pricing`·`/demo` 각 1 · `/pos/login` 0 · 데모 로그인 TryDemo 1(content_name=demo_restaurant_admin) / 필수만 → fbevents 0 · 요청 0 / `meta_debug` 없이 모두 수락(개발 일상) → fbevents 0 · 요청 0.
+- GTM 가져오기 파일 상수 `const - Meta pixel id` = 2307431686720469(저장소 + 개발서버 내려받기 사본) — 나중에 GTM 으로 옮길 때 그대로 쓴다.
+- 운영 반영: 다음 배포 때. 그 전까지 운영에는 픽셀이 없다.
