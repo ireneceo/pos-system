@@ -375,7 +375,7 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
       <HeaderRow>
         <SectionTitle>{t('brand:productIngredientCategoriesTab.ingredientCategories')}</SectionTitle>
         <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-          Add Category
+          {t('brand:categoryTabCommon.addCategory', 'Add Category')}
         </ThemedButton>
       </HeaderRow>
 
@@ -384,7 +384,7 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
           <EmptyTitle>{t('brand:productIngredientCategoriesTab.noCategoriesYet')}</EmptyTitle>
           <EmptyDescription>{t('brand:productIngredientCategoriesTab.createCategoriesToOrganizeYourIngredients')}</EmptyDescription>
           <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-            Add First Category
+            {t('brand:categoryTabCommon.addFirstCategory', 'Add First Category')}
           </ThemedButton>
         </EmptyState>
       ) : (
@@ -403,9 +403,9 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
               <CategoryInfo>
                 <CategoryName>{category.name}</CategoryName>
                 <CategoryMeta>
-                  <span>{category.ingredient_count || 0} ingredients</span>
+                  <span>{t('brand:categoryTabCommon.ingredientCount', '{{count}} ingredients', { count: category.ingredient_count || 0 })}</span>
                   <StatusBadge active={category.is_active}>
-                    {category.is_active ? 'Active' : 'Inactive'}
+                    {category.is_active ? t('brand:categoryTabCommon.active', 'Active') : t('brand:categoryTabCommon.inactive', 'Inactive')}
                   </StatusBadge>
                 </CategoryMeta>
                 {category.description && (
@@ -413,13 +413,13 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
                 )}
               </CategoryInfo>
               <CategoryActions>
-                <IconButton onClick={() => handleOpenModal(category)} title="Edit">
+                <IconButton onClick={() => handleOpenModal(category)} title={(t('brand:categoryTabCommon.edit', 'Edit') as string)}>
                   <svg viewBox="0 0 24 24" fill="none">
                     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                     <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   </svg>
                 </IconButton>
-                <IconButton onClick={() => handleToggleActive(category)} title={category.is_active ? 'Deactivate' : 'Activate'}>
+                <IconButton onClick={() => handleToggleActive(category)} title={(category.is_active ? t('brand:categoryTabCommon.deactivate', 'Deactivate') : t('brand:categoryTabCommon.activate', 'Activate')) as string}>
                   <svg viewBox="0 0 24 24" fill="none">
                     {category.is_active ? (
                       <path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -430,7 +430,7 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
                 </IconButton>
                 <IconButton
                   onClick={() => handleDeleteClick(category)}
-                  title="Delete"
+                  title={(t('brand:categoryTabCommon.delete', 'Delete') as string)}
                   disabled={(category.ingredient_count || 0) > 0}
                 >
                   <svg viewBox="0 0 24 24" fill="none">
@@ -446,25 +446,25 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
       <Modal
         isOpen={showModal}
         onClose={handleCloseModal}
-        title={`${editingCategory ? 'Edit' : 'New'} Ingredient Category`}
+        title={(editingCategory ? t('brand:categoryTabCommon.editIngredientCategory', 'Edit Ingredient Category') : t('brand:categoryTabCommon.newIngredientCategory', 'New Ingredient Category')) as string}
         size="medium"
         footer={
           <>
             <ModalButton variant="secondary" onClick={handleCloseModal}>{t('brand:productIngredientCategoriesTab.cancel')}</ModalButton>
             <ModalButton variant="primary" onClick={handleSubmit} disabled={!formData.name.trim() || saving}>
-              {saving ? 'Saving...' : (editingCategory ? 'Update' : 'Create')}
+              {saving ? t('brand:categoryTabCommon.saving', 'Saving...') : (editingCategory ? t('brand:categoryTabCommon.update', 'Update') : t('brand:categoryTabCommon.create', 'Create'))}
             </ModalButton>
           </>
         }
       >
         <form onSubmit={handleSubmit}>
           <UIFormGroup>
-            <FormLabel>Category Name *</FormLabel>
+            <FormLabel>{t('brand:categoryTabCommon.categoryNameLabel', 'Category Name *')}</FormLabel>
             <FormInput
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Proteins"
+              placeholder={(t('brand:categoryTabCommon.placeholderProteins', 'e.g., Proteins') as string)}
               autoFocus
               required
             />
@@ -491,7 +491,7 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
             <FormTextArea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Brief description of this category..."
+              placeholder={(t('brand:categoryTabCommon.descriptionPlaceholder', 'Brief description of this category...') as string)}
               rows={3}
             />
           </UIFormGroup>
@@ -502,14 +502,14 @@ const ProductIngredientCategoriesTab: React.FC<ProductIngredientCategoriesTabPro
         isOpen={deleteModalOpen}
         onCancel={() => { setDeleteModalOpen(false); setCategoryToDelete(null); }}
         onConfirm={handleDeleteConfirm}
-        title="Delete Category"
+        title={(t('brand:categoryTabCommon.deleteTitle', 'Delete Category') as string)}
         message={
           categoryToDelete
-            ? `Are you sure you want to delete "${categoryToDelete.name}"? This action cannot be undone.`
+            ? (t('brand:categoryTabCommon.deleteMessage', 'Are you sure you want to delete "{{name}}"? This action cannot be undone.', { name: categoryToDelete.name }) as string)
             : ''
         }
-        confirmText="Delete"
-        cancelText="Cancel"
+        confirmText={(t('brand:categoryTabCommon.delete', 'Delete') as string)}
+        cancelText={(t('brand:categoryTabCommon.cancel', 'Cancel') as string)}
         type="danger"
       />
       <ConfirmModal

@@ -24,5 +24,21 @@
     "brand": "品牌总部",
     "foodcourt": "美食广场总部",
     "contract": "合同"
-  }
+  },
+  "deleteFailedMessage": "删除失败，请重试。",
+  "deleteFailedTitle": "删除失败",
+  "suppliersPage.active": "启用",
+  "suppliersPage.inactive": "停用",
+  "suppliersPage.deactivate": "停用",
+  "suppliersPage.activate": "启用",
+  "suppliersPage.delete": "删除",
+  "suppliersPage.loading": "加载中...",
+  "suppliersPage.searchPlaceholder": "搜索供应商...",
+  "suppliersPage.addSupplier": "添加供应商",
+  "suppliersPage.emptyDesc": "添加供应商以管理食材来源。",
+  "suppliersPage.emptyDescBrand": "您可以将供应商关联到多个品牌。",
+  "suppliersPage.tryAdjustSearch": "请尝试调整搜索条件",
+  "suppliersPage.addFirstSupplier": "添加您的第一个供应商",
+  "suppliersPage.deleteTitle": "删除供应商",
+  "suppliersPage.deleteMessage": "确定要删除“{{name}}”吗？此操作无法撤销。"
 }

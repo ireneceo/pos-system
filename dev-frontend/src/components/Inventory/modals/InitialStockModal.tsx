@@ -29,25 +29,25 @@ const InitialStockModal: React.FC<Props> = ({
   <Modal
     isOpen={isOpen}
     onClose={onClose}
-    title="Set Initial Stock"
+    title={t('inventory:initialStock.title', 'Set Initial Stock') as string}
     size="large"
     footer={
       <>
         <ModalButton variant="secondary" onClick={onClose}>
-          Cancel
+          {t('inventory:initialStock.cancel', 'Cancel')}
         </ModalButton>
         <ModalButton variant="primary" onClick={onSave} disabled={saving}>
-          {saving ? 'Saving...' : 'Save Initial Stock'}
+          {saving ? t('inventory:initialStock.saving', 'Saving...') : t('inventory:initialStock.save', 'Save Initial Stock')}
         </ModalButton>
       </>
     }
   >
     <InfoBox>
-      Enter your current stock quantities and minimum stock levels. Items with 0 quantity will be skipped.
+      {t('inventory:initialStock.intro', 'Enter your current stock quantities and minimum stock levels. Items with 0 quantity will be skipped.')}
     </InfoBox>
     {Object.entries(
       inventory.reduce((acc, item) => {
-        const category = item.category || 'Other';
+        const category = item.category || t('inventory:initialStock.other', 'Other');
         if (!acc[category]) acc[category] = [];
         acc[category].push(item);
         return acc;
@@ -59,8 +59,8 @@ const InitialStockModal: React.FC<Props> = ({
         </h3>
         <Table>
           <TableHeader columns="2fr 1fr 1fr">
-            <span className="col-info">Ingredient</span>
-            <span>Current Qty</span>
+            <span className="col-info">{t('inventory:initialStock.ingredient', 'Ingredient')}</span>
+            <span>{t('inventory:initialStock.currentQty', 'Current Qty')}</span>
             <span>{t('inventory:reorderAt.column', 'Reorder at')}</span>
           </TableHeader>
           {items.map(item => (

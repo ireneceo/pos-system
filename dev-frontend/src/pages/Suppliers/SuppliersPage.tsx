@@ -524,7 +524,7 @@ const SuppliersPage: React.FC = () => {
           </SupplierName>
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          {!readOnly && <StatusBadge active={supplier.is_active}>{supplier.is_active ? 'Active' : 'Inactive'}</StatusBadge>}
+          {!readOnly && <StatusBadge active={supplier.is_active}>{supplier.is_active ? t('suppliers:suppliersPage.active', 'Active') : t('suppliers:suppliersPage.inactive', 'Inactive')}</StatusBadge>}
         </div>
       </SupplierHeader>
 
@@ -574,7 +574,7 @@ const SuppliersPage: React.FC = () => {
           <>
             <ActionButton
               onClick={() => handleToggleActive(supplier)}
-              title={supplier.is_active ? 'Deactivate' : 'Activate'}
+              title={supplier.is_active ? t('suppliers:suppliersPage.deactivate', 'Deactivate') : t('suppliers:suppliersPage.activate', 'Activate')}
               style={{ color: supplier.is_active ? '#10B981' : '#6B7280' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -589,7 +589,7 @@ const SuppliersPage: React.FC = () => {
               variant="danger"
               onClick={() => setDeleteConfirm({ isOpen: true, supplierId: supplier.id, supplierName: supplier.name })}
             >
-              Delete
+              {t('suppliers:suppliersPage.delete', 'Delete')}
             </ActionButton>
           </>
         )}
@@ -606,7 +606,7 @@ const SuppliersPage: React.FC = () => {
           </Header>
           <Content>
             <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
-              Loading...
+              {t('suppliers:suppliersPage.loading', 'Loading...')}
             </div>
           </Content>
         </Container>
@@ -622,13 +622,13 @@ const SuppliersPage: React.FC = () => {
             <FilterBar style={{ marginBottom: 0, flex: 1 }}>
               <SearchInput
                 type="text"
-                placeholder="Search suppliers..."
+                placeholder={t('suppliers:suppliersPage.searchPlaceholder', 'Search suppliers...') as string}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               <div style={{ marginLeft: 'auto' }}>
                 <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-                  Add Supplier
+                  {t('suppliers:suppliersPage.addSupplier', 'Add Supplier')}
                 </ThemedButton>
               </div>
             </FilterBar>
@@ -647,18 +647,18 @@ const SuppliersPage: React.FC = () => {
             <EmptyState>
               <EmptyTitle>{t('suppliers:suppliersPage.noSuppliersYet')}</EmptyTitle>
               <EmptyDescription>
-                Add suppliers to manage your ingredient sources.
-                {isBrandUser && ' You can connect suppliers to multiple brands.'}
+                {t('suppliers:suppliersPage.emptyDesc', 'Add suppliers to manage your ingredient sources.')}
+                {isBrandUser && ` ${t('suppliers:suppliersPage.emptyDescBrand', 'You can connect suppliers to multiple brands.')}`}
               </EmptyDescription>
               <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-                Add Supplier
+                {t('suppliers:suppliersPage.addSupplier', 'Add Supplier')}
               </ThemedButton>
             </EmptyState>
           ) : filteredSuppliers.length === 0 && !isRestaurantAdmin ? (
             <EmptyState>
               <EmptyTitle>{t('suppliers:suppliersPage.noSuppliersFound')}</EmptyTitle>
               <EmptyDescription>
-                {searchTerm ? 'Try adjusting your search' : 'Add your first supplier'}
+                {searchTerm ? t('suppliers:suppliersPage.tryAdjustSearch', 'Try adjusting your search') : t('suppliers:suppliersPage.addFirstSupplier', 'Add your first supplier')}
               </EmptyDescription>
             </EmptyState>
           ) : (
@@ -690,10 +690,10 @@ const SuppliersPage: React.FC = () => {
           isOpen={deleteConfirm.isOpen}
           onCancel={() => setDeleteConfirm({ isOpen: false, supplierId: null, supplierName: '' })}
           onConfirm={handleDelete}
-          title="Delete Supplier"
-          message={`Are you sure you want to delete "${deleteConfirm.supplierName}"? This action cannot be undone.`}
-          confirmText="Delete"
-          cancelText="Cancel"
+          title={t('suppliers:suppliersPage.deleteTitle', 'Delete Supplier')}
+          message={t('suppliers:suppliersPage.deleteMessage', 'Are you sure you want to delete "{{name}}"? This action cannot be undone.', { name: deleteConfirm.supplierName })}
+          confirmText={t('suppliers:suppliersPage.delete', 'Delete')}
+          cancelText={t('suppliers:suppliersPage.cancel', 'Cancel')}
           type="danger"
         />
         <ConfirmModal

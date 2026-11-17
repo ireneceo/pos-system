@@ -30,11 +30,15 @@ const GeneralStockFormModal: React.FC<Props> = ({
   onConfirm,
 }) => {
   const { t } = useTranslation(['inventory']);
-  const title = mode === 'add' ? 'Add General Stock' : 'Edit General Stock';
+  const title = mode === 'add'
+    ? t('inventory:gsForm.addTitle', 'Add General Stock')
+    : t('inventory:gsForm.editTitle', 'Edit General Stock');
   const confirmLabel = mode === 'add'
-    ? (saving ? 'Adding...' : 'Add Item')
-    : (saving ? 'Saving...' : 'Save Changes');
-  const initialStockLabel = mode === 'add' ? 'Initial Stock' : 'Current Stock';
+    ? (saving ? t('inventory:gsForm.adding', 'Adding...') : t('inventory:gsForm.addItem', 'Add Item'))
+    : (saving ? t('inventory:gsForm.saving', 'Saving...') : t('inventory:gsForm.saveChanges', 'Save Changes'));
+  const initialStockLabel = mode === 'add'
+    ? t('inventory:gsForm.initialStock', 'Initial Stock')
+    : t('inventory:gsForm.currentStock', 'Current Stock');
 
   return (
     <Modal
@@ -45,7 +49,7 @@ const GeneralStockFormModal: React.FC<Props> = ({
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose}>
-            Cancel
+            {t('inventory:gsForm.cancel', 'Cancel')}
           </ModalButton>
           <ModalButton
             variant="primary"
@@ -60,21 +64,21 @@ const GeneralStockFormModal: React.FC<Props> = ({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
           <UIFormGroup>
-            <FormLabel>Item Name *</FormLabel>
+            <FormLabel>{t('inventory:gsForm.itemName', 'Item Name *')}</FormLabel>
             <FormInput
               type="text"
               value={form.name}
               onChange={(e) => onFormChange({ ...form, name: e.target.value })}
-              placeholder="e.g., Takeaway Containers"
+              placeholder={t('inventory:gsForm.itemNamePlaceholder', 'e.g., Takeaway Containers') as string}
             />
           </UIFormGroup>
           <UIFormGroup>
-            <FormLabel>Code (SKU)</FormLabel>
+            <FormLabel>{t('inventory:gsForm.code', 'Code (SKU)')}</FormLabel>
             <FormInput
               type="text"
               value={form.code}
               onChange={(e) => onFormChange({ ...form, code: e.target.value })}
-              placeholder="Auto-generate"
+              placeholder={t('inventory:gsForm.autoGenerate', 'Auto-generate') as string}
             />
           </UIFormGroup>
         </div>
@@ -82,13 +86,13 @@ const GeneralStockFormModal: React.FC<Props> = ({
         <ImageUploadDropzone
           value={form.image_url}
           onChange={(base64) => onFormChange({ ...form, image_url: base64 })}
-          label="Image (Optional)"
-          helpText="Drag & drop or click to upload item image"
+          label={t('inventory:gsForm.image', 'Image (Optional)') as string}
+          helpText={t('inventory:gsForm.imageHelp', 'Drag & drop or click to upload item image') as string}
         />
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <UIFormGroup>
-            <FormLabel>Unit *</FormLabel>
+            <FormLabel>{t('inventory:gsForm.unit', 'Unit *')}</FormLabel>
             <FilterSelect
               value={form.stock_unit}
               onChange={(e) => onFormChange({ ...form, stock_unit: e.target.value })}
@@ -100,13 +104,13 @@ const GeneralStockFormModal: React.FC<Props> = ({
             </FilterSelect>
           </UIFormGroup>
           <UIFormGroup>
-            <FormLabel>Category</FormLabel>
+            <FormLabel>{t('inventory:gsForm.category', 'Category')}</FormLabel>
             <FilterSelect
               value={form.category}
               onChange={(e) => onFormChange({ ...form, category: e.target.value })}
               style={{ width: '100%', maxWidth: '100%' }}
             >
-              <option value="">Select Category</option>
+              <option value="">{t('inventory:gsForm.selectCategory', 'Select Category')}</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.name}>
                   {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
@@ -117,13 +121,13 @@ const GeneralStockFormModal: React.FC<Props> = ({
         </div>
 
         <UIFormGroup>
-          <FormLabel>Supplier</FormLabel>
+          <FormLabel>{t('inventory:gsForm.supplier', 'Supplier')}</FormLabel>
           <FilterSelect
             value={form.supplier_id}
             onChange={(e) => onFormChange({ ...form, supplier_id: e.target.value })}
             style={{ width: '100%', maxWidth: '100%' }}
           >
-            <option value="">Select Supplier (Optional)</option>
+            <option value="">{t('inventory:gsForm.selectSupplier', 'Select Supplier (Optional)')}</option>
             {suppliers.map(s => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
@@ -132,7 +136,7 @@ const GeneralStockFormModal: React.FC<Props> = ({
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
           <UIFormGroup>
-            <FormLabel>Unit Cost</FormLabel>
+            <FormLabel>{t('inventory:gsForm.unitCost', 'Unit Cost')}</FormLabel>
             <FormInput
               type="number"
               step="0.01"
@@ -165,7 +169,7 @@ const GeneralStockFormModal: React.FC<Props> = ({
             />
           </UIFormGroup>
           <UIFormGroup>
-            <FormLabel>Min Order</FormLabel>
+            <FormLabel>{t('inventory:gsForm.minOrder', 'Min Order')}</FormLabel>
             <FormInput
               type="number"
               step="0.01"

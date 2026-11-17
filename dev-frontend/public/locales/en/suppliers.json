@@ -24,5 +24,21 @@
     "brand": "Brand HQ",
     "foodcourt": "Foodcourt HQ",
     "contract": "Contract"
-  }
+  },
+  "deleteFailedMessage": "Failed to delete. Please try again.",
+  "deleteFailedTitle": "Delete Failed",
+  "suppliersPage.active": "Active",
+  "suppliersPage.inactive": "Inactive",
+  "suppliersPage.deactivate": "Deactivate",
+  "suppliersPage.activate": "Activate",
+  "suppliersPage.delete": "Delete",
+  "suppliersPage.loading": "Loading...",
+  "suppliersPage.searchPlaceholder": "Search suppliers...",
+  "suppliersPage.addSupplier": "Add Supplier",
+  "suppliersPage.emptyDesc": "Add suppliers to manage your ingredient sources.",
+  "suppliersPage.emptyDescBrand": "You can connect suppliers to multiple brands.",
+  "suppliersPage.tryAdjustSearch": "Try adjusting your search",
+  "suppliersPage.addFirstSupplier": "Add your first supplier",
+  "suppliersPage.deleteTitle": "Delete Supplier",
+  "suppliersPage.deleteMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
 }

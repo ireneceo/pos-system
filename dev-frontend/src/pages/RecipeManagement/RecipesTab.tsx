@@ -1049,10 +1049,10 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         body: JSON.stringify({ target_brand_id: copyToBrandId })
       });
       const j = await r.json();
-      if (!r.ok || !j.success) throw new Error(j.error?.message || j.message || 'Copy failed');
+      if (!r.ok || !j.success) throw new Error(j.error?.message || j.message || t('recipes:recipesTab.copyFailed', 'Failed to copy recipe'));
       setCopyTarget(null); setCopyToBrandId(null);
     } catch (e: any) {
-      setFormError(e?.message || 'Failed to copy recipe');
+      setFormError(e?.message || t('recipes:recipesTab.copyFailed', 'Failed to copy recipe'));
     } finally {
       setCopying(false);
     }
@@ -1373,7 +1373,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       } else {
         // 서버가 사유를 문자열로 준다(재고 남음 / 쓰는 레시피 목록). 꾸러미째 넣으면 화면이 죽으니
         // 저장 실패와 같은 방식으로 사유만 꺼낸다.
-        setDeleteError(getErrorMessage(data, 'Failed to delete recipe'));
+        setDeleteError(getErrorMessage(data, t('recipes:recipesTab.deleteFailed', 'Failed to delete recipe')));
       }
     } catch (error) {
       console.error('Failed to delete recipe:', error);
@@ -1501,12 +1501,12 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
     setFormError(null);
 
     if (!formData.name) {
-      setFormError('Recipe name is required');
+      setFormError(t('recipes:recipesTab.nameRequired', 'Recipe name is required'));
       return;
     }
 
     if (!formData.yield_amount || parseFloat(formData.yield_amount) <= 0) {
-      setFormError('Yield amount must be greater than 0');
+      setFormError(t('recipes:recipesTab.yieldMustBePositive', 'Yield amount must be greater than 0'));
       return;
     }
 
@@ -1577,11 +1577,11 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         // 서버는 실패를 { message, code } 꾸러미로 준다(routes/recipes.js). 꾸러미를 그대로
         // 넣으면 <ErrorMessage>{formError}</ErrorMessage> 가 객체를 그리려다 React #31 로 화면이 죽는다
         // (2026-09-10 운영 신고: /pos/recipes?tab=recipes&brandId=2, iPad). 사유 문자열만 꺼낸다.
-        setFormError(getErrorMessage(data, 'Failed to save recipe'));
+        setFormError(getErrorMessage(data, t('recipes:recipesTab.saveFailed', 'Failed to save recipe')));
       }
     } catch (error) {
       console.error('Failed to save recipe:', error);
-      setFormError('Failed to save recipe');
+      setFormError(t('recipes:recipesTab.saveFailed', 'Failed to save recipe'));
     }
   };
 
@@ -1809,7 +1809,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
   const sortMark = (key: string) => tableSort?.key === key ? (tableSort.dir === 'asc' ? ' ▲' : ' ▼') : '';
   const ingredientText = (ri: any) => {
     const ing: any = resolveIng(ri);
-    const name = ing?.name || `Ingredient #${ri.ingredient_id}`;
+    const name = ing?.name || (t('recipes:recipesTab.ingredientFallback', 'Ingredient #{{id}}', { id: ri.ingredient_id }) as string);
     const hasQty = ri.quantity !== null && ri.quantity !== undefined && ri.quantity !== '';
     return [name, hasQty ? formatQuantity(ri.quantity) : '', ri.unit || ing?.unit || ''].filter(Boolean).join(' ');
   };
@@ -1837,7 +1837,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           {tablePg.pageItems.map((recipe: any) => {
             const lines = recipe.recipeIngredients || [];
             const allText = lines.map(ingredientText).join('; ');
-            const firstNames = lines.slice(0, 3).map((ri: any) => resolveIng(ri)?.name || `Ingredient #${ri.ingredient_id}`).join(', ');
+            const firstNames = lines.slice(0, 3).map((ri: any) => resolveIng(ri)?.name || (t('recipes:recipesTab.ingredientFallback', 'Ingredient #{{id}}', { id: ri.ingredient_id }) as string)).join(', ');
             const yieldText = [recipe.yield_amount != null && recipe.yield_amount !== '' ? formatQuantity(recipe.yield_amount) : '', recipe.yield_unit || ''].filter(Boolean).join(' ');
             const readOnly = isItemReadOnly(recipe);
             return (
@@ -1871,7 +1871,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   <div>{yieldText || '—'}</div>
                   {(recipe.prep_time || recipe.cook_time) ? (
                     <div style={{ fontSize: 12, color: '#6B7280' }} title={t('recipes:recipeTable.prepCook', 'Prep / Cook') as string}>
-                      {`${recipe.prep_time || 0} / ${recipe.cook_time || 0} min`}
+                      {t('recipes:recipesTab.prepCookMinutes', '{{prep}} / {{cook}} min', { prep: recipe.prep_time || 0, cook: recipe.cook_time || 0 })}
                     </div>
                   ) : null}
                 </DataTableCell>
@@ -1917,13 +1917,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         </tbody>
       </DataTable>
       <Pagination page={tablePg.page} totalPages={tablePg.totalPages} total={tablePg.total}
-        pageSize={tablePg.pageSize} onChange={tablePg.setPage} label="recipes" />
+        pageSize={tablePg.pageSize} onChange={tablePg.setPage} label={t('recipes:recipesTab.paginationLabel', 'recipes') as string} />
     </DataTableContainer>
   );
 
   // Get unique categories from recipeCategories list
   const filterCategories = [
-    { id: 'all', name: 'All Categories' },
+    { id: 'all', name: t('recipes:recipesTab.allCategories', 'All Categories') as string },
     ...recipeCategories.map(c => ({ id: c.id.toString(), name: c.name }))
   ];
 
@@ -1937,7 +1937,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       <ListControlsBar>
         <SearchInput
           type="text"
-          placeholder="Search recipes..."
+          placeholder={t('recipes:recipesTab.searchPlaceholder', 'Search recipes...') as string}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -1956,17 +1956,17 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         <div data-controls-trailing style={{ flexWrap: 'wrap', flexShrink: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', background: '#F1F4F8', borderRadius: '6px', padding: '2px' }}>
             <button onClick={() => chooseView('compact')} style={{ padding: '5px 14px', minHeight: '32px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
-              Compact
+              {t('recipes:recipesTab.viewCompact', 'Compact')}
             </button>
             <button onClick={() => chooseView('image')} style={{ padding: '5px 14px', minHeight: '32px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
-              Image
+              {t('recipes:recipesTab.viewImage', 'Image')}
             </button>
             <button onClick={() => chooseView('table')} style={{ padding: '5px 14px', minHeight: '32px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'table' ? 'white' : 'transparent', color: viewMode === 'table' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
               {t('recipes:recipeTable.viewTable', 'Table')}
             </button>
           </div>
           <ThemedButton variant="outline" onClick={handleDownloadCSV}>
-            Download CSV
+            {t('recipes:recipesTab.downloadCsv', 'Download CSV')}
           </ThemedButton>
           {importApiBase && (
             <ThemedButton variant="outline" onClick={() => setShowImport(true)}>
@@ -1974,29 +1974,29 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </ThemedButton>
           )}
           <ThemedButton variant="primary" onClick={() => handleOpenModal(null)}>
-            New Recipe
+            {t('recipes:recipesTab.newRecipe', 'New Recipe')}
           </ThemedButton>
         </div>
       </ListControlsBar>
 
       {loading ? (
         <EmptyState>
-          <EmptyTitle>{'Loading...'}</EmptyTitle>
+          <EmptyTitle>{t('recipes:recipesTab.loading', 'Loading...')}</EmptyTitle>
         </EmptyState>
       ) : filteredRecipes.length === 0 ? (
         <EmptyState>
-          <EmptyTitle>{'No recipes found'}</EmptyTitle>
+          <EmptyTitle>{t('recipes:recipesTab.noRecipesFound', 'No recipes found')}</EmptyTitle>
           <EmptyDescription>
             {searchTerm || selectedCategory !== 'all'
-              ? 'Try adjusting your filters'
-              : 'Create your first recipe to get started'}
+              ? t('recipes:recipesTab.tryAdjustingFilters', 'Try adjusting your filters')
+              : t('recipes:recipesTab.createFirstHint', 'Create your first recipe to get started')}
           </EmptyDescription>
           {!searchTerm && selectedCategory === 'all' && (
             <ThemedButton
               variant="primary"
               onClick={() => handleOpenModal(null)}
             >
-              Create First Recipe
+              {t('recipes:recipesTab.createFirstRecipe', 'Create First Recipe')}
             </ThemedButton>
           )}
         </EmptyState>
@@ -2052,7 +2052,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                     )}
                   </RecipeName>
                   <RecipeCategoryBadge>
-                    {recipe.recipeCategory?.emoji} {recipe.recipeCategory?.name || recipe.category || 'Uncategorized'}
+                    {recipe.recipeCategory?.emoji} {recipe.recipeCategory?.name || recipe.category || t('recipes:recipesTab.uncategorized', 'Uncategorized')}
                   </RecipeCategoryBadge>
                 </RecipeInfo>
               </RecipeHeader>
@@ -2065,13 +2065,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 {isRestaurantAdmin && recipe.owner_type === 'brand' && recipe.restaurant_ingredient_cost !== null ? (
                   <>
                     <CostItem>
-                      <CostLabel style={{ color: '#4B5563' }}>{'Brand Cost'}</CostLabel>
+                      <CostLabel style={{ color: '#4B5563' }}>{t('recipes:recipesTab.cardBrandCost', 'Brand Cost')}</CostLabel>
                       <CostValue style={{ color: '#4B5563', textDecoration: 'line-through', fontSize: '13px' }}>
                         {formatCurrency(recipeBrandCost(recipe), selectedCurrency)}
                       </CostValue>
                     </CostItem>
                     <CostItem>
-                      <CostLabel style={{ color: '#2563EB' }}>{'My Cost'}</CostLabel>
+                      <CostLabel style={{ color: '#2563EB' }}>{t('recipes:recipesTab.cardMyCost', 'My Cost')}</CostLabel>
                       <CostValue style={{ color: '#2563EB', fontWeight: 700 }}>
                         {formatCurrency(recipeTotalCost(recipe), selectedCurrency)}
                       </CostValue>
@@ -2079,7 +2079,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   </>
                 ) : (
                   <CostItem>
-                    <CostLabel>{'Cost'}</CostLabel>
+                    <CostLabel>{t('recipes:recipesTab.costLabel', 'Cost')}</CostLabel>
                     <CostValue>
                       {formatCurrency(recipeTotalCost(recipe), selectedCurrency)}
                     </CostValue>
@@ -2089,7 +2089,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                     예전엔 전부 «Suggested RM 0.00» 으로 보여 값을 안 넣은 것처럼 읽혔다(2026-09-18 Irene). */}
                 {!(recipe as any).is_prep_ingredient && (
                   <CostItem>
-                    <CostLabel>{'Suggested'}</CostLabel>
+                    <CostLabel>{t('recipes:recipesTab.suggestedLabel', 'Suggested')}</CostLabel>
                     <CostValue>{formatCurrency(Number(recipe.suggested_price || 0), selectedCurrency)}</CostValue>
                   </CostItem>
                 )}
@@ -2100,14 +2100,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                 <RecipeMetaInfo>
                   {recipe.prep_time && (
                     <MetaItem>
-                      <span>Prep:</span>
-                      <strong>{recipe.prep_time} min</strong>
+                      <span>{t('recipes:recipesTab.prepLabel', 'Prep:')}</span>
+                      <strong>{t('recipes:recipesTab.minutesValue', '{{value}} min', { value: recipe.prep_time })}</strong>
                     </MetaItem>
                   )}
                   {recipe.cook_time && (
                     <MetaItem>
-                      <span>Cook:</span>
-                      <strong>{recipe.cook_time} min</strong>
+                      <span>{t('recipes:recipesTab.cookLabel', 'Cook:')}</span>
+                      <strong>{t('recipes:recipesTab.minutesValue', '{{value}} min', { value: recipe.cook_time })}</strong>
                     </MetaItem>
                   )}
                 </RecipeMetaInfo>
@@ -2123,7 +2123,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               <CardSpacer />
               <RecipeIngredients>
                 <IngredientsCount>
-                  {recipe.recipeIngredients?.length || 0} ingredients
+                  {t('recipes:recipesTab.ingredientsCount', '{{count}} ingredients', { count: recipe.recipeIngredients?.length || 0 })}
                 </IngredientsCount>
                 {/* 재료 줄이 없으면 원가가 0이고 재고도 안 깎인다 — 그 사실을 화면이 말해 준다 */}
                 {(!recipe.recipeIngredients || recipe.recipeIngredients.length === 0) && (
@@ -2135,12 +2135,12 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   <IngredientTags>
                     {recipe.recipeIngredients.slice(0, 5).map((ri, idx) => (
                       <IngredientTag key={idx}>
-                        {ri.ingredient?.name || `Ingredient #${ri.ingredient_id}`}
+                        {ri.ingredient?.name || t('recipes:recipesTab.ingredientFallback', 'Ingredient #{{id}}', { id: ri.ingredient_id })}
                       </IngredientTag>
                     ))}
                     {recipe.recipeIngredients.length > 5 && (
                       <IngredientTag style={{ background: '#E0E7FF', color: '#4F46E5' }}>
-                        +{recipe.recipeIngredients.length - 5} more
+                        {t('recipes:recipesTab.moreCount', '+{{count}} more', { count: recipe.recipeIngredients.length - 5 })}
                       </IngredientTag>
                     )}
                   </IngredientTags>
@@ -2162,7 +2162,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   variant="secondary"
                   onClick={() => handleOpenRecipeModal(recipe)}
                 >
-                  Recipe
+                  {t('recipes:recipeTable.viewRecipe', 'Recipe')}
                 </ActionButton>
                 {!isItemReadOnly(recipe) && (
                   <>
@@ -2170,7 +2170,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       variant="primary"
                       onClick={() => handleOpenModal(recipe, false)}
                     >
-                      Edit
+                      {t('recipes:recipeTable.edit', 'Edit')}
                     </ActionButton>
                     {recipe.owner_type === 'brand' && (
                       <ActionButton
@@ -2178,14 +2178,14 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                         onClick={() => setCopyTarget({ recipeId: recipe.id, recipeName: recipe.name })}
                         title={t('recipes:recipesTab.copyToBrand', 'Copy to another brand') as string}
                       >
-                        Copy
+                        {t('recipes:recipesTab.copyShort', 'Copy')}
                       </ActionButton>
                     )}
                     <ActionButton
                       variant="danger"
                       onClick={() => handleDeleteClick(recipe)}
                     >
-                      Delete
+                      {t('recipes:recipeTable.delete', 'Delete')}
                     </ActionButton>
                   </>
                 )}
@@ -2196,7 +2196,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       )}
       {!loading && viewMode !== 'table' && (
         <Pagination page={cardPg.page} totalPages={cardPg.totalPages} total={cardPg.total}
-          pageSize={cardPg.pageSize} onChange={cardPg.setPage} label="recipes" />
+          pageSize={cardPg.pageSize} onChange={cardPg.setPage} label={t('recipes:recipesTab.paginationLabel', 'recipes') as string} />
       )}
 
       {importApiBase && (
@@ -2215,7 +2215,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       <CommonModal
         isOpen={showModal}
         onClose={handleCloseModal}
-        title={isViewMode ? 'Recipe Details' : (selectedRecipe ? 'Edit Recipe' : 'New Recipe')}
+        title={(isViewMode ? t('recipes:recipesTab.recipeDetails', 'Recipe Details') : (selectedRecipe ? t('recipes:recipesTab.editRecipe', 'Edit Recipe') : t('recipes:recipesTab.newRecipe', 'New Recipe'))) as string}
         size={isViewMode ? 'large' : 'medium'}
         // 버튼은 공용 ModalFooter(flex-shrink:0)에 둔다 — 본문에 두면 내용이 길 때 같이
         // 스크롤돼 버튼을 찾으러 내려가야 한다(2026-09-03 Irene 지적). 편집 모드의 제출
@@ -2223,22 +2223,22 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         footer={isViewMode ? (
           <>
             <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
-              Close
+              {t('recipes:recipesTab.close', 'Close')}
             </ModalButton>
             {!isItemReadOnly(selectedRecipe) && (
               <ModalButton type="button" variant="primary" onClick={() => setIsViewMode(false)}>
-                Edit
+                {t('recipes:recipeTable.edit', 'Edit')}
               </ModalButton>
             )}
           </>
         ) : (
           <>
             <ModalButton type="button" variant="secondary" onClick={handleCloseModal}>
-              Cancel
+              {t('recipes:common.cancel', 'Cancel')}
             </ModalButton>
             {/* 선택기 목록(deferred)이 오기 전엔 저장 잠금 — 원가 0 덮어쓰기 길 차단(fetchAllData 주석) */}
             <ModalButton type="submit" form="recipe-edit-form" variant="primary" disabled={!pickerReady}>
-              {selectedRecipe ? 'Update Recipe' : 'Create Recipe'}
+              {selectedRecipe ? t('recipes:recipesTab.updateRecipe', 'Update Recipe') : t('recipes:recipesTab.createRecipe', 'Create Recipe')}
             </ModalButton>
           </>
         )}
@@ -2258,7 +2258,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               <ViewTitleSection>
                 <ViewTitle>{formData.name}</ViewTitle>
                 <ViewCategoryBadge>
-                  {selectedRecipe.recipeCategory?.emoji} {selectedRecipe.recipeCategory?.name || formData.category || 'Uncategorized'}
+                  {selectedRecipe.recipeCategory?.emoji} {selectedRecipe.recipeCategory?.name || formData.category || t('recipes:recipesTab.uncategorized', 'Uncategorized')}
                 </ViewCategoryBadge>
                 {formData.description && (
                   <ViewDescription>{formData.description}</ViewDescription>
@@ -2268,18 +2268,18 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
             {/* Cost & Time Info */}
             <ViewSection>
-              <ViewSectionTitle>{'Cost & Time'}</ViewSectionTitle>
+              <ViewSectionTitle>{t('recipes:recipesTab.costTime', 'Cost & Time')}</ViewSectionTitle>
               <ViewGrid>
                 {isRestaurantAdmin && selectedRecipe.owner_type === 'brand' && selectedRecipe.restaurant_ingredient_cost !== null ? (
                   <>
                     <ViewGridItem>
-                      <ViewGridLabel style={{ color: '#4B5563' }}>{'Brand Cost'}</ViewGridLabel>
+                      <ViewGridLabel style={{ color: '#4B5563' }}>{t('recipes:recipesTab.cardBrandCost', 'Brand Cost')}</ViewGridLabel>
                       <ViewGridValue style={{ color: '#4B5563', textDecoration: 'line-through', fontSize: '14px' }}>
                         {formatCurrency(recipeBrandCost(selectedRecipe), selectedCurrency)}
                       </ViewGridValue>
                     </ViewGridItem>
                     <ViewGridItem>
-                      <ViewGridLabel style={{ color: '#2563EB' }}>{'My Cost'}</ViewGridLabel>
+                      <ViewGridLabel style={{ color: '#2563EB' }}>{t('recipes:recipesTab.cardMyCost', 'My Cost')}</ViewGridLabel>
                       <ViewGridValue style={{ color: '#2563EB', fontWeight: 700 }}>
                         {formatCurrency(recipeTotalCost(selectedRecipe), selectedCurrency)}
                       </ViewGridValue>
@@ -2287,27 +2287,27 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   </>
                 ) : (
                   <ViewGridItem>
-                    <ViewGridLabel>{'Ingredient Cost'}</ViewGridLabel>
+                    <ViewGridLabel>{t('recipes:recipesTab.ingredientCost', 'Ingredient Cost')}</ViewGridLabel>
                     <ViewGridValue>{formatCurrency(recipeTotalCost(selectedRecipe), selectedCurrency)}</ViewGridValue>
                   </ViewGridItem>
                 )}
                 {/* 준비 레시피는 파는 물건이 아니다 — 카드와 같은 규칙으로 권장가를 숨긴다 */}
                 {!formData.is_prep_ingredient && (
                   <ViewGridItem>
-                    <ViewGridLabel>{'Suggested Price'}</ViewGridLabel>
+                    <ViewGridLabel>{t('recipes:recipesTab.suggestedPrice', 'Suggested Price')}</ViewGridLabel>
                     <ViewGridValue>{formatCurrency(Number(formData.suggested_price || 0), selectedCurrency)}</ViewGridValue>
                   </ViewGridItem>
                 )}
                 {formData.prep_time && (
                   <ViewGridItem>
-                    <ViewGridLabel>{'Prep Time'}</ViewGridLabel>
-                    <ViewGridValue>{formData.prep_time} min</ViewGridValue>
+                    <ViewGridLabel>{t('recipes:recipesTab.prepTime', 'Prep Time')}</ViewGridLabel>
+                    <ViewGridValue>{t('recipes:recipesTab.minutesValue', '{{value}} min', { value: formData.prep_time })}</ViewGridValue>
                   </ViewGridItem>
                 )}
                 {formData.cook_time && (
                   <ViewGridItem>
-                    <ViewGridLabel>{'Cook Time'}</ViewGridLabel>
-                    <ViewGridValue>{formData.cook_time} min</ViewGridValue>
+                    <ViewGridLabel>{t('recipes:recipesTab.cookTime', 'Cook Time')}</ViewGridLabel>
+                    <ViewGridValue>{t('recipes:recipesTab.minutesValue', '{{value}} min', { value: formData.cook_time })}</ViewGridValue>
                   </ViewGridItem>
                 )}
               </ViewGrid>
@@ -2316,15 +2316,15 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             {/* Ingredients */}
             {recipeIngredients.length > 0 && (
               <ViewSection>
-                <ViewSectionTitle>Ingredients ({recipeIngredients.length})</ViewSectionTitle>
+                <ViewSectionTitle>{t('recipes:recipesTab.ingredientsWithCount', 'Ingredients ({{count}})', { count: recipeIngredients.length })}</ViewSectionTitle>
                 <ViewIngredientTable>
                   <thead>
                     <tr>
-                      <th>{'Ingredient'}</th>
-                      <th>{'Quantity'}</th>
-                      <th>{'Unit Cost'}</th>
-                      {isBrandRecipeView && <th>{'My Cost'}</th>}
-                      <th>{'Subtotal'}</th>
+                      <th>{t('recipes:recipesTab.ingredient', 'Ingredient')}</th>
+                      <th>{t('recipes:recipesTab.quantity', 'Quantity')}</th>
+                      <th>{t('recipes:recipesTab.unitCost', 'Unit Cost')}</th>
+                      {isBrandRecipeView && <th>{t('recipes:recipesTab.cardMyCost', 'My Cost')}</th>}
+                      <th>{t('recipes:recipesTab.subtotal', 'Subtotal')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2339,7 +2339,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       const hasOverride = ingredient?.restaurant_cost !== null && ingredient?.restaurant_cost !== undefined;
                       return (
                         <tr key={idx}>
-                          <td><strong>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</strong></td>
+                          <td><strong>{ingredient?.name || t('recipes:recipesTab.ingredientFallback', 'Ingredient #{{id}}', { id: ri.ingredient_id })}</strong></td>
                           <td>{formatQuantity(ri.quantity)} {ri.unit}</td>
                           <td style={isBrandRecipeView && hasOverride ? { color: '#4B5563', textDecoration: 'line-through' } : {}}>
                             {getCurrencySymbol(selectedCurrency)} {brandCostPerUnit.toFixed(2)}/{ingredient?.unit}
@@ -2359,7 +2359,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                   </tbody>
                 </ViewIngredientTable>
                 <ViewTotalRow>
-                  <span>{'Total Ingredient Cost'}</span>
+                  <span>{t('recipes:recipesTab.totalIngredientCost', 'Total Ingredient Cost')}</span>
                   <span>{formatCurrency(calculateTotalCost(), selectedCurrency)}</span>
                 </ViewTotalRow>
               </ViewSection>
@@ -2368,7 +2368,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             {/* Recipe Summary */}
             {(formData.instructions_summary || formData.instructions) && (
               <ViewSection>
-                <ViewSectionTitle>{'Recipe Summary'}</ViewSectionTitle>
+                <ViewSectionTitle>{t('recipes:recipesTab.recipeSummary', 'Recipe Summary')}</ViewSectionTitle>
                 <ViewInstructions>
                   {formData.instructions_summary || formData.instructions}
                 </ViewInstructions>
@@ -2378,7 +2378,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             {/* Detailed Instructions */}
             {formData.instructions_detail && (
               <ViewSection>
-                <ViewSectionTitle>{'Detailed Instructions'}</ViewSectionTitle>
+                <ViewSectionTitle>{t('recipes:recipesTab.detailedInstructions', 'Detailed Instructions')}</ViewSectionTitle>
                 <ViewInstructions>{formData.instructions_detail}</ViewInstructions>
               </ViewSection>
             )}
@@ -2386,7 +2386,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             {/* Connected Menus */}
             {selectedRecipe && linkedMenus[selectedRecipe.id] && linkedMenus[selectedRecipe.id].length > 0 && (
               <ViewSection>
-                <ViewSectionTitle>Connected Menus ({linkedMenus[selectedRecipe.id].length})</ViewSectionTitle>
+                <ViewSectionTitle>{t('recipes:recipesTab.connectedMenusWithCount', 'Connected Menus ({{count}})', { count: linkedMenus[selectedRecipe.id].length })}</ViewSectionTitle>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {linkedMenus[selectedRecipe.id].map((name, i) => (
                     <span key={i} style={{ fontSize: '13px', background: '#ECFDF5', color: '#059669', padding: '4px 12px', borderRadius: '6px', fontWeight: 500 }}>
@@ -2403,23 +2403,23 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
           <form id="recipe-edit-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Basic Information */}
             <UIFormGroup>
-              <FormLabel>Recipe Name *</FormLabel>
+              <FormLabel>{t('recipes:recipesTab.recipeNameLabel', 'Recipe Name *')}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Nasi Lemak Special"
+                placeholder={t('recipes:recipesTab.namePlaceholder', 'e.g., Nasi Lemak Special') as string}
                 required
               />
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>{'Category'}</FormLabel>
+              <FormLabel>{t('recipes:recipesTab.category', 'Category')}</FormLabel>
               <FormSelect
                 value={formData.recipe_category_id}
                 onChange={(e) => setFormData({ ...formData, recipe_category_id: e.target.value })}
               >
-                <option value="">{'Select category...'}</option>
+                <option value="">{t('recipes:recipesTab.selectCategory', 'Select category...')}</option>
                 {recipeCategories.map(cat => (
                   <option key={cat.id} value={cat.id}>
                     {cat.emoji} {cat.name}
@@ -2429,22 +2429,22 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>{'Recipe Image'}</FormLabel>
+              <FormLabel>{t('recipes:recipesTab.recipeImage', 'Recipe Image')}</FormLabel>
               <ImageUploadDropzone
                 value={formData.image}
                 onChange={(value) => setFormData({ ...formData, image: value })}
-                label="Drop recipe image here or click to upload"
+                label={t('recipes:recipesTab.imageDropLabel', 'Drop recipe image here or click to upload') as string}
               />
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>{'Tags (Press Enter to add)'}</FormLabel>
+              <FormLabel>{t('recipes:recipesTab.tagsPressEnterToAdd', 'Tags (Press Enter to add)')}</FormLabel>
               <TagInput
                 type="text"
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
-                placeholder="e.g., Main Dish, Spicy, Popular"
+                placeholder={t('recipes:recipesTab.tagsPlaceholder', 'e.g., Main Dish, Spicy, Popular') as string}
               />
               {tags.length > 0 && (
                 <TagsContainer>
@@ -2461,7 +2461,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>Suggested Price ({getCurrencySymbol(selectedCurrency)})</FormLabel>
+              <FormLabel>{t('recipes:recipesTab.suggestedPriceWithCurrency', 'Suggested Price ({{symbol}})', { symbol: getCurrencySymbol(selectedCurrency) })}</FormLabel>
               <FormInput
                 type="number"
                 step="0.01"
@@ -2472,55 +2472,52 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>{'Description'}</FormLabel>
+              <FormLabel>{t('recipes:recipesTab.description', 'Description')}</FormLabel>
               <FormTextArea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Brief description of the recipe..."
+                placeholder={t('recipes:recipesTab.descriptionPlaceholder', 'Brief description of the recipe...') as string}
               />
             </UIFormGroup>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <UIFormGroup>
-                <FormLabel>{'Prep Time (minutes)'}</FormLabel>
+                <FormLabel>{t('recipes:recipesTab.prepTimeMinutes', 'Prep Time (minutes)')}</FormLabel>
                 <FormInput
                   type="number"
                   value={formData.prep_time}
                   onChange={(e) => setFormData({ ...formData, prep_time: e.target.value })}
-                  placeholder="e.g., 15"
+                  placeholder={t('recipes:recipesTab.prepPlaceholder', 'e.g., 15') as string}
                 />
               </UIFormGroup>
 
               <UIFormGroup>
-                <FormLabel>{'Cook Time (minutes)'}</FormLabel>
+                <FormLabel>{t('recipes:recipesTab.cookTimeMinutes', 'Cook Time (minutes)')}</FormLabel>
                 <FormInput
                   type="number"
                   value={formData.cook_time}
                   onChange={(e) => setFormData({ ...formData, cook_time: e.target.value })}
-                  placeholder="e.g., 30"
+                  placeholder={t('recipes:recipesTab.cookPlaceholder', 'e.g., 30') as string}
                 />
               </UIFormGroup>
             </div>
 
             <UIFormGroup>
-              <FormLabel>{'Recipe Summary'}</FormLabel>
+              <FormLabel>{t('recipes:recipesTab.recipeSummary', 'Recipe Summary')}</FormLabel>
               <FormTextArea
                 value={formData.instructions_summary}
                 onChange={(e) => setFormData({ ...formData, instructions_summary: e.target.value })}
-                placeholder="Brief summary for list display (e.g., Pan-fried chicken with garlic sauce)"
+                placeholder={t('recipes:recipesTab.summaryPlaceholder', 'Brief summary for list display (e.g., Pan-fried chicken with garlic sauce)') as string}
                 rows={2}
               />
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>{'Detailed Instructions'}</FormLabel>
+              <FormLabel>{t('recipes:recipesTab.detailedInstructions', 'Detailed Instructions')}</FormLabel>
               <FormTextArea
                 value={formData.instructions_detail}
                 onChange={(e) => setFormData({ ...formData, instructions_detail: e.target.value })}
-                placeholder="Step-by-step cooking instructions...
-1. Prepare ingredients...
-2. Heat the pan...
-3. ..."
+                placeholder={t('recipes:recipesTab.detailPlaceholder', 'Step-by-step cooking instructions...\n1. Prepare ingredients...\n2. Heat the pan...\n3. ...') as string}
                 rows={8}
               />
             </UIFormGroup>
@@ -2574,7 +2571,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                     min="0.01"
                     value={formData.yield_amount}
                     onChange={(e) => setFormData({ ...formData, yield_amount: e.target.value })}
-                    placeholder="e.g., 10"
+                    placeholder={t('recipes:recipesTab.yieldPlaceholder', 'e.g., 10') as string}
                     required
                   />
                 </UIFormGroup>
@@ -2601,12 +2598,12 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
 
             {/* Ingredients Section */}
             <div>
-              <SectionTitle>{'Ingredients'}</SectionTitle>
+              <SectionTitle>{t('recipes:recipesTab.ingredients', 'Ingredients')}</SectionTitle>
               {recipeIngredients.length > 0 && (
                 <IngredientHeaderRow>
-                  <span>{'Ingredient'}</span>
-                  <span>{'Quantity'}</span>
-                  <span>{'Unit'}</span>
+                  <span>{t('recipes:recipesTab.ingredient', 'Ingredient')}</span>
+                  <span>{t('recipes:recipesTab.quantity', 'Quantity')}</span>
+                  <span>{t('recipes:recipesTab.unit', 'Unit')}</span>
                   <span>{t('recipes:recipesTab.cost')}</span>
                   <span></span>
                 </IngredientHeaderRow>
@@ -2636,7 +2633,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
                       })}
                       value={ri.ingredient_id || null}
                       onChange={(value) => updateIngredient(index, 'ingredient_id', value as number)}
-                      placeholder="Search ingredient..."
+                      placeholder={t('recipes:recipesTab.searchIngredient', 'Search ingredient...') as string}
                     />
                     <FormInput
                       type="number"
@@ -2672,17 +2669,17 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
               </IngredientsList>
 
               <AddButton type="button" onClick={addIngredient}>
-                Add Ingredient
+                {t('recipes:recipesTab.addIngredient', 'Add Ingredient')}
               </AddButton>
 
               {recipeIngredients.length > 0 && (
                 <>
                   <CostSummary>
-                    <CostSummaryLabel>{'Total Ingredient Cost'}</CostSummaryLabel>
+                    <CostSummaryLabel>{t('recipes:recipesTab.totalIngredientCost', 'Total Ingredient Cost')}</CostSummaryLabel>
                     <CostSummaryValue>{formatCurrency(calculateTotalCost(), selectedCurrency)}</CostSummaryValue>
                   </CostSummary>
                   <CostSummary style={{ marginTop: '8px' }}>
-                    <CostSummaryLabel>Cost per {formData.yield_unit}</CostSummaryLabel>
+                    <CostSummaryLabel>{t('recipes:recipesTab.costPerUnit', 'Cost per {{unit}}', { unit: formData.yield_unit })}</CostSummaryLabel>
                     <CostSummaryValue>
                       {formatCurrency(
                         calculateCostPerUnit(
@@ -2710,12 +2707,12 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       {/* Delete Confirmation Modal */}
       <ConfirmModal
         isOpen={deleteConfirm.isOpen}
-        title="Delete Recipe"
-        message={`Are you sure you want to delete "${deleteConfirm.recipeName}"? This action cannot be undone.`}
+        title={t('recipes:recipesTab.deleteTitle', 'Delete Recipe') as string}
+        message={t('recipes:recipesTab.deleteMessage', 'Are you sure you want to delete "{{name}}"? This action cannot be undone.', { name: deleteConfirm.recipeName }) as string}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
-        confirmText="Delete"
-        cancelText="Cancel"
+        confirmText={t('recipes:common.delete', 'Delete') as string}
+        cancelText={t('recipes:common.cancel', 'Cancel') as string}
         type="danger"
       />
 
@@ -2730,7 +2727,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         <CommonModal
           isOpen={true}
           onClose={() => { setCopyTarget(null); setCopyToBrandId(null); }}
-          title={t('recipes:recipesTab.copyRecipeTitle', { name: copyTarget.recipeName, defaultValue: `Copy "${copyTarget.recipeName}" to another brand` }) as string}
+          title={t('recipes:recipesTab.copyRecipeTitle', 'Copy "{{name}}" to another brand', { name: copyTarget.recipeName }) as string}
           size="small"
           footer={
             <>
@@ -2768,7 +2765,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
       <CommonModal
         isOpen={showRecipeModal && !!recipeModalData}
         onClose={handleCloseRecipeModal}
-        title={recipeModalData?.name || 'Recipe'}
+        title={recipeModalData?.name || (t('recipes:recipeTable.viewRecipe', 'Recipe') as string)}
         size="medium"
       >
         {/* Time Information */}
@@ -2777,15 +2774,15 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
             {recipeModalData?.prep_time && (
               <RecipeTimeItem>
                 <RecipeTimeIcon>⏱</RecipeTimeIcon>
-                <RecipeTimeLabel>Prep:</RecipeTimeLabel>
-                <RecipeTimeValue>{recipeModalData.prep_time} min</RecipeTimeValue>
+                <RecipeTimeLabel>{t('recipes:recipesTab.prepLabel', 'Prep:')}</RecipeTimeLabel>
+                <RecipeTimeValue>{t('recipes:recipesTab.minutesValue', '{{value}} min', { value: recipeModalData.prep_time })}</RecipeTimeValue>
               </RecipeTimeItem>
             )}
             {recipeModalData?.cook_time && (
               <RecipeTimeItem>
                 <RecipeTimeIcon>🔥</RecipeTimeIcon>
-                <RecipeTimeLabel>Cook:</RecipeTimeLabel>
-                <RecipeTimeValue>{recipeModalData.cook_time} min</RecipeTimeValue>
+                <RecipeTimeLabel>{t('recipes:recipesTab.cookLabel', 'Cook:')}</RecipeTimeLabel>
+                <RecipeTimeValue>{t('recipes:recipesTab.minutesValue', '{{value}} min', { value: recipeModalData.cook_time })}</RecipeTimeValue>
               </RecipeTimeItem>
             )}
           </RecipeTimeRow>
@@ -2794,13 +2791,13 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         {/* Ingredients with Quantities */}
         {recipeModalData?.recipeIngredients && recipeModalData.recipeIngredients.length > 0 && (
           <RecipeSection>
-            <RecipeSectionTitle>{'Ingredients'}</RecipeSectionTitle>
+            <RecipeSectionTitle>{t('recipes:recipesTab.ingredients', 'Ingredients')}</RecipeSectionTitle>
             <RecipeIngredientList>
               {recipeModalData.recipeIngredients.map((ri: any, idx) => {
                 const ingredient: any = resolveIng(ri);
                 return (
                   <RecipeIngredientItem key={idx}>
-                    <RecipeIngredientName>{ingredient?.name || `Ingredient #${ri.ingredient_id}`}</RecipeIngredientName>
+                    <RecipeIngredientName>{ingredient?.name || t('recipes:recipesTab.ingredientFallback', 'Ingredient #{{id}}', { id: ri.ingredient_id })}</RecipeIngredientName>
                     <RecipeIngredientQty>{formatQuantity(ri.quantity)} {ri.unit}</RecipeIngredientQty>
                   </RecipeIngredientItem>
                 );
@@ -2812,7 +2809,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         {/* Recipe Summary */}
         {(recipeModalData?.instructions_summary || recipeModalData?.instructions) && (
           <RecipeSection>
-            <RecipeSectionTitle>{'Summary'}</RecipeSectionTitle>
+            <RecipeSectionTitle>{t('recipes:recipesTab.summary', 'Summary')}</RecipeSectionTitle>
             <RecipeSummaryText>
               {recipeModalData?.instructions_summary || recipeModalData?.instructions}
             </RecipeSummaryText>
@@ -2822,7 +2819,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         {/* Detailed Instructions */}
         {recipeModalData?.instructions_detail && (
           <RecipeSection>
-            <RecipeSectionTitle>{'Detailed Instructions'}</RecipeSectionTitle>
+            <RecipeSectionTitle>{t('recipes:recipesTab.detailedInstructions', 'Detailed Instructions')}</RecipeSectionTitle>
             <RecipeDetailText>
               {recipeModalData.instructions_detail}
             </RecipeDetailText>
@@ -2832,7 +2829,7 @@ const RecipesTab: React.FC<RecipesTabProps> = ({ brandId, restaurantId: propsRes
         {/* Connected Menus */}
         {recipeModalData && linkedMenus[recipeModalData.id] && linkedMenus[recipeModalData.id].length > 0 && (
           <RecipeSection>
-            <RecipeSectionTitle>{'Connected Menus'}</RecipeSectionTitle>
+            <RecipeSectionTitle>{t('recipes:recipesTab.connectedMenus', 'Connected Menus')}</RecipeSectionTitle>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {linkedMenus[recipeModalData.id].map((name, i) => (
                 <span key={i} style={{ fontSize: '13px', background: '#ECFDF5', color: '#059669', padding: '4px 12px', borderRadius: '6px', fontWeight: 500 }}>

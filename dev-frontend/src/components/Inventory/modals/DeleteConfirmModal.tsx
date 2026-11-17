@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Modal, ModalButton } from '../../UI/Modal';
 import { DeleteTarget } from '../types';
 
@@ -9,19 +10,21 @@ interface Props {
   onConfirm: () => void;
 }
 
-const DeleteConfirmModal: React.FC<Props> = ({ isOpen, onClose, target, onConfirm }) => (
+const DeleteConfirmModal: React.FC<Props> = ({ isOpen, onClose, target, onConfirm }) => {
+  const { t } = useTranslation('inventory');
+  return (
   <Modal
     isOpen={isOpen}
     onClose={onClose}
-    title="Unlink from Inventory"
+    title={t('inventory:deleteModal.title', 'Unlink from Inventory') as string}
     size="small"
     footer={
       <>
         <ModalButton variant="secondary" onClick={onClose}>
-          Cancel
+          {t('inventory:deleteModal.cancel', 'Cancel')}
         </ModalButton>
         <ModalButton variant="danger" onClick={onConfirm}>
-          {target?.type === 'ingredient' ? 'Unlink' : 'Delete'}
+          {target?.type === 'ingredient' ? t('inventory:deleteModal.unlink', 'Unlink') : t('inventory:deleteModal.delete', 'Delete')}
         </ModalButton>
       </>
     }
@@ -33,12 +36,13 @@ const DeleteConfirmModal: React.FC<Props> = ({ isOpen, onClose, target, onConfir
         </div>
         <div style={{ fontSize: '14px', color: '#4B5563' }}>
           {target.type === 'ingredient'
-            ? 'This will unlink the ingredient from inventory tracking. The ingredient itself will not be deleted from the Recipes page.'
-            : 'This will permanently delete this general stock item.'}
+            ? t('inventory:deleteModal.unlinkHint', 'This will unlink the ingredient from inventory tracking. The ingredient itself will not be deleted from the Recipes page.')
+            : t('inventory:deleteModal.deleteHint', 'This will permanently delete this general stock item.')}
         </div>
       </div>
     )}
   </Modal>
-);
+  );
+};
 
 export default DeleteConfirmModal;

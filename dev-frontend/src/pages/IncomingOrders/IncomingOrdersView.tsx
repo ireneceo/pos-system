@@ -425,14 +425,15 @@ const TimeAgoText = styled.div`
   color: #6B7280;
 `;
 
-function timeAgo(iso: string | null | undefined): string {
+type TimeAgoT = (key: string, fallback?: string, vars?: Record<string, string | number>) => string;
+function timeAgo(iso: string | null | undefined, tf: TimeAgoT): string {
   if (!iso) return '';
   const d = new Date(iso); if (isNaN(d.getTime())) return '';
   const diff = (Date.now() - d.getTime()) / 1000;
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+  if (diff < 60) return tf('orders.timeAgo.justNow', 'just now');
+  if (diff < 3600) return tf('orders.timeAgo.minutes', '{{n}}m ago', { n: Math.floor(diff / 60) });
+  if (diff < 86400) return tf('orders.timeAgo.hours', '{{n}}h ago', { n: Math.floor(diff / 3600) });
+  return tf('orders.timeAgo.days', '{{n}}d ago', { n: Math.floor(diff / 86400) });
 }
 
 // 단계별 색상 — Restaurant LiveOrders / Reservation 패턴과 일치.
@@ -1411,9 +1412,9 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
               return next;
             });
           }}
-          title={soundEnabled ? 'Sound ON' : 'Sound OFF'}
+          title={soundEnabled ? tNs('orders.soundOn', 'Sound ON') : tNs('orders.soundOff', 'Sound OFF')}
         >
-          <img src={soundEnabled ? '/speaker-on.svg' : '/speaker-off.svg'} alt={soundEnabled ? 'Sound ON' : 'Sound OFF'} />
+          <img src={soundEnabled ? '/speaker-on.svg' : '/speaker-off.svg'} alt={soundEnabled ? tNs('orders.soundOn', 'Sound ON') : tNs('orders.soundOff', 'Sound OFF')} />
         </AudioToggleButton>
       </Header>
 
@@ -1473,7 +1474,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             search={search}
             newPoIds={newPoIds}
             timeZone="Asia/Kuala_Lumpur"
-            timeAgo={timeAgo}
+            timeAgo={(iso) => timeAgo(iso, tNs)}
             onOpenDetail={(row) => openDetail(row)}
             onConfirm={(row) => { setConfirmModalRow(row); setErrorMessage(null); }}
             onReject={(row) => { setRejectModalRow(row); setRejectReason(''); setErrorMessage(null); }}
@@ -1543,7 +1544,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       <DataTableCell data-label={tNs('orders.table.buyer', 'Buyer') as string}>
                         {/* 2026-09-29 Irene 「Buyer가 2열로 나오는게 너무 보기 안좋아. 위아래로」 — 종류 배지 위, 이름 아래 */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3 }}>
-                          <BuyerType>{row.buyer_entity_type || 'buyer'}</BuyerType>
+                          <BuyerType>{tNs(`orders.buyerType.${row.buyer_entity_type || 'buyer'}`, row.buyer_entity_type || 'buyer')}</BuyerType>
                           <strong style={{ color: '#0A2540' }}>{row.buyer_name || '—'}</strong>
                         </div>
                       </DataTableCell>
@@ -1624,7 +1625,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                         </DataTableStatus>
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.time', 'Time') as string}>
-                        <TimeAgoText>{timeAgo(row.ordered_at || row.created_at)}</TimeAgoText>
+                        <TimeAgoText>{timeAgo(row.ordered_at || row.created_at, tNs)}</TimeAgoText>
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.amount', 'Amount') as string} align="right">
                         <strong>{formatMoney(row.total_amount, row.currency)}</strong>

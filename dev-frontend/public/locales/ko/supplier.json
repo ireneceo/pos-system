@@ -183,7 +183,12 @@
       "pending": "검토 대기",
       "confirmed": "확정됨",
       "shipped": "배송 중",
-      "received": "이번 달 수령"
+      "received": "이번 달 수령",
+      "activeBuyers": "주문한 구매자",
+      "avgConfirmTime": "평균 확인 시간",
+      "avgOrder": "평균 주문액",
+      "maxOrder": "최대 주문액",
+      "totalRevenue": "총매출"
     },
     "tabs": {
       "submitted": "대기",
@@ -191,7 +196,8 @@
       "shipped": "배송 중",
       "received": "수령",
       "cancelled": "취소",
-      "completed": "완료"
+      "completed": "완료",
+      "all": "전체"
     },
     "table": {
       "poNumber": "PO 번호",
@@ -217,7 +223,8 @@
       "recordDispatch": "배송 기록",
       "amend": "품목 수정",
       "shipRemaining": "나머지 보내기",
-      "correct": "보낸 수량 정정"
+      "correct": "보낸 수량 정정",
+      "print": "인쇄"
     },
     "confirm": {
       "title": "주문 확정",
@@ -238,7 +245,8 @@
       "itemsLabel": "이번에 보낼 품목",
       "leftForLater": "체크를 푼 품목은 «미발송» 으로 남습니다 — 나중에 «나머지 보내기» 로 보내세요.",
       "selectAtLeastOne": "보낼 품목을 하나 이상 고르세요",
-      "stockShortNote": "{{count}}품목 재고 부족 — 보내면 재고가 마이너스가 됩니다"
+      "stockShortNote": "{{count}}품목 재고 부족 — 보내면 재고가 마이너스가 됩니다",
+      "carrierSelect": "— 배송업체 선택 또는 이름 직접 입력 —"
     },
     "reject": {
       "title": "주문 거부",
@@ -312,7 +320,19 @@
       "shareFailed": "이 기기에서는 공유·복사를 할 수 없습니다. PDF 나 메일로 보내 주세요.",
       "stockShort": "지금 남은 양 {{available}} · 부족 {{short}}",
       "stockOk": "지금 남은 양 {{available}}",
-      "stockHint": "앞서 들어온 주문을 뺀 뒤 숫자입니다. 레시피 상품은 가장 모자란 재료 기준입니다."
+      "stockHint": "앞서 들어온 주문을 뺀 뒤 숫자입니다. 레시피 상품은 가장 모자란 재료 기준입니다.",
+      "buyer": "구매자",
+      "close": "닫기",
+      "ingredient": "재료",
+      "items": "품목",
+      "lineTotal": "합계",
+      "loading": "불러오는 중…",
+      "notFound": "찾을 수 없음",
+      "qty": "수량",
+      "received": "받음",
+      "status": "상태",
+      "total": "합계",
+      "unitPrice": "단가"
     },
     "stockShortLine": "지금 재고로 다 못 보내는 열린 주문 {{count}}건",
     "stockShortLink": "재고 화면으로 →",
@@ -367,6 +387,30 @@
       "owner_revoke": "오너가 승인을 취소했습니다",
       "other": "구매처 오너 승인을 기다립니다",
       "banner": "구매처 오너가 이 변경을 승인하길 기다리는 주문입니다. 승인 전에는 준비·출고하지 마세요 — 승인되면 «새 주문» 으로 돌아와 다시 확인합니다."
+    },
+    "returns": {
+      "approve": "승인",
+      "approveConfirm": "이 반품을 승인할까요? 크레딧 노트가 자동으로 발행됩니다.",
+      "reject": "거절",
+      "rejectReason": "거절 사유:",
+      "title": "반품 요청"
+    },
+    "search": {
+      "placeholder": "구매자 또는 발주 번호 검색"
+    },
+    "timeAgo": {
+      "justNow": "방금",
+      "minutes": "{{n}}분 전",
+      "hours": "{{n}}시간 전",
+      "days": "{{n}}일 전"
+    },
+    "soundOn": "알림음 켜짐",
+    "soundOff": "알림음 꺼짐",
+    "buyerType": {
+      "restaurant": "매장",
+      "brand": "브랜드",
+      "foodcourt": "푸드코트",
+      "buyer": "구매자"
     }
   },
   "tradeInvoicesPage": {
@@ -453,14 +497,23 @@
   "viewNote": {
     "own": "이 공급업체는 외부업체 탭에서 수정·삭제할 수 있습니다.",
     "brandShared": "브랜드가 공유한 업체입니다. 품목은 브랜드 계정에서 관리합니다.",
-    "ownerShared": "매장 오너가 등록해 소유 매장들이 함께 쓰는 업체입니다. 업체와 상품 수정은 오너만 할 수 있고, 이 매장에서는 발주하거나 끌 수 있습니다."
+    "ownerShared": "매장 오너가 등록해 소유 매장들이 함께 쓰는 업체입니다. 업체와 상품 수정은 오너만 할 수 있고, 이 매장에서는 발주하거나 끌 수 있습니다.",
+    "brandParent": "소속 브랜드 본사 — 읽기 전용입니다.",
+    "contract": "유효한 공급업체 계약으로 연결됨. 계약 탭에서 관리합니다.",
+    "external": "직접 등록한 외부 공급업체입니다. 열어서 상품(카탈로그)을 관리하세요.",
+    "foodcourtParent": "소속 푸드코트 본사 — 읽기 전용입니다."
   },
   "profile": {
     "externalSupplier": "외부업체"
   },
   "source": {
     "external": "외부업체",
-    "ownerShared": "오너 등록"
+    "ownerShared": "오너 등록",
+    "brandParent": "브랜드 본사",
+    "brandShared": "브랜드 공유",
+    "contract": "계약",
+    "foodcourtParent": "푸드코트",
+    "own": "직접 등록"
   },
   "card": {
     "viewProducts": "품목 보기",
@@ -468,7 +521,12 @@
     "sharedStores": "매장 {{total}}곳 중 {{n}}곳에 사본",
     "notShared": "아직 공유한 매장 없음",
     "fromOwner": "오너가 등록 — 소유 매장들이 함께 씀",
-    "ownerStores": "매장 {{total}}곳 중 {{n}}곳이 사용"
+    "ownerStores": "매장 {{total}}곳 중 {{n}}곳이 사용",
+    "contact": "담당자",
+    "email": "이메일",
+    "manageProducts": "상품",
+    "openContract": "계약 열기",
+    "phone": "전화"
   },
   "active": {
     "titleOff": "공급업체를 끌까요?",
@@ -514,7 +572,9 @@
   },
   "deleteConfirm": {
     "storesKeep": "사본을 받은 매장은 자기 사본을 그대로 가집니다.",
-    "ownerStores": "모든 매장에서 보이지 않게 됩니다. 이미 넣은 발주는 그대로 남습니다."
+    "ownerStores": "모든 매장에서 보이지 않게 됩니다. 이미 넣은 발주는 그대로 남습니다.",
+    "desc": "{{name}} 을(를) 삭제할까요? 되돌릴 수 없습니다.",
+    "title": "공급업체를 삭제할까요?"
   },
   "allProducts": {
     "saved": "«{{name}}» 저장됨",
@@ -575,5 +635,28 @@
     "desc": "{{name}} 을(를) 모든 내 매장이 같이 쓰고, 수정은 오너만 합니다. 이 매장의 재고아이템 연결·발주·청구서는 그대로입니다. 매장마다 그 매장에서만 끌 수 있습니다.",
     "confirm": "공유",
     "failed": "이 공급업체를 모든 매장에 공유하지 못했습니다. 다시 시도해 주세요."
+  },
+  "directory": {
+    "addSupplier": "공급업체 추가",
+    "search": "공급업체 검색..."
+  },
+  "emptyAll": {
+    "desc": "직접 추가하거나, 브랜드·푸드코트에 연결되거나, 공급업체 계약이 있으면 여기에 자동으로 나타납니다.",
+    "title": "아직 공급업체가 없습니다"
+  },
+  "external": {
+    "contact": "담당자",
+    "email": "이메일",
+    "failed": "상품을 열지 못했습니다.",
+    "hint": "플랫폼에 없는 공급업체를 등록합니다. 저장한 뒤 그 업체에서 사는 상품을 추가하면 이 재료를 발주할 수 있습니다.",
+    "name": "공급업체 이름",
+    "namePlaceholder": "예: 림 정육점",
+    "nameRequired": "공급업체 이름을 넣어 주세요.",
+    "phone": "전화",
+    "register": "외부 공급업체 등록",
+    "submit": "등록하고 상품 추가"
+  },
+  "filter": {
+    "allSources": "모든 출처"
   }
 }

@@ -468,3 +468,8 @@ import DateRangeFilter, { PeriodType, calculateDateRange } from '../../component
 | `pages/Restaurant/RestaurantDashboard.tsx` | 대시보드 통계 |
 | `routes/dashboard.js` | Backend 대시보드 API |
 | `routes/orders.js` | Backend 주문 통계 API |
+
+## 성장률(이전 기간 대비) 표시 규칙 (2026-11-17)
+- 계산 한 곳: `dev-frontend/src/utils/brandPerformanceMath.ts` `growthPct(cur, prev)` (브랜드 실적 화면).
+- 이전 기간 매출이 0 이하이거나 결과가 **+1000%(`GROWTH_CAP_PCT`) 초과**면 `null` → 화면 «—» · «이전 기간 매출 없음·거의 없음 (새 매출)». 이전 매출이 거의 없을 때의 +3000% 같은 값은 의미가 없어서(Irene 실제 테스트).
+- 시험: `src/utils/brandPerformanceMath.test.ts`.

@@ -24,5 +24,21 @@
     "brand": "브랜드 본부",
     "foodcourt": "푸드코트 본부",
     "contract": "계약"
-  }
+  },
+  "deleteFailedMessage": "삭제하지 못했습니다. 다시 시도해 주세요.",
+  "deleteFailedTitle": "삭제 실패",
+  "suppliersPage.active": "사용 중",
+  "suppliersPage.inactive": "꺼짐",
+  "suppliersPage.deactivate": "끄기",
+  "suppliersPage.activate": "켜기",
+  "suppliersPage.delete": "삭제",
+  "suppliersPage.loading": "불러오는 중...",
+  "suppliersPage.searchPlaceholder": "공급업체 검색...",
+  "suppliersPage.addSupplier": "공급업체 추가",
+  "suppliersPage.emptyDesc": "공급업체를 추가해 재료 구입처를 관리하세요.",
+  "suppliersPage.emptyDescBrand": "공급업체를 여러 브랜드에 연결할 수 있습니다.",
+  "suppliersPage.tryAdjustSearch": "검색어를 바꿔 보세요",
+  "suppliersPage.addFirstSupplier": "첫 공급업체를 추가하세요",
+  "suppliersPage.deleteTitle": "공급업체 삭제",
+  "suppliersPage.deleteMessage": "«{{name}}» 을(를) 삭제할까요? 되돌릴 수 없습니다."
 }

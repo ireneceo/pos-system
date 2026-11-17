@@ -183,7 +183,12 @@
       "pending": "Pending Review",
       "confirmed": "Confirmed",
       "shipped": "Out for Delivery",
-      "received": "Received This Month"
+      "received": "Received This Month",
+      "activeBuyers": "Active Buyers",
+      "avgConfirmTime": "Avg Confirm Time",
+      "avgOrder": "Avg Order",
+      "maxOrder": "Largest Order",
+      "totalRevenue": "Total Revenue"
     },
     "tabs": {
       "submitted": "Pending",
@@ -191,7 +196,8 @@
       "shipped": "Out for Delivery",
       "received": "Received",
       "cancelled": "Cancelled",
-      "completed": "Completed"
+      "completed": "Completed",
+      "all": "All"
     },
     "table": {
       "poNumber": "PO #",
@@ -217,7 +223,8 @@
       "recordDispatch": "Record delivery",
       "amend": "Edit items",
       "shipRemaining": "Ship remaining",
-      "correct": "Correct quantities"
+      "correct": "Correct quantities",
+      "print": "Print"
     },
     "confirm": {
       "title": "Confirm Order",
@@ -238,7 +245,8 @@
       "itemsLabel": "Items in this shipment",
       "leftForLater": "Unchecked items stay as not yet dispatched — ship them later with «Ship remaining».",
       "selectAtLeastOne": "Select at least one item to ship",
-      "stockShortNote": "{{count}} item(s) short — stock will go negative"
+      "stockShortNote": "{{count}} item(s) short — stock will go negative",
+      "carrierSelect": "— Select carrier or type custom name —"
     },
     "reject": {
       "title": "Reject Order",
@@ -312,7 +320,19 @@
       "shareFailed": "Could not share or copy on this device. Please use PDF or Email.",
       "stockShort": "Available now {{available}} · short {{short}}",
       "stockOk": "Available now {{available}}",
-      "stockHint": "Counted after earlier orders. For recipe products, the scarcest ingredient decides."
+      "stockHint": "Counted after earlier orders. For recipe products, the scarcest ingredient decides.",
+      "buyer": "Buyer",
+      "close": "Close",
+      "ingredient": "Ingredient",
+      "items": "Items",
+      "lineTotal": "Total",
+      "loading": "Loading…",
+      "notFound": "Not found",
+      "qty": "Qty",
+      "received": "Received",
+      "status": "Status",
+      "total": "Total",
+      "unitPrice": "Unit Price"
     },
     "stockShortLine": "{{count}} open order(s) can't be fully shipped from current stock",
     "stockShortLink": "Go to inventory →",
@@ -367,6 +387,30 @@
       "owner_revoke": "The owner withdrew approval",
       "other": "Waiting for the buyer's owner to approve",
       "banner": "Waiting for the buyer's owner to approve this change. Don't prepare or ship until it is approved — it returns to New orders for you to confirm again."
+    },
+    "returns": {
+      "approve": "Approve",
+      "approveConfirm": "Approve this return? Credit Note will be issued automatically.",
+      "reject": "Reject",
+      "rejectReason": "Rejection reason:",
+      "title": "Return Requests"
+    },
+    "search": {
+      "placeholder": "Search buyer or PO #"
+    },
+    "timeAgo": {
+      "justNow": "just now",
+      "minutes": "{{n}}m ago",
+      "hours": "{{n}}h ago",
+      "days": "{{n}}d ago"
+    },
+    "soundOn": "Sound ON",
+    "soundOff": "Sound OFF",
+    "buyerType": {
+      "restaurant": "restaurant",
+      "brand": "brand",
+      "foodcourt": "foodcourt",
+      "buyer": "buyer"
     }
   },
   "tradeInvoicesPage": {
@@ -453,14 +497,23 @@
   "viewNote": {
     "own": "You can edit or delete this supplier from the External tab.",
     "brandShared": "Shared by your Brand. Items are managed at the Brand account.",
-    "ownerShared": "Added by the owner of your restaurants and shared by all of them. Only the owner can edit it or its products — you can order from it or turn it off for this store."
+    "ownerShared": "Added by the owner of your restaurants and shared by all of them. Only the owner can edit it or its products — you can order from it or turn it off for this store.",
+    "brandParent": "Your parent Brand HQ — read-only.",
+    "contract": "Linked via active supplier contract. Manage in the Contracts tab.",
+    "external": "An external supplier you registered. Open it to manage its products (catalog).",
+    "foodcourtParent": "Your parent Foodcourt HQ — read-only."
   },
   "profile": {
     "externalSupplier": "External supplier"
   },
   "source": {
     "external": "EXTERNAL",
-    "ownerShared": "FROM OWNER"
+    "ownerShared": "FROM OWNER",
+    "brandParent": "BRAND HQ",
+    "brandShared": "BRAND SHARED",
+    "contract": "CONTRACTED",
+    "foodcourtParent": "FOODCOURT",
+    "own": "OWN"
   },
   "card": {
     "viewProducts": "View Products",
@@ -468,7 +521,12 @@
     "sharedStores": "Copied to {{n}} of {{total}} stores",
     "notShared": "Not shared with any store",
     "fromOwner": "Added by your owner — shared by all their restaurants",
-    "ownerStores": "Used by {{n}} of your {{total}} restaurants"
+    "ownerStores": "Used by {{n}} of your {{total}} restaurants",
+    "contact": "Contact",
+    "email": "Email",
+    "manageProducts": "Products",
+    "openContract": "Open Contract",
+    "phone": "Phone"
   },
   "active": {
     "titleOff": "Turn supplier off?",
@@ -514,7 +572,9 @@
   },
   "deleteConfirm": {
     "storesKeep": "Stores that received a copy keep their own copy.",
-    "ownerStores": "All your restaurants will stop seeing it. Orders already placed are kept."
+    "ownerStores": "All your restaurants will stop seeing it. Orders already placed are kept.",
+    "desc": "Are you sure you want to delete {{name}}? This action cannot be undone.",
+    "title": "Delete Supplier?"
   },
   "allProducts": {
     "saved": "\"{{name}}\" saved",
@@ -575,5 +635,28 @@
     "desc": "{{name}} will be used by all your restaurants, and only you (the owner) will edit it. This restaurant's stock item links, orders and invoices stay as they are. Each restaurant can turn it off for itself.",
     "confirm": "Share",
     "failed": "Could not share this supplier to all your restaurants. Please try again."
+  },
+  "directory": {
+    "addSupplier": "Add Supplier",
+    "search": "Search suppliers..."
+  },
+  "emptyAll": {
+    "desc": "Suppliers will appear here automatically when you add your own, connect to a brand/foodcourt, or have an active supplier contract.",
+    "title": "No suppliers yet"
+  },
+  "external": {
+    "contact": "Contact person",
+    "email": "Email",
+    "failed": "Failed to open products.",
+    "hint": "Register a supplier that isn't on the platform. After saving, you'll add the products you buy from them so this ingredient can be ordered.",
+    "name": "Supplier name",
+    "namePlaceholder": "e.g. Lim's Butcher",
+    "nameRequired": "Supplier name is required.",
+    "phone": "Phone",
+    "register": "Register External Supplier",
+    "submit": "Register & Add Products"
+  },
+  "filter": {
+    "allSources": "All sources"
   }
 }

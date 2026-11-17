@@ -1,5 +1,15 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-11-17 (/개발완료 · 작업방 323ffae5)
+**마지막 업데이트:** 2026-11-17 (/개발완료 · 작업방 89e51af7)
+
+### ✅ 완료 (2026-11-17) — 완료 방 실제 테스트 문제 5건 [Claude Code · 백그라운드 작업방 89e51af7]
+- ① 오너 인보이스 «대조·총액 수정»: 외부(미가입) 업체 정산서(SOA) 전용 = 설계대로. CHK-UPL-O-001 은 가입 공급업체(20 Demo Supplier Co.) trade 청구서라 안 나옴. 확인 주소는 /pos/owner/invoices(/owner/invoices 아님). 데모 오너 매장 2·3 엔 외부 업체 정산서 0건 → 지금 개발서버에 버튼 보이는 예 없음.
+- ② 한국어 화면 영어: 공급업체(AllSuppliersView·SuppliersPage)·판매 주문(IncomingOrdersView — 시간 «n시간 전»·탭 «전체»·구매자 종류·알림음)·재고(components/Inventory 12파일, 보조 에이전트)·레시피(RecipeManagement·BrandProductRecipe 11파일, 보조 에이전트)·OrderControls 위로/아래로. 키 추가: supplier/suppliers/common 약 90 · inventory 167 · recipes 103 · brand 89 (×4언어). 실브라우저 한국어 재검사: 남은 영어 = 데이터(이름·메일·결제조건)뿐. MainLayout «Collapse panel» 은 🔒 인쇄 보호파일이라 안 건드림.
+- ③ 프린터 기기 판별: 판별은 맞음 — «다른 기기?» 고르기 값(localStorage printer_setup_device)이 영구히 남던 것. 터치 없는 Mac·Windows 는 안드로이드·아이패드 선택값을 버리고 고르기 칸 숨김(utils/printDiagnostics detectSetupDevice). jest 4 + 고장주입(2 실패로 잡힘) · 실브라우저 Mac UA + 옛 값 → «Mac · 웹브라우저».
+- ④ 브랜드 실적 성장률: growthPct 이전 0 또는 +1000% 초과 → null(«—» · «이전 기간 매출 없음·거의 없음 (새 매출)»). jest 3.
+- ⑤ 출퇴근 #store-network: 내린 뒤 3초간 위쪽 높이 변화마다 다시 맞춤·사람이 스크롤하면 멈춤. 고장주입: 고침 끄면 390px 에서 카드 −798px(증상 재현) · 고침 켜면 96px.
+- 후속 후보: 실적 화면 «All Brands·All Restaurants·N completed·N unique» 영어 · 재료 화면(IngredientsTab 등) 영어 다수 · 공용 Pagination/SortDropdown.
+- 검증: verify-all --full 23/24(실패 = 배포 준비 칸 — /개발완료 가 채움) · 일시정지 뒤 타입 기준선 신규 1건(TransactionHistorySection TFunction import) 고침 → 신규 0 · mount sweep 통과 · print-guard 8/8 · design-guard 신규 0 · 민감 diff 비대상 · Fable 안 씀(글자·화면 동작만, 기계 확인 가능).
+- 운영 반영: 다음 배포 때.
 
 ### ✅ 완료 (2026-11-17) — 위드민카페 «내부설정 했는데 인보이스 와» [Claude Code · 백그라운드 작업방 323ffae5]
 - Irene «했어요» 뒤 운영 읽기 확인: 06:05:18 UTC 정리 — SOA-BRD1-2026-10-R10 RM 245.40 · TRD-BRD1-20261106-001 RM 150.10 둘 다 paid/internal · 묶인 TRD 3장 paid · 매장 10 앞 브랜드 열린 청구서 0
@@ -10,10 +20,13 @@
 - 참고: TRD-SUP… 열린 청구서 다수는 외부 공급업체 몫이라 내부정산 대상 아님
 - 운영 반영(메일 차단 고침): 운영 코드 무변경이라 배포 필요 없음
 
-### 진행 중인 작업 (작업방 323ffae5)
+### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 · 323ffae5)
+### 완료된 작업 (이번 세션 · 89e51af7)
+- [Claude Code] 완료 방 실제 테스트 문제 5건(위 ✅ 절) — 재고·레시피 번역은 보조 에이전트 2개가 나눠 함
+
+### 완료된 작업 (앞 세션 · 323ffae5)
 - [Claude Code] 위드민카페 RM 220 인보이스 = 개발서버 시험 청구서 알림이 실제 발송된 것 → sendNotification 개발 차단·[DEV] · 운영 직영 청구서 2건 Irene Settle 확인(위 ✅ 절)
 
 ### 완료된 작업 (앞 세션 · 990ce4ae)
@@ -26,6 +39,8 @@
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
 - seller hold Fable 후속 3건(health N5 단언 보강 · 설계 문서 «미구현» 표기 · goneFromSeller 변수명)
 - 판매자가 대신 넣은 새 주문의 승인 대기 표시(설계 §6 범위 밖)
+- 남은 영어: 브랜드 실적 «All Brands·All Restaurants·N completed·N unique» · 재료 화면(IngredientsTab·ProductIngredientsTab 약 160개) · 공용 Pagination/SortDropdown · MainLayout(🔒 보호파일)
+- 데모 오너 매장에 외부 업체 정산서 [확인용] 만들기(대조 버튼을 개발서버에서 볼 예)
 
 ### ✅ 완료 (2026-11-17) — PurpleHere 운영 배포 나감 (Irene 버튼 · 작업방은 확인만) [Claude Code · 백그라운드 작업방 5c23828a]
 - 확인(읽기): 상황판 실행 depmwk253vj · 02:12→02:34 UTC · result ok · 종료 0 · 배포 커밋 f944b9adb(범위 05cc4812a..3acc4ea98 9커밋 · 화면 버전 6.21 · 새 마이그 0) · 스모크 10/10 · 운영 표식 11-15 06:54 → 11-17 02:18 · 막음 표식 0 · 일시정지 풀림.

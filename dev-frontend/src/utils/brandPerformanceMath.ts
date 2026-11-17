@@ -63,8 +63,14 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
 const r1 = (n: number) => Math.round(n * 10) / 10;
 const amount = (o: PerfOrder) => parseFloat(String(o.total_amount ?? '0')) || 0;
 
-export const growthPct = (cur: number, prev: number): number | null =>
-  prev > 0 ? r1(((cur - prev) / prev) * 100) : null;
+// 이전 기간 매출이 0 이거나 거의 없어 +1000% 를 넘는 값은 의미가 없다 → null(화면 «—» · «이전 기간 매출 거의 없음»)
+// (2026-11-17 Irene 실제 테스트: +3285.2%·+2512.3% 처럼 나옴 → «—» 또는 «새 매출»로)
+export const GROWTH_CAP_PCT = 1000;
+export const growthPct = (cur: number, prev: number): number | null => {
+  if (!(prev > 0)) return null;
+  const g = r1(((cur - prev) / prev) * 100);
+  return g > GROWTH_CAP_PCT ? null : g;
+};
 
 export function computeRestaurantMetrics(
   restaurants: PerfRestaurant[], orders: PerfOrder[], range: { start: string; end: string }

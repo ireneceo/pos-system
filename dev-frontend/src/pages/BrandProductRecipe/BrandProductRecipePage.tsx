@@ -60,7 +60,7 @@ const BrandProductRecipePage: React.FC = () => {
           });
         }
       } catch (e: any) {
-        if (!cancelled) setLoadError(e?.message || 'Failed to load brands');
+        if (!cancelled) setLoadError(e?.message || (t('brand:brandProductRecipePage.loadBrandsFailed', 'Failed to load brands') as string));
       }
     })();
     return () => { cancelled = true; };

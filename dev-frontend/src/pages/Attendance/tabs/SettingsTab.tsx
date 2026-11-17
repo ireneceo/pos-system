@@ -44,11 +44,35 @@ const SettingsTab: React.FC<Props> = ({ restaurantId, timeZone }) => {
   // 링크 끝 #store-network 이면 «매장 네트워크 확인» 칸으로 바로 내린다(안내·상황판 링크용) — 처음 한 번
   const networkRef = useRef<HTMLDivElement>(null);
   const scrolled = useRef(false);
+  const stopScrollFix = useRef<(() => void) | null>(null);
   useEffect(() => {
     if (!settings || scrolled.current || window.location.hash !== '#store-network') return;
     scrolled.current = true;
-    window.setTimeout(() => networkRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 600);
+    // 내린 뒤 위쪽 안내·탭 내용 높이가 늦게 바뀌면 카드가 화면 위로 지나간다(2026-11-17 Irene 실제 테스트).
+    // 3초 동안 높이 변화마다 다시 맞추고, 사람이 직접 스크롤(휠·터치·키)하면 바로 멈춘다.
+    let stop = false;
+    const align = (smooth: boolean) => { if (!stop) networkRef.current?.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' }); };
+    const userScroll = () => { stop = true; };
+    const evs = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const;
+    evs.forEach((e) => window.addEventListener(e, userScroll, { passive: true }));
+    let ro: ResizeObserver | null = null;
+    const first = window.setTimeout(() => {
+      align(true);
+      if (typeof ResizeObserver !== 'undefined') {
+        ro = new ResizeObserver(() => align(false));
+        // 안쪽 스크롤 칸이라 body 높이는 안 바뀔 수 있다 — 카드 위 조상 칸들을 다 본다
+        for (let el = networkRef.current?.parentElement; el && el !== document.documentElement; el = el.parentElement) ro.observe(el);
+      }
+    }, 600);
+    const end = window.setTimeout(() => { stop = true; ro?.disconnect(); }, 3600);
+    // settings 가 다시 바뀌어도 이 한 번은 끝까지 간다 — 정리는 화면을 떠날 때만
+    stopScrollFix.current = () => {
+      stop = true; window.clearTimeout(first); window.clearTimeout(end); ro?.disconnect();
+      evs.forEach((e) => window.removeEventListener(e, userScroll));
+    };
+    window.setTimeout(() => evs.forEach((e) => window.removeEventListener(e, userScroll)), 3700);
   }, [settings]);
+  useEffect(() => () => stopScrollFix.current?.(), []);
 
   const save = async (patch: Partial<Settings>) => {
     setError(''); setSaved('');

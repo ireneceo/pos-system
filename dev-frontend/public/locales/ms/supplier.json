@@ -183,7 +183,12 @@
       "pending": "Menunggu Semakan",
       "confirmed": "Disahkan",
       "shipped": "Dalam Penghantaran",
-      "received": "Diterima Bulan Ini"
+      "received": "Diterima Bulan Ini",
+      "activeBuyers": "Pembeli Aktif",
+      "avgConfirmTime": "Purata Masa Pengesahan",
+      "avgOrder": "Purata Pesanan",
+      "maxOrder": "Pesanan Terbesar",
+      "totalRevenue": "Jumlah Hasil"
     },
     "tabs": {
       "submitted": "Menunggu",
@@ -191,7 +196,8 @@
       "shipped": "Dalam Penghantaran",
       "received": "Diterima",
       "cancelled": "Dibatalkan",
-      "completed": "Selesai"
+      "completed": "Selesai",
+      "all": "Semua"
     },
     "table": {
       "poNumber": "No PO",
@@ -217,7 +223,8 @@
       "recordDispatch": "Rekod penghantaran",
       "amend": "Ubah item",
       "shipRemaining": "Hantar baki",
-      "correct": "Betulkan kuantiti"
+      "correct": "Betulkan kuantiti",
+      "print": "Cetak"
     },
     "confirm": {
       "title": "Sahkan Pesanan",
@@ -238,7 +245,8 @@
       "itemsLabel": "Item dalam penghantaran ini",
       "leftForLater": "Item yang tidak ditanda kekal belum dihantar — hantar kemudian dengan «Hantar baki».",
       "selectAtLeastOne": "Pilih sekurang-kurangnya satu item untuk dihantar",
-      "stockShortNote": "{{count}} item tidak cukup — stok akan menjadi negatif"
+      "stockShortNote": "{{count}} item tidak cukup — stok akan menjadi negatif",
+      "carrierSelect": "— Pilih syarikat penghantaran atau taip nama sendiri —"
     },
     "reject": {
       "title": "Tolak Pesanan",
@@ -312,7 +320,19 @@
       "shareFailed": "Tidak dapat berkongsi atau menyalin pada peranti ini. Sila guna PDF atau E-mel.",
       "stockShort": "Tersedia sekarang {{available}} · kurang {{short}}",
       "stockOk": "Tersedia sekarang {{available}}",
-      "stockHint": "Dikira selepas pesanan terdahulu. Untuk produk resipi, bahan paling kurang yang menentukan."
+      "stockHint": "Dikira selepas pesanan terdahulu. Untuk produk resipi, bahan paling kurang yang menentukan.",
+      "buyer": "Pembeli",
+      "close": "Tutup",
+      "ingredient": "Bahan",
+      "items": "Item",
+      "lineTotal": "Jumlah",
+      "loading": "Memuatkan…",
+      "notFound": "Tidak dijumpai",
+      "qty": "Kuantiti",
+      "received": "Diterima",
+      "status": "Status",
+      "total": "Jumlah",
+      "unitPrice": "Harga Seunit"
     },
     "stockShortLine": "{{count}} pesanan terbuka tidak dapat dihantar sepenuhnya dengan stok semasa",
     "stockShortLink": "Ke inventori →",
@@ -367,6 +387,30 @@
       "owner_revoke": "Pemilik menarik balik kelulusan",
       "other": "Menunggu kelulusan pemilik pembeli",
       "banner": "Pesanan ini menunggu pemilik pembeli meluluskan perubahan. Jangan sediakan atau hantar sebelum diluluskan — ia akan kembali ke Pesanan baharu untuk anda sahkan semula."
+    },
+    "returns": {
+      "approve": "Luluskan",
+      "approveConfirm": "Luluskan pemulangan ini? Nota Kredit akan dikeluarkan secara automatik.",
+      "reject": "Tolak",
+      "rejectReason": "Sebab penolakan:",
+      "title": "Permintaan Pemulangan"
+    },
+    "search": {
+      "placeholder": "Cari pembeli atau No. PO"
+    },
+    "timeAgo": {
+      "justNow": "baru sahaja",
+      "minutes": "{{n}} min lalu",
+      "hours": "{{n}} jam lalu",
+      "days": "{{n}} hari lalu"
+    },
+    "soundOn": "Bunyi HIDUP",
+    "soundOff": "Bunyi MATI",
+    "buyerType": {
+      "restaurant": "restoran",
+      "brand": "jenama",
+      "foodcourt": "medan selera",
+      "buyer": "pembeli"
     }
   },
   "tradeInvoicesPage": {
@@ -453,14 +497,23 @@
   "viewNote": {
     "own": "Anda boleh sunting atau padam pembekal ini dari tab Luaran.",
     "brandShared": "Dikongsi oleh Jenama anda. Item diurus di akaun Jenama.",
-    "ownerShared": "Ditambah oleh pemilik restoran anda dan dikongsi oleh semua restorannya. Hanya pemilik boleh menyunting pembekal ini atau produknya — anda boleh membuat pesanan atau mematikannya untuk kedai ini."
+    "ownerShared": "Ditambah oleh pemilik restoran anda dan dikongsi oleh semua restorannya. Hanya pemilik boleh menyunting pembekal ini atau produknya — anda boleh membuat pesanan atau mematikannya untuk kedai ini.",
+    "brandParent": "Ibu pejabat jenama induk anda — baca sahaja.",
+    "contract": "Dipautkan melalui kontrak pembekal aktif. Urus dalam tab Kontrak.",
+    "external": "Pembekal luar yang anda daftarkan. Buka untuk mengurus produknya (katalog).",
+    "foodcourtParent": "Ibu pejabat medan selera induk anda — baca sahaja."
   },
   "profile": {
     "externalSupplier": "Pembekal luaran"
   },
   "source": {
     "external": "LUARAN",
-    "ownerShared": "DARIPADA PEMILIK"
+    "ownerShared": "DARIPADA PEMILIK",
+    "brandParent": "IBU PEJABAT JENAMA",
+    "brandShared": "DIKONGSI JENAMA",
+    "contract": "BERKONTRAK",
+    "foodcourtParent": "MEDAN SELERA",
+    "own": "SENDIRI"
   },
   "card": {
     "viewProducts": "Lihat Produk",
@@ -468,7 +521,12 @@
     "sharedStores": "Disalin ke {{n}} daripada {{total}} kedai",
     "notShared": "Belum dikongsi dengan mana-mana kedai",
     "fromOwner": "Ditambah oleh pemilik — dikongsi oleh semua restorannya",
-    "ownerStores": "Digunakan oleh {{n}} daripada {{total}} restoran anda"
+    "ownerStores": "Digunakan oleh {{n}} daripada {{total}} restoran anda",
+    "contact": "Hubungan",
+    "email": "E-mel",
+    "manageProducts": "Produk",
+    "openContract": "Buka Kontrak",
+    "phone": "Telefon"
   },
   "active": {
     "titleOff": "Matikan pembekal?",
@@ -514,7 +572,9 @@
   },
   "deleteConfirm": {
     "storesKeep": "Kedai yang menerima salinan mengekalkan salinan mereka sendiri.",
-    "ownerStores": "Semua restoran anda tidak akan melihatnya lagi. Pesanan yang sudah dibuat disimpan."
+    "ownerStores": "Semua restoran anda tidak akan melihatnya lagi. Pesanan yang sudah dibuat disimpan.",
+    "desc": "Adakah anda pasti mahu memadam {{name}}? Tindakan ini tidak boleh dibatalkan.",
+    "title": "Padam Pembekal?"
   },
   "allProducts": {
     "saved": "\"{{name}}\" disimpan",
@@ -575,5 +635,28 @@
     "desc": "{{name}} akan digunakan oleh semua restoran anda, dan hanya anda (pemilik) yang boleh menyuntingnya. Pautan item stok, pesanan dan invois restoran ini kekal seperti sedia ada. Setiap restoran boleh mematikannya untuk dirinya sahaja.",
     "confirm": "Kongsi",
     "failed": "Tidak dapat berkongsi pembekal ini ke semua restoran anda. Sila cuba lagi."
+  },
+  "directory": {
+    "addSupplier": "Tambah Pembekal",
+    "search": "Cari pembekal..."
+  },
+  "emptyAll": {
+    "desc": "Pembekal akan muncul di sini secara automatik apabila anda menambah sendiri, menyambung ke jenama/medan selera, atau mempunyai kontrak pembekal yang aktif.",
+    "title": "Belum ada pembekal"
+  },
+  "external": {
+    "contact": "Orang untuk dihubungi",
+    "email": "E-mel",
+    "failed": "Gagal membuka produk.",
+    "hint": "Daftar pembekal yang tiada dalam platform. Selepas menyimpan, tambah produk yang anda beli daripada mereka supaya bahan ini boleh dipesan.",
+    "name": "Nama pembekal",
+    "namePlaceholder": "cth. Lim's Butcher",
+    "nameRequired": "Nama pembekal diperlukan.",
+    "phone": "Telefon",
+    "register": "Daftar Pembekal Luar",
+    "submit": "Daftar & Tambah Produk"
+  },
+  "filter": {
+    "allSources": "Semua sumber"
   }
 }

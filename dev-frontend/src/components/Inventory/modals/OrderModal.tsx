@@ -88,6 +88,8 @@ const OrderModal: React.FC<Props> = ({
       .catch(() => {});
     return () => { alive = false; };
   }, [isOpen, item, costSubject]);
+  const sellerTypeLabel = (type: string): string =>
+    SELLER_TYPE_LABEL[type] ? (t(`inventory:orderModal.sellerType.${type}`, SELLER_TYPE_LABEL[type]) as string) : type;
   const selected = sellers.find(s => s.id === selectedSellerId) || null;
   const unitPrice = selected ? (parseFloat(String(selected.unit_price)) || 0) : (item?.unit_cost || 0);
   const qtyNum = parseFloat(quantity);
@@ -98,12 +100,12 @@ const OrderModal: React.FC<Props> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Order: ${item?.name || ''}`}
+      title={t('inventory:orderModal.title', 'Order: {{name}}', { name: item?.name || '' }) as string}
       size="small"
       footer={
         <>
           <ModalButton variant="secondary" onClick={onClose} disabled={!!submitting}>
-            {lastResult ? t('inventory:toStaging.keepWorking', 'Keep Working') : 'Cancel'}
+            {lastResult ? t('inventory:toStaging.keepWorking', 'Keep Working') : t('inventory:orderModal.cancel', 'Cancel')}
           </ModalButton>
           {lastResult ? (
             <ModalButton variant="primary" onClick={onReview}>
@@ -124,7 +126,7 @@ const OrderModal: React.FC<Props> = ({
             <div style={{ marginBottom: 12, padding: 12, background: '#ECFDF5', border: '1px solid #10B981', borderRadius: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#065F46' }}>{t('inventory:toStaging.addedTitle', 'Added to Pending POs — not sent yet')}</div>
               <div style={{ fontSize: 12, color: '#065F46', marginTop: 4 }}>
-                {lastResult.ingredient_name} × {formatStock(lastResult.qty)} {item.unit}{selected ? ` · ${SELLER_TYPE_LABEL[selected.seller_type] || selected.seller_type}${selected.seller_product_name ? ` · ${selected.seller_product_name}` : ''}` : ''}
+                {lastResult.ingredient_name} × {formatStock(lastResult.qty)} {item.unit}{selected ? ` · ${sellerTypeLabel(selected.seller_type)}${selected.seller_product_name ? ` · ${selected.seller_product_name}` : ''}` : ''}
               </div>
               <div style={{ fontSize: 12, color: '#065F46', marginTop: 4 }}>
                 {t('inventory:toStaging.addedHint', 'The supplier receives it only after you press Submit on Pending POs.')}
@@ -141,7 +143,7 @@ const OrderModal: React.FC<Props> = ({
           <div style={{ marginBottom: '16px', padding: '12px', background: '#F9FAFB', borderRadius: '8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
               <div>
-                <div style={{ fontSize: '13px', color: '#4B5563' }}>Current Stock</div>
+                <div style={{ fontSize: '13px', color: '#4B5563' }}>{t('inventory:orderModal.currentStock', 'Current Stock')}</div>
                 <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540' }}>
                   {formatStock(item.current_stock)} {item.unit}
                 </div>
@@ -155,16 +157,16 @@ const OrderModal: React.FC<Props> = ({
             </div>
             {item.min_order && item.min_order > 0 && (
               <div style={{ fontSize: '12px', color: '#16A34A', marginTop: '8px' }}>
-                Minimum order quantity: {formatStock(item.min_order)} {item.unit}
+                {t('inventory:orderModal.minOrderQty', 'Minimum order quantity: {{qty}} {{unit}}', { qty: formatStock(item.min_order), unit: item.unit })}
               </div>
             )}
           </div>
 
           {noMapping && !lastResult && (
             <div style={{ marginBottom: 12, padding: 12, background: '#FFFBEB', border: '1px solid #F59E0B', borderRadius: 8 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#92400E', marginBottom: 4 }}>No supplier mapping</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#92400E', marginBottom: 4 }}>{t('inventory:orderModal.noMapping', 'No supplier mapping')}</div>
               <div style={{ fontSize: 12, color: '#78350F' }}>
-                Set up a seller source for this ingredient (Recipe Management → Ingredient Settings) before ordering.
+                {t('inventory:orderModal.noMappingHint', 'Set up a seller source for this ingredient (Recipe Management → Ingredient Settings) before ordering.')}
               </div>
             </div>
           )}
@@ -179,7 +181,7 @@ const OrderModal: React.FC<Props> = ({
               >
                 {sellers.map(s => (
                   <option key={s.id} value={s.id}>
-                    {SELLER_TYPE_LABEL[s.seller_type] || s.seller_type}
+                    {sellerTypeLabel(s.seller_type)}
                     {s.seller_entity_id ? ` #${s.seller_entity_id}` : ''}
                     {s.seller_product_name ? ` · ${s.seller_product_name}` : ''}
                     {s.seller_product_sku ? ` · SKU: ${s.seller_product_sku}` : ''}
@@ -225,21 +227,21 @@ const OrderModal: React.FC<Props> = ({
           )}
 
           <UIFormGroup>
-            <FormLabel>Order Quantity ({item.unit}) *</FormLabel>
+            <FormLabel>{t('inventory:orderModal.quantity', 'Order Quantity ({{unit}}) *', { unit: item.unit })}</FormLabel>
             <FormInput
               type="number"
               min="0"
               step="0.01"
               value={quantity}
               onChange={(e) => onQuantityChange(e.target.value)}
-              placeholder={item.min_order ? `Min: ${item.min_order}` : 'Enter quantity'}
+              placeholder={(item.min_order ? t('inventory:orderModal.minPlaceholder', 'Min: {{qty}}', { qty: item.min_order }) : t('inventory:orderModal.enterQuantity', 'Enter quantity')) as string}
               disabled={!!submitting || !!lastResult}
             />
           </UIFormGroup>
 
           {qtyNum > 0 && (
             <div style={{ padding: '12px', background: '#F0FDF4', borderRadius: '8px' }}>
-              <div style={{ fontSize: '13px', color: '#4B5563' }}>Estimated Cost</div>
+              <div style={{ fontSize: '13px', color: '#4B5563' }}>{t('inventory:orderModal.estimatedCost', 'Estimated Cost')}</div>
               <div style={{ fontSize: '18px', fontWeight: 600, color: '#16A34A' }}>
                 {formatCurrency(qtyNum * unitPrice, currency)}
               </div>

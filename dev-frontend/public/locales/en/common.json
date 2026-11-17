@@ -1008,5 +1008,11 @@
     "later": "Remind me in 1 hour",
     "fix": "Choose printer",
     "kitchenMain": "Kitchen"
-  }
+  },
+  "view": "View",
+  "edit": "Edit",
+  "delete": "Delete",
+  "ok": "OK",
+  "orderControls.moveUp": "Move up",
+  "orderControls.moveDown": "Move down"
 }

@@ -430,11 +430,11 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         fetchCategories();
         onCategoryChange?.();
       } else {
-        setInfoModal({ open: true, title: 'Save Failed', message: data.error || 'Failed to save. Please try again.' });
+        setInfoModal({ open: true, title: (t('recipes:categoryTabCommon.saveFailedTitle', 'Save Failed') as string), message: data.error || (t('recipes:categoryTabCommon.saveFailedMessage', 'Failed to save. Please try again.') as string) });
       }
     } catch (error) {
       console.error('Failed to save category:', error);
-      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save. Please try again.' });
+      setInfoModal({ open: true, title: (t('recipes:categoryTabCommon.saveFailedTitle', 'Save Failed') as string), message: (t('recipes:categoryTabCommon.saveFailedMessage', 'Failed to save. Please try again.') as string) });
     }
   };
 
@@ -571,21 +571,21 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
             {readOnly && <ReadOnlyBadge>{t('recipes:ingredientCategoriesTab.brand')}</ReadOnlyBadge>}
           </CategoryName>
           <CategoryMeta>
-            <span>{category.ingredient_count || 0} ingredients</span>
-            {!readOnly && <StatusBadge active={category.is_active}>{category.is_active ? 'Active' : 'Inactive'}</StatusBadge>}
+            <span>{t('recipes:categoryTabCommon.ingredientCount', '{{count}} ingredients', { count: category.ingredient_count || 0 })}</span>
+            {!readOnly && <StatusBadge active={category.is_active}>{category.is_active ? t('recipes:categoryTabCommon.active', 'Active') : t('recipes:categoryTabCommon.inactive', 'Inactive')}</StatusBadge>}
             {category.is_staff_meal && <StaffMealBadge>{t('recipes:ingredientCategoriesTab.staffMealBadge', 'Staff meal')}</StaffMealBadge>}
           </CategoryMeta>
           {category.description && <CategoryDescription>{category.description}</CategoryDescription>}
         </CategoryInfo>
         {!readOnly && (
           <CategoryActions>
-            <IconButton onClick={() => handleOpenModal(category)} title="Edit">
+            <IconButton onClick={() => handleOpenModal(category)} title={(t('recipes:categoryTabCommon.edit', 'Edit') as string)}>
               <svg viewBox="0 0 24 24" fill="none">
                 <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
             </IconButton>
-            <IconButton onClick={() => handleDeleteClick(category)} title="Delete">
+            <IconButton onClick={() => handleDeleteClick(category)} title={(t('recipes:categoryTabCommon.delete', 'Delete') as string)}>
               <svg viewBox="0 0 24 24" fill="none">
                 <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
               </svg>
@@ -628,7 +628,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
       {isRestaurantAdmin && brandCategories.length > 0 && (
         <BrandCategoriesSection>
           <BrandCategoriesHeader>
-            Brand Categories (Read Only)
+            {t('recipes:categoryTabCommon.brandCategoriesReadOnly', 'Brand Categories (Read Only)')}
           </BrandCategoriesHeader>
           <CategoryGrid>
             {brandCategories.map((cat, idx) => renderCategoryCard(cat, idx, brandCategories, true))}
@@ -640,7 +640,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         <EmptyState>
           <EmptyTitle>{t('recipes:ingredientCategoriesTab.noIngredientCategoriesYet')}</EmptyTitle>
           <EmptyDescription>
-            Create categories to organize your ingredients
+            {t('recipes:categoryTabCommon.organizeIngredients', 'Create categories to organize your ingredients')}
           </EmptyDescription>
           {!isBrandUser && (
             <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
@@ -657,25 +657,25 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
       <Modal
         isOpen={showModal}
         onClose={handleCloseModal}
-        title={`${editingCategory ? 'Edit' : 'New'} Ingredient Category`}
+        title={(editingCategory ? t('recipes:categoryTabCommon.editIngredientCategory', 'Edit Ingredient Category') : t('recipes:categoryTabCommon.newIngredientCategory', 'New Ingredient Category')) as string}
         size="medium"
         footer={
           <>
             <ModalButton variant="secondary" onClick={handleCloseModal}>{t('recipes:ingredientCategoriesTab.cancel')}</ModalButton>
             <ModalButton variant="primary" onClick={handleSubmit} disabled={!formData.name.trim()}>
-              {editingCategory ? 'Update' : 'Create'}
+              {editingCategory ? t('recipes:categoryTabCommon.update', 'Update') : t('recipes:categoryTabCommon.create', 'Create')}
             </ModalButton>
           </>
         }
       >
         <form onSubmit={handleSubmit}>
           <UIFormGroup>
-            <FormLabel>Category Name *</FormLabel>
+            <FormLabel>{t('recipes:categoryTabCommon.categoryNameLabel', 'Category Name *')}</FormLabel>
             <FormInput
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Vegetables"
+              placeholder={(t('recipes:categoryTabCommon.placeholderVegetables', 'e.g., Vegetables') as string)}
               autoFocus
               required
             />
@@ -721,7 +721,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
             <FormTextArea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Brief description of this category..."
+              placeholder={(t('recipes:categoryTabCommon.descriptionPlaceholder', 'Brief description of this category...') as string)}
             />
           </UIFormGroup>
         </form>
@@ -797,7 +797,7 @@ const IngredientCategoriesTab: React.FC<IngredientCategoriesTabProps> = ({ brand
         message={infoModal.message}
         onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
         onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
-        confirmText="OK"
+        confirmText={(t('recipes:categoryTabCommon.ok', 'OK') as string)}
         type="info"
         singleButton
       />

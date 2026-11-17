@@ -120,7 +120,7 @@ const RecipeImportModal: React.FC<Props> = ({ isOpen, onClose, apiBase, pickerOp
     fd.append('matching', JSON.stringify(m));
     const r = await fetch(`${apiBase}/${path}`, { method: 'POST', headers: authHeaders(), body: fd });
     const j = await r.json().catch(() => null);
-    if (!r.ok || !j?.success) throw new Error(j?.message || j?.error?.message || `Upload failed (${r.status})`);
+    if (!r.ok || !j?.success) throw new Error(j?.message || j?.error?.message || t('recipes:recipeImport.uploadFailedStatus', 'Upload failed ({{status}})', { status: r.status }));
     return j.data;
   };
 
@@ -179,7 +179,7 @@ const RecipeImportModal: React.FC<Props> = ({ isOpen, onClose, apiBase, pickerOp
     try {
       const r = await fetch(`${apiBase}/${encodeURIComponent(batchId)}/undo`, { method: 'POST', headers: authHeaders() });
       const j = await r.json().catch(() => null);
-      if (!r.ok || !j?.success) throw new Error(j?.message || `Undo failed (${r.status})`);
+      if (!r.ok || !j?.success) throw new Error(j?.message || t('recipes:recipeImport.undoFailedStatus', 'Undo failed ({{status}})', { status: r.status }));
       const d = j.data;
       let msg = t('recipes:recipeImport.undoDone', 'Undone — {{deleted}} removed · {{restored}} restored', { deleted: d.deleted, restored: d.restored });
       if (d.skipped?.length) msg += ` · ${t('recipes:recipeImport.undoSkipped', '{{count}} not undone (changed after the import): {{names}}', { count: d.skipped.length, names: d.skipped.map((s: any) => s.name).join(', ') })}`;

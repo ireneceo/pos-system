@@ -24,5 +24,21 @@
     "brand": "Ibu Pejabat Jenama",
     "foodcourt": "Ibu Pejabat Medan Selera",
     "contract": "Kontrak"
-  }
+  },
+  "deleteFailedMessage": "Gagal memadam. Sila cuba lagi.",
+  "deleteFailedTitle": "Gagal Memadam",
+  "suppliersPage.active": "Aktif",
+  "suppliersPage.inactive": "Tidak Aktif",
+  "suppliersPage.deactivate": "Nyahaktifkan",
+  "suppliersPage.activate": "Aktifkan",
+  "suppliersPage.delete": "Padam",
+  "suppliersPage.loading": "Memuatkan...",
+  "suppliersPage.searchPlaceholder": "Cari pembekal...",
+  "suppliersPage.addSupplier": "Tambah Pembekal",
+  "suppliersPage.emptyDesc": "Tambah pembekal untuk mengurus sumber bahan anda.",
+  "suppliersPage.emptyDescBrand": "Anda boleh menyambung pembekal ke beberapa jenama.",
+  "suppliersPage.tryAdjustSearch": "Cuba ubah carian anda",
+  "suppliersPage.addFirstSupplier": "Tambah pembekal pertama anda",
+  "suppliersPage.deleteTitle": "Padam Pembekal",
+  "suppliersPage.deleteMessage": "Adakah anda pasti mahu memadam \"{{name}}\"? Tindakan ini tidak boleh dibatalkan."
 }

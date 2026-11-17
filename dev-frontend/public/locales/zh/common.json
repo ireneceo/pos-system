@@ -1008,5 +1008,11 @@
     "later": "1 小时后提醒",
     "fix": "选择打印机",
     "kitchenMain": "厨房"
-  }
+  },
+  "view": "查看",
+  "edit": "编辑",
+  "delete": "删除",
+  "ok": "确定",
+  "orderControls.moveUp": "上移",
+  "orderControls.moveDown": "下移"
 }

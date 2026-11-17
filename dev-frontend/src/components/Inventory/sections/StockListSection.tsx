@@ -250,13 +250,13 @@ const StockListSection: React.FC<Props> = ({
           onChange={(e) => setStockTypeFilter(e.target.value as StockTypeFilter)}
           style={{ minWidth: '140px' }}
         >
-          <option value="all">All Items</option>
-          <option value="ingredients">Ingredients</option>
-          <option value="general_stock">General Stock</option>
+          <option value="all">{t('inventory:stockList.allItems', 'All Items')}</option>
+          <option value="ingredients">{t('inventory:stockList.ingredients', 'Ingredients')}</option>
+          <option value="general_stock">{t('inventory:stockList.generalStock', 'General Stock')}</option>
         </FilterSelect>
         <SearchInput
           type="text"
-          placeholder="Search..."
+          placeholder={t('inventory:stockList.search', 'Search...') as string}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -266,7 +266,7 @@ const StockListSection: React.FC<Props> = ({
             onChange={(e) => setCategoryFilter(e.target.value)}
             style={{ minWidth: '160px' }}
           >
-            <option value="all">All Categories</option>
+            <option value="all">{t('inventory:stockList.allCategories', 'All Categories')}</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </FilterSelect>
         )}
@@ -299,7 +299,7 @@ const StockListSection: React.FC<Props> = ({
           onClick={onAddGeneralStock}
           style={{ marginLeft: 'auto' }}
         >
-          Add General Stock
+          {t('inventory:stockList.addGeneralStock', 'Add General Stock')}
         </Button>
       </FilterBar>
 
@@ -307,24 +307,24 @@ const StockListSection: React.FC<Props> = ({
         <>
           {stockTypeFilter === 'all' && (
             <SectionTitle>
-              General Stock ({generalStockInventory.filter(item => {
+              {t('inventory:stockList.generalStockCount', 'General Stock ({{n}})', { n: generalStockInventory.filter(item => {
                 const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
                 const matchesStatus = matchesVerdict(verdictOfGeneral(item));
                 return matchesSearch && matchesStatus;
-              }).length})
+              }).length })}
             </SectionTitle>
           )}
           <Table style={{ marginBottom: '24px' }}>
             <InventoryTableHeader columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 260px">
-              <span className="col-info">Item</span>
-              <span>Status</span>
-              <span>Current Stock</span>
+              <span className="col-info">{t('inventory:stockList.colItem', 'Item')}</span>
+              <span>{t('inventory:stockList.colStatus', 'Status')}</span>
+              <span>{t('inventory:stockList.colCurrentStock', 'Current Stock')}</span>
               <span className="col-min">{t('inventory:reorderAt.column', 'Reorder at')}</span>
-              <span className="col-cost">Unit Cost</span>
-              <span className="col-supplier">Supplier</span>
-              <span className="col-last">Last Stock Take</span>
-              <span>Order</span>
-              <span className="col-action">Actions</span>
+              <span className="col-cost">{t('inventory:stockList.colUnitCost', 'Unit Cost')}</span>
+              <span className="col-supplier">{t('inventory:stockList.colSupplier', 'Supplier')}</span>
+              <span className="col-last">{t('inventory:stockList.colLastStockTake', 'Last Stock Take')}</span>
+              <span>{t('inventory:stockList.colOrder', 'Order')}</span>
+              <span className="col-action">{t('inventory:stockList.colActions', 'Actions')}</span>
             </InventoryTableHeader>
             {generalStockInventory
               .filter(item => {
@@ -336,7 +336,7 @@ const StockListSection: React.FC<Props> = ({
                 <InventoryTableRow key={`general-stock-${item.id}`} columns="2.5fr 1fr 1fr 1fr 1fr 1fr 1fr 150px 260px">
                   <MobileGrid>
                     <MobileValue className="col-info">
-                      <MobileLabel>Item</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colItem', 'Item')}</MobileLabel>
                       <StockItemInfo>
                         {/* 사진이 없으면 자리표시 네모를 그리지 않는다 — 빈 회색 박스가
                             무엇인지 알 수 없는 데다, 좁은 이름 칸을 52px 씩 잡아먹었다. */}
@@ -371,11 +371,11 @@ const StockListSection: React.FC<Props> = ({
                       </StockItemInfo>
                     </MobileValue>
                     <MobileValue>
-                      <MobileLabel>Status</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colStatus', 'Status')}</MobileLabel>
                       <VerdictBadge verdict={verdictOfGeneral(item)} />
                     </MobileValue>
                     <MobileValue>
-                      <MobileLabel>Current Stock</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colCurrentStock', 'Current Stock')}</MobileLabel>
                       {inlineEdit.editingStockId === item.id && inlineEdit.editingStockType === 'general_stock' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <InlineStockInput
@@ -405,19 +405,19 @@ const StockListSection: React.FC<Props> = ({
                       />
                     </MobileValue>
                     <MobileValue className="col-cost">
-                      <MobileLabel>Unit Cost</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colUnitCost', 'Unit Cost')}</MobileLabel>
                       <div style={{ color: '#0A2540' }}>
                         {formatCurrency(item.unit_cost, selectedCurrency)}
                       </div>
                     </MobileValue>
                     <MobileValue className="col-supplier">
-                      <MobileLabel>Supplier</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colSupplier', 'Supplier')}</MobileLabel>
                       <div style={{ color: item.supplier_name ? '#0A2540' : '#6B7280', fontSize: '13px' }}>
                         {item.supplier_name || '-'}
                       </div>
                     </MobileValue>
                     <MobileValue className="col-last">
-                      <MobileLabel>Last Stock Take</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colLastStockTake', 'Last Stock Take')}</MobileLabel>
                       <div style={{ color: '#4B5563' }}>
                         {formatDate(item.last_stock_take_at)}
                       </div>
@@ -458,7 +458,7 @@ const StockListSection: React.FC<Props> = ({
                         setOrderQuantity(qty);
                       }
                     }}>
-                      Order
+                      {t('inventory:stockList.order', 'Order')}
                     </OrderButton>
                   </div>
                   <ActionButtons>
@@ -467,10 +467,10 @@ const StockListSection: React.FC<Props> = ({
                       onClick={() => onGeneralStockReceive(item)}
                       style={{ padding: '6px 12px', fontSize: '13px' }}
                     >
-                      Receive
+                      {t('inventory:stockList.receive', 'Receive')}
                     </Button>
                     <EditButton onClick={() => onEditGeneralStock(item)}>
-                      Edit
+                      {t('inventory:stockList.edit', 'Edit')}
                     </EditButton>
                     <DeleteButton onClick={() => onDelete({ type: 'general_stock', id: item.id, name: item.name })}>
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -487,7 +487,7 @@ const StockListSection: React.FC<Props> = ({
       {(stockTypeFilter === 'all' || stockTypeFilter === 'ingredients') && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-            {stockTypeFilter === 'all' && <SectionTitle>Ingredients ({filteredInventory.length})</SectionTitle>}
+            {stockTypeFilter === 'all' && <SectionTitle>{t('inventory:stockList.ingredientsCount', 'Ingredients ({{n}})', { n: filteredInventory.length })}</SectionTitle>}
             {/* 재고를 세지 않는 항목까지 함께 보여 주는 스위치.
                 끄면 목록에서 사라지므로, 다시 켜려면 이 화면에서 볼 수 있어야 한다. */}
             {setShowUntracked && (
@@ -498,21 +498,21 @@ const StockListSection: React.FC<Props> = ({
                   onChange={(e) => setShowUntracked(e.target.checked)}
                   style={{ width: 16, height: 16, cursor: 'pointer', accentColor: '#635BFF' }}
                 />
-                Show items not tracked
+                {t('inventory:stockList.showUntracked', 'Show items not tracked')}
               </label>
             )}
           </div>
           {filteredInventory.length === 0 ? (
             <EmptyState>
               <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-                {inventory.length === 0 ? 'No ingredients found' : 'No matching ingredients'}
+                {inventory.length === 0 ? t('inventory:stockList.noIngredients', 'No ingredients found') : t('inventory:stockList.noMatching', 'No matching ingredients')}
               </div>
               <div style={{ fontSize: '14px', marginBottom: '16px' }}>
                 {inventory.length === 0
                   ? mode === 'brand'
-                    ? 'Add ingredients with "Track in Inventory" enabled in the Product Ingredients page first.'
-                    : 'Add ingredients in the Ingredients page first.'
-                  : 'Try adjusting your search or filter.'}
+                    ? t('inventory:stockList.emptyHintBrand', 'Add ingredients with "Track in Inventory" enabled in the Product Ingredients page first.')
+                    : t('inventory:stockList.emptyHintStore', 'Add ingredients in the Ingredients page first.')
+                  : t('inventory:stockList.emptyHintFilter', 'Try adjusting your search or filter.')}
               </div>
               {inventory.length === 0 && (
                 <Button
@@ -521,7 +521,7 @@ const StockListSection: React.FC<Props> = ({
                     ? '/brand/product-recipe?tab=ingredients'
                     : `/restaurant/${restaurantId}/recipe-management?tab=ingredients`}
                 >
-                  Go to {mode === 'brand' ? 'Product Ingredients' : 'Ingredients'}
+                  {mode === 'brand' ? t('inventory:stockList.goToProductIngredients', 'Go to Product Ingredients') : t('inventory:stockList.goToIngredients', 'Go to Ingredients')}
                 </Button>
               )}
             </EmptyState>
@@ -529,15 +529,15 @@ const StockListSection: React.FC<Props> = ({
             <Table>
               <InventoryTableHeader columns="36px 3.5fr 0.9fr 1fr 1fr 0.9fr 1.1fr 0.9fr 150px 260px">
                 <span></span>
-                <span className="col-info">Ingredient</span>
-                <span>Status</span>
-                <span>Current Stock</span>
+                <span className="col-info">{t('inventory:stockList.colIngredient', 'Ingredient')}</span>
+                <span>{t('inventory:stockList.colStatus', 'Status')}</span>
+                <span>{t('inventory:stockList.colCurrentStock', 'Current Stock')}</span>
                 <span className="col-min">{t('inventory:reorderAt.column', 'Reorder at')}</span>
-                <span className="col-cost">Unit Cost</span>
-                <span className="col-supplier">Supplier</span>
-                <span className="col-last">Last Stock Take</span>
-                <span>Order</span>
-                <span className="col-action">Actions</span>
+                <span className="col-cost">{t('inventory:stockList.colUnitCost', 'Unit Cost')}</span>
+                <span className="col-supplier">{t('inventory:stockList.colSupplier', 'Supplier')}</span>
+                <span className="col-last">{t('inventory:stockList.colLastStockTake', 'Last Stock Take')}</span>
+                <span>{t('inventory:stockList.colOrder', 'Order')}</span>
+                <span className="col-action">{t('inventory:stockList.colActions', 'Actions')}</span>
               </InventoryTableHeader>
               {filteredInventory.map(item => {
                 const sugg = suggestionsById?.get(item.id);
@@ -563,7 +563,7 @@ const StockListSection: React.FC<Props> = ({
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => onToggleSelect(item.id)}
-                        aria-label={`Select ${item.name} for bulk order`}
+                        aria-label={t('inventory:stockList.selectForBulk', 'Select {{name}} for bulk order', { name: item.name }) as string}
                         style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#635BFF' }}
                       />
                     ) : (
@@ -572,7 +572,7 @@ const StockListSection: React.FC<Props> = ({
                   </div>
                   <MobileGrid>
                     <MobileValue className="col-info">
-                      <MobileLabel>Ingredient</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colIngredient', 'Ingredient')}</MobileLabel>
                       <StockItemInfo>
                         {/* 사진이 없으면 자리표시 네모를 그리지 않는다 — 빈 회색 박스가
                             무엇인지 알 수 없는 데다, 좁은 이름 칸을 52px 씩 잡아먹었다. */}
@@ -603,7 +603,7 @@ const StockListSection: React.FC<Props> = ({
                           )}
                           {item.code && <StockItemCode>{item.code}</StockItemCode>}
                           <IngredientMeta>
-                            {item.category} • {(sugg && sugg.daily_usage !== undefined ? sugg.daily_usage : (parseFloat(String(item.avg_daily_usage)) || 0)).toFixed(2)} {item.unit}/day
+                            {item.category} • {(sugg && sugg.daily_usage !== undefined ? sugg.daily_usage : (parseFloat(String(item.avg_daily_usage)) || 0)).toFixed(2)} {t('inventory:stockList.perDay', '{{unit}}/day', { unit: item.unit })}
                             {sugg && sugg.usage_source === 'ledger' && <> ({t('inventory:foresight.last28d', '28d')})</>}
                           </IngredientMeta>
                           {sugg && !!sugg.committed && (
@@ -615,7 +615,7 @@ const StockListSection: React.FC<Props> = ({
                       </StockItemInfo>
                     </MobileValue>
                     <MobileValue>
-                      <MobileLabel>Status</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colStatus', 'Status')}</MobileLabel>
                       <VerdictBadge verdict={verdictOfIngredient(item)} days={sugg && sugg.status === 'soon' ? sugg.days_of_cover : null} />
                       {/* 이미 발주 대기(안 보낸 초안)에 담긴 양 — 상태는 그대로, 중립색 링크만 (2026-11-10 Fable §2-3) */}
                       {sugg && (sugg.in_staging_order_qty || 0) > 0 && (
@@ -629,7 +629,7 @@ const StockListSection: React.FC<Props> = ({
                       )}
                     </MobileValue>
                     <MobileValue>
-                      <MobileLabel>Current Stock</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colCurrentStock', 'Current Stock')}</MobileLabel>
                       {inlineEdit.editingStockId === item.id && inlineEdit.editingStockType === 'ingredient' ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <InlineStockInput
@@ -651,11 +651,11 @@ const StockListSection: React.FC<Props> = ({
                       )}
                       {Number(item.on_order_quantity) > 0 && (
                         <div
-                          title={item.on_order_delivery_date ? `Expected delivery: ${formatDate(item.on_order_delivery_date)}` : 'On order — already purchased'}
+                          title={(item.on_order_delivery_date ? t('inventory:stockList.expectedDelivery', 'Expected delivery: {{date}}', { date: formatDate(item.on_order_delivery_date) }) : t('inventory:stockList.onOrder', 'On order — already purchased')) as string}
                           style={{ display: 'inline-block', marginTop: 4, fontSize: 10, padding: '1px 6px',
                             background: '#E0F2FE', color: '#075985', borderRadius: 999, fontWeight: 600 }}
                         >
-                          ↧ {formatStock(item.on_order_quantity)} {item.unit} incoming
+                          ↧ {t('inventory:stockList.incoming', '{{qty}} {{unit}} incoming', { qty: formatStock(item.on_order_quantity), unit: item.unit })}
                         </div>
                       )}
                     </MobileValue>
@@ -669,13 +669,13 @@ const StockListSection: React.FC<Props> = ({
                       />
                     </MobileValue>
                     <MobileValue className="col-cost">
-                      <MobileLabel>Unit Cost</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colUnitCost', 'Unit Cost')}</MobileLabel>
                       <div style={{ color: '#0A2540' }}>
                         {formatCurrency(item.unit_cost, selectedCurrency)}
                       </div>
                     </MobileValue>
                     <MobileValue className="col-supplier">
-                      <MobileLabel>Supplier</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colSupplier', 'Supplier')}</MobileLabel>
                       {sugg && sugg.seller_name ? (
                         <div>
                           <div style={{ color: '#0A2540', fontSize: '13px', fontWeight: 600 }}>
@@ -708,12 +708,12 @@ const StockListSection: React.FC<Props> = ({
                         </div>
                       ) : (
                         <span style={{ display: 'inline-block', padding: '1px 6px', background: '#F1F4F8', color: '#6B7280', borderRadius: 999, fontWeight: 600, fontSize: 10 }}>
-                          No mapping
+                          {t('inventory:stockList.noMapping', 'No mapping')}
                         </span>
                       )}
                     </MobileValue>
                     <MobileValue className="col-last">
-                      <MobileLabel>Last Stock Take</MobileLabel>
+                      <MobileLabel>{t('inventory:stockList.colLastStockTake', 'Last Stock Take')}</MobileLabel>
                       <div style={{ color: '#4B5563' }}>
                         {formatDate(item.last_stock_take_at)}
                       </div>
@@ -798,7 +798,7 @@ const StockListSection: React.FC<Props> = ({
                         setOrderQuantity(qty);
                       }
                     }}>
-                      Order
+                      {t('inventory:stockList.order', 'Order')}
                     </OrderButton>
                   </div>
                   )}
@@ -819,7 +819,7 @@ const StockListSection: React.FC<Props> = ({
                         onClick={() => onReceive(item)}
                         style={{ padding: '6px 12px', fontSize: '13px' }}
                       >
-                        Receive
+                        {t('inventory:stockList.receive', 'Receive')}
                       </Button>
                     )}
                     <Button
@@ -827,13 +827,13 @@ const StockListSection: React.FC<Props> = ({
                       onClick={() => onWaste(item)}
                       style={{ padding: '6px 12px', fontSize: '13px' }}
                     >
-                      Waste
+                      {t('inventory:stockList.waste', 'Waste')}
                     </Button>
                     {/* 재료 **정의**(이름·단위·공급처·삭제)는 브랜드 소유 → 매장에서 못 고친다.
                         하지만 **PAR 설정**(최소재고·리드타임·사용량)은 매장별이다 — 지점마다 회전율이
                         달라 발주점이 같을 수 없다(프랜차이즈 표준). Settings 는 브랜드 재료에도 연다. */}
                     <SettingsButton onClick={() => onSettings(item)}>
-                      Settings
+                      {t('inventory:stockList.settings', 'Settings')}
                     </SettingsButton>
                     {!item.is_brand_shared && (
                     <DeleteButton onClick={() => onDelete({ type: 'ingredient', id: item.id, name: item.name })}>

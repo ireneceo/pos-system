@@ -183,7 +183,12 @@
       "pending": "待审核",
       "confirmed": "已确认",
       "shipped": "配送中",
-      "received": "本月已收货"
+      "received": "本月已收货",
+      "activeBuyers": "活跃买方",
+      "avgConfirmTime": "平均确认时间",
+      "avgOrder": "平均订单额",
+      "maxOrder": "最大订单额",
+      "totalRevenue": "总收入"
     },
     "tabs": {
       "submitted": "待处理",
@@ -191,7 +196,8 @@
       "shipped": "配送中",
       "received": "已收货",
       "cancelled": "已取消",
-      "completed": "已完成"
+      "completed": "已完成",
+      "all": "全部"
     },
     "table": {
       "poNumber": "PO 编号",
@@ -217,7 +223,8 @@
       "recordDispatch": "记录配送",
       "amend": "修改项目",
       "shipRemaining": "发送剩余商品",
-      "correct": "更正发货数量"
+      "correct": "更正发货数量",
+      "print": "打印"
     },
     "confirm": {
       "title": "确认订单",
@@ -238,7 +245,8 @@
       "itemsLabel": "本次发货的商品",
       "leftForLater": "未勾选的商品将保持“未发货”——之后用“发送剩余商品”发出。",
       "selectAtLeastOne": "请至少选择一个要发货的商品",
-      "stockShortNote": "{{count}} 项库存不足——发货后库存将为负"
+      "stockShortNote": "{{count}} 项库存不足——发货后库存将为负",
+      "carrierSelect": "— 选择承运商或输入自定义名称 —"
     },
     "reject": {
       "title": "拒绝订单",
@@ -312,7 +320,19 @@
       "shareFailed": "此设备无法分享或复制。请使用 PDF 或电子邮件。",
       "stockShort": "当前可用 {{available}} · 缺 {{short}}",
       "stockOk": "当前可用 {{available}}",
-      "stockHint": "已扣除先到订单。配方产品以最缺的原料为准。"
+      "stockHint": "已扣除先到订单。配方产品以最缺的原料为准。",
+      "buyer": "买方",
+      "close": "关闭",
+      "ingredient": "食材",
+      "items": "品项",
+      "lineTotal": "合计",
+      "loading": "加载中…",
+      "notFound": "未找到",
+      "qty": "数量",
+      "received": "已收货",
+      "status": "状态",
+      "total": "合计",
+      "unitPrice": "单价"
     },
     "stockShortLine": "{{count}} 个未完成订单无法用当前库存全部发货",
     "stockShortLink": "前往库存 →",
@@ -367,6 +387,30 @@
       "owner_revoke": "业主撤回了批准",
       "other": "等待买方业主批准",
       "banner": "此订单正在等待买方业主批准变更。批准前请勿备货或发货——批准后将回到“新订单”，请再次确认。"
+    },
+    "returns": {
+      "approve": "批准",
+      "approveConfirm": "批准此退货？将自动开具贷项通知单。",
+      "reject": "拒绝",
+      "rejectReason": "拒绝原因：",
+      "title": "退货申请"
+    },
+    "search": {
+      "placeholder": "搜索买方或采购单号"
+    },
+    "timeAgo": {
+      "justNow": "刚刚",
+      "minutes": "{{n}} 分钟前",
+      "hours": "{{n}} 小时前",
+      "days": "{{n}} 天前"
+    },
+    "soundOn": "提示音开",
+    "soundOff": "提示音关",
+    "buyerType": {
+      "restaurant": "餐厅",
+      "brand": "品牌",
+      "foodcourt": "美食广场",
+      "buyer": "买方"
     }
   },
   "tradeInvoicesPage": {
@@ -453,14 +497,23 @@
   "viewNote": {
     "own": "可在“外部供应商”标签中编辑或删除该供应商。",
     "brandShared": "由品牌共享。商品在品牌账户中管理。",
-    "ownerShared": "由您门店的业主添加，所有门店共用。只有业主可以修改该供应商及其商品——本店可以向其下单或关闭。"
+    "ownerShared": "由您门店的业主添加，所有门店共用。只有业主可以修改该供应商及其商品——本店可以向其下单或关闭。",
+    "brandParent": "您的上级品牌总部 — 只读。",
+    "contract": "通过有效的供应商合同关联。请在“合同”标签中管理。",
+    "external": "您登记的外部供应商。打开以管理其商品（目录）。",
+    "foodcourtParent": "您的上级美食广场总部 — 只读。"
   },
   "profile": {
     "externalSupplier": "外部供应商"
   },
   "source": {
     "external": "外部",
-    "ownerShared": "业主添加"
+    "ownerShared": "业主添加",
+    "brandParent": "品牌总部",
+    "brandShared": "品牌共享",
+    "contract": "已签约",
+    "foodcourtParent": "美食广场",
+    "own": "自有"
   },
   "card": {
     "viewProducts": "查看商品",
@@ -468,7 +521,12 @@
     "sharedStores": "已复制到 {{total}} 家门店中的 {{n}} 家",
     "notShared": "尚未分享给任何门店",
     "fromOwner": "业主添加 — 其所有门店共用",
-    "ownerStores": "您的 {{total}} 家门店中有 {{n}} 家在用"
+    "ownerStores": "您的 {{total}} 家门店中有 {{n}} 家在用",
+    "contact": "联系人",
+    "email": "电子邮件",
+    "manageProducts": "商品",
+    "openContract": "打开合同",
+    "phone": "电话"
   },
   "active": {
     "titleOff": "停用该供应商？",
@@ -514,7 +572,9 @@
   },
   "deleteConfirm": {
     "storesKeep": "已收到副本的门店会保留各自的副本。",
-    "ownerStores": "您的所有门店将不再看到该供应商。已下的订单会保留。"
+    "ownerStores": "您的所有门店将不再看到该供应商。已下的订单会保留。",
+    "desc": "确定要删除 {{name}} 吗？此操作无法撤销。",
+    "title": "删除供应商？"
   },
   "allProducts": {
     "saved": "已保存“{{name}}”",
@@ -575,5 +635,28 @@
     "desc": "{{name}} 将由您的所有餐厅共同使用，只有您（业主）可以编辑。这家餐厅的库存项目关联、订单和发票保持不变。每家餐厅可以只为自己关闭。",
     "confirm": "共享",
     "failed": "无法将此供应商共享给所有餐厅。请重试。"
+  },
+  "directory": {
+    "addSupplier": "添加供应商",
+    "search": "搜索供应商..."
+  },
+  "emptyAll": {
+    "desc": "当您自行添加、关联品牌/美食广场或拥有有效供应商合同时，供应商会自动显示在这里。",
+    "title": "暂无供应商"
+  },
+  "external": {
+    "contact": "联系人",
+    "email": "电子邮件",
+    "failed": "无法打开商品。",
+    "hint": "登记不在平台上的供应商。保存后，添加您向其采购的商品，即可订购该食材。",
+    "name": "供应商名称",
+    "namePlaceholder": "例如：林记肉铺",
+    "nameRequired": "请填写供应商名称。",
+    "phone": "电话",
+    "register": "登记外部供应商",
+    "submit": "登记并添加商品"
+  },
+  "filter": {
+    "allSources": "所有来源"
   }
 }

@@ -218,7 +218,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
     return (
       <Container>
         <EmptyState>
-          <p>Restaurant not found. Please log in with a restaurant account.</p>
+          <p>{t('inventory:manager.restaurantNotFound', 'Restaurant not found. Please log in with a restaurant account.')}</p>
         </EmptyState>
       </Container>
     );
@@ -233,28 +233,28 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
   return (
     <Container>
       <Header>
-        <Title>Inventory</Title>
+        <Title>{t('inventory:manager.title', 'Inventory')}</Title>
         <ParSuggestionsBadge count={par.count} onClick={() => setParOpen(o => !o)} />
       </Header>
 
       <Content>
         <TabContainer>
           <Tab active={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')}>
-            Dashboard
+            {t('inventory:manager.tabs.dashboard', 'Dashboard')}
           </Tab>
           <Tab active={activeTab === 'list'} onClick={() => setActiveTab('list')}>
-            Stock List
+            {t('inventory:manager.tabs.list', 'Stock List')}
           </Tab>
           <Tab active={activeTab === 'history'} onClick={() => setActiveTab('history')}>
-            History
+            {t('inventory:manager.tabs.history', 'History')}
           </Tab>
           <Tab active={activeTab === 'categories'} onClick={() => setActiveTab('categories')}>
-            Categories
+            {t('inventory:manager.tabs.categories', 'Categories')}
           </Tab>
         </TabContainer>
 
         {data.loading ? (
-          <EmptyState>Loading...</EmptyState>
+          <EmptyState>{t('inventory:manager.loading', 'Loading...')}</EmptyState>
         ) : activeTab === 'dashboard' ? (
           <>
           {foresightPanel}
@@ -493,7 +493,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
               {bulk.selectedIds.size}
             </span>
             <span style={{ fontSize: 14, color: '#0A2540', fontWeight: 600 }}>
-              ingredient{bulk.selectedIds.size === 1 ? '' : 's'} selected
+              {bulk.selectedIds.size === 1
+                ? t('inventory:manager.ingredientSelectedOne', 'ingredient selected')
+                : t('inventory:manager.ingredientSelectedMany', 'ingredients selected')}
             </span>
             <button
               type="button"
@@ -502,7 +504,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 background: 'transparent', border: 'none', color: '#4B5563',
                 fontSize: 13, cursor: 'pointer', textDecoration: 'underline'
               }}
-            >Clear</button>
+            >{t('inventory:manager.clear', 'Clear')}</button>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <button
@@ -519,7 +521,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 cursor: 'pointer'
               }}
             >
-              Select all suggestions ({bulk.suggestionsById.size})
+              {t('inventory:manager.selectAllSuggestions', 'Select all suggestions ({{n}})', { n: bulk.suggestionsById.size })}
             </button>
             <button
               type="button"
@@ -536,7 +538,7 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ mode, restaurantId:
                 boxShadow: '0 2px 8px rgba(99,91,255,0.3)'
               }}
             >
-              Order Selected →
+              {t('inventory:manager.orderSelected', 'Order Selected →')}
             </button>
           </div>
         </div>

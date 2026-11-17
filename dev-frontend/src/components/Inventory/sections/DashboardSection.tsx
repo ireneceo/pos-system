@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   StatsGrid,
   StatCard,
@@ -55,24 +56,26 @@ const DashboardSection: React.FC<Props> = ({
   onGoToList,
   onGoToHistory,
   onGoToIngredientsPage,
-}) => (
+}) => {
+  const { t } = useTranslation('inventory');
+  return (
   <>
     <StatsGrid>
       <StatCard color="#059669">
         <StatValue>{summary?.total_items || 0}</StatValue>
-        <StatLabel>Total Ingredients</StatLabel>
-        <StatDescription>managed items</StatDescription>
+        <StatLabel>{t('inventory:dashboard.totalIngredients', 'Total Ingredients')}</StatLabel>
+        <StatDescription>{t('inventory:dashboard.managedItems', 'managed items')}</StatDescription>
       </StatCard>
       <StatCard color="#7C3AED">
         <StatValue>{formatCurrency(summary?.monthly_loss || 0, selectedCurrency)}</StatValue>
-        <StatLabel>Monthly Loss</StatLabel>
-        <StatDescription>this month</StatDescription>
+        <StatLabel>{t('inventory:dashboard.monthlyLoss', 'Monthly Loss')}</StatLabel>
+        <StatDescription>{t('inventory:dashboard.thisMonth', 'this month')}</StatDescription>
       </StatCard>
     </StatsGrid>
 
     {expiringItems.length > 0 && (
       <>
-        <SectionTitle>Expiring Items</SectionTitle>
+        <SectionTitle>{t('inventory:dashboard.expiringItems', 'Expiring Items')}</SectionTitle>
         <div>
           {expiringItems.slice(0, 5).map(item => (
             <ExpiryAlertCard key={item.id} urgency={item.urgency}>
@@ -81,20 +84,20 @@ const DashboardSection: React.FC<Props> = ({
                   {item.ingredient_name}
                   {item.batch_number && (
                     <span style={{ fontSize: '12px', color: '#4B5563', marginLeft: '8px' }}>
-                      Batch: {item.batch_number}
+                      {t('inventory:dashboard.batch', 'Batch: {{batch}}', { batch: item.batch_number })}
                     </span>
                   )}
                 </AlertTitle>
                 <AlertDetail>
-                  {item.remaining_quantity} {item.unit} remaining • Expires: {formatDateTz(item.expiry_date, null)}
+                  {t('inventory:dashboard.remainingExpires', '{{qty}} {{unit}} remaining • Expires: {{date}}', { qty: item.remaining_quantity, unit: item.unit, date: formatDateTz(item.expiry_date, null) })}
                 </AlertDetail>
               </AlertInfo>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <ExpiryBadge urgency={item.urgency}>
-                  {item.urgency === 'expired' ? 'EXPIRED' :
-                   item.urgency === 'critical' ? `${item.days_until_expiry}d LEFT` :
-                   item.urgency === 'warning' ? `${item.days_until_expiry} DAYS` :
-                   `${item.days_until_expiry} days`}
+                  {item.urgency === 'expired' ? t('inventory:dashboard.expired', 'EXPIRED') :
+                   item.urgency === 'critical' ? t('inventory:dashboard.daysLeftShort', '{{days}}d LEFT', { days: item.days_until_expiry }) :
+                   item.urgency === 'warning' ? t('inventory:dashboard.daysUpper', '{{days}} DAYS', { days: item.days_until_expiry }) :
+                   t('inventory:dashboard.daysLower', '{{days}} days', { days: item.days_until_expiry })}
                 </ExpiryBadge>
                 <Button
                   variant="danger"
@@ -104,7 +107,7 @@ const DashboardSection: React.FC<Props> = ({
                   }}
                   style={{ padding: '6px 12px', fontSize: '12px' }}
                 >
-                  Dispose
+                  {t('inventory:dashboard.dispose', 'Dispose')}
                 </Button>
               </div>
             </ExpiryAlertCard>
@@ -133,21 +136,21 @@ const DashboardSection: React.FC<Props> = ({
       if (incoming.length === 0) return null;
       return (
         <>
-          <SectionTitle>Incoming Stock</SectionTitle>
+          <SectionTitle>{t('inventory:dashboard.incomingStock', 'Incoming Stock')}</SectionTitle>
           <InfoBox>
-            Already ordered and on the way. Check here before reordering to avoid ordering twice.
+            {t('inventory:dashboard.incomingHint', 'Already ordered and on the way. Check here before reordering to avoid ordering twice.')}
           </InfoBox>
           <Table>
             <TableHeader columns="2fr 1fr 1fr">
-              <span>Ingredient</span>
-              <span>Incoming</span>
-              <span>Expected</span>
+              <span>{t('inventory:dashboard.colIngredient', 'Ingredient')}</span>
+              <span>{t('inventory:dashboard.colIncoming', 'Incoming')}</span>
+              <span>{t('inventory:dashboard.colExpected', 'Expected')}</span>
             </TableHeader>
             {incoming.slice(0, 10).map(item => (
               <TableRow key={item.id} columns="2fr 1fr 1fr">
                 <div>
                   {item.name}
-                  {item.is_brand_shared && <BrandTag title="Stock item defined by your brand">Brand</BrandTag>}
+                  {item.is_brand_shared && <BrandTag title={t('inventory:dashboard.brandTagTitle', 'Stock item defined by your brand')}>{t('inventory:dashboard.brandTag', 'Brand')}</BrandTag>}
                 </div>
                 <div style={{ fontWeight: 600 }}>
                   {formatStock(item.on_order_quantity)} {item.unit}
@@ -173,7 +176,7 @@ const DashboardSection: React.FC<Props> = ({
           }
         }}
       >
-        Receive Stock
+        {t('inventory:dashboard.receiveStock', 'Receive Stock')}
       </Button>
       <Button
         variant="secondary"
@@ -185,13 +188,14 @@ const DashboardSection: React.FC<Props> = ({
           }
         }}
       >
-        Record Waste
+        {t('inventory:dashboard.recordWaste', 'Record Waste')}
       </Button>
       <Button variant="secondary" onClick={onGoToHistory}>
-        View All Transactions
+        {t('inventory:dashboard.viewAllTransactions', 'View All Transactions')}
       </Button>
     </QuickActions>
   </>
-);
+  );
+};
 
 export default DashboardSection;

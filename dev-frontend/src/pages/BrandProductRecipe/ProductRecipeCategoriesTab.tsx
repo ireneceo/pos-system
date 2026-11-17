@@ -291,11 +291,11 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
         fetchCategories();
         onCategoryChange?.();
       } else {
-        setInfoModal({ open: true, title: 'Save Failed', message: response.error || 'Failed to save category. Please try again.' });
+        setInfoModal({ open: true, title: (t('brand:categoryTabCommon.saveFailedTitle', 'Save Failed') as string), message: response.error || (t('brand:categoryTabCommon.saveCategoryFailedMessage', 'Failed to save category. Please try again.') as string) });
       }
     } catch (error) {
       console.error('Failed to save category:', error);
-      setInfoModal({ open: true, title: 'Save Failed', message: 'Failed to save category. Please try again.' });
+      setInfoModal({ open: true, title: (t('brand:categoryTabCommon.saveFailedTitle', 'Save Failed') as string), message: (t('brand:categoryTabCommon.saveCategoryFailedMessage', 'Failed to save category. Please try again.') as string) });
     } finally {
       setSaving(false);
     }
@@ -320,11 +320,11 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
         fetchCategories();
         onCategoryChange?.();
       } else {
-        setInfoModal({ open: true, title: 'Delete Failed', message: response.error || 'Failed to delete category. Please try again.' });
+        setInfoModal({ open: true, title: (t('brand:categoryTabCommon.deleteFailedTitle', 'Delete Failed') as string), message: response.error || (t('brand:categoryTabCommon.deleteCategoryFailedMessage', 'Failed to delete category. Please try again.') as string) });
       }
     } catch (error) {
       console.error('Failed to delete category:', error);
-      setInfoModal({ open: true, title: 'Delete Failed', message: 'Failed to delete category. Please try again.' });
+      setInfoModal({ open: true, title: (t('brand:categoryTabCommon.deleteFailedTitle', 'Delete Failed') as string), message: (t('brand:categoryTabCommon.deleteCategoryFailedMessage', 'Failed to delete category. Please try again.') as string) });
     }
   };
 
@@ -380,7 +380,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
       <HeaderRow>
         <SectionTitle>{t('brand:productRecipeCategoriesTab.recipeCategories')}</SectionTitle>
         <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-          Add Category
+          {t('brand:categoryTabCommon.addCategory', 'Add Category')}
         </ThemedButton>
       </HeaderRow>
 
@@ -389,7 +389,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
           <EmptyTitle>{t('brand:productRecipeCategoriesTab.noCategoriesYet')}</EmptyTitle>
           <EmptyDescription>{t('brand:productRecipeCategoriesTab.createCategoriesToOrganizeYourProductRecipes')}</EmptyDescription>
           <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-            Add First Category
+            {t('brand:categoryTabCommon.addFirstCategory', 'Add First Category')}
           </ThemedButton>
         </EmptyState>
       ) : (
@@ -408,9 +408,9 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
               <CategoryInfo>
                 <CategoryName>{category.name}</CategoryName>
                 <CategoryMeta>
-                  <span>{category.recipe_count || 0} recipes</span>
+                  <span>{t('brand:categoryTabCommon.recipeCount', '{{count}} recipes', { count: category.recipe_count || 0 })}</span>
                   <StatusBadge active={category.is_active}>
-                    {category.is_active ? 'Active' : 'Inactive'}
+                    {category.is_active ? t('brand:categoryTabCommon.active', 'Active') : t('brand:categoryTabCommon.inactive', 'Inactive')}
                   </StatusBadge>
                 </CategoryMeta>
                 {category.description && (
@@ -418,13 +418,13 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
                 )}
               </CategoryInfo>
               <CategoryActions>
-                <IconButton onClick={() => handleOpenModal(category)} title="Edit">
+                <IconButton onClick={() => handleOpenModal(category)} title={(t('brand:categoryTabCommon.edit', 'Edit') as string)}>
                   <svg viewBox="0 0 24 24" fill="none">
                     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                     <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   </svg>
                 </IconButton>
-                <IconButton onClick={() => handleToggleActive(category)} title={category.is_active ? 'Deactivate' : 'Activate'}>
+                <IconButton onClick={() => handleToggleActive(category)} title={(category.is_active ? t('brand:categoryTabCommon.deactivate', 'Deactivate') : t('brand:categoryTabCommon.activate', 'Activate')) as string}>
                   <svg viewBox="0 0 24 24" fill="none">
                     {category.is_active ? (
                       <path d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -435,7 +435,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
                 </IconButton>
                 <IconButton
                   onClick={() => handleDeleteClick(category)}
-                  title="Delete"
+                  title={(t('brand:categoryTabCommon.delete', 'Delete') as string)}
                   disabled={(category.recipe_count || 0) > 0}
                 >
                   <svg viewBox="0 0 24 24" fill="none">
@@ -451,25 +451,25 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
       <Modal
         isOpen={showModal}
         onClose={handleCloseModal}
-        title={`${editingCategory ? 'Edit' : 'New'} Recipe Category`}
+        title={(editingCategory ? t('brand:categoryTabCommon.editRecipeCategory', 'Edit Recipe Category') : t('brand:categoryTabCommon.newRecipeCategory', 'New Recipe Category')) as string}
         size="medium"
         footer={
           <>
             <ModalButton variant="secondary" onClick={handleCloseModal}>{t('brand:productRecipeCategoriesTab.cancel')}</ModalButton>
             <ModalButton variant="primary" onClick={handleSubmit} disabled={!formData.name.trim() || saving}>
-              {saving ? 'Saving...' : (editingCategory ? 'Update' : 'Create')}
+              {saving ? t('brand:categoryTabCommon.saving', 'Saving...') : (editingCategory ? t('brand:categoryTabCommon.update', 'Update') : t('brand:categoryTabCommon.create', 'Create'))}
             </ModalButton>
           </>
         }
       >
         <form onSubmit={handleSubmit}>
           <UIFormGroup>
-            <FormLabel>Category Name *</FormLabel>
+            <FormLabel>{t('brand:categoryTabCommon.categoryNameLabel', 'Category Name *')}</FormLabel>
             <FormInput
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="e.g., Main Dishes"
+              placeholder={(t('brand:categoryTabCommon.placeholderMainDishes', 'e.g., Main Dishes') as string)}
               autoFocus
               required
             />
@@ -496,7 +496,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
             <FormTextArea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Brief description of this category..."
+              placeholder={(t('brand:categoryTabCommon.descriptionPlaceholder', 'Brief description of this category...') as string)}
               rows={3}
             />
           </UIFormGroup>
@@ -507,14 +507,14 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
         isOpen={deleteModalOpen}
         onCancel={() => { setDeleteModalOpen(false); setCategoryToDelete(null); }}
         onConfirm={handleDeleteConfirm}
-        title="Delete Category"
+        title={(t('brand:categoryTabCommon.deleteTitle', 'Delete Category') as string)}
         message={
           categoryToDelete
-            ? `Are you sure you want to delete "${categoryToDelete.name}"? This action cannot be undone.`
+            ? (t('brand:categoryTabCommon.deleteMessage', 'Are you sure you want to delete "{{name}}"? This action cannot be undone.', { name: categoryToDelete.name }) as string)
             : ''
         }
-        confirmText="Delete"
-        cancelText="Cancel"
+        confirmText={(t('brand:categoryTabCommon.delete', 'Delete') as string)}
+        cancelText={(t('brand:categoryTabCommon.cancel', 'Cancel') as string)}
         type="danger"
       />
       <ConfirmModal
@@ -523,7 +523,7 @@ const ProductRecipeCategoriesTab: React.FC<ProductRecipeCategoriesTabProps> = ({
         message={infoModal.message}
         onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
         onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
-        confirmText="OK"
+        confirmText={(t('brand:categoryTabCommon.ok', 'OK') as string)}
         type="info"
         singleButton
       />

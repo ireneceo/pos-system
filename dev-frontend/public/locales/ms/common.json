@@ -1008,5 +1008,11 @@
     "later": "Ingatkan dalam 1 jam",
     "fix": "Pilih pencetak",
     "kitchenMain": "Dapur"
-  }
+  },
+  "view": "Lihat",
+  "edit": "Edit",
+  "delete": "Padam",
+  "ok": "OK",
+  "orderControls.moveUp": "Naik",
+  "orderControls.moveDown": "Turun"
 }

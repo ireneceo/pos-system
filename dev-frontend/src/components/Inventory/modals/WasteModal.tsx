@@ -39,15 +39,15 @@ const WasteModal: React.FC<Props> = ({
   <Modal
     isOpen={isOpen}
     onClose={onClose}
-    title="Record Waste"
+    title={t('inventory:wasteModal.title', 'Record Waste') as string}
     size="small"
     footer={
       <>
         <ModalButton variant="secondary" onClick={onClose}>
-          Cancel
+          {t('inventory:wasteModal.cancel', 'Cancel')}
         </ModalButton>
         <ModalButton variant="primary" onClick={onConfirm} disabled={!reasonCode}>
-          Confirm Waste
+          {t('inventory:wasteModal.confirm', 'Confirm Waste')}
         </ModalButton>
       </>
     }
@@ -55,24 +55,24 @@ const WasteModal: React.FC<Props> = ({
     {ingredient && (
       <>
         <InfoBox>
-          Record wasted or disposed stock. This will be deducted from current stock.
+          {t('inventory:wasteModal.intro', 'Record wasted or disposed stock. This will be deducted from current stock.')}
         </InfoBox>
         <UIFormGroup>
-          <FormLabel>Ingredient</FormLabel>
+          <FormLabel>{t('inventory:wasteModal.ingredient', 'Ingredient')}</FormLabel>
           <FormInput type="text" value={ingredient.name} disabled />
         </UIFormGroup>
         <UIFormGroup>
-          <FormLabel>Current Stock</FormLabel>
+          <FormLabel>{t('inventory:wasteModal.currentStock', 'Current Stock')}</FormLabel>
           <FormInput type="text" value={`${formatStock(ingredient.current_stock)} ${ingredient.unit}`} disabled />
         </UIFormGroup>
         <UIFormGroup>
-          <FormLabel>Waste Quantity ({ingredient.unit}) *</FormLabel>
+          <FormLabel>{t('inventory:wasteModal.quantity', 'Waste Quantity ({{unit}}) *', { unit: ingredient.unit })}</FormLabel>
           <FormInput
             type="number"
             step="0.01"
             value={quantity}
             onChange={(e) => onQuantityChange(e.target.value)}
-            placeholder="Enter quantity"
+            placeholder={t('inventory:wasteModal.enterQuantity', 'Enter quantity') as string}
             required
           />
         </UIFormGroup>

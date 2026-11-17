@@ -170,7 +170,7 @@ const BulkOrderModal: React.FC<Props> = ({
                     }}>
                       <div>
                         <div style={{ fontSize: 11, color: '#4B5563', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                          {SELLER_TYPE_LABEL[first.seller_type || ''] || first.seller_type}
+                          {SELLER_TYPE_LABEL[first.seller_type || ''] ? t(`inventory:orderModal.sellerType.${first.seller_type}`, SELLER_TYPE_LABEL[first.seller_type || '']) : first.seller_type}
                         </div>
                         <div style={{ fontSize: 15, fontWeight: 600, color: '#0A2540' }}>
                           {first.seller_name || '—'}

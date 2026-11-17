@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { EmptyState, Table, TableHeader, TableRow, MobileGrid, MobileLabel, MobileValue } from '../../UI';
 import { getAuthToken } from '../../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../../utils/timezone';
@@ -10,14 +11,15 @@ interface Props {
   isBrandGeneralMode: boolean;
 }
 
-const getTypeLabel = (type: string): string => {
+type TFn = (key: string, defaultValue?: string) => string;
+const getTypeLabel = (type: string, t: TFn): string => {
   switch (type) {
-    case 'initial': return 'Initial Setup';
-    case 'purchase': return 'Received';
-    case 'order_deduct': return 'Order';
-    case 'stock_take': return 'Stock Take';
-    case 'waste': return 'Waste';
-    case 'adjustment': return 'Adjustment';
+    case 'initial': return t('inventory:history.type.initial', 'Initial Setup');
+    case 'purchase': return t('inventory:history.type.purchase', 'Received');
+    case 'order_deduct': return t('inventory:history.type.order_deduct', 'Order');
+    case 'stock_take': return t('inventory:history.type.stock_take', 'Stock Take');
+    case 'waste': return t('inventory:history.type.waste', 'Waste');
+    case 'adjustment': return t('inventory:history.type.adjustment', 'Adjustment');
     default: return type;
   }
 };
@@ -39,6 +41,7 @@ const getTypeColor = (type: string): string => {
 };
 
 const TransactionHistorySection: React.FC<Props> = ({ restaurantId, isBrandGeneralMode }) => {
+  const { t } = useTranslation('inventory');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -72,17 +75,17 @@ const TransactionHistorySection: React.FC<Props> = ({ restaurantId, isBrandGener
   }, [restaurantId, isBrandGeneralMode]);
 
   if (loading) {
-    return <EmptyState>Loading transactions...</EmptyState>;
+    return <EmptyState>{t('inventory:history.loading', 'Loading transactions...')}</EmptyState>;
   }
 
   if (transactions.length === 0) {
     return (
       <EmptyState>
         <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
-          No transactions recorded yet
+          {t('inventory:history.emptyTitle', 'No transactions recorded yet')}
         </div>
         <div style={{ fontSize: '14px' }}>
-          Transactions will appear here when you receive or waste stock.
+          {t('inventory:history.emptyHint', 'Transactions will appear here when you receive or waste stock.')}
         </div>
       </EmptyState>
     );
@@ -91,61 +94,61 @@ const TransactionHistorySection: React.FC<Props> = ({ restaurantId, isBrandGener
   return (
     <Table>
       <TableHeader columns="1.5fr 1.5fr 1fr 1fr 1fr 2fr">
-        <span>Date</span>
-        <span className="col-info">Ingredient</span>
-        <span>Type</span>
-        <span>Change</span>
-        <span>After</span>
-        <span className="col-info">Notes</span>
+        <span>{t('inventory:history.col.date', 'Date')}</span>
+        <span className="col-info">{t('inventory:history.col.ingredient', 'Ingredient')}</span>
+        <span>{t('inventory:history.col.type', 'Type')}</span>
+        <span>{t('inventory:history.col.change', 'Change')}</span>
+        <span>{t('inventory:history.col.after', 'After')}</span>
+        <span className="col-info">{t('inventory:history.col.notes', 'Notes')}</span>
       </TableHeader>
-      {transactions.map(t => (
-        <TableRow key={t.id} columns="1.5fr 1.5fr 1fr 1fr 1fr 2fr">
+      {transactions.map(tx => (
+        <TableRow key={tx.id} columns="1.5fr 1.5fr 1fr 1fr 1fr 2fr">
           <MobileGrid>
             <MobileValue>
-              <MobileLabel>Date</MobileLabel>
+              <MobileLabel>{t('inventory:history.col.date', 'Date')}</MobileLabel>
               <div style={{ fontSize: '14px', color: '#0A2540' }}>
-                {formatDateTimeTz(t.created_at, null)}
+                {formatDateTimeTz(tx.created_at, null)}
               </div>
             </MobileValue>
             <MobileValue>
-              <MobileLabel>Ingredient</MobileLabel>
+              <MobileLabel>{t('inventory:history.col.ingredient', 'Ingredient')}</MobileLabel>
               <div style={{ fontWeight: 600, color: '#0A2540' }}>
-                {t.ingredient?.name || '-'}
+                {tx.ingredient?.name || '-'}
               </div>
               {/* 출처 표시 — 브랜드 거래내역에는 브랜드 자신의 입고와 **산하 매장의 소비**가
                   한 표에 섞인다. 어디서 난 움직임인지 안 보이면 수량 부호를 오해한다. */}
-              {(t as any).source_scope === 'restaurant' && (
+              {(tx as any).source_scope === 'restaurant' && (
                 <div style={{ display: 'inline-block', marginTop: 3, fontSize: 10, padding: '1px 6px',
                   background: '#EEF2FF', color: '#3730A3', borderRadius: 999, fontWeight: 600 }}>
-                  {(t as any).source_name || 'Store'}
+                  {(tx as any).source_name || t('inventory:history.store', 'Store')}
                 </div>
               )}
             </MobileValue>
             <MobileValue>
-              <MobileLabel>Type</MobileLabel>
-              <span style={{ color: getTypeColor(t.transaction_type), fontWeight: 600 }}>
-                {getTypeLabel(t.transaction_type)}
+              <MobileLabel>{t('inventory:history.col.type', 'Type')}</MobileLabel>
+              <span style={{ color: getTypeColor(tx.transaction_type), fontWeight: 600 }}>
+                {getTypeLabel(tx.transaction_type, t)}
               </span>
             </MobileValue>
             <MobileValue>
-              <MobileLabel>Change</MobileLabel>
+              <MobileLabel>{t('inventory:history.col.change', 'Change')}</MobileLabel>
               <div style={{
-                color: parseFloat(String(t.quantity_change)) >= 0 ? '#059669' : '#DC2626',
+                color: parseFloat(String(tx.quantity_change)) >= 0 ? '#059669' : '#DC2626',
                 fontWeight: 600,
               }}>
-                {parseFloat(String(t.quantity_change)) >= 0 ? '+' : ''}{formatStock(t.quantity_change)} {t.unit}
+                {parseFloat(String(tx.quantity_change)) >= 0 ? '+' : ''}{formatStock(tx.quantity_change)} {tx.unit}
               </div>
             </MobileValue>
             <MobileValue>
-              <MobileLabel>After</MobileLabel>
+              <MobileLabel>{t('inventory:history.col.after', 'After')}</MobileLabel>
               <div style={{ color: '#0A2540' }}>
-                {formatStock(t.stock_after)} {t.unit}
+                {formatStock(tx.stock_after)} {tx.unit}
               </div>
             </MobileValue>
             <MobileValue>
-              <MobileLabel>Notes</MobileLabel>
+              <MobileLabel>{t('inventory:history.col.notes', 'Notes')}</MobileLabel>
               <div style={{ color: '#4B5563', fontSize: '13px' }}>
-                {t.notes || '-'}
+                {tx.notes || '-'}
               </div>
             </MobileValue>
           </MobileGrid>

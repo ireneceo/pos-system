@@ -1008,5 +1008,11 @@
     "later": "1시간 뒤 다시 알림",
     "fix": "프린터 정하기",
     "kitchenMain": "주방"
-  }
+  },
+  "view": "보기",
+  "edit": "수정",
+  "delete": "삭제",
+  "ok": "확인",
+  "orderControls.moveUp": "위로",
+  "orderControls.moveDown": "아래로"
 }

@@ -463,7 +463,13 @@ export function detectSetupDevice(): { device: SetupDevice; detected: SetupDevic
   let device: SetupDevice = detected;
   try {
     const v = localStorage.getItem(SETUP_DEVICE_KEY) as SetupDevice | null;
-    if (v && BROWSER_DEVICES.includes(v)) device = v;
+    // 골라 둔 값은 판정이 틀릴 수 있는 기기(데스크톱 모드 안드로이드=Linux, 아이패드=Mac+터치)에서만 쓴다.
+    // 터치 없는 Mac·Windows 는 안드로이드·아이패드일 수 없으므로 옛 선택을 버린다
+    // (2026-11-17 Irene 맥 크롬에서 «안드로이드 태블릿 · 웹브라우저» 로 보임 — 예전에 고른 값이 영구히 남았던 것).
+    const impossible = (os === 'mac' || os === 'windows') && v !== 'pc-browser';
+    if (v && impossible) localStorage.removeItem(SETUP_DEVICE_KEY);
+    else if (v && BROWSER_DEVICES.includes(v)) device = v;
   } catch { /* ignore */ }
-  return { device, detected, os, standalone, overridable: true };
+  // 터치 없는 Mac·Windows 는 고르기 칸을 숨긴다(골라도 위에서 버려짐)
+  return { device, detected, os, standalone, overridable: !(os === 'mac' || os === 'windows') };
 }

@@ -149,7 +149,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
       <Container>
         <PageHeader title={pageTitle} />
         <Content>
-          <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>Loading...</div>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>{t('recipes:recipesTab.loading', 'Loading...')}</div>
         </Content>
       </Container>
     );
@@ -161,7 +161,7 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
         <PageHeader title={pageTitle} />
         <Content>
           <div style={{ textAlign: 'center', padding: '40px', color: '#4B5563' }}>
-            No brands found. Please create a brand first.
+            {t('recipes:recipeManagementPage.noBrands', 'No brands found. Please create a brand first.')}
           </div>
         </Content>
       </Container>
@@ -207,10 +207,10 @@ const RecipeManagementPage: React.FC<RecipeManagementPageProps> = () => {
 
         <Tabs>
           <Tab active={activeTab === 'recipes'} onClick={() => handleTabChange('recipes')}>
-            Recipes <Badge count={recipesCount} showZero />
+            {t('recipes:recipeManagementPage.recipes', 'Recipes')} <Badge count={recipesCount} showZero />
           </Tab>
           <Tab active={activeTab === 'recipe-categories'} onClick={() => handleTabChange('recipe-categories')}>
-            Recipe Categories <Badge count={recipeCategoriesCount} showZero />
+            {t('recipes:recipeCategoriesTab.recipeCategories', 'Recipe Categories')} <Badge count={recipeCategoriesCount} showZero />
           </Tab>
         </Tabs>
 

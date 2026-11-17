@@ -1,5 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled.div`
   display: flex;
@@ -50,12 +51,13 @@ export const OrderControls: React.FC<OrderControlsProps> = ({
   disableUp = false,
   disableDown = false
 }) => {
+  const { t } = useTranslation('common');
   return (
     <Container>
       <OrderButton
         onClick={onMoveUp}
         disabled={disableUp}
-        title="Move up"
+        title={t('orderControls.moveUp', 'Move up') as string}
       >
         <svg viewBox="0 0 24 24" fill="none">
           <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -64,7 +66,7 @@ export const OrderControls: React.FC<OrderControlsProps> = ({
       <OrderButton
         onClick={onMoveDown}
         disabled={disableDown}
-        title="Move down"
+        title={t('orderControls.moveDown', 'Move down') as string}
       >
         <svg viewBox="0 0 24 24" fill="none">
           <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
