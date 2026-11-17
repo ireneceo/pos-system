@@ -24,7 +24,7 @@ async function attachPurchaseOrders(invoiceIds) {
   const map = new Map();
   if (!ids.length) return map;
   const rows = await sequelize.query(
-    `SELECT id, po_number, trade_invoice_id, total_amount, external_invoice_url,
+    `SELECT id, po_number, trade_invoice_id, total_amount, returned_amount, external_invoice_url,
             external_invoice_filename, invoice_number, invoice_total, invoice_reconciled_at,
             status, seller_type, seller_entity_id, payment_status, entity_type, entity_id,
             submitted_at, approved_at, created_at, received_at, invoice_date,

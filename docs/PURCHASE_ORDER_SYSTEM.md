@@ -3014,3 +3014,5 @@ Irene 「Submit 한 순서대로 나와야해. 생성일이 발주일이여야�
 - 함께: 대시보드 `inventory/reorder-suggestions` 리드타임 = `leadTimeFor(품목, 우선 연결)`(발주 제안과 같은 규칙).
 - 검증: jest `tests/seller-stock-pool.test.js`(A~G) · health-check inventory «재고 전망 2단계» ⑦(가용량=배지=안내=약속한 양) · ⑧⑩(설정·막기·403/404·다른 칸 보존) · ⑨(아침 알림 하루 1번·꺼짐·이른 시각) · 고장주입 3/3.
 - 남은 손질: brand_id 가 비어 있는 «소유만 한» BG 계정은 재고 설정 버튼이 안 보인다(라우트 `applies_to` 로 고칠 수 있음).
+
+> ✅ **2026-11-17 반품 개편(Fable 설계+게이트 PASS · 개발)**: 반품 승인 = 거래 청구서에서 금액을 바로 뺀다(음수 요금 줄 · Credit Note 안 만듦) · 발주 «낼 금액» = 발주액(또는 대조 청구액) − `returned_amount` · 결제된 주문은 반품 신청·승인 불가(`utils/poAmend.returnMoneyBlock`) · 판매자가 직접 반품(줄·주문 전체)도 넣는다. 상세 `SELLER_ORDER_MANAGEMENT_SYSTEM.md` «반품 — 판매자 직접 반품 · 금액 차감 · 결제 막기».

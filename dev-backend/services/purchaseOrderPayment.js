@@ -72,13 +72,17 @@ async function resolveOpenShift(restaurantId, t) {
 function payableFrom(po, isExternal) {
   const ordered = round2(po.total_amount);
   const invoiced = po.invoice_total == null ? null : round2(po.invoice_total);
-  const fallback = { amount: ordered, basis: 'purchase_order', ordered, invoiced };
+  // 승인된 반품 금액은 두 갈래 모두에서 뺀다 (2026-11-17 · services/poReturnDeduction).
+  //   청구서에는 음수 요금 줄로 빠지는데, 여기서 안 빼면 발주 Pay 가 드로어에서 전액을 꺼낸다.
+  const returned = round2(po.returned_amount || 0);
+  const net = (v) => Math.max(0, round2(v - returned));
+  const fallback = { amount: net(ordered), basis: 'purchase_order', ordered, invoiced, returned };
 
   if (!po.invoice_reconciled_at) return fallback;   // 아직 안 맞춰봤다
   if (invoiced === null) return fallback;           // 대조는 했는데 총액을 안 적었다
   if (!isExternal) return fallback;                 // 가입 판매자는 우리 청구서가 원본이다
 
-  return { amount: invoiced, basis: 'supplier_invoice', ordered, invoiced };
+  return { amount: net(invoiced), basis: 'supplier_invoice', ordered, invoiced, returned };
 }
 
 /** 판매자를 직접 조회해 판정한다(결제 경로용 — 호출부가 sellerMap 을 안 갖고 있다). */

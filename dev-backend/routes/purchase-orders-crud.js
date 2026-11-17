@@ -748,6 +748,8 @@ router.get('/purchase-orders/:id', async (req, res) => {
     const payableOne = payableFrom(plain, plain.is_external);
     plain.payable_amount = payableOne.amount;
     plain.payable_basis = payableOne.basis;
+    // 반품 가능 여부·줄별 반품 가능 수량 — 서버 판정 하나(services/poReturnDeduction.attachReturnState · 2026-11-17)
+    try { await require('../services/poReturnDeduction').attachReturnState(plain); } catch (e) { console.error('[return-state] attach failed:', e.message); }
     attachAutoReceiveAt(plain); // 배송 완료 뒤 자동 완료 예정 시각(po-auto-complete §2-5)
     // 구매자 품목 수정 가능 여부 — POST /amend 거부와 같은 함수(utils/poAmend.buyerAmendBlock · 2026-10-15 buyer-po-edit §4-2)
     {

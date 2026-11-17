@@ -1446,3 +1446,25 @@ hold 중 판매자는 **읽기만.** 판매자 동작 라우트 전부가 주문
 - 범위 밖: 주문 전체 미발송(출고 취소) · 단가·상품 교체·배송비 정정 · 더 보낸 경우(→ «주문 추가» 로 새 발주) · 외부(미가입) 공급업체(→ 인보이스 대조). 입고 배치 잔량·매장 마지막 매입가는 반품과 같이 건드리지 않는다(기존 한계).
 - 검증: health-check `inventory` «출고 뒤 수량 정정» 5건(C1·C6·C8 / C2·C4 / C3·C5 / C9 / C10 자체재고 부풀림 금지) · 고장주입 6건(판매자 되돌림·청구서 재작성·받은 양 낮추기·ALREADY_PAID·C10 상한·pos net 0 글자 검사) · Fable 게이트 PASS `.claude/fable-gate-20261107-post-delivery-amend.md`.
 - 자체재고 되돌림 상한: 출고(`/ship`)는 브랜드 자체재고 분기만 `min(주문량, 재고)` 로 0 에서 멈추므로(레시피·다이렉트는 음수 허용), 되돌림도 그 분기만 «장부 order_deduct 합 − 이미 되돌린 양» 까지. 반품 승인도 같은 상한을 탄다.
+
+## 반품 — 판매자 직접 반품 · 금액 차감 · 결제 막기 — 2026-11-17
+
+> Irene «incoming-orders 여기에서 아이템 한개씩 또는 주문 전체 반품 처리할 수 있어야 해. 그리고 고객도 신청해야 하고, 그럼 비용이 차감되고 결제가 된 경우 말고는 되어야 해.»
+> 설계(Fable) `.claude/fable-design-20261117-po-returns-seller-and-deduct.md`
+
+| 무엇 | 어디 |
+|---|---|
+| 판정 하나 `returnMoneyBlock(po, invoice, soa)` — 배송 뒤(received·partial_received·delivered) · 결제 안 된 주문만. 막힘 코드 `BAD_STATUS`·`ALREADY_PAID`·`INVOICE_LOCKED`(청구서 paid/payment_submitted/cancelled/낸 금액>0)·`SOA_LOCKED`. 통과: unpaid · refunded · 직영 정산(INTERNAL) · 대조 끝난 외부 업체 | `utils/poAmend.js` |
+| 판매자 직접 반품 `POST /api/seller-orders/:id/returns` `{ items:[{purchase_order_item_id, quantity}], reason }` — 넣는 즉시 승인(한 트랜잭션 · 한 줄 실패면 전부 롤백). «주문 전체» 는 화면이 모든 줄을 `returnable_qty` 로 채워 같은 POST | `routes/po-returns.js` |
+| 구매자 신청 `POST /api/purchase-orders/:id/returns` (그대로) → 판매자 승인. 외부 업체는 구매자가 닫음(그대로) | 같은 파일 |
+| 승인 본체 `approveReturnCore` — 판정 → 합산 검사 → 재고 되돌림(`poStockReversal`) → **금액 차감** → 반품 행 승인. 커밋 뒤 정산서 따라가기 · 구매자 메일 | 같은 파일 |
+| 금액 차감 — 거래 청구서 `additional_charges` 에 음수 줄(`kind:'po_return'`) + `finalizeInvoice` + 수정 이력 `source:'po_return'` · 발주 `returned_amount` += · 이벤트 `returned`. 차감액 = 수량 × 반품 행 단가(대조된 줄은 청구가). 배송비·세금 그대로. **Credit Note 는 더 안 만든다** | `services/poReturnDeduction.js` |
+| 발주 낼 금액 = 기존 금액 − `returned_amount` (두 갈래 모두) | `services/purchaseOrderPayment.payableFrom` |
+| 외부 업체 대조가 요금 줄을 다시 만들 때 승인 반품 줄을 덧붙임 — «청구서 총액 = 적은 총액 − 반품» | `services/reconcileInvoiceSync.js` |
+| 목록·상세 장식 `can_return`·`return_blocked`·`returned_amount` · 줄 `returned_qty`·`return_pending_qty`·`returnable_qty` | `poReturnDeduction.attachReturnState` (판매자 목록/상세 · 구매자 상세) |
+| DB 칸 4 — `purchase_order_returns.initiated_by`·`deducted_invoice_id`·`deducted_amount` · `purchase_orders.returned_amount` | `scripts/migrate-po-return-deduction.js` (deploy) |
+| 화면 — 판매자 «Return items»(목록 행·상세) + `SellerReturnModal.tsx` · 승인/거절은 공용 확인 창 · 구매자 «Return all»·합계·«Returned −X · To pay Y» | `pages/IncomingOrders/*` · `pages/PurchaseOrders/PurchaseOrderDetailPage.tsx` |
+
+**알려진 한계:** 외부 업체가 반품을 이미 뺀 새 청구서를 보내 그 금액으로 다시 대조하면 두 번 빠질 수 있다(반품 줄이 청구서에 보이므로 사람이 알아챌 수 있음).
+**범위 밖:** 결제된 주문의 반품·환불 · 받기 전 회수(«수량 정정» 몫) · 구매 통계가 `po.total_amount` 를 그대로 더하는 곳 · 옛 승인 반품(Credit Note 만 있고 청구서 그대로) 소급 — Irene 결정 대기.
+**검사:** health-check `inventory --grep=반품` R1~R4·R5~R8·R10 · `invoice-pay-flow` R9 · 고장주입 3건(차감 호출 제거 / paid 판정 제거 / 대조 반품 줄 제거 → 각각 실패 확인).

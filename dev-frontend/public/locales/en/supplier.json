@@ -224,7 +224,8 @@
       "amend": "Edit items",
       "shipRemaining": "Ship remaining",
       "correct": "Correct quantities",
-      "print": "Print"
+      "print": "Print",
+      "returnItems": "Return items"
     },
     "confirm": {
       "title": "Confirm Order",
@@ -390,10 +391,50 @@
     },
     "returns": {
       "approve": "Approve",
-      "approveConfirm": "Approve this return? Credit Note will be issued automatically.",
+      "approveConfirm": "Approve this return? The amount will be taken off the invoice.",
       "reject": "Reject",
       "rejectReason": "Rejection reason:",
-      "title": "Return Requests"
+      "title": "Return Requests",
+      "sellerTitle": "Return items",
+      "submit": "Process return",
+      "sellerHint": "Enter what the buyer sent back. The buyer's stock goes down, your stock comes back, and the amount is taken off the invoice.",
+      "notReceived": "The buyer has not received this order yet — use Correct quantities instead.",
+      "allReturned": "Everything received on this order has already been returned.",
+      "returnAll": "Return entire order",
+      "clear": "Clear",
+      "received": "Received",
+      "alreadyReturned": "Already returned",
+      "returnQty": "Return",
+      "exceeds": "Up to {{n}}",
+      "amount": "Amount",
+      "returnTotal": "Return total",
+      "invoiceChange": "Invoice {{number}}: {{from}} → {{to}}",
+      "reasonPlaceholder": "e.g. 2 packs arrived damaged",
+      "confirmTitle": "Return {{n}} item(s), −{{amount}}?",
+      "confirmBody": "Stock moves back right away and the amount is taken off the invoice. The buyer is told by email. This cannot be undone here.",
+      "doneTitle": "Return processed",
+      "done": "Return processed.",
+      "doneInvoice": "Return processed. Invoice {{number}} is now {{total}}.",
+      "listTitle": "Returns",
+      "qty": "Qty",
+      "bySeller": "by you",
+      "byBuyer": "by buyer",
+      "deducted": "−{{amount}} taken off the invoice",
+      "status": {
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "requested": "Requested"
+      },
+      "approveTitle": "Approve this return?",
+      "approveBody": "The buyer's stock goes down, your stock comes back, and the amount is taken off the invoice.",
+      "rejectTitle": "Reject this return?",
+      "returnedLine": "Returned −{{amount}}",
+      "netLine": "Net {{amount}}",
+      "blocked": {
+        "ALREADY_PAID": "This order is already paid — a return cannot reduce the bill. Reverse the payment first.",
+        "INVOICE_LOCKED": "The invoice is paid, submitted for payment or cancelled — it cannot be reduced.",
+        "SOA_LOCKED": "The statement that contains this invoice is already paid or submitted."
+      }
     },
     "search": {
       "placeholder": "Search buyer or PO #"

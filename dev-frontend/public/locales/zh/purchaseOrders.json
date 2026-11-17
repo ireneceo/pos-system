@@ -275,7 +275,27 @@
       "existing": "已有退货",
       "noReceived": "没有可退货的已收品项",
       "received": "已收",
-      "reasonPlaceholder": "原因（可选）"
+      "reasonPlaceholder": "原因（可选）",
+      "hintExternal": "按行填写退货数量。将退货单发给供应商后在此关闭 — 金额将从发票中扣除。",
+      "hintSeller": "按行填写退货数量。退货需卖家批准，批准后金额从发票中扣除。",
+      "returnAll": "全部退货",
+      "total": "退货合计",
+      "alreadyReturned": "已退",
+      "qty": "数量",
+      "bySeller": "卖家处理",
+      "byYou": "我申请",
+      "deducted": "已从发票扣除 −{{amount}}",
+      "status": {
+        "approved": "已批准",
+        "rejected": "已拒绝",
+        "requested": "已申请"
+      },
+      "returnedLine": "退货 −{{amount}} · 应付 {{pay}}",
+      "blocked": {
+        "ALREADY_PAID": "此订单已付款 — 退货无法减少账单。请先撤销付款。",
+        "INVOICE_LOCKED": "发票已付款、已提交付款或已取消 — 无法减少。",
+        "SOA_LOCKED": "包含此发票的对账单已付款或已提交。"
+      }
     },
     "noEmailTitle": "无电子邮件",
     "noEmail": "该卖家未登记电子邮件地址。",

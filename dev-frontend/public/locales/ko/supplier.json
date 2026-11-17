@@ -224,7 +224,8 @@
       "amend": "품목 수정",
       "shipRemaining": "나머지 보내기",
       "correct": "보낸 수량 정정",
-      "print": "인쇄"
+      "print": "인쇄",
+      "returnItems": "반품 처리"
     },
     "confirm": {
       "title": "주문 확정",
@@ -390,10 +391,50 @@
     },
     "returns": {
       "approve": "승인",
-      "approveConfirm": "이 반품을 승인할까요? 크레딧 노트가 자동으로 발행됩니다.",
+      "approveConfirm": "이 반품을 승인할까요? 금액이 청구서에서 빠집니다.",
       "reject": "거절",
       "rejectReason": "거절 사유:",
-      "title": "반품 요청"
+      "title": "반품 요청",
+      "sellerTitle": "반품 처리",
+      "submit": "반품 처리",
+      "sellerHint": "구매자가 돌려보낸 수량을 적으세요. 구매자 재고가 줄고 내 재고가 돌아오며, 금액은 청구서에서 빠집니다.",
+      "notReceived": "구매자가 아직 이 주문을 받지 않았습니다 — «수량 정정»을 쓰세요.",
+      "allReturned": "이 주문에서 받은 것은 모두 이미 반품됐습니다.",
+      "returnAll": "주문 전체 반품",
+      "clear": "비우기",
+      "received": "받은 양",
+      "alreadyReturned": "이미 반품",
+      "returnQty": "반품",
+      "exceeds": "최대 {{n}}",
+      "amount": "금액",
+      "returnTotal": "반품 합계",
+      "invoiceChange": "청구서 {{number}}: {{from}} → {{to}}",
+      "reasonPlaceholder": "예: 2팩이 파손돼 도착",
+      "confirmTitle": "{{n}}개 품목을 반품하고 −{{amount}} 할까요?",
+      "confirmBody": "재고가 바로 되돌아가고 금액은 청구서에서 빠집니다. 구매자에게 메일로 알립니다. 여기서 되돌릴 수 없습니다.",
+      "doneTitle": "반품 처리됨",
+      "done": "반품을 처리했습니다.",
+      "doneInvoice": "반품을 처리했습니다. 청구서 {{number}} 금액은 이제 {{total}} 입니다.",
+      "listTitle": "반품",
+      "qty": "수량",
+      "bySeller": "내가 처리",
+      "byBuyer": "구매자 신청",
+      "deducted": "청구서에서 −{{amount}} 차감",
+      "status": {
+        "approved": "승인됨",
+        "rejected": "거절됨",
+        "requested": "신청됨"
+      },
+      "approveTitle": "이 반품을 승인할까요?",
+      "approveBody": "구매자 재고가 줄고 내 재고가 돌아오며, 금액은 청구서에서 빠집니다.",
+      "rejectTitle": "이 반품을 거절할까요?",
+      "returnedLine": "반품 −{{amount}}",
+      "netLine": "차감 후 {{amount}}",
+      "blocked": {
+        "ALREADY_PAID": "이미 결제된 주문이라 반품으로 청구를 줄일 수 없습니다. 결제를 먼저 되돌리세요.",
+        "INVOICE_LOCKED": "청구서가 결제됐거나 결제 제출·취소된 상태라 줄일 수 없습니다.",
+        "SOA_LOCKED": "이 청구서가 묶인 정산서가 이미 결제·제출됐습니다."
+      }
     },
     "search": {
       "placeholder": "구매자 또는 발주 번호 검색"

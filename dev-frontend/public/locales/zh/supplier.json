@@ -224,7 +224,8 @@
       "amend": "修改项目",
       "shipRemaining": "发送剩余商品",
       "correct": "更正发货数量",
-      "print": "打印"
+      "print": "打印",
+      "returnItems": "处理退货"
     },
     "confirm": {
       "title": "确认订单",
@@ -390,10 +391,50 @@
     },
     "returns": {
       "approve": "批准",
-      "approveConfirm": "批准此退货？将自动开具贷项通知单。",
+      "approveConfirm": "批准此退货？金额将从发票中扣除。",
       "reject": "拒绝",
       "rejectReason": "拒绝原因：",
-      "title": "退货申请"
+      "title": "退货申请",
+      "sellerTitle": "处理退货",
+      "submit": "处理退货",
+      "sellerHint": "填写买家退回的数量。买家库存减少，你的库存恢复，金额从发票中扣除。",
+      "notReceived": "买家尚未收到此订单 — 请使用“更正数量”。",
+      "allReturned": "此订单已收到的商品已全部退货。",
+      "returnAll": "整单退货",
+      "clear": "清空",
+      "received": "已收",
+      "alreadyReturned": "已退",
+      "returnQty": "退货",
+      "exceeds": "最多 {{n}}",
+      "amount": "金额",
+      "returnTotal": "退货合计",
+      "invoiceChange": "发票 {{number}}：{{from}} → {{to}}",
+      "reasonPlaceholder": "例如：2 包到货破损",
+      "confirmTitle": "退货 {{n}} 项，−{{amount}}？",
+      "confirmBody": "库存立即退回，金额从发票中扣除，并通过邮件通知买家。此处无法撤销。",
+      "doneTitle": "退货已处理",
+      "done": "退货已处理。",
+      "doneInvoice": "退货已处理。发票 {{number}} 现为 {{total}}。",
+      "listTitle": "退货",
+      "qty": "数量",
+      "bySeller": "由你处理",
+      "byBuyer": "买家申请",
+      "deducted": "已从发票扣除 −{{amount}}",
+      "status": {
+        "approved": "已批准",
+        "rejected": "已拒绝",
+        "requested": "已申请"
+      },
+      "approveTitle": "批准此退货？",
+      "approveBody": "买家库存减少，你的库存恢复，金额从发票中扣除。",
+      "rejectTitle": "拒绝此退货？",
+      "returnedLine": "退货 −{{amount}}",
+      "netLine": "净额 {{amount}}",
+      "blocked": {
+        "ALREADY_PAID": "此订单已付款 — 退货无法减少账单。请先撤销付款。",
+        "INVOICE_LOCKED": "发票已付款、已提交付款或已取消 — 无法减少。",
+        "SOA_LOCKED": "包含此发票的对账单已付款或已提交。"
+      }
     },
     "search": {
       "placeholder": "搜索买方或采购单号"

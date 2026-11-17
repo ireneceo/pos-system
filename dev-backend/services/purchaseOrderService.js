@@ -337,9 +337,24 @@ async function createTradeInvoice(po) {
     }
   }
 
+  // 승인 때 청구서가 없어 아직 안 뺀 반품 — 요금 줄로 붙인다 (2026-11-17 반품 Fable gate ② · services/poReturnDeduction).
+  //   안 붙이면 발주 «낼 금액» 은 뺀 금액인데 청구서·정산서는 전액이 된다.
+  let returnsAttached = 0;
+  try {
+    returnsAttached = await require('./poReturnDeduction').attachPendingReturnsToInvoice({ poId: fullPo.id, invoice });
+  } catch (e) {
+    console.error('[purchaseOrderService] attach pending returns error:', e.message);
+  }
+
   // Finalize (recompute totals using existing helper)
   try { await finalizeInvoice(invoice.id); } catch (e) {
     console.error('[purchaseOrderService] finalizeInvoice error:', e.message);
+  }
+  if (returnsAttached && !(alreadyPaid || internal)) {
+    try {
+      await invoice.reload();
+      await require('./poReturnDeduction').closeIfFullyReturned({ po: await PurchaseOrder.findByPk(fullPo.id), invoice });
+    } catch (e) { console.error('[purchaseOrderService] close fully-returned error:', e.message); }
   }
 
   // 🔴 낸 금액은 **청구서 자기 총액**을 따른다 (2026-09-07 Fable 게이트).

@@ -275,7 +275,27 @@
       "existing": "Pulangan sedia ada",
       "noReceived": "Tiada item diterima untuk dipulangkan",
       "received": "Diterima",
-      "reasonPlaceholder": "Sebab (pilihan)"
+      "reasonPlaceholder": "Sebab (pilihan)",
+      "hintExternal": "Nyatakan kuantiti pemulangan setiap baris. Hantar nota pemulangan kepada pembekal, kemudian tutup di sini — jumlahnya ditolak daripada invois.",
+      "hintSeller": "Nyatakan kuantiti pemulangan setiap baris. Pemulangan perlu kelulusan penjual. Selepas diluluskan jumlahnya ditolak daripada invois.",
+      "returnAll": "Pulangkan semua",
+      "total": "Jumlah pemulangan",
+      "alreadyReturned": "Sudah dipulangkan",
+      "qty": "Kuantiti",
+      "bySeller": "oleh penjual",
+      "byYou": "oleh anda",
+      "deducted": "−{{amount}} ditolak daripada invois",
+      "status": {
+        "approved": "Diluluskan",
+        "rejected": "Ditolak",
+        "requested": "Dimohon"
+      },
+      "returnedLine": "Dipulangkan −{{amount}} · Perlu dibayar {{pay}}",
+      "blocked": {
+        "ALREADY_PAID": "Pesanan ini sudah dibayar — pemulangan tidak boleh mengurangkan bil. Batalkan pembayaran dahulu.",
+        "INVOICE_LOCKED": "Invois sudah dibayar, dihantar untuk bayaran atau dibatalkan — tidak boleh dikurangkan.",
+        "SOA_LOCKED": "Penyata yang mengandungi invois ini sudah dibayar atau dihantar."
+      }
     },
     "noEmailTitle": "Tiada E-mel",
     "noEmail": "Tiada alamat e-mel didaftarkan untuk penjual ini.",

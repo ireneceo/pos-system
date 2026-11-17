@@ -275,7 +275,27 @@
       "existing": "Existing returns",
       "noReceived": "No received items to return",
       "received": "Received",
-      "reasonPlaceholder": "Reason (optional)"
+      "reasonPlaceholder": "Reason (optional)",
+      "hintExternal": "Specify return quantity per line. Send the return note to the supplier, then close it here — the amount is taken off the invoice.",
+      "hintSeller": "Specify return quantity per line. Returns need the seller's approval. Once approved the amount is taken off the invoice.",
+      "returnAll": "Return all",
+      "total": "Return total",
+      "alreadyReturned": "Already returned",
+      "qty": "Qty",
+      "bySeller": "by seller",
+      "byYou": "by you",
+      "deducted": "−{{amount}} off the invoice",
+      "status": {
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "requested": "Requested"
+      },
+      "returnedLine": "Returned −{{amount}} · To pay {{pay}}",
+      "blocked": {
+        "ALREADY_PAID": "This order is already paid — a return cannot reduce the bill. Reverse the payment first.",
+        "INVOICE_LOCKED": "The invoice is paid, submitted for payment or cancelled — it cannot be reduced.",
+        "SOA_LOCKED": "The statement that contains this invoice is already paid or submitted."
+      }
     },
     "noEmailTitle": "No Email",
     "noEmail": "No email address is registered for this seller.",

@@ -265,6 +265,7 @@ router.get('/', async (req, res) => {
     await attachSellerProductInfo(data);
     // 출고 뒤 수량 정정 가능 여부 — 판정 = utils/poAmend.sellerCorrectionBlock(POST 와 같은 함수 · 2026-11-07)
     try { await attachCorrectionState(data); } catch (e) { console.error('[correct-state] attach failed:', e.message); }
+    try { await require('../services/poReturnDeduction').attachReturnState(data); } catch (e) { console.error('[return-state] attach failed:', e.message); }
     // 브랜드 재고 부족 — 줄별 short · 주문별 stock_short_count (utils/sellerStockPool · 2026-11-03 phase2 §5-2). 표시용 — 실패해도 목록은 준다.
     try { await require('../utils/sellerStockPool').attachStockShortage(data); } catch (e) { console.error('[stock-short] attach failed:', e.message); }
 
@@ -581,6 +582,7 @@ router.get('/:id', async (req, res) => {
     await attachSellerProductInfo(obj);
     await attachSellerProductCategory(obj); // 상세 품목을 판매자 카테고리별로 묶어 보이게(2026-09-29 Irene)
     try { await attachCorrectionState(obj); } catch (e) { console.error('[correct-state] attach failed:', e.message); }
+    try { await require('../services/poReturnDeduction').attachReturnState(obj); } catch (e) { console.error('[return-state] attach failed:', e.message); }
     try { await require('../utils/sellerStockPool').attachStockShortage(obj); } catch (e) { console.error('[stock-short] attach failed:', e.message); }
     res.json({ success: true, data: obj });
   } catch (err) {
@@ -1954,6 +1956,7 @@ router.post('/:id/correct-delivery', async (req, res) => {
     attachAutoReceiveAt(obj);
     await attachSellerProductInfo(obj);
     await attachCorrectionState(obj);
+    try { await require('../services/poReturnDeduction').attachReturnState(obj); } catch (e) { console.error('[return-state] attach failed:', e.message); }
     res.json({
       success: true, data: obj, message: 'Quantities corrected',
       correction: {
@@ -1975,3 +1978,5 @@ module.exports = router;
 
 // 시험 하니스용(렌더 확인) — 라우트 아님
 router._notifyForTest = { fireBuyerNotification, buyerMail, sellerNameOf };
+// 반품 처리(routes/po-returns.js)가 같은 구매자 메일 틀을 쓴다 — 새 메일 틀 금지 (2026-11-17)
+module.exports.buyerNotify = { buyerMail, fireBuyerNotification, sellerNameOf };

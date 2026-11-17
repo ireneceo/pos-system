@@ -1,5 +1,26 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-11-17 (/개발완료 · 작업방 89e51af7)
+**마지막 업데이트:** 2026-11-17 (작업방 9a2262fa · 판매 주문 반품 · /개발완료)
+
+### ✅ 완료 (2026-11-17) — 판매 주문 반품: 줄·주문 전체·고객 신청·금액 차감·결제 막기 [Claude Code · 백그라운드 작업방 9a2262fa]
+- Irene 원문: «incoming-orders 여기에서 아이템 한개씩 또는 주문 전체 반품 처리할 수 있어야 해. 그리고 고객도 신청해야 하고, 그럼 비용이 차감되고 결제가 된 경우 말고는 되어야 해. 확인해줘.»
+- 확인 결과(전): 구매자 줄별 신청·판매자 승인만 있었음 · 판매자 직접·주문 전체 없음 · 승인해도 Credit Note 만 생기고 청구서·정산서·낼 금액 그대로(개발 PO-R5-20260605-001 RM 95 실례) · 결제 여부 검사 없음
+- Fable 설계 .claude/fable-design-20261117-po-returns-seller-and-deduct.md → 구현 → Fable gate 1차 불통과(0원 청구서 미결제로 남음 · 승인 뒤 생기는 청구서에 반품 안 빠짐) → 고침 → 재판정 PASS(마커 97f005eeb413)
+- 서버: utils/poAmend.returnMoneyBlock · routes/po-returns.js(approveReturnCore · 판매자 직접 POST /api/seller-orders/:id/returns) · services/poReturnDeduction.js(청구서 음수 요금 줄·returned_amount·0원 닫기·나중 청구서에 붙이기·attachReturnState) · payableFrom − returned_amount · 대조 동기화 반품 줄 덧붙임 · createTradeInvoice 반품 붙임 · 연체 작업 total_amount>0 · 마이그 migrate-po-return-deduction.js(deploy · 칸 4)
+- 화면: 판매자 «반품 처리»(목록 행·상세)+SellerReturnModal(주문 전체 반품·비우기·청구서 전후 금액) · 승인/거절 공용 확인 창 · 구매자 «전체 반품»·합계·«반품 −X · 낼 금액 Y» · 막힘 이유 4언어
+- 검증: health-check 497/497(반품 R1~R12) · 고장주입 5건 모두 실패로 잡힘 · verify-all --full(배포 준비 칸만 실패) · 실브라우저 한국어 · print-guard 8/8 · 운영 읽기: 승인 반품 0건(소급 불필요) · 신청 대기 1건
+- 확인용 주문(개발 매장 38→브랜드 17): PO-R38-CHK-RET-OPEN-64051(id 79832 · 커피 1캔 반품됨) · PO-R38-CHK-RET-PAID-65744(id 79833 · 결제됨)
+- 후속 후보(Fable · 막지 않음): 0원 줄이 섞인 주문 전체 반품이 «이미 결제됨» 400 으로 거부(닫기를 줄 루프 뒤 한 번으로) · 반품 목록 청구서 번호·구매자 «판매자가 반품 처리함» 배너 · 대조 재저장 시 반품 줄 이름 · brand-revenue·foodCostReport 가 발주 총액을 반품 차감 없이 합산(Fable calc)
+- 운영 반영: 다음 배포 때
+
+### ✅ 완료 (2026-11-17) — 매장 8 태블릿용 «Cloudflare 안 거치는 별도 주소» 설계 [Claude Code · 백그라운드 작업방 75a4942d]
+- 문서: docs/STORE_DIRECT_ADDRESS_DESIGN.md (코드·DNS·운영 변경 0)
+- 결론: 지금은 필요 없음 — purplehere.com·www 가 10-29 부터 DNS only 라 매장 8 태블릿도 이미 87.106.78.146 직접(실측 11-17: dig·server nginx·인증서 이름 2개). 10-29 Fable «확인 못 한 것»(매장 8 실주소 접속)도 이걸로 설명됨
+- direct.purplehere.com: DNS 는 와일드카드로 이미 닿지만 인증서 밖(https 오류) — 만들 때 certbot --expand · server_name · allowedOrigins(server.js:256)·socket cors(socketService.js:206) · 태블릿 새 APK(APP_URL 빌드 때 굳음)
+- 주소 바뀌면 사라지는 것: 로그인 · 🔒 workstation_id(주방 자동 인쇄 주인 재지정 필수) · offline_main_pos · 키오스크 토큰 · 옛 주소 오프라인 대기 · 남는 것: 서버 프린터 설정 · 앱 등록 프린터(SharedPreferences)
+- Irene 정할 것: 지금 없음 · Cloudflare 다시 켤 때 (가) 전부 Cloudflare (나) DNS only 유지 (다) direct — 문서 §7
+- Fable 안 씀 — 10-29 Fable 판단(B 지금 아님)이 그대로이고 지금 바꾸는 것 없음 · 실제로 만들 때 Fable 설계 1회(문서 §6)
+- Cloudflare 말레이시아 11-17: JHB partial_outage · KUL under_maintenance → 다시 켜기 기준 미충족 그대로
+- 덤: 매장 10 PC hosts 2줄은 DNS only 동안 필요 없음 — 서버 이사 지뢰라 지워도 됨(Irene 매장 방문 때 · 급하지 않음)
 
 ### ✅ 완료 (2026-11-17) — 완료 방 실제 테스트 문제 5건 [Claude Code · 백그라운드 작업방 89e51af7]
 - ① 오너 인보이스 «대조·총액 수정»: 외부(미가입) 업체 정산서(SOA) 전용 = 설계대로. CHK-UPL-O-001 은 가입 공급업체(20 Demo Supplier Co.) trade 청구서라 안 나옴. 확인 주소는 /pos/owner/invoices(/owner/invoices 아님). 데모 오너 매장 2·3 엔 외부 업체 정산서 0건 → 지금 개발서버에 버튼 보이는 예 없음.
@@ -23,7 +44,10 @@
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 · 89e51af7)
+### 완료된 작업 (이번 세션 · 9a2262fa)
+- [Claude Code] 판매 주문 반품 — 판매자 직접·주문 전체·고객 신청·금액 차감·결제 막기(위 ✅ 절 · Fable 설계+게이트 PASS)
+
+### 완료된 작업 (앞 세션 · 89e51af7)
 - [Claude Code] 완료 방 실제 테스트 문제 5건(위 ✅ 절) — 재고·레시피 번역은 보조 에이전트 2개가 나눠 함
 
 ### 완료된 작업 (앞 세션 · 323ffae5)
@@ -37,6 +61,7 @@
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
+- 반품 후속(Fable · 막지 않음): 0원 줄 섞인 주문 전체 반품이 «이미 결제됨» 400 으로 거부(closeIfFullyReturned 를 줄 루프 뒤 한 번으로) · 반품 목록 청구서 번호·구매자 «판매자가 반품 처리함» 배너 · 대조 재저장 시 반품 줄 이름 · brand-revenue·foodCostReport 반품 미차감(Fable calc)
 - seller hold Fable 후속 3건(health N5 단언 보강 · 설계 문서 «미구현» 표기 · goneFromSeller 변수명)
 - 판매자가 대신 넣은 새 주문의 승인 대기 표시(설계 §6 범위 밖)
 - 남은 영어: 브랜드 실적 «All Brands·All Restaurants·N completed·N unique» · 재료 화면(IngredientsTab·ProductIngredientsTab 약 160개) · 공용 Pagination/SortDropdown · MainLayout(🔒 보호파일)
@@ -1304,7 +1329,7 @@
 - 언제: Irene 이 DNS only 로 바꾼 뒤, cloudflarestatus KUL·JHB 둘 다 정상 24시간 이상 + dev.purplehere.com/api/health 매장 와이파이 PC 1회 확인(못 하면 생략·2 영업일 더 관찰) + 영업 외 시간(마감 뒤·오전 10시 전)
 - 그때 할 일: Irene 에게 purplehere.com·www 를 다시 주황 구름으로 바꾸는 할 일 올림 → 켠 뒤 2 영업일 processed_ops 오프라인 재전송 0·요청 주소 분산 예전 수준 확인(운영 읽기만) · 재발하면 다시 끔
 - 확인 명령: curl -s https://www.cloudflarestatus.com/api/v2/components.json | python3 -c "import sys,json;[print(c['name'],c['status'],c['updated_at']) for c in json.load(sys.stdin)['components'] if 'Malaysia' in c['name']]"
-- 근거: .claude/fable-design-20261029-store-direct-path.md §4
+- 근거: .claude/fable-design-20261029-store-direct-path.md §4 · 켤 때 매장 기기 처리 선택 = docs/STORE_DIRECT_ADDRESS_DESIGN.md §7
 - 카나리 dev: dev 를 다시 Proxied 로 돌린 뒤에만 가능 · 개발서버 인증서 만료(2026-05-03) 갱신은 sudo 필요
 
 ### ✅ 끝남 (2026-10-29 Irene 전환 · 2026-11-15 재확인) — Cloudflare purplehere.com·www «DNS only» 로 (지금 끊김 해결) [Claude Code · 백그라운드 작업방 5a299bf3]

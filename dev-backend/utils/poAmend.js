@@ -332,9 +332,43 @@ function sellerCorrectionBlock(po, lines, invoice) {
   return null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 반품 — 돈 판정 하나 (2026-11-17 · .claude/fable-design-20261117-po-returns-seller-and-deduct.md §2)
+//   구매자 신청 · 판매자 직접 반품 · 승인 · 목록/상세 can_return 이 전부 이 함수를 부른다.
+//   Irene «결제가 된 경우 말고는 되어야 해» — 결제된 주문은 반품이 청구를 줄일 수 없으니 막는다.
+//   refunded(결제를 되돌린 것)·직영 정산(INTERNAL — 실제 결제 아님)·대조 끝난 외부 업체 주문은 통과.
+// ─────────────────────────────────────────────────────────────────────────────
+const RETURNABLE_STATUSES = ['received', 'partial_received', 'delivered'];
+const isInternalSettlement = (po, invoice) =>
+  po.payment_method === 'internal' && (!invoice || invoice.payment_method === 'internal');
+
+function returnMoneyBlock(po, invoice, soa) {
+  if (!RETURNABLE_STATUSES.includes(po.status)) {
+    return { code: 'BAD_STATUS', http: 400, message: `Returns are only possible after delivery (current status '${po.status}')` };
+  }
+  if (isInternalSettlement(po, invoice)) return null;   // 직영 정산 — 돈이 오간 적 없다
+  if (po.payment_status === 'paid') {
+    return { code: 'ALREADY_PAID', http: 400, message: 'This order is already paid — a return cannot reduce the bill. Reverse the payment first.' };
+  }
+  if (invoice && (['paid', 'payment_submitted', 'cancelled'].includes(invoice.status) || Number(invoice.paid_amount) > 0)) {
+    return {
+      code: 'INVOICE_LOCKED', http: 409,
+      message: invoice.status === 'payment_submitted'
+        ? 'Payment for this invoice has been submitted — reject the payment submission first'
+        : `The invoice is ${invoice.status} and cannot be reduced`
+    };
+  }
+  if (soa && ['paid', 'payment_submitted'].includes(soa.status)) {
+    return { code: 'SOA_LOCKED', http: 409, message: 'The statement that contains this invoice is already paid or submitted' };
+  }
+  return null;
+}
+
 module.exports = {
   CORRECTABLE_STATUSES,
   sellerCorrectionBlock,
+  RETURNABLE_STATUSES,
+  returnMoneyBlock,
   buyerAmendableStatuses,
   buyerAmendBlock,
   ownerSignedOff,

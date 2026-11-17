@@ -18,6 +18,7 @@
  */
 const { PurchaseOrder, PurchaseOrderItem, Invoice, InvoiceItem, SupplierCompany } = require('../models');
 const { finalizeInvoice } = require('../utils/invoiceCalculation');
+const { returnChargesFor } = require('./poReturnDeduction');
 const { attachSellerProductIdentity } = require('../utils/sellerProductIdentity');
 
 const num = (v) => {
@@ -152,6 +153,9 @@ async function syncTradeInvoiceFromReconcile(poId, opts = {}) {
       });
     }
   }
+  // 승인된 반품 줄을 다시 붙인다 (2026-11-17 · services/poReturnDeduction) —
+  //   규칙: 청구서 총액 = 대조로 적은 총액 − 승인된 반품. 발주 낼 금액(payableFrom)도 같은 식이다.
+  charges.push(...await returnChargesFor(po.id, invoice.id));
   const patch = {
     additional_charges: charges,
     notes: [invoice.notes || '', po.invoice_number ? `Supplier invoice: ${po.invoice_number}` : '']

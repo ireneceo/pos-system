@@ -275,7 +275,27 @@
       "existing": "기존 반품",
       "noReceived": "반품할 수령 품목이 없습니다",
       "received": "수령",
-      "reasonPlaceholder": "사유 (선택)"
+      "reasonPlaceholder": "사유 (선택)",
+      "hintExternal": "줄마다 반품 수량을 적으세요. 반품서를 공급업체에 보낸 뒤 여기서 닫으면 금액이 청구서에서 빠집니다.",
+      "hintSeller": "줄마다 반품 수량을 적으세요. 판매자가 승인해야 하며, 승인되면 금액이 청구서에서 빠집니다.",
+      "returnAll": "전체 반품",
+      "total": "반품 합계",
+      "alreadyReturned": "이미 반품",
+      "qty": "수량",
+      "bySeller": "판매자 처리",
+      "byYou": "내 신청",
+      "deducted": "청구서에서 −{{amount}}",
+      "status": {
+        "approved": "승인됨",
+        "rejected": "거절됨",
+        "requested": "신청됨"
+      },
+      "returnedLine": "반품 −{{amount}} · 낼 금액 {{pay}}",
+      "blocked": {
+        "ALREADY_PAID": "이미 결제된 주문이라 반품으로 청구를 줄일 수 없습니다. 결제를 먼저 되돌리세요.",
+        "INVOICE_LOCKED": "청구서가 결제됐거나 결제 제출·취소된 상태라 줄일 수 없습니다.",
+        "SOA_LOCKED": "이 청구서가 묶인 정산서가 이미 결제·제출됐습니다."
+      }
     },
     "noEmailTitle": "이메일 없음",
     "noEmail": "이 판매자에게 등록된 이메일이 없습니다.",

@@ -639,12 +639,15 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
         return;
       }
       await loadReturnsRef.current?.();
+      fetchDetailRef.current?.();
     } catch (_) {
       setReturnError(t('detail.returns.networkError', 'Network error') as string);
     }
   }, [id, t]);
 
   const loadReturnsRef = useRef<null | (() => Promise<void>)>(null);
+  // 반품 뒤 상세(낼 금액·반품 가능 수량)를 다시 읽는다 — fetchDetail 이 아래에 선언돼 ref 로 부른다
+  const fetchDetailRef = useRef<null | (() => Promise<void> | void)>(null);
 
   const loadReturns = useCallback(async () => {
     if (!Number.isFinite(id)) return;
@@ -667,7 +670,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
     if (showReturnsModal && detail) {
       // Initialize lines from received items
       const lines = detail.items
-        .filter(it => parseFloat(String(it.quantity_received)) > 0)
+        .filter(it => parseFloat(String(it.quantity_received)) > 0 && Number((it as any).returnable_qty ?? 1) > 0)
         .map(it => ({
           purchase_order_item_id: it.id,
           quantity: '',
@@ -707,6 +710,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       }
       setShowReturnsModal(false);
       loadReturns();
+      fetchDetailRef.current?.();
     } catch (err) {
       setReturnError(t('detail.returns.networkError', 'Network error') as string);
     } finally {
@@ -737,6 +741,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       setLoading(false);
     }
   }, [id, t, poRole]);
+  fetchDetailRef.current = fetchDetail;
 
   useEffect(() => { fetchDetail(); }, [fetchDetail]);
 
@@ -1214,11 +1219,13 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
           </ThemedButton>
         )}
         {externalShare}
-        {(s === 'received' || s === 'partial_received' || s === 'delivered') && (
+        {/* 반품 — 노출·가능 여부는 서버 판정(utils/poAmend.returnMoneyBlock) 그대로. 결제된 주문은 이유를 띄운 채 비활성 (2026-11-17) */}
+        {(detail as any).return_blocked?.code !== 'BAD_STATUS' && (detail as any).can_return !== undefined && (
           <ThemedButton
             variant="outline"
+            disabled={!(detail as any).can_return}
             onClick={() => setShowReturnsModal(true)}
-            title={t('detail.actions.returns', 'Request Return') as string}
+            title={((detail as any).return_blocked ? t(`detail.returns.blocked.${(detail as any).return_blocked.code}`, (detail as any).return_blocked.message) : t('detail.actions.returns', 'Request Return')) as string}
           >
             {t('detail.actions.returns', 'Request Return')}
           </ThemedButton>
@@ -1595,6 +1602,12 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                   <span>{t('detail.items.total')}</span>
                   <span>{formatMoney(total)}</span>
                 </div>
+                {/* 반품으로 청구에서 뺀 금액 · 실제로 낼 금액(서버 payableFrom) — 2026-11-17 */}
+                {Number((detail as any).returned_amount || 0) > 0 && (
+                  <div style={{ fontSize: 13, color: '#4B5563' }} data-testid="po-returned-line">
+                    <span>{t('detail.returns.returnedLine', 'Returned −{{amount}} · To pay {{pay}}', { amount: formatMoney(Number((detail as any).returned_amount)), pay: formatMoney(Number((detail as any).payable_amount ?? 0)) })}</span>
+                  </div>
+                )}
                 {/* 직원식 / 일반 나눔 — 직원식 줄이 있을 때만 (품목 줄 합 기준, 2026-10-07 ⑪) */}
                 {Number(detail.staff_meal_total || 0) > 0 && (
                   <div style={{ fontSize: 12, color: '#4B5563' }}>
@@ -2039,7 +2052,9 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
         }
       >
         <div style={{ padding: 12, background: '#FFFBEB', border: '1px solid #F59E0B', borderRadius: 8, fontSize: 13, color: '#78350F', marginBottom: 16 }}>
-          {t('detail.returns.hint', 'Specify return quantity per line. Returns require seller approval.')}
+          {isExternalSupplier
+            ? t('detail.returns.hintExternal', 'Specify return quantity per line. Send the return note to the supplier, then close it here — the amount is taken off the invoice.')
+            : t('detail.returns.hintSeller', "Specify return quantity per line. Returns need the seller's approval. Once approved the amount is taken off the invoice.")}
         </div>
 
         {existingReturns.length > 0 && (
@@ -2051,12 +2066,18 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
               {existingReturns.map(r => (
                 <div key={r.id} style={{ padding: 8, border: '1px solid #C7CED6', borderRadius: 6, fontSize: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <span>#{r.id} · qty {r.quantity} {r.unit || ''} · {r.reason || '—'}</span>
+                    <span>
+                      R{r.id} · {t('detail.returns.qty', 'Qty')} {r.quantity} {r.unit || ''} · {r.reason || '—'}
+                      {' · '}{r.initiated_by === 'seller' ? t('detail.returns.bySeller', 'by seller') : t('detail.returns.byYou', 'by you')}
+                      {r.status === 'approved' && Number(r.deducted_amount) > 0 && (
+                        <span style={{ color: '#065F46' }}> · {t('detail.returns.deducted', '−{{amount}} off the invoice', { amount: formatMoney(Number(r.deducted_amount)) })}</span>
+                      )}
+                    </span>
                     <span style={{
                       padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
                       background: r.status === 'approved' ? '#ECFDF5' : r.status === 'rejected' ? '#FEF2F2' : '#FEF3C7',
                       color: r.status === 'approved' ? '#065F46' : r.status === 'rejected' ? '#991B1B' : '#92400E'
-                    }}>{r.status}</span>
+                    }}>{r.status === 'approved' ? t('detail.returns.status.approved', 'Approved') : r.status === 'rejected' ? t('detail.returns.status.rejected', 'Rejected') : t('detail.returns.status.requested', 'Requested')}</span>
                   </div>
 
                   {/* 외부 공급업체는 로그인이 없어 시스템에서 승인할 사람이 없다 (2026-09-08 Irene:
@@ -2092,6 +2113,25 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
           </div>
         )}
 
+        {returnLines.length > 0 && (
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <ThemedButton size="small" variant="outline" data-testid="buyer-return-all"
+              onClick={() => setReturnLines(arr => arr.map(l => {
+                const it: any = detail?.items.find(x => x.id === l.purchase_order_item_id);
+                const max = Number(it?.returnable_qty ?? it?.quantity_received ?? 0);
+                return { ...l, quantity: max > 0 ? String(max) : '' };
+              }))}>
+              {t('detail.returns.returnAll', 'Return all')}
+            </ThemedButton>
+            <span style={{ fontSize: 13, color: '#4B5563', marginLeft: 'auto' }}>
+              {t('detail.returns.total', 'Return total')}: <strong>{formatMoney(returnLines.reduce((sum, l) => {
+                const it: any = detail?.items.find(x => x.id === l.purchase_order_item_id);
+                const q = parseFloat(l.quantity);
+                return sum + (q > 0 ? Math.round(q * Number(it?.invoiced_unit_price ?? it?.unit_price ?? 0) * 100) / 100 : 0);
+              }, 0))}</strong>
+            </span>
+          </div>
+        )}
         <div style={{ display: 'grid', gap: 12 }}>
           {returnLines.length === 0 ? (
             <div style={{ padding: 16, textAlign: 'center', color: '#4B5563', fontSize: 13 }}>
@@ -2099,7 +2139,7 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
             </div>
           ) : returnLines.map((line, idx) => {
             const item = detail?.items.find(it => it.id === line.purchase_order_item_id);
-            const maxQty = item ? parseFloat(String(item.quantity_received)) : 0;
+            const maxQty = item ? Number((item as any).returnable_qty ?? parseFloat(String(item.quantity_received))) : 0;
             return (
               <div key={line.purchase_order_item_id} style={{ padding: 12, border: '1px solid #C7CED6', borderRadius: 8 }}>
                 <div style={{ fontSize: 13, fontWeight: 600, color: '#0A2540', marginBottom: 8 }}>
@@ -2107,7 +2147,10 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                   {poItemName(item).main || `Item #${line.purchase_order_item_id}`}
                 </div>
                 <div style={{ fontSize: 11, color: '#4B5563', marginBottom: 8 }}>
-                  {t('detail.returns.received', 'Received')}: {maxQty} {item?.ingredient_unit || ''}
+                  {t('detail.returns.received', 'Received')}: {parseFloat(String(item?.quantity_received ?? 0))} {item?.ingredient_unit || ''}
+                  {Number((item as any)?.returned_qty || 0) + Number((item as any)?.return_pending_qty || 0) > 0 && (
+                    <> · {t('detail.returns.alreadyReturned', 'Already returned')}: {Number((item as any)?.returned_qty || 0) + Number((item as any)?.return_pending_qty || 0)}</>
+                  )}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 8 }}>
                   <FormInput

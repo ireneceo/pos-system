@@ -224,7 +224,8 @@
       "amend": "Ubah item",
       "shipRemaining": "Hantar baki",
       "correct": "Betulkan kuantiti",
-      "print": "Cetak"
+      "print": "Cetak",
+      "returnItems": "Proses pemulangan"
     },
     "confirm": {
       "title": "Sahkan Pesanan",
@@ -390,10 +391,50 @@
     },
     "returns": {
       "approve": "Luluskan",
-      "approveConfirm": "Luluskan pemulangan ini? Nota Kredit akan dikeluarkan secara automatik.",
+      "approveConfirm": "Luluskan pemulangan ini? Jumlahnya akan ditolak daripada invois.",
       "reject": "Tolak",
       "rejectReason": "Sebab penolakan:",
-      "title": "Permintaan Pemulangan"
+      "title": "Permintaan Pemulangan",
+      "sellerTitle": "Proses pemulangan",
+      "submit": "Proses pemulangan",
+      "sellerHint": "Masukkan apa yang dipulangkan pembeli. Stok pembeli berkurang, stok anda kembali, dan jumlahnya ditolak daripada invois.",
+      "notReceived": "Pembeli belum menerima pesanan ini — gunakan Betulkan kuantiti.",
+      "allReturned": "Semua yang diterima dalam pesanan ini sudah dipulangkan.",
+      "returnAll": "Pulangkan seluruh pesanan",
+      "clear": "Kosongkan",
+      "received": "Diterima",
+      "alreadyReturned": "Sudah dipulangkan",
+      "returnQty": "Pulang",
+      "exceeds": "Sehingga {{n}}",
+      "amount": "Jumlah",
+      "returnTotal": "Jumlah pemulangan",
+      "invoiceChange": "Invois {{number}}: {{from}} → {{to}}",
+      "reasonPlaceholder": "cth. 2 pek tiba rosak",
+      "confirmTitle": "Pulangkan {{n}} item, −{{amount}}?",
+      "confirmBody": "Stok dikembalikan serta-merta dan jumlahnya ditolak daripada invois. Pembeli dimaklumkan melalui e-mel. Tidak boleh dibatalkan di sini.",
+      "doneTitle": "Pemulangan diproses",
+      "done": "Pemulangan diproses.",
+      "doneInvoice": "Pemulangan diproses. Invois {{number}} kini {{total}}.",
+      "listTitle": "Pemulangan",
+      "qty": "Kuantiti",
+      "bySeller": "oleh anda",
+      "byBuyer": "oleh pembeli",
+      "deducted": "−{{amount}} ditolak daripada invois",
+      "status": {
+        "approved": "Diluluskan",
+        "rejected": "Ditolak",
+        "requested": "Dimohon"
+      },
+      "approveTitle": "Luluskan pemulangan ini?",
+      "approveBody": "Stok pembeli berkurang, stok anda kembali, dan jumlahnya ditolak daripada invois.",
+      "rejectTitle": "Tolak pemulangan ini?",
+      "returnedLine": "Dipulangkan −{{amount}}",
+      "netLine": "Bersih {{amount}}",
+      "blocked": {
+        "ALREADY_PAID": "Pesanan ini sudah dibayar — pemulangan tidak boleh mengurangkan bil. Batalkan pembayaran dahulu.",
+        "INVOICE_LOCKED": "Invois sudah dibayar, dihantar untuk bayaran atau dibatalkan — tidak boleh dikurangkan.",
+        "SOA_LOCKED": "Penyata yang mengandungi invois ini sudah dibayar atau dihantar."
+      }
     },
     "search": {
       "placeholder": "Cari pembeli atau No. PO"

@@ -46,7 +46,9 @@ async function transitionOverdueInvoices() {
         status: 'pending_payment',
         due_date: { [Op.lt]: today },
         invoice_category: { [Op.ne]: 'subscription' },
-        parent_soa_invoice_id: null
+        parent_soa_invoice_id: null,
+        // 0원 청구서(전체 반품 등)는 연체가 아니다 — RM 0.00 연체 메일 금지 (2026-11-17 반품 Fable gate ①)
+        total_amount: { [Op.gt]: 0 }
       }
     });
 

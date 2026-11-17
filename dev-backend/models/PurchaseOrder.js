@@ -99,6 +99,8 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
   invoice_number: { type: DataTypes.STRING(100), allowNull: true, comment: '공급업체가 발행한 인보이스 번호(우리 청구서 번호 아님)' },
   invoice_date: { type: DataTypes.DATEONLY, allowNull: true },
   invoice_total: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
+  // 승인돼 청구에서 뺀 반품 합 (2026-11-17 · services/poReturnDeduction · payableFrom 이 뺀다)
+  returned_amount: { type: DataTypes.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
   invoice_tax: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
   invoice_delivery: { type: DataTypes.DECIMAL(12, 2), allowNull: true },
   invoice_discount: { type: DataTypes.DECIMAL(12, 2), allowNull: true },

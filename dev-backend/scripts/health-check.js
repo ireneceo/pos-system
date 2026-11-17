@@ -3244,11 +3244,17 @@ function definePosTests({ adminToken }) {
       });
       const ledgerOk = !!tx && tx.product_ingredient_id === pIng.id && Number(tx.quantity_change) === -4;
 
-      const brand = await Brand.findByPk(bg.brand_id);
+      // 2026-11-17 반품 개편: 승인은 Credit Note 를 만들지 않고 금액을 청구에서 뺀다(services/poReturnDeduction).
+      //   예전 단언(CN payer = 브랜드 오너)은 CN 이 없어져 «뺀 금액이 반품 행·발주에 남는다» 로 바꿨다.
+      void Brand;
       cn = await Invoice.findOne({ where: { invoice_number: { [OpB2.like]: `CN-${po.po_number}%` } } });
-      const payerOk = !!cn && cn.payer_type === 'brand_manager' && Number(cn.payer_id) === Number(brand.owner_id);
+      const ret2 = await PurchaseOrderReturn.findByPk(retId);
+      const po2 = await PurchaseOrder.findByPk(po.id);
+      const deductOk = !cn && ret2.status === 'approved' && Number(ret2.deducted_amount) === 20
+        && Number(po2.returned_amount) === 20 && ret2.initiated_by === 'buyer';
+      if (!deductOk) console.log(c.gray(`      (차감 cn=${!!cn} status=${ret2.status} deducted=${ret2.deducted_amount} po.returned=${po2.returned_amount})`));
 
-      return stockOk && ledgerOk && payerOk;
+      return stockOk && ledgerOk && deductOk;
     } finally {
       if (cn) { await InvoiceItem.destroy({ where: { invoice_id: cn.id }, force: true }); await Invoice.destroy({ where: { id: cn.id }, force: true }); }
       if (po) {
@@ -8456,6 +8462,302 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   });
 
   // ══════════════════════════════════════════════════════════════════
+  // 반품 — 판매자 직접 반품 · 금액 차감 · 결제 막기 (2026-11-17 Fable 설계 .claude/fable-design-20261117-po-returns-seller-and-deduct.md §8)
+  //   Irene «아이템 한개씩 또는 주문 전체 반품 처리할 수 있어야 해. 그리고 고객도 신청해야 하고, 그럼 비용이 차감되고 결제가 된 경우 말고는 되어야 해»
+  //   R1 판매자 부분 · R2 주문 전체(배송비 남음) · R3 구매자 신청→승인 · R4 결제 막기 · R5 직영 정산 · R6 정산서 · R7 낼 금액·결제 · R8 정정과 공존 · R10 권한·동시성
+  // ══════════════════════════════════════════════════════════════════
+  async function rtReceived(fx) {
+    const { PurchaseOrder } = require('../models');
+    const r = await acDeliver(fx);
+    if (r.err) return r;
+    const invId = await acWaitInvoice(fx.po.id);
+    if (!invId) return { err: '청구서 없음' };
+    const m = await request('POST', `/purchase-orders/${fx.po.id}/mark-received`, {}, { Authorization: `Bearer ${demoRaToken}` });
+    if (m.status !== 200) return { err: `mark-received ${m.status} ${JSON.stringify(m.body).slice(0, 120)}` };
+    await new Promise(res => setTimeout(res, 400));
+    return { ...r, invId, po: await PurchaseOrder.findByPk(fx.po.id) };
+  }
+  const rtCharges = (inv) => (Array.isArray(inv.additional_charges) ? inv.additional_charges : JSON.parse(inv.additional_charges || '[]'));
+  const rtHist = (inv) => (Array.isArray(inv.modification_history) ? inv.modification_history : JSON.parse(inv.modification_history || '[]'));
+
+  test('inventory', '반품 — 판매자 직접 한 줄 반품: 재고 양쪽·청구서 음수 줄·낼 금액 · 이어서 주문 전체(배송비는 남음) · 초과 400 (R1·R2)', async () => {
+    const { PurchaseOrder, PurchaseOrderReturn, Product, BrandProduct, Invoice } = require('../models');
+    const { Op } = require('sequelize');
+    if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      await PurchaseOrder.update({ delivery_fee: 5, total_amount: 11 }, { where: { id: fx.po.id } });
+      const r = await rtReceived(fx);
+      if (r.err) return fail(r.err);
+      const inv0 = await Invoice.findByPk(r.invId);
+      if (Math.abs(Number(inv0.total_amount) - 11) > 0.005) return fail(`반품 전 청구서 ${inv0.total_amount}, 기대 11`);
+      if (Number((await Product.findByPk(fx.buyerProd.id)).current_stock) !== 3) return fail('받은 뒤 구매자 재고 3 아님');
+      const bp0 = Number((await BrandProduct.findByPk(fx.bp.id)).current_stock);   // 출고 뒤 17
+      const g0 = await request('GET', `/seller-orders/${fx.po.id}`, null, r.auth);
+      const it0 = (g0.body?.data?.items || []).find(x => x.id === fx.item.id);
+      if (g0.body?.data?.can_return !== true || !it0 || it0.returnable_qty !== 3) return fail(`상세 can_return=${g0.body?.data?.can_return} returnable=${it0 && it0.returnable_qty}`);
+
+      // R1 한 줄 1개
+      const noReason = await request('POST', `/seller-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: 1 }] }, r.auth);
+      if (noReason.status !== 400 || noReason.body?.code !== 'REASON_REQUIRED') return fail(`사유 없음 ${noReason.status} ${noReason.body?.code}`);
+      const a = await request('POST', `/seller-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: 1 }], reason: 'HC damaged pack' }, r.auth);
+      if (a.status !== 201) return fail(`판매자 반품 ${a.status} ${JSON.stringify(a.body).slice(0, 160)}`);
+      const ret = await PurchaseOrderReturn.findOne({ where: { purchase_order_id: fx.po.id }, order: [['id', 'ASC']] });
+      if (!ret || ret.status !== 'approved' || ret.initiated_by !== 'seller' || Number(ret.deducted_amount) !== 2 || ret.deducted_invoice_id !== r.invId || ret.credit_invoice_id) return fail(`반품 행 ${ret && JSON.stringify({ s: ret.status, i: ret.initiated_by, d: ret.deducted_amount, inv: ret.deducted_invoice_id, cn: ret.credit_invoice_id })}`);
+      if (Number((await Product.findByPk(fx.buyerProd.id)).current_stock) !== 2) return fail('구매자 재고 2 아님');
+      if (Math.abs(Number((await BrandProduct.findByPk(fx.bp.id)).current_stock) - (bp0 + 1)) > 0.001) return fail('판매자 재고 +1 아님');
+      const inv1 = await Invoice.findByPk(r.invId);
+      if (Math.abs(Number(inv1.total_amount) - 9) > 0.005) return fail(`청구서 ${inv1.total_amount}, 기대 9`);
+      const ch1 = rtCharges(inv1);
+      if (!ch1.some(x => x.kind === 'po_return' && Number(x.amount) === -2 && x.return_id === ret.id)) return fail(`요금 줄 ${JSON.stringify(ch1)}`);
+      if (!ch1.some(x => String(x.name).toLowerCase() === 'delivery' && Number(x.amount) === 5)) return fail('배송비 줄 사라짐');
+      const h1 = rtHist(inv1);
+      if (!inv1.is_modified || h1[h1.length - 1]?.source !== 'po_return') return fail(`청구서 이력 ${JSON.stringify(h1[h1.length - 1])}`);
+      const po1 = await PurchaseOrder.findByPk(fx.po.id);
+      if (Number(po1.returned_amount) !== 2 || Math.abs(Number(po1.total_amount) - 11) > 0.005 || po1.status !== 'received') return fail(`발주 returned ${po1.returned_amount} total ${po1.total_amount} status ${po1.status}`);
+      const ev = (po1.tracking_info?.events || []).slice(-1)[0];
+      if (!ev || ev.status !== 'returned' || ev.initiated_by !== 'seller' || ev.invoice_total_after !== 9) return fail(`이벤트 ${JSON.stringify(ev).slice(0, 160)}`);
+      if (a.body?.data?.deduction?.amount !== 2 || a.body?.data?.deduction?.payable_after !== 9) return fail(`응답 ${JSON.stringify(a.body?.data?.deduction)}`);
+      const cn = await Invoice.count({ where: { invoice_number: { [Op.like]: `CN-${fx.po.po_number}%` } } });
+      if (cn !== 0) return fail(`크레딧노트 ${cn}장 생김`);
+      const g1 = await request('GET', `/seller-orders/${fx.po.id}`, null, r.auth);
+      const it1 = (g1.body?.data?.items || []).find(x => x.id === fx.item.id);
+      if (!it1 || it1.returned_qty !== 1 || it1.returnable_qty !== 2 || g1.body?.data?.returned_amount !== 2) return fail(`상세 줄 ${JSON.stringify(it1 && { r: it1.returned_qty, a: it1.returnable_qty })} returned_amount ${g1.body?.data?.returned_amount}`);
+      const b = await request('GET', `/purchase-orders/${fx.po.id}`, null, { Authorization: `Bearer ${demoRaToken}` });
+      if (Math.abs(Number(b.body?.data?.payable_amount) - 9) > 0.005 || b.body?.data?.can_return !== true) return fail(`구매자 상세 payable ${b.body?.data?.payable_amount} can_return ${b.body?.data?.can_return}`);
+
+      // R2 나머지 전부(= 주문 전체) → 품목 0 · 배송비 5 남음 · 더는 초과
+      const all = await request('POST', `/seller-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: it1.returnable_qty }], reason: 'HC whole order back' }, r.auth);
+      if (all.status !== 201) return fail(`전체 반품 ${all.status} ${JSON.stringify(all.body).slice(0, 160)}`);
+      const inv2 = await Invoice.findByPk(r.invId);
+      if (Math.abs(Number(inv2.total_amount) - 5) > 0.005) return fail(`전체 반품 뒤 청구서 ${inv2.total_amount}, 기대 5(배송비)`);
+      if (Number((await Product.findByPk(fx.buyerProd.id)).current_stock) !== 0) return fail('전체 반품 뒤 구매자 재고 0 아님');
+      const over = await request('POST', `/seller-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: 0.5 }], reason: 'HC over' }, r.auth);
+      if (over.status !== 400 || over.body?.code !== 'EXCEEDS_RECEIVED') return fail(`초과 ${over.status} ${over.body?.code}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cdCleanExtra(fx); await cleanQ6(fx); }
+  });
+
+  test('inventory', '반품 — 구매자 신청은 아무것도 안 바꾸고 판매자 승인 때 빠진다 · 결제됨/제출됨/정산서 결제 막기·변화 0 · refunded 통과 (R3·R4)', async () => {
+    const { PurchaseOrder, PurchaseOrderReturn, Product, Invoice } = require('../models');
+    if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const ra = { Authorization: `Bearer ${demoRaToken}` };
+    let soa = null;
+    try {
+      const r = await rtReceived(fx);
+      if (r.err) return fail(r.err);
+      const req1 = await request('POST', `/purchase-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: 1 }], reason: 'HC buyer' }, ra);
+      if (req1.status !== 201) return fail(`신청 ${req1.status}`);
+      const rid = req1.body?.data?.[0]?.id;
+      if (Math.abs(Number((await Invoice.findByPk(r.invId)).total_amount) - 6) > 0.005 || Number((await Product.findByPk(fx.buyerProd.id)).current_stock) !== 3) return fail('신청만으로 청구서·재고가 바뀜');
+
+      // R4 결제 막기 — 상태마다 코드 · 바뀐 것 0
+      const snap = async () => JSON.stringify([(await Invoice.findByPk(r.invId)).total_amount, (await Product.findByPk(fx.buyerProd.id)).current_stock, await PurchaseOrderReturn.count({ where: { purchase_order_id: fx.po.id } }), (await PurchaseOrderReturn.findByPk(rid)).status]);
+      const s0 = await snap();
+      await PurchaseOrder.update({ payment_status: 'paid' }, { where: { id: fx.po.id } });
+      const b1 = await request('POST', `/purchase-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: 1 }] }, ra);
+      const b2 = await request('POST', `/seller-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: 1 }], reason: 'HC paid' }, r.auth);
+      const b3 = await request('POST', `/seller-orders/${fx.po.id}/returns/${rid}/approve`, {}, r.auth);
+      if (b1.body?.code !== 'ALREADY_PAID' || b2.body?.code !== 'ALREADY_PAID' || b3.body?.code !== 'ALREADY_PAID') return fail(`paid 코드 ${b1.status}/${b1.body?.code} ${b2.status}/${b2.body?.code} ${b3.status}/${b3.body?.code}`);
+      const gp = await request('GET', `/seller-orders/${fx.po.id}`, null, r.auth);
+      if (gp.body?.data?.can_return !== false || gp.body?.data?.return_blocked?.code !== 'ALREADY_PAID') return fail(`상세 막힘 표시 ${JSON.stringify(gp.body?.data?.return_blocked)}`);
+      await PurchaseOrder.update({ payment_status: 'unpaid' }, { where: { id: fx.po.id } });
+      await Invoice.update({ status: 'payment_submitted' }, { where: { id: r.invId } });
+      const b4 = await request('POST', `/seller-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: 1 }], reason: 'HC submitted' }, r.auth);
+      if (b4.status !== 409 || b4.body?.code !== 'INVOICE_LOCKED') return fail(`제출됨 ${b4.status} ${b4.body?.code}`);
+      await Invoice.update({ status: 'pending_payment' }, { where: { id: r.invId } });
+      const child = await Invoice.findByPk(r.invId);
+      const base = child.toJSON();
+      delete base.id; delete base.createdAt; delete base.updatedAt; delete base.created_at; delete base.updated_at;
+      soa = await Invoice.create({ ...base, invoice_number: 'ZZ-HC-RSOA-' + Date.now(), invoice_category: 'soa', status: 'paid', parent_soa_invoice_id: null, modification_history: [], is_modified: false });
+      await child.update({ parent_soa_invoice_id: soa.id });
+      const b5 = await request('POST', `/seller-orders/${fx.po.id}/returns/${rid}/approve`, {}, r.auth);
+      if (b5.status !== 409 || b5.body?.code !== 'SOA_LOCKED') return fail(`정산서 결제 ${b5.status} ${b5.body?.code}`);
+      await child.update({ parent_soa_invoice_id: null });
+      if (await snap() !== s0) return fail(`막힌 뒤 변화 ${s0} → ${await snap()}`);
+
+      // refunded = 결제 되돌림 → 통과
+      await PurchaseOrder.update({ payment_status: 'refunded' }, { where: { id: fx.po.id } });
+      const ok = await request('POST', `/seller-orders/${fx.po.id}/returns/${rid}/approve`, {}, r.auth);
+      if (ok.status !== 200) return fail(`refunded 승인 ${ok.status} ${JSON.stringify(ok.body).slice(0, 140)}`);
+      if (Math.abs(Number((await Invoice.findByPk(r.invId)).total_amount) - 4) > 0.005) return fail('승인 뒤 청구서 4 아님');
+      if (Number((await Product.findByPk(fx.buyerProd.id)).current_stock) !== 2) return fail('승인 뒤 구매자 재고 2 아님');
+      if (ok.body?.data?.deduction?.amount !== 2) return fail(`승인 응답 ${JSON.stringify(ok.body?.data?.deduction)}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { if (soa) { const { sequelize } = require('../config/database'); await sequelize.query('UPDATE invoices SET parent_soa_invoice_id = NULL WHERE parent_soa_invoice_id = :s', { replacements: { s: soa.id } }); await sequelize.query('DELETE FROM invoice_items WHERE invoice_id = :s', { replacements: { s: soa.id } }); await sequelize.query('DELETE FROM invoices WHERE id = :s', { replacements: { s: soa.id } }); } } catch {}
+      await cdCleanExtra(fx); await cleanQ6(fx);
+    }
+  });
+
+  test('inventory', '반품 — 직영 정산(INTERNAL) 통과·낸 금액 같이 · 정산서 합계 따라감 · 결제 금액 = 뺀 뒤 금액 · 정정과 공존 (R5·R6·R7·R8)', async () => {
+    const { PurchaseOrder, Invoice } = require('../models');
+    if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const one = (fx, r, q, why) => request('POST', `/seller-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: q }], reason: why }, r.auth);
+    // R5 직영
+    let fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    try {
+      const r = await rtReceived(fx);
+      if (r.err) return fail(r.err);
+      await PurchaseOrder.update({ payment_method: 'internal', payment_status: 'paid' }, { where: { id: fx.po.id } });
+      await Invoice.update({ payment_method: 'internal', status: 'paid', paid_amount: 6 }, { where: { id: r.invId } });
+      const a = await one(fx, r, 1, 'HC internal');
+      if (a.status !== 201) return fail(`직영 반품 ${a.status} ${JSON.stringify(a.body).slice(0, 140)}`);
+      const inv = await Invoice.findByPk(r.invId);
+      if (Math.abs(Number(inv.total_amount) - 4) > 0.005 || Math.abs(Number(inv.paid_amount) - 4) > 0.005 || inv.status !== 'paid') return fail(`직영 청구서 ${inv.total_amount}/${inv.paid_amount}/${inv.status}`);
+    } catch (e) { return fail(`R5 예외: ${e.message}`); }
+    finally { await cdCleanExtra(fx); await cleanQ6(fx); }
+
+    // R6 정산서 · R7 결제 금액 · R8 정정 공존
+    fx = await makeQ6Fixture();
+    if (!fx) return fail('픽스처 2 불가');
+    let soa = null;
+    try {
+      const r = await rtReceived(fx);
+      if (r.err) return fail(r.err);
+      const child = await Invoice.findByPk(r.invId);
+      const base = child.toJSON();
+      delete base.id; delete base.createdAt; delete base.updatedAt; delete base.created_at; delete base.updated_at;
+      soa = await Invoice.create({ ...base, invoice_number: 'ZZ-HC-RSOA2-' + Date.now(), invoice_category: 'soa', status: 'pending_payment', parent_soa_invoice_id: null, modification_history: [], is_modified: false });
+      await child.update({ parent_soa_invoice_id: soa.id });
+      const a = await one(fx, r, 1, 'HC soa');
+      if (a.status !== 201) return fail(`정산서 반품 ${a.status} ${JSON.stringify(a.body).slice(0, 140)}`);
+      const s = await Invoice.findByPk(soa.id);
+      if (Math.abs(Number(s.total_amount) - 4) > 0.005) return fail(`정산서 ${s.total_amount}, 기대 4`);
+      const sh = rtHist(s);
+      if (!sh.length || sh[sh.length - 1].source !== 'soa_child_sync') return fail(`정산서 이력 ${JSON.stringify(sh[sh.length - 1])}`);
+      if (a.body?.data?.deduction?.soa?.soa_id !== soa.id) return fail(`응답 soa ${JSON.stringify(a.body?.data?.deduction?.soa)}`);
+      await child.update({ parent_soa_invoice_id: null });
+      // R8 정정 3→2 (반품 1 열림) → 품목 4 + 반품 −2 = 2 · 1 아래로는 거부
+      const low = await request('POST', `/seller-orders/${fx.po.id}/correct-delivery`, { items: [{ item_id: fx.item.id, quantity: 0.5 }], reason: 'HC below' }, r.auth);
+      if (low.status !== 400 || low.body?.code !== 'LINE_HAS_RETURNS') return fail(`정정 반품 아래 ${low.status} ${low.body?.code}`);
+      const cd = await request('POST', `/seller-orders/${fx.po.id}/correct-delivery`, { items: [{ item_id: fx.item.id, quantity: 2 }], reason: 'HC shipped 2' }, r.auth);
+      if (cd.status !== 200) return fail(`정정 ${cd.status} ${JSON.stringify(cd.body).slice(0, 140)}`);
+      const inv = await Invoice.findByPk(r.invId);
+      if (Math.abs(Number(inv.total_amount) - 2) > 0.005 || !rtCharges(inv).some(x => x.kind === 'po_return')) return fail(`정정 뒤 청구서 ${inv.total_amount} 줄 ${JSON.stringify(rtCharges(inv))}`);
+      // R7 낼 금액 = 2 · 결제하면 청구서 낸 금액 2
+      const { resolvePayableAmount } = require('../services/purchaseOrderPayment');
+      const pay = await resolvePayableAmount(await PurchaseOrder.findByPk(fx.po.id));
+      if (Math.abs(pay.amount - 2) > 0.005) return fail(`낼 금액 ${pay.amount}, 기대 2 (발주 ${pay.ordered} − 반품 ${pay.returned})`);
+      const p = await request('POST', `/purchase-orders/${fx.po.id}/pay`, { payment_method: 'bank_transfer' }, { Authorization: `Bearer ${demoRaToken}` });
+      if (p.status !== 200) return fail(`결제 ${p.status} ${JSON.stringify(p.body).slice(0, 140)}`);
+      const invP = await Invoice.findByPk(r.invId);
+      if (invP.status !== 'paid' || Math.abs(Number(invP.paid_amount) - 2) > 0.005) return fail(`결제 뒤 청구서 ${invP.status} ${invP.paid_amount}`);
+      const after = await one(fx, r, 0.5, 'HC after paid');
+      if (after.body?.code !== 'ALREADY_PAID') return fail(`결제 뒤 반품 ${after.status} ${after.body?.code}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { if (soa) { const { sequelize } = require('../config/database'); await sequelize.query('UPDATE invoices SET parent_soa_invoice_id = NULL WHERE parent_soa_invoice_id = :s', { replacements: { s: soa.id } }); await sequelize.query('DELETE FROM invoice_items WHERE invoice_id = :s', { replacements: { s: soa.id } }); await sequelize.query('DELETE FROM invoices WHERE id = :s', { replacements: { s: soa.id } }); } } catch {}
+      await cdCleanExtra(fx); await cleanQ6(fx);
+    }
+  });
+
+  test('inventory', '반품 — 승인 때 청구서가 없던 주문은 나중 청구서에 반품이 붙는다 (R11 · Fable gate ②)', async () => {
+    const { PurchaseOrder, PurchaseOrderItem, PurchaseOrderReturn, Invoice } = require('../models');
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      const jwtLib = require('jsonwebtoken');
+      const auth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.bgUser.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
+      await PurchaseOrder.update({ status: 'received', received_at: new Date() }, { where: { id: fx.po.id } });
+      await PurchaseOrderItem.update({ quantity_received: 3 }, { where: { id: fx.item.id } });
+      const a = await request('POST', `/seller-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: 1 }], reason: 'HC no invoice yet' }, auth);
+      if (a.status !== 201) return fail(`반품 ${a.status} ${JSON.stringify(a.body).slice(0, 140)}`);
+      const r0 = await PurchaseOrderReturn.findOne({ where: { purchase_order_id: fx.po.id } });
+      if (r0.deducted_invoice_id !== null || Number(r0.deducted_amount) !== 2) return fail(`청구서 전 반품 행 ${r0.deducted_invoice_id}/${r0.deducted_amount}`);
+      const { createTradeInvoice } = require('../services/purchaseOrderService');
+      const inv = await createTradeInvoice(await PurchaseOrder.findByPk(fx.po.id));
+      if (!inv) return fail('청구서 생성 실패');
+      const inv2 = await Invoice.findByPk(inv.id);
+      const r1 = await PurchaseOrderReturn.findByPk(r0.id);
+      const { resolvePayableAmount } = require('../services/purchaseOrderPayment');
+      const pay = await resolvePayableAmount(await PurchaseOrder.findByPk(fx.po.id));
+      if (Math.abs(Number(inv2.total_amount) - 4) > 0.005) return fail(`나중 청구서 ${inv2.total_amount}, 기대 4`);
+      if (r1.deducted_invoice_id !== inv.id) return fail(`반품 행 청구서 ${r1.deducted_invoice_id}`);
+      if (Math.abs(pay.amount - 4) > 0.005) return fail(`낼 금액 ${pay.amount}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cdCleanExtra(fx); await cleanQ6(fx); }
+  });
+
+  test('inventory', '반품 — 전체 반품으로 0원이 된 청구서는 닫힘(연체 안 됨) · 배송비 남으면 미결제 유지 (R12 · Fable gate ①)', async () => {
+    const { PurchaseOrder, Invoice } = require('../models');
+    if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    let fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    try {
+      const r = await rtReceived(fx);
+      if (r.err) return fail(r.err);
+      const a = await request('POST', `/seller-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: 3 }], reason: 'HC all back' }, r.auth);
+      if (a.status !== 201) return fail(`전체 반품 ${a.status}`);
+      const inv = await Invoice.findByPk(r.invId);
+      const po = await PurchaseOrder.findByPk(fx.po.id);
+      if (Number(inv.total_amount) !== 0 || inv.status !== 'paid' || Number(inv.paid_amount) !== 0 || po.payment_status !== 'paid') return fail(`0원 청구서 ${inv.total_amount}/${inv.status}/${inv.paid_amount} 발주 ${po.payment_status}`);
+      // 닫히지 않았다고 쳐도 연체 작업은 0원을 건드리지 않는다
+      await Invoice.update({ status: 'pending_payment', due_date: new Date(Date.now() - 5 * 86400000) }, { where: { id: r.invId } });
+      await require('../services/invoiceOverdueScheduler').transitionOverdueInvoices();
+      const inv2 = await Invoice.findByPk(r.invId);
+      if (inv2.status === 'overdue') return fail('0원 청구서가 연체로 바뀜');
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cdCleanExtra(fx); await cleanQ6(fx); }
+    fx = await makeQ6Fixture();
+    if (!fx) return fail('픽스처 2 불가');
+    try {
+      await PurchaseOrder.update({ delivery_fee: 5, total_amount: 11 }, { where: { id: fx.po.id } });
+      const r = await rtReceived(fx);
+      if (r.err) return fail(r.err);
+      const a = await request('POST', `/seller-orders/${fx.po.id}/returns`, { items: [{ purchase_order_item_id: fx.item.id, quantity: 3 }], reason: 'HC all back fee' }, r.auth);
+      if (a.status !== 201) return fail(`배송비 전체 반품 ${a.status}`);
+      const inv = await Invoice.findByPk(r.invId);
+      if (Math.abs(Number(inv.total_amount) - 5) > 0.005 || inv.status !== 'pending_payment') return fail(`배송비 남은 청구서 ${inv.total_amount}/${inv.status}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cdCleanExtra(fx); await cleanQ6(fx); }
+  });
+
+  test('inventory', '반품 — 판매자 직접 반품 권한(남의 판매자 404·구매자 403) · 동시 2발이 받은 양을 넘지 않음 (R10)', async () => {
+    const { PurchaseOrderReturn, User } = require('../models');
+    if (!demoRaToken) { console.log(c.gray('      (건너뜀: 데모 매장 관리자 없음)')); return true; }
+    const fx = await makeQ6Fixture();
+    if (!fx) { console.log(c.gray('      (건너뜀: 픽스처 불가)')); return true; }
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    try {
+      const r = await rtReceived(fx);
+      if (r.err) return fail(r.err);
+      const body = { items: [{ purchase_order_item_id: fx.item.id, quantity: 2 }], reason: 'HC race' };
+      const sup = await User.findOne({ where: { email: 'demo-supplier@purplehere.com' } });
+      if (sup) {
+        const jwtLib = require('jsonwebtoken');
+        const x = await request('POST', `/seller-orders/${fx.po.id}/returns`, body, { Authorization: `Bearer ${jwtLib.sign({ userId: sup.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` });
+        if (x.status !== 404) return fail(`남의 판매자 ${x.status}`);
+      }
+      const y = await request('POST', `/seller-orders/${fx.po.id}/returns`, body, { Authorization: `Bearer ${demoRaToken}` });
+      if (y.status !== 403 && y.status !== 404) return fail(`구매자 토큰 ${y.status}`);
+      const [p1, p2] = await Promise.all([
+        request('POST', `/seller-orders/${fx.po.id}/returns`, body, r.auth),
+        request('POST', `/seller-orders/${fx.po.id}/returns`, body, r.auth),
+      ]);
+      const oks = [p1, p2].filter(z => z.status === 201).length;
+      const sum = Number(await PurchaseOrderReturn.sum('quantity', { where: { purchase_order_id: fx.po.id, status: 'approved' } })) || 0;
+      if (oks !== 1 || sum > 3) return fail(`동시 ${p1.status}/${p2.status} 승인 합 ${sum}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally { await cdCleanExtra(fx); await cleanQ6(fx); }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
   // A안(Fable 2026-10-01 · .claude/fable-design-20261001-a-plan.md §4) — 판매자는 매장에 아직 안 담긴
   //   배포 상품(서비스 포함)을 바로 주문·수정에 넣는다. 서버가 매장의 «카탈로그에서 담기» 와 같은 함수로 먼저 담는다.
   //   구매자 수령: 서비스 줄은 재고·배치·원장 무접촉(수령량만 적힘) · 주문제작은 재고 올림.
@@ -10796,6 +11098,41 @@ function definePaymentTests() {
       return ok;
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
     finally { await cleanCash(fx, made); if (ext) await dropSupplierCompany(ext.sc); }
+  });
+
+  // 반품 R9 (2026-11-17 · .claude/fable-design-20261117-po-returns-seller-and-deduct.md §4-4) —
+  //   외부 업체: 구매자가 반품을 닫으면 청구서·낼 금액에서 빠지고, 뒤에 대조로 총액을 적어도 «적은 총액 − 반품» 이 한 숫자로 남는다.
+  test('invoice-pay-flow', '반품 R9 — 외부 업체 반품 닫기 → 청구서·낼 금액 차감 · 대조 총액 확정 뒤에도 «적은 총액 − 반품» 유지', async () => {
+    const fx = await cashFixtureBase();
+    if (!fx) { console.log(c.gray('      (건너뜀: 데모 매장/관리자 없음)')); return true; }
+    const made = { pos: [], prods: [], shifts: [] };
+    let ext = null;
+    try {
+      ext = await makeExternalPoReceived(fx, { lineTotal: 42 }); made.pos.push(ext.po.id);
+      if (!ext.inv) { console.log(c.gray(`      (청구서 발행 실패: 수령 ${ext.receiveStatus})`)); return false; }
+      const [line] = await hcQ('SELECT id FROM purchase_order_items WHERE purchase_order_id = :p', { p: ext.po.id });
+      // 픽스처 줄은 재료 연결이 없어 수령이 받은 양을 안 적는다(실제 줄은 적힘) — 받은 양만 채운다
+      await require('../config/database').sequelize.query('UPDATE purchase_order_items SET quantity_received = 1 WHERE id = :i', { replacements: { i: line.id } });
+      const cr = await request('POST', `/purchase-orders/${ext.po.id}/returns`, { items: [{ purchase_order_item_id: line.id, quantity: 0.5 }], reason: 'HC ext return' }, fx.auth);
+      const rid = cr.body?.data?.[0]?.id;
+      const ap = await request('POST', `/purchase-orders/${ext.po.id}/returns/${rid}/approve`, {}, fx.auth);
+      const [i1] = await hcQ('SELECT total_amount FROM invoices WHERE id = :i', { i: ext.inv.id });
+      const g1 = await request('GET', `/purchase-orders/${ext.po.id}/reconcile`, null, fx.auth);
+      const pay1 = Number(g1.body?.data?.purchase_order?.payable_amount);
+      const rc = await request('POST', `/purchase-orders/${ext.po.id}/reconcile`, { total_only: true, invoice: { total: 39.5 } }, fx.auth);
+      const [i2] = await hcQ('SELECT total_amount FROM invoices WHERE id = :i', { i: ext.inv.id });
+      const g2 = await request('GET', `/purchase-orders/${ext.po.id}/reconcile`, null, fx.auth);
+      const pay2 = Number(g2.body?.data?.purchase_order?.payable_amount);
+      const near = (a, b) => Math.abs(Number(a) - b) < 0.006;
+      const ok = cr.status === 201 && ap.status === 200 && near(i1.total_amount, 21) && near(pay1, 21)
+        && rc.status === 200 && near(i2.total_amount, 18.5) && near(pay2, 18.5);
+      if (!ok) console.log(c.gray(`      (신청 ${cr.status} ${JSON.stringify(cr.body).slice(0, 160)} 닫기 ${ap.status} ${JSON.stringify(ap.body).slice(0, 100)} · 청구서 ${i1.total_amount} 낼 ${pay1} · 대조 ${rc.status} → 청구서 ${i2.total_amount} 낼 ${pay2})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      try { if (ext) await require('../config/database').sequelize.query('DELETE FROM purchase_order_returns WHERE purchase_order_id = :p', { replacements: { p: ext.po.id } }); } catch {}
+      await cleanCash(fx, made); if (ext) await dropSupplierCompany(ext.sc);
+    }
   });
 
   test('invoice-pay-flow', 'T3 거울 백필 마이그 — 청구서 paid·발주 unpaid → paid(paid_at=청구서, 드로어 0) · 재실행 0 · refunded 불변', async () => {
