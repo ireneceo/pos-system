@@ -343,6 +343,18 @@ async function sendNotification(recipientUserId, category, mailOptions) {
       finalOptions.replyTo = smtp.settings.reply_to_email;
     }
 
+    // 2026-11-17 (Irene «내부설정 했는데도 인보이스가 와» — 실제로는 개발서버 시험 청구서
+    // INV-BR1261117003 알림이 진짜 매장 메일함으로 감): 개발서버는 emailService 의
+    // sendPlatformEmail·sendIssuerEmail 과 같은 규칙으로 실제 발송하지 않는다.
+    // 이 함수만 그 규칙 밖이라 [DEV] 표시도 없이 운영 메일처럼 나갔다. 운영(NODE_ENV=production) 무변경.
+    if (process.env.NODE_ENV !== 'production' && process.env.DEV_SEND_PLATFORM_EMAILS !== 'true') {
+      console.log(`[dev-email-blocked] Notification '${category}' skipped: subject="${finalOptions.subject || ''}" to="${user.email}". Set DEV_SEND_PLATFORM_EMAILS=true to enable.`);
+      return;
+    }
+    if (process.env.NODE_ENV !== 'production' && finalOptions.subject) {
+      finalOptions.subject = `[DEV] ${finalOptions.subject}`;
+    }
+
     const info = await transporter.sendMail(finalOptions);
     console.log(`[Notification] Sent '${category}' to ${user.email} via ${smtp.source} SMTP, branding=${branding ? branding.name : 'PurpleHere'} (${info.messageId})`);
   } catch (error) {

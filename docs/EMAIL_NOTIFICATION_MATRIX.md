@@ -27,6 +27,7 @@
 - `sendPlatformEmail()` → 항상 admin SMTP
 - `sendIssuerEmail(issuerType, issuerId)` → issuer의 entity SMTP
 - `sendNotification(userId, category)` → 수신자의 entity SMTP → platform fallback
+- **개발서버(NODE_ENV≠production)는 세 함수 모두 실제로 보내지 않는다** — `sendPlatformEmail`·`sendNotification` 은 `DEV_SEND_PLATFORM_EMAILS=true`, `sendIssuerEmail` 은 `DEV_SEND_ENTITY_EMAILS=true` 일 때만 보내고 제목에 `[DEV]` 를 붙인다. 로그 `[dev-email-blocked]`. (2026-11-17 — `sendNotification` 만 빠져 있어 개발서버 시험 청구서 알림이 [DEV] 없이 실제 매장 메일함으로 감)
 
 ### 수신자별 SMTP 매핑
 - Restaurant Admin/Staff → restaurant entity

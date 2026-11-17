@@ -1,10 +1,22 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-11-17 (/개발완료 · 작업방 990ce4ae)
+**마지막 업데이트:** 2026-11-17 (/개발완료 · 작업방 323ffae5)
 
-### 진행 중인 작업 (작업방 990ce4ae)
+### ✅ 완료 (2026-11-17) — 위드민카페 «내부설정 했는데 인보이스 와» [Claude Code · 백그라운드 작업방 323ffae5]
+- Irene «했어요» 뒤 운영 읽기 확인: 06:05:18 UTC 정리 — SOA-BRD1-2026-10-R10 RM 245.40 · TRD-BRD1-20261106-001 RM 150.10 둘 다 paid/internal · 묶인 TRD 3장 paid · 매장 10 앞 브랜드 열린 청구서 0
+- Irene 원문: «위드민카페는 git consulting 직영매장이랑 법인 같아서 내부설정 했는데도 인보이스가 와. 확인해줘.» (INV-BR1261117003 RM 220 · 마감 12/1)
+- 원인 1(그 메일): 운영이 아니라 **개발서버** 시험 청구서 — 개발 DB 의 데모 브랜드 1 «K-DINE with MIN» Marketing Fee 플랜(RM 200+세금 20)이 11-17 정기 발행에서 개발 매장 10 «with MIN Cafe» 에 청구 → 알림 메일이 help@k-dine.com 으로 실제 발송됨. 운영 DB 에 INV-BR1261117003 없음(운영 11-17 INV-BR4… 4장은 매장 13·20·22·14 · 매장 10 없음).
+- 왜 개발서버에서 나갔나: notificationService.sendNotification 만 개발 메일 차단(DEV_SEND_PLATFORM_EMAILS) 밖이었고 [DEV] 표시도 없었다 → 고침(개발이면 건너뜀 · 켜면 [DEV] 붙음 · 운영 무변경). 실호출: 끔=차단 로그 · 켬(가짜 발송)=«[DEV] …» · health-check 490/490 · print-guard 8/8 · 민감 diff 비대상. Fable 안 씀 — 개발서버 발송 차단 한 줄(운영 경로 무변경).
+- 원인 2(운영 실제): 운영 매장 10 결제조건 INTERNAL 저장됨(11-10 03:51 PUT). 그러나 «Settle as internal»(POST settle-internal) 호출 기록 0 → GIT Consulting 몫 열린 청구서 그대로: SOA-BRD1-2026-10-R10 RM 245.40(overdue · 묶인 TRD 3장) + TRD-BRD1-20261106-001 RM 150.10. 11-10 이후 새 BRD1 청구서 0 → 자동 paid 동작은 아직 운영 실례 없음.
+- 참고: TRD-SUP… 열린 청구서 다수는 외부 공급업체 몫이라 내부정산 대상 아님
+- 운영 반영(메일 차단 고침): 운영 코드 무변경이라 배포 필요 없음
+
+### 진행 중인 작업 (작업방 323ffae5)
 - 없음
 
-### 완료된 작업 (이번 세션 · 990ce4ae)
+### 완료된 작업 (이번 세션 · 323ffae5)
+- [Claude Code] 위드민카페 RM 220 인보이스 = 개발서버 시험 청구서 알림이 실제 발송된 것 → sendNotification 개발 차단·[DEV] · 운영 직영 청구서 2건 Irene Settle 확인(위 ✅ 절)
+
+### 완료된 작업 (앞 세션 · 990ce4ae)
 - [Claude Code] GIT Consulting 발주 «사라짐» 운영 조사 → 판매자 인상으로 오너 승인 대기 14분(옛 설계) → seller hold 구현(아래 ✅ 절 · Fable 설계+게이트 PASS)
 
 ### 다음 확정 작업
@@ -15,7 +27,12 @@
 - seller hold Fable 후속 3건(health N5 단언 보강 · 설계 문서 «미구현» 표기 · goneFromSeller 변수명)
 - 판매자가 대신 넣은 새 주문의 승인 대기 표시(설계 §6 범위 밖)
 
-### 답 기다림: PurpleHere 카드 «배포» 버튼을 누르고 «했어요» 라고 답해 주실래요? [Claude Code · 백그라운드 작업방 5c23828a · 2026-11-17]
+### ✅ 완료 (2026-11-17) — PurpleHere 운영 배포 나감 (Irene 버튼 · 작업방은 확인만) [Claude Code · 백그라운드 작업방 5c23828a]
+- 확인(읽기): 상황판 실행 depmwk253vj · 02:12→02:34 UTC · result ok · 종료 0 · 배포 커밋 f944b9adb(범위 05cc4812a..3acc4ea98 9커밋 · 화면 버전 6.21 · 새 마이그 0) · 스모크 10/10 · 운영 표식 11-15 06:54 → 11-17 02:18 · 막음 표식 0 · 일시정지 풀림.
+- 배포 뒤 기록(releases archive · deploy-manifest)은 다른 방 커밋 929ee0c6d 에 이미 묶여 들어감. 929ee0c6d(판매자 주문 오너 승인 대기)는 이번 배포 뒤 커밋 — 다음 배포 때.
+- 남은 다음 할 일: 매장 27 좌표 채우기(운영 backfill-restaurant-coords — Irene 지시 때).
+
+### 답 기다림 (이전) (Irene «했어요» → 위 ✅): PurpleHere 카드 «배포» 버튼을 누르고 «했어요» 라고 답해 주실래요? [Claude Code · 백그라운드 작업방 5c23828a · 2026-11-17]
 - 무엇: 앞 질문 «운영 배포 밀림 — «배포» 버튼으로 내보낼까요?» 에 Irene «권고대로»(= 배포 버튼). 버튼은 주인(인증코드)만 → 작업방은 못 누름(DEPLOY_STRUCTURE §8 · AI 는 막기만). 상황판 act 질문 askmwk1r2kw.
 - 확인(읽기): 운영 마지막 배포 11-15 06:49 UTC 버튼 ok · 그 뒤 커밋 9(e47347c94 ~ 3acc4ea98) · PurpleHere 막음 표식 0 · deploy-to-production.sh 그대로(마지막 변경 4e2713d22) · HEAD wip 아님 · 새 마이그 파일 0 · 정기 점검은 배포를 빼 둔 상태(§9)라 «막힘» 이 아니라 버튼 차례.
 - 답이 오면: deployRuns.purplehere 결과·운영 표식(purplehere.com/asset-manifest.json) 바뀜 읽기로 확인 → 실패면 원인 보고만(운영 명령 실행 안 함). 성공 뒤 할 일: 매장 27 좌표 `node scripts/backfill-restaurant-coords.js`(운영 — 다음 할 일 기록대로) · 자동 신고 닫기 스크립트는 이미 운영 3건 닫음.
