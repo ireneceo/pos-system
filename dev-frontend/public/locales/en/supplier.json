@@ -283,7 +283,7 @@
       "confirmRaiseApprovalBody": "The buyer's Owner must approve the new total. Until then the order is not in your list. If declined, it returns to the buyer as a draft and the buyer reorders. Once approved it comes back as Submitted — confirm it again.",
       "confirmRaiseOk": "Raise total",
       "savedTitle": "Order updated",
-      "savedPendingApproval": "Saved — waiting for the buyer's Owner to approve the new total.",
+      "savedPendingApproval": "Saved — the order stays in your list as «Awaiting owner approval». Confirm it again once the buyer's Owner approves the new total.",
       "ok": "OK"
     },
     "create": {
@@ -360,6 +360,13 @@
       "savedTitle": "Quantities corrected",
       "saved": "The order and its invoice were updated, and the buyer was told.",
       "ok": "OK"
+    },
+    "hold": {
+      "seller_raise": "You raised the total {{from}} → {{to}}",
+      "buyer_edit": "The buyer edited this order — not final until their owner approves",
+      "owner_revoke": "The owner withdrew approval",
+      "other": "Waiting for the buyer's owner to approve",
+      "banner": "Waiting for the buyer's owner to approve this change. Don't prepare or ship until it is approved — it returns to New orders for you to confirm again."
     }
   },
   "tradeInvoicesPage": {
@@ -432,7 +439,8 @@
     "overdue": "Overdue",
     "delivered": "Delivered",
     "completed": "Completed",
-    "partiallyCompleted": "Partially Completed"
+    "partiallyCompleted": "Partially Completed",
+    "awaitingOwner": "Awaiting owner approval"
   },
   "nav": {
     "direct": "External",

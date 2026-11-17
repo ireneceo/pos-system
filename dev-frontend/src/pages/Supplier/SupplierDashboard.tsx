@@ -194,7 +194,7 @@ const TableHeader = styled.div`
 // StatusBadge — map supplier domain status → CommonStatusBadge variant
 function mapSupplierStatusVariant(s: string): 'success' | 'warning' | 'error' | 'info' | '' {
   if (['received', 'paid'].includes(s)) return 'success';
-  if (['submitted', 'pending_payment'].includes(s)) return 'warning';
+  if (['submitted', 'pending_payment', 'pending_approval'].includes(s)) return 'warning';
   if (['cancelled', 'overdue'].includes(s)) return 'error';
   if (['confirmed', 'shipped'].includes(s)) return 'info';
   return '';
@@ -456,7 +456,7 @@ const SupplierDashboard: React.FC = () => {
                         <DataTableRow key={po.id} onClick={() => navigate(`/pos/supplier/orders/${po.id}`)} style={{ cursor: 'pointer' }}>
                           <DataTableCell data-label={t('dashboard.poNumber', 'PO #')}><strong>{po.po_number}</strong></DataTableCell>
                           <DataTableCell data-label={t('dashboard.customer', 'Customer')}>{po.customer}</DataTableCell>
-                          <DataTableCell data-label={t('dashboard.status', 'Status')}><CommonStatusBadge status={mapSupplierStatusVariant(po.status)} size="small">{po.status}</CommonStatusBadge></DataTableCell>
+                          <DataTableCell data-label={t('dashboard.status', 'Status')}><CommonStatusBadge status={mapSupplierStatusVariant(po.status)} size="small">{po.status === 'pending_approval' ? t('status.awaitingOwner', 'Awaiting owner approval') : po.status}</CommonStatusBadge></DataTableCell>
                           <DataTableCell align="right" data-label={t('dashboard.total', 'Total')}>{formatCurrency(po.total_amount, po.currency || ccy)}</DataTableCell>
                         </DataTableRow>
                       ))}

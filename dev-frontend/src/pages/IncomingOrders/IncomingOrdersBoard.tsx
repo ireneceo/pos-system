@@ -206,11 +206,13 @@ const IncomingOrdersBoard: React.FC<Props> = ({
     const items = o.items || [];
     const goods = items.filter(it => !it.is_service);
     const shippedN = goods.filter(it => !!it.shipped_at).length;
-    const canPrepare = col === 'preparing' || col === 'ready';
+    // 오너 승인 대기(hold · 2026-11-17) — «새 주문» 칸에 흐린 카드 · 확인·거절·준비 없음(서버도 409)
+    const hold = !!o.seller_hold;
+    const canPrepare = !hold && (col === 'preparing' || col === 'ready');
     const isNew = newPoIds.has(o.id);
     const busy = busyOrders.has(o.id);
     return (
-      <Card key={o.id} $new={isNew} data-testid={`board-card-${o.id}`}>
+      <Card key={o.id} $new={isNew} data-testid={`board-card-${o.id}`} style={hold ? { opacity: 0.75 } : undefined}>
         <CardHead onClick={() => onOpenDetail(o)} role="button" tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter') onOpenDetail(o); }}>
           <div>
@@ -219,6 +221,10 @@ const IncomingOrdersBoard: React.FC<Props> = ({
           </div>
           <Ago>{timeAgo(o.ordered_at || o.created_at)}</Ago>
         </CardHead>
+
+        {hold && (
+          <Tag style={{ color: '#B45309' }}>{tNs('status.awaitingOwner', 'Awaiting owner approval')}</Tag>
+        )}
 
         {shippedN > 0 && shippedN < goods.length && (
           <Tag>{tNs('orders.board.partShipped', '{{shipped}} of {{total}} shipped', { shipped: shippedN, total: goods.length })}</Tag>
@@ -266,7 +272,7 @@ const IncomingOrdersBoard: React.FC<Props> = ({
         {!!o.notes && <Note>{o.notes}</Note>}
 
         <Actions>
-          {col === 'new' && (
+          {col === 'new' && !hold && (
             <>
               <ThemedButton variant="primary" onClick={() => onConfirm(o)}>{tNs('orders.actions.confirm', 'Confirm')}</ThemedButton>
               <ThemedButton variant="outline" onClick={() => onReject(o)}>{tNs('orders.actions.reject', 'Reject')}</ThemedButton>

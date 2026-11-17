@@ -79,7 +79,7 @@ async function decorateCarrier(trackingInfo) {
  * Emit PO event to BOTH seller_${type}_${id} room and buyer_${type}_${id} room.
  * Non-blocking — caller doesn't need to await.
  */
-function emitPoEvent(req, po, eventName) {
+function emitPoEvent(req, po, eventName, opts) {
   try {
     const io = req?.app?.get('io');
     if (!io) return;
@@ -106,9 +106,13 @@ function emitPoEvent(req, po, eventName) {
     // 발신 전(draft)·오너 승인 대기(pending_approval) 는 **판매자에게 존재하지 않는 주문**이다.
     // 여기서 막지 않으면 판매자 화면이 소켓 refresh 로 승인 전 주문을 띄운다(Fable 2026-07-13).
     // 단일 지점 차단 — 새 발주 경로가 생겨도 판매자 유출은 여기서 걸린다. buyer 룸은 그대로.
-    const SELLER_HIDDEN_STATUSES = ['draft', 'pending_approval'];
-    if (SELLER_HIDDEN_STATUSES.includes(po.status)) {
-      return;
+    // 2026-11-17: 판정은 utils/sellerVisibility 한 곳 — 이미 받은 주문의 승인 대기(hold)는 판매자에게 «오너 승인 대기» 로 간다.
+    //   판매자 시야에서 나가는 순간(hold → 오너 반려 → draft)은 opts.sellerSawBefore 로 알려 받아 id 만 보낸다(초안 내용 미포함).
+    const { isVisibleToSeller } = require('../utils/sellerVisibility');
+    let sellerPayload = payload;
+    if (!isVisibleToSeller(po)) {
+      if (!(opts && opts.sellerSawBefore)) return;
+      sellerPayload = { id: po.id, po_number: po.po_number, removed: true, updated_at: payload.updated_at };
     }
 
     // Seller room: only emit when we have a concrete seller_entity_id.
@@ -118,7 +122,7 @@ function emitPoEvent(req, po, eventName) {
     // mixing tenants. Skip the seller emit for these cases instead.
     if (po.seller_type !== 'system_admin' && po.seller_entity_id) {
       const sellerRoom = `seller_${po.seller_type}_${po.seller_entity_id}`;
-      io.of('/orders').to(sellerRoom).emit(eventName, payload);
+      io.of('/orders').to(sellerRoom).emit(eventName, sellerPayload);
     } else if (po.seller_type !== 'system_admin' && !po.seller_entity_id) {
       // Data anomaly: non-system-admin seller without an entity id should not
       // happen — the `buyer-sellers.js` resolver requires it. Surface in logs

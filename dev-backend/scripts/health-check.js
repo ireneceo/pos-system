@@ -1074,7 +1074,9 @@ function defineSecurityTests({ customerToken, member, restId, adminToken }) {
       const r4 = await rv(extPaid.id, own);
       const r5 = await rv(regSub.id, own);
       const sAfter = await request('GET', '/seller-orders?limit=100', null, supAuth);
-      const goneFromSeller = !(sAfter.body && sAfter.body.data || []).some(x => x.id === regSub.id);
+      // 2026-11-17 seller hold: 판매자가 이미 받은 주문의 승인취소 → 목록에 남되 «오너 승인 대기»(owner_revoke) 표시
+      const rowAfter = (sAfter.body && sAfter.body.data || []).find(x => x.id === regSub.id);
+      const goneFromSeller = !!rowAfter && rowAfter.status === 'pending_approval' && !!rowAfter.seller_hold && rowAfter.seller_hold.cause === 'owner_revoke';
       const r6 = await rv(regConf.id, own);
       const r7 = await rv(ownSub.id, own);
       const r8 = await rv(othersSub.id, own);
@@ -1109,7 +1111,7 @@ function defineSecurityTests({ customerToken, member, restId, adminToken }) {
         && bRows.some(x => x.id === extSub.id) && !aIds.includes(extSub.id) && !aIds.includes(regSub.id) && aIds.includes(regConf.id)
         && ap.status === 200 && reAp.status === 'submitted' && !!reAp.approved_at
         && rj.status === 200 && reRj.status === 'draft';
-      if (!ok) console.log(c.gray(`      (목록 ${before.status} 플래그 ${flagsOk} · 외부submitted ${r1.status}/${row1.status}/기록 ${trackOk} · 두번째 ${r1b.status}/${code(r1b)} · 외부shipped ${r2.status}/${ship.status} · 수령 ${r3.status}/${code(r3)} · 결제 ${r4.status}/${code(r4)} · 가입submitted ${r5.status} 판매자 전 ${sawBefore}/후 사라짐 ${goneFromSeller} · 가입confirmed ${r6.status}/${code(r6)} · 오너제출 ${r7.status}/${code(r7)} · 남의 ${r8.status} · RA ${r9.status} · 익명 ${r10.status} · 재고 ${stockBefore.l}/${stockAfter.l} ${stockBefore.s}/${stockAfter.s} · 큐 ${q.status} · 승인후 빠짐 ${!aIds.includes(extSub.id)} · 재승인 ${ap.status}/${reAp.status} · 반려 ${rj.status}/${reRj.status})`));
+      if (!ok) console.log(c.gray(`      (목록 ${before.status} 플래그 ${flagsOk} · 외부submitted ${r1.status}/${row1.status}/기록 ${trackOk} · 두번째 ${r1b.status}/${code(r1b)} · 외부shipped ${r2.status}/${ship.status} · 수령 ${r3.status}/${code(r3)} · 결제 ${r4.status}/${code(r4)} · 가입submitted ${r5.status} 판매자 전 ${sawBefore}/후 hold ${goneFromSeller} · 가입confirmed ${r6.status}/${code(r6)} · 오너제출 ${r7.status}/${code(r7)} · 남의 ${r8.status} · RA ${r9.status} · 익명 ${r10.status} · 재고 ${stockBefore.l}/${stockAfter.l} ${stockBefore.s}/${stockAfter.s} · 큐 ${q.status} · 승인후 빠짐 ${!aIds.includes(extSub.id)} · 재승인 ${ap.status}/${reAp.status} · 반려 ${rj.status}/${reRj.status})`));
       return ok;
     } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
     finally {
@@ -3579,18 +3581,22 @@ function definePosTests({ adminToken }) {
     // 목록: 숨김 상태가 하나도 없어야 한다 (status 를 강제로 요청해도 마찬가지)
     const list = await request('GET', '/seller-orders?limit=100', null, auth);
     if (list.status !== 200) return false;
-    const leaked = (list.body?.data || []).some((p) => ['draft', 'pending_approval'].includes(p.status));
+    // 2026-11-17 seller hold: pending_approval 줄은 «이미 받은 주문의 승인 대기» 표시(seller_hold)가 있을 때만 허용
+    const leaked = (list.body?.data || []).some((p) => p.status === 'draft' || (p.status === 'pending_approval' && !p.seller_hold));
     const forcedDraft = await request('GET', '/seller-orders?status=draft&limit=100', null, auth);
     const forcedLeak = (forcedDraft.body?.data || []).some((p) => p.status === 'draft');
 
     // 상세: 이 판매자의 draft/pending PO 가 실제로 있으면 404 여야 한다
     let detailBlocked = true;
-    const hidden = await PurchaseOrder.findOne({
+    const { sellerHoldOf } = require('../utils/sellerVisibility');
+    const hiddenRows = await PurchaseOrder.findAll({
       where: {
         seller_type: 'supplier', seller_entity_id: supAdmin.supplier_company_id,
         status: { [OpSL.in]: ['draft', 'pending_approval'] }
-      }
+      },
+      attributes: ['id', 'status', 'tracking_info'], limit: 50
     });
+    const hidden = hiddenRows.find((p) => !sellerHoldOf(p));
     if (hidden) {
       const d = await request('GET', `/seller-orders/${hidden.id}`, null, auth);
       detailBlocked = d.status === 404;
@@ -8620,8 +8626,18 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
         if (up.status !== 200 || po5u.status !== 'pending_approval' || !po5u.approval_required || ev.raised_by_seller !== true) {
           return fail(`P8 인상 ${up.status} 상태 ${po5u.status} 승인필요 ${po5u.approval_required} 이벤트 ${JSON.stringify(ev).slice(0, 100)}`);
         }
+        // 2026-11-17 seller hold: 이미 받은 주문 → 승인 대기여도 판매자에게 «오너 승인 대기» · «새 주문» 탭 · 동작 409
         const hid = await request('GET', `/seller-orders/${po5}`, null, bgAuth);
-        if (hid.status !== 404) return fail(`P8 승인 대기 주문이 판매자에게 보임 ${hid.status}`);
+        if (hid.status !== 200 || hid.body?.data?.seller_hold?.cause !== 'seller_raise') return fail(`P8 hold 상세 ${hid.status} ${JSON.stringify(hid.body?.data?.seller_hold)}`);
+        const hidList = await request('GET', '/seller-orders?status=submitted&limit=100', null, bgAuth);
+        if (!(hidList.body?.data || []).some(r => r.id === po5)) return fail('P8 hold 가 «새 주문» 목록에 없음');
+        const lineIdsH = (await PurchaseOrderItem.findAll({ where: { purchase_order_id: po5 }, attributes: ['id'] })).map(l => l.id);
+        for (const act of ['confirm', 'prepare', 'ship']) {
+          const r = await request('POST', `/seller-orders/${po5}/${act}`, act === 'prepare' ? { item_ids: lineIdsH } : {}, bgAuth);
+          if (r.status !== 409 || r.body?.code !== 'AWAITING_OWNER_APPROVAL') return fail(`P8 hold ${act} ${r.status} ${r.body?.code}`);
+        }
+        const amH = await request('POST', `/seller-orders/${po5}/amend`, { items: [{ brand_product_id: stk.id, quantity_ordered: 51 }], confirm_increase: true }, bgAuth);
+        if (amH.status !== 409 || amH.body?.code !== 'AWAITING_OWNER_APPROVAL') return fail(`P8 hold amend ${amH.status} ${amH.body?.code}`);
         const ownerAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: owner8.id }, process.env.JWT_SECRET, { expiresIn: '5m' })}` };
         const queue = await request('GET', '/purchase-orders/pending-approval', null, ownerAuth);
         const inQueue = JSON.stringify(queue.body?.data || []).includes(`"id":${po5}`);
@@ -8629,7 +8645,7 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
         const ap = await request('POST', `/purchase-orders/${po5}/approve`, {}, ownerAuth);
         if (ap.status !== 200 || (await PurchaseOrder.findByPk(po5)).status !== 'submitted') return fail(`P8 승인 ${ap.status}`);
         const back = await request('GET', `/seller-orders/${po5}`, null, bgAuth);
-        if (back.status !== 200) return fail(`P8 승인 뒤 판매자 상세 ${back.status}`);
+        if (back.status !== 200 || back.body?.data?.seller_hold !== null) return fail(`P8 승인 뒤 판매자 상세 ${back.status} hold ${JSON.stringify(back.body?.data?.seller_hold)}`);
       } finally {
         if (!hadOwner8) {
           await sequelize.query(`DELETE FROM restaurant_managers WHERE restaurant_id = :r AND manager_id = :u AND relationship_type = 'ownership'`,
@@ -9241,8 +9257,12 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       const inQueue = (queue.body?.data || []).some(r => r.id === p5.id);
       const sellerSees = await request('GET', `/seller-orders/${p5.id}`, null, supAuth);
       const gateEv = ev5.find(e => e.status === 'pending_approval' && e.edited_by_buyer);
-      if (a5.status !== 200 || pp5.status !== 'pending_approval' || !pp5.approval_required || !inQueue || !gateEv || sellerSees0.status !== 200 || sellerSees.status === 200)
-        return fail(`B5 ${a5.status} 상태 ${pp5.status} 큐 ${inQueue} 이벤트 ${!!gateEv} 판매자 전 ${sellerSees0.status}/후 ${sellerSees.status}`);
+      // 2026-11-17 seller hold: 판매자가 이미 받은 주문 → 승인 대기여도 «오너 승인 대기» 로 보이고 동작은 409
+      const confirm5 = await request('POST', `/seller-orders/${p5.id}/confirm`, {}, supAuth);
+      if (a5.status !== 200 || pp5.status !== 'pending_approval' || !pp5.approval_required || !inQueue || !gateEv || sellerSees0.status !== 200
+          || sellerSees.status !== 200 || sellerSees.body?.data?.seller_hold?.cause !== 'buyer_edit'
+          || confirm5.status !== 409 || confirm5.body?.code !== 'AWAITING_OWNER_APPROVAL')
+        return fail(`B5 ${a5.status} 상태 ${pp5.status} 큐 ${inQueue} 이벤트 ${!!gateEv} 판매자 전 ${sellerSees0.status}/후 ${sellerSees.status} hold ${sellerSees.body?.data?.seller_hold?.cause} 확인 ${confirm5.status} ${confirm5.body?.code}`);
       // B11 오너가 화면을 연 뒤 매장이 고친 발주 → 옛 판으로 승인하면 409 PO_CHANGED · 상태 그대로 (2026-11-04)
       const seenAt = new Date(new Date(pp5.updated_at).getTime() - 1000).toISOString();
       const apOld = await request('POST', `/purchase-orders/${p5.id}/approve`, { expected_updated_at: seenAt }, ownerAuth);
@@ -9270,8 +9290,44 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
       const rv = await request('POST', `/purchase-orders/${p5.id}/revoke-approval`, {}, ownerAuth);
       const a12c = await amend(p5.id, [{ ingredient_seller_product_id: A.map.id, quantity_ordered: 1 }]);
       if (rv.status !== 200 || a12c.status !== 200) return fail(`B12'' 승인취소 ${rv.status} 뒤 매장 수정 ${a12c.status} ${a12c.body?.code}`);
+      // N4·N2 (2026-11-17 seller hold): 승인취소로 대기 → 판매자 200 owner_revoke · 그 사이 매장이 또 고쳐도 시작까지 거슬러 가 여전히 200
+      const sv12 = await request('GET', `/seller-orders/${p5.id}`, null, supAuth);
+      if (sv12.status !== 200 || sv12.body?.data?.seller_hold?.cause !== 'owner_revoke')
+        return fail(`N4/N2 승인취소+재수정 뒤 판매자 ${sv12.status} hold ${sv12.body?.data?.seller_hold?.cause}`);
       const reAp = await request('POST', `/purchase-orders/${p5.id}/approve`, {}, ownerAuth);
       if (reAp.status !== 200) return fail(`B12'' 재승인 ${reAp.status}`);
+      const svAp = await request('GET', `/seller-orders/${p5.id}`, null, supAuth);
+      if (svAp.status !== 200 || svAp.body?.data?.seller_hold !== null) return fail(`승인 뒤 seller_hold ${JSON.stringify(svAp.body?.data?.seller_hold)}`);
+      // N1 한 번도 안 나간 승인 대기 → 판매자 상세·목록·동작 모두 404/없음
+      const pN1 = await mkPo(SID, 'pending_approval', [{ f: A, qty: 1, price: 10 }]);
+      await pN1.update({ tracking_info: { events: [{ at: new Date().toISOString(), status: 'pending_approval', note: 'Awaiting Owner approval' }] } });
+      const n1d = await request('GET', `/seller-orders/${pN1.id}`, null, supAuth);
+      const n1c = await request('POST', `/seller-orders/${pN1.id}/confirm`, {}, supAuth);
+      const n1l = await request('GET', '/seller-orders?status=submitted&limit=100', null, supAuth);
+      if (n1d.status !== 404 || n1c.status !== 404 || (n1l.body?.data || []).some(r => r.id === pN1.id))
+        return fail(`N1 승인 전 유출 상세 ${n1d.status} 확인 ${n1c.status}`);
+      // N3 hold → 오너 반려(draft) → 판매자 404 → 다시 보냄(submitted_at 남음) → 여전히 404
+      const pN3 = await mkPo(SID, 'pending_approval', [{ f: A, qty: 1, price: 10 }]);
+      const t0 = Date.now();
+      await pN3.update({ submitted_at: new Date(), tracking_info: { events: [
+        { at: new Date(t0 - 3000).toISOString(), status: 'submitted', note: 'Order placed by buyer' },
+        { at: new Date(t0 - 2000).toISOString(), status: 'pending_approval', note: 'Awaiting Owner approval — seller raised', raised_by_seller: true, status_before: 'submitted' }
+      ] } });
+      const n3a = await request('GET', `/seller-orders/${pN3.id}`, null, supAuth);
+      const n3l = await request('GET', '/seller-orders?status=submitted&limit=100', null, supAuth);
+      const n3st = await request('GET', '/seller-orders/stats', null, supAuth);
+      if (n3a.status !== 200 || n3a.body?.data?.seller_hold?.cause !== 'seller_raise' || !(n3l.body?.data || []).some(r => r.id === pN3.id)
+          || !(n3st.body?.data?.awaiting_owner >= 1))
+        return fail(`N3/N5 hold 표시 ${n3a.status} 목록 포함 ${(n3l.body?.data || []).some(r => r.id === pN3.id)} awaiting_owner ${n3st.body?.data?.awaiting_owner}`);
+      const rj = await request('POST', `/purchase-orders/${pN3.id}/reject`, { reason: 'hc' }, ownerAuth);
+      const n3b = await request('GET', `/seller-orders/${pN3.id}`, null, supAuth);
+      const pN3r = await M.PurchaseOrder.findByPk(pN3.id);
+      const evR = (pN3r.tracking_info?.events || []).slice();
+      evR.push({ at: new Date().toISOString(), status: 'pending_approval', note: 'Awaiting Owner approval' });
+      await pN3r.update({ status: 'pending_approval', tracking_info: { ...(pN3r.tracking_info || {}), events: evR } });
+      const n3c = await request('GET', `/seller-orders/${pN3.id}`, null, supAuth);
+      if (rj.status !== 200 || n3b.status !== 404 || n3c.status !== 404)
+        return fail(`N3 반려 ${rj.status} 뒤 판매자 ${n3b.status} · 다시 보낸 뒤 ${n3c.status}`);
       // B7 오너 본인 수정 → 승인 생략
       const r7 = await linesOf(p5.id);
       const a7 = await amend(p5.id, [{ item_id: r7[0].id, ingredient_seller_product_id: A.map.id, quantity_ordered: 2 }], ownerAuth, `?entity_type=restaurant&entity_id=${RID}`);

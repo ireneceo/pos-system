@@ -1293,10 +1293,113 @@ Irene 원문: 「주문내역 좀 바꿔줘. … 이런 거 주문관리 수정�
 ### 총액 인상 — 2026-10-15
 
 - 화면(`IncomingOrdersView`): 저장 버튼은 막지 않는다. 인상이면 호박색 안내(«RM a → RM b, 구매자에게 안내») + 저장 때 `ConfirmModal` «Raise the order total?» → 확인이 `confirm_increase:true` 를 보낸다. 옛 번들·직접 호출은 확인 없이 못 올린다(서버가 요구).
-- 오너 승인 매장(`isApprovalRequiredForPo` = 오너 연결 AND `requirePoOwnerApproval !== false`): 인상 저장 뒤 같은 트랜잭션에서 `applyAmendRaiseGate` → `pending_approval`+`approval_required` + 이벤트(`raised_by_seller`·`status_before`·전후 총액) → 커밋 뒤 오너 메일 `po_approval_pending`. 판매자 목록·상세에서 빠진다(`SELLER_HIDDEN` 그대로). 승인 → `submitted`(판매자가 다시 확인) · 반려 → 구매자 `draft`. 감량·동액은 게이트를 타지 않는다. 행위자 예외 없음(대리 주문 추가와 같다).
+- 오너 승인 매장(`isApprovalRequiredForPo` = 오너 연결 AND `requirePoOwnerApproval !== false`): 인상 저장 뒤 같은 트랜잭션에서 `applyAmendRaiseGate` → `pending_approval`+`approval_required` + 이벤트(`raised_by_seller`·`status_before`·전후 총액) → 커밋 뒤 오너 메일 `po_approval_pending`. 판매자 목록·상세에서 빠진다(`SELLER_HIDDEN` 그대로). **(→ 2026-11-17 아래 «오너 승인 대기 중에도 판매자에게 남는 주문» 설계가 구현되면 대체 — 이미 받은 주문은 남는다.)** 승인 → `submitted`(판매자가 다시 확인) · 반려 → 구매자 `draft`. 감량·동액은 게이트를 타지 않는다. 행위자 예외 없음(대리 주문 추가와 같다).
 - 후보 조회 응답 `raise_requires_approval` = 저장 게이트와 같은 함수 → 확인 창 문구가 서버 행동과 같다.
 - 기록: `amended` 이벤트에 `total_increased`. 구매자 «Order Amended» 메일에 승인 대기면 호박색 블록. 새 테이블·ENUM·상태값 없음.
 - 검사: health-check `inventory` «A안 … (P1~P8)» — P7 미확인 인상 400·확인 인상 200(상태 그대로)·감량 200 / P8 오너 승인 매장 감량 무게이트·인상 → pending_approval·판매자 404·오너 목록·승인 → 판매자 200. 고장주입 2건(확인 요구 제거·게이트 호출 제거) 모두 실패 확인.
+
+### 오너 승인 대기 중에도 판매자에게 남는 주문 (seller hold) — 2026-11-17 · Fable 설계 · 미구현
+
+> Irene: «…신규 오늘 주문이 있었어. 그런데 갑자기 없어졌어.» · «오너승인해도 관리되는 거» → 질문 (가)/(나) → «권고대로 진행해 줘» = (가).
+> 계기(운영 실측): `PO-R28-20261115-002`(매장 28 → K-DINE Noodles) — 판매자가 3→8kg 로 올리자 `pending_approval` 로 가서 오너 승인까지 14분간 판매자 목록에서 사라짐. 옛 계약대로의 동작이었고, 그 계약을 아래로 바꾼다.
+
+**바뀌는 계약 한 줄:** «승인 전 주문은 판매자에게 존재하지 않는다» → **«판매자가 한 번도 받은 적 없는 승인 전 주문은 존재하지 않는다. 이미 받은 주문이 다시 승인 대기로 간 것은 «오너 승인 대기» 로 보이되, 판매자는 아무 동작도 못 한다.»**
+`draft` 는 지금처럼 언제나 비공개. 새로 보낸 주문의 승인 전 비공개도 그대로.
+
+#### 1. 판정 — 단일 함수 (새 파일 `dev-backend/utils/sellerVisibility.js`)
+
+지금 숨김 목록이 세 곳에 글자로 흩어져 있다(`routes/seller-orders.js:65` · `services/poRealtimeService.js:109` · `routes/supplier.js:233`). 전부 이 파일로 모은다.
+
+| 내보내는 것 | 뜻 |
+|---|---|
+| `SELLER_HIDDEN` | `['draft','pending_approval']` (값 그대로) |
+| `sellerHoldOf(po)` → `null` \| `{ cause, since, status_before, total_before, total_after }` | **순수 함수.** 이 주문이 «판매자가 이미 받은 채 승인 대기» 인가 |
+| `isVisibleToSeller(po)` | `!SELLER_HIDDEN.includes(status) \|\| !!sellerHoldOf(po)` |
+| `sellerVisibleWhere(baseWhere, statusParam)` (async) | 목록·대시보드가 쓰는 where 조각(아래 2) |
+| `sellerActionBlock(po)` → `null` \| `{ http, code, message }` | 판매자 동작 라우트 공용 가드(아래 3) |
+
+`sellerHoldOf` 규칙 — **이번 승인 대기가 «판매자에게 보이던 상태» 에서 시작했는가**:
+1. `po.status !== 'pending_approval'` → `null`.
+2. `tracking_info.events` 를 **뒤에서부터** 읽는다. PO 상태 이름이 아닌 이벤트(`amended`·`corrected` 등)는 건너뛴다. `status === 'pending_approval'` 이벤트는 모으며 계속 거슬러 간다. 그 밖의 상태 이벤트(`draft`·`submitted`·`confirmed`…)를 만나면 멈춘다. → 모인 것 중 **가장 오래된 것** = 이번 승인 대기의 시작 이벤트.
+3. 시작 이벤트의 `status_before` 가 `SELLER_HIDDEN` 밖의 상태(실제로는 `submitted`·`confirmed`)면 hold. `status_before` 가 없거나 `draft`/`pending_approval` 이면 `null`.
+4. `cause` = 시작 이벤트의 꼬리표: `raised_by_seller` → `'seller_raise'` · `edited_by_buyer` → `'buyer_edit'` · `approval_revoked` → `'owner_revoke'`. `since` = 시작 이벤트 `at`. 전후 총액은 있으면 싣는다.
+
+왜 이 기준인가(다른 후보를 버린 이유):
+- **`submitted_at` 이 있는가**로 보면 안 된다 — 반려(→ `draft`)는 `submitted_at` 을 지우지 않는다. 반려된 뒤 매장이 고쳐 다시 보낸 주문은 «새로 보낸 주문» 인데 판매자에게 새 내용이 승인 전에 샌다.
+- **마지막 이벤트 하나만** 보면 안 된다 — 승인 대기 중 매장이 한 번 더 고치면 `applyBuyerAmendGate` 가 `status_before:'pending_approval'` 이벤트를 또 쓴다. 그 순간 주문이 다시 사라진다. 그래서 «이번 대기의 시작» 까지 거슬러 간다.
+- **새 컬럼·최상위 표시**를 두지 않는다 — 나가는 길(승인·반려·취소)마다 지워야 해서 빠뜨리면 샌다. 이력에서 계산하면 쓰는 쪽(게이트 3개·승인 라우트)은 **한 줄도 안 바뀐다.** 새 ENUM·테이블·마이그 0.
+
+해당하는 길(전부 이미 `status_before` 를 쓴다): ① 판매자 총액 인상 `applyAmendRaiseGate` ② 매장이 보낸 뒤 수정 `applyBuyerAmendGate`(보낸 뒤일 때만 — 첫 승인 대기 중 수정은 시작이 `draft` 쪽이라 비공개 유지) ③ 오너 승인취소 `revoke-approval`(가입 업체는 `submitted` 에서만 가능).
+해당하지 않는 것: 새 발주 제출 · 반려 뒤 다시 보냄 · 정기 발주 승인 대기 · **판매자가 대신 넣은 새 주문**(`POST /api/seller-orders` → 승인 매장이면 `pending_approval`) — Irene 답의 범위가 «이미 받은 주문» 이라 이번에는 그대로 비공개. 넓히려면 따로 올린다.
+
+#### 2. 읽기 — 어디에 어떻게 보이나
+
+- **목록 `GET /api/seller-orders`**: `sellerVisibleWhere` 가 먼저 이 판매자의 `pending_approval` 주문만 `id, status, tracking_info` 로 읽어(소수) `sellerHoldOf` 로 hold id 를 고르고, where 를 만든다.
+  - 상태 지정 없음 → `status NOT IN 숨김 OR id IN (hold)`
+  - `status=submitted` → `status='submitted' OR id IN (hold)` — hold 는 **«새 주문» 자리**에 선다(승인되면 어디서 왔든 `submitted` 로 돌아와 판매자가 다시 확인하므로).
+  - 그 밖의 상태 → 지금 그대로. `status=draft|pending_approval` 요청 → 지금처럼 무시(지정 없음과 같음).
+  - 쪽수·건수는 SQL where 로 정해지므로 그대로 맞는다(JS 뒤거르기 금지).
+- **상세 `GET /api/seller-orders/:id`**: `isVisibleToSeller` 아니면 404(지금과 같음), hold 면 200.
+- **응답 필드**(목록·상세 공통): `status` 는 사실대로 `'pending_approval'` + `seller_hold`(위 객체, 아니면 `null`). 내용(줄·총액)은 DB 의 현재 값 그대로 — 매장이 고친 경우 «오너가 아직 승인하지 않은 내용» 임을 화면이 밝힌다(4).
+- **통계 `GET /api/seller-orders/stats`**: `counts.submitted` = submitted + hold 수(탭 숫자 = 탭 목록). 새 칸 `awaiting_owner` = hold 수. `pending`(할 일 수)은 submitted 만 — 지금 그대로.
+- **사이드바 배지 `routes/badgeCounts.js`**: **안 바꾼다.** 배지는 «판매자가 지금 할 일» 이고 hold 는 할 일이 아니다. (탭 숫자와 hold 수만큼 다를 수 있다 — 의도.)
+- **공급업체 대시보드 `routes/supplier.js:233` 최근 주문 5건**: 같은 `sellerVisibleWhere` 를 쓴다(공급업체 판매자도 같은 규칙). 응답에 `seller_hold` 를 싣고, 대시보드 상태 라벨에 «Awaiting owner approval» 을 더한다.
+- 브랜드·푸드코트·공급업체 판매자 전부 같은 라우트·같은 화면(`IncomingOrdersView`)이라 **한 번에 같이** 적용된다. 외부(미가입) 업체는 판매자 화면이 없어 무관.
+- 안 바꾸는 것: 재고 부족 수(`stockShortOrderCount`) · 브랜드 재고 가용량 · 정산서 대상 · 매장/오너 쪽 화면과 승인 목록.
+
+#### 3. 쓰기 — 잠금
+
+hold 중 판매자는 **읽기만.** 판매자 동작 라우트 전부가 주문을 읽은 직후 `sellerActionBlock(po)` 를 부른다:
+- 숨김이고 hold 아님 → 404 `Order not found` (지금 일부 라우트는 400 에 상태 이름을 실어 준다 — 존재가 새던 자리, 같이 닫힌다)
+- hold → **409 `AWAITING_OWNER_APPROVAL`** «This order is waiting for the buyer's owner to approve the change»
+- 그 밖 → `null`(각 라우트의 기존 상태 검사 그대로)
+
+대상: `complete` · `confirm` · `ship` · `prepare` · `reject` · `deliver` · `PUT tracking` · `amend` · `correct-delivery`(지금의 `SELLER_HIDDEN` 404 줄을 이것으로 바꿈). `GET amendable-products` 는 hold 면 200 `amendable:false`, 숨김이면 404.
+`NOT_SHIPPABLE`·`NOT_PREPARABLE` 의 `pending_approval` 은 그대로 둔다(둘째 방어선).
+판매자 쪽에서 인상을 되돌리는 길은 만들지 않는다(오너가 반려/승인으로 끝낸다).
+
+#### 4. 실시간·화면
+
+- **소켓 `emitPoEvent`**: 판매자 룸 차단 조건을 `!isVisibleToSeller(po)` 로 바꾼다 → hold 로 들어갈 때 `seller-order-updated` 가 판매자에게 가서 화면이 «사라짐» 이 아니라 «오너 승인 대기» 로 바뀐다. 한 번도 안 받은 승인 전 주문은 지금처럼 판매자 룸에 안 나간다.
+- **판매자 시야에서 나갈 때**(hold → 오너 반려 → `draft`): 지금은 신호가 없어 화면에 죽은 줄이 남는다. `emitPoEvent(req, po, name, { sellerSawBefore })` 넷째 인자를 더하고, 반려 라우트가 **update 전에** `sellerHoldOf(locked)` 를 재서 넘긴다. 참이면 판매자 룸에 **`{ id, po_number, removed:true }` 만** 보낸다(반려된 초안 내용은 싣지 않는다). 화면은 기존 `seller-order-updated` 처리(다시 불러오기) 그대로.
+- 승인 → `seller-order-created`(알림음·새 주문 표시)는 그대로 둔다 — 판매자가 다시 확인해야 하는 주문이 돌아온 것이라 맞다.
+- **목록(`IncomingOrdersView`)**: `POStatus` 에 `pending_approval` 추가. hold 줄은 «전체»·«새 주문» 탭에 보이고, 상태 칸 = 호박색 글자 칩 «Awaiting owner approval»(이모지·아이콘 없음), 아래 한 줄 = 원인:
+  `seller_raise` «You raised the total RM a → RM b» · `buyer_edit` «The buyer edited this order — not final until their owner approves» · `owner_revoke` «The owner withdrew approval».
+  동작 단추는 전부 `status === 'submitted'` 등에 걸려 있어 저절로 안 나온다 — 「보기」·인쇄만 남는지 실측으로 확인. 상세 창 머리에 같은 문구의 안내 띠 + «Don't prepare or ship until it is approved».
+  인상 저장 뒤 뜨는 안내(`amendPendingNotice`) 문구를 «목록에서 빠진다» 에서 «목록에 남고 승인되면 다시 확인» 으로 고친다.
+  화면 위 기간 통계(매출·평균 주문 등)는 hold 줄을 **세지 않는다**(확정 안 된 금액).
+- **보드(`boardColumn.ts`)**: `pending_approval` 이면서 `seller_hold` 가 있으면 `'new'` 칸, 없으면 지금처럼 `null`. 카드는 흐리게 + 같은 칩, 확인·거절 단추 없음. 보드의 `status=submitted` 불러오기가 위 2 규칙으로 hold 를 같이 받아 오므로 불러오기 코드는 안 바뀐다.
+- i18n 4개 언어(en→ko→zh→ms). 🔒 `MainLayout.tsx` 는 안 건드린다(배지 무변경이라 필요 없음). 인쇄·KDS 보호 파일 무접촉.
+
+#### 5. 검사 — 바뀌는 항목과 반증
+
+| 항목 | 지금 | 바뀐 뒤 |
+|---|---|---|
+| `inventory` P8 (판매자 인상) | 인상 → 판매자 상세 404 | 상세 **200** · `seller_hold.cause='seller_raise'` · `?status=submitted` 목록에 있음 · `confirm`/`ship`/`prepare`/`amend` **409 `AWAITING_OWNER_APPROVAL`** · 승인 뒤 200 · `seller_hold=null` |
+| `inventory` B5 (매장이 보낸 뒤 수정) | 판매자에게 안 보여야 통과 | 200 · `cause='buyer_edit'` |
+| `pos` «판매자에게 draft/pending_approval 미노출» | 목록에 `pending_approval` 0 | 목록의 `pending_approval` 줄은 **전부 `seller_hold` 가 있어야** 하고 `draft` 0 · 상세 404 확인은 `sellerHoldOf` 가 `null` 인 주문으로 |
+| 새 N1 | — | 승인 매장에서 매장이 새로 보낸 주문(한 번도 안 나감) → 판매자 목록에 없음 · 상세 404 · 동작 라우트 404 |
+| 새 N2 | — | hold 중 매장이 한 번 더 고침 → **여전히 200**(시작 이벤트까지 거슬러 감) |
+| 새 N3 | — | hold → 오너 반려(`draft`) → 판매자 404 → 매장이 다시 보냄(`pending_approval`, `submitted_at` 남아 있음) → **404** |
+| 새 N4 | — | 승인된 `submitted` 주문을 오너가 승인취소 → 200 · `cause='owner_revoke'` |
+| 새 N5 | — | 통계: hold 1건이면 `awaiting_owner=1` · `counts.submitted` 에 포함 · 배지 수(submitted)는 그대로 |
+| jest `tests/seller-visibility.test.js` | — | `sellerHoldOf` 이벤트 열 사례(위 N1~N4 + `amended` 끼어듦 + `tracking_info` 문자열/없음) · `emitPoEvent` 가짜 io 로: 안 받은 승인 전 = 판매자 룸 0회 · hold = 1회 · 반려+`sellerSawBefore` = `removed` 만 |
+| jest `boardColumn.test.ts` | 13건 | + hold → `'new'` · hold 표시 없는 `pending_approval` → `null` |
+
+고장주입(각각 그 검사가 실제로 실패하는지 1회씩, HTTP 주입은 `pm2 restart` 뒤):
+1. `sellerHoldOf` 가 늘 `null` → P8·B5·N4 실패(다시 사라짐).
+2. `sellerHoldOf` 가 승인 대기면 늘 hold → N1·N3 실패(**승인 전 유출** — 이 설계에서 가장 중요한 반증).
+3. 시작까지 거슬러 가지 않고 마지막 이벤트만 봄 → N2 실패.
+4. `sellerActionBlock` 호출 제거 → P8 의 409 코드 단언 실패.
+5. `emitPoEvent` 차단을 옛 글자 목록으로 되돌림 → jest «hold = 1회» 실패.
+
+검증 기준(완료 조건): 위 검사 전부 통과 + 고장주입 5/5 실패 확인 · `verify-all --full`(프론트 변경 — 빌드 1회·sweep 1회) · 실브라우저로 데모 판매자 화면에서 인상 → 줄이 남고 칩·잠금 확인 → 오너 승인 → 새 주문으로 돌아옴(목록·보드 둘 다) · `check-print-guard` 변경 0 · `check-sensitive-diff`.
+**되돌리기 어려운 변경(승인 전 주문의 공개 범위 = 보안 경계)** 이라 구현 뒤 Fable 판정 1회 대상. 설계와 다른 판단이 필요해지면 즉시 멈추고 올린다.
+
+#### 6. 범위 밖
+
+- 판매자가 대신 넣은 새 주문의 승인 대기 표시(위 1) · 판매자 쪽 인상 취소 · 반려됐을 때 판매자에게 메일(지금도 없음 — 화면에서 줄이 빠질 뿐) · hold 진입 때 판매자 메일(승인취소는 기존 메일 유지) · 매장이 고치기 전 내용의 보관·비교 표시.
+- 운영 자료 손질 없음 — 배포 순간 hold 에 해당하는 기존 주문은 그냥 보이기 시작한다.
 
 ### 관련 파일
 

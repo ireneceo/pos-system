@@ -62,7 +62,8 @@ async function attachSellerProductInfo(pos) {
  *   pending_approval — 오너 승인 대기. "승인 전엔 판매자에게 나가지 않는다"가 이 기능의 계약이다.
  * (Fable 2026-07-13: 상태 필터가 아예 없어 둘 다 판매자 포털에 그대로 보이고 있었다.)
  */
-const SELLER_HIDDEN = ['draft', 'pending_approval'];
+// 2026-11-17: 숨김 목록·판정은 utils/sellerVisibility 한 곳 — 이미 받은 주문이 다시 승인 대기로 간 것(hold)은 보인다.
+const { SELLER_HIDDEN, sellerHoldOf, isVisibleToSeller, sellerBlockError, sendSellerBlock, sellerVisibleWhere } = require('../utils/sellerVisibility');
 
 function buildSellerWhere(req) {
   // System Admin without override → return all (used for stats / list)
@@ -222,13 +223,8 @@ router.get('/', async (req, res) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
     const offset = (page - 1) * limit;
 
-    const filterWhere = { ...(where || {}) };
-    // 숨김 상태는 쿼리로 요청해도 뚫리지 않는다 (필터를 덮어쓰던 자리)
-    if (req.query.status && !SELLER_HIDDEN.includes(req.query.status)) {
-      filterWhere.status = req.query.status;
-    } else {
-      filterWhere.status = { [Op.notIn]: SELLER_HIDDEN };
-    }
+    // 숨김 상태는 쿼리로 요청해도 뚫리지 않는다 — 단 이미 받은 주문의 승인 대기(hold)는 «전체»·«새 주문» 에 선다
+    const { where: filterWhere } = await sellerVisibleWhere(where || {}, req.query.status);
     // 발주일(보낸 시각) 기준 — 정렬·기간 필터·화면 시각 모두 (utils/poOrderedAt, 2026-09-21 Irene 「Submit 한 날 기준」)
     const { orderedAtLiteral, orderedAtOf } = require('../utils/poOrderedAt');
     const orderedAtExpr = orderedAtLiteral(sequelize);
@@ -258,6 +254,7 @@ router.get('/', async (req, res) => {
       const obj = po.toJSON();
       obj.ordered_at = orderedAtOf(obj);
       obj.buyer = await resolveBuyerInfo(po);
+      obj.seller_hold = sellerHoldOf(po);
       // 배송이 없는 주문인가 — 화면이 «배송 처리» 대신 «완료 처리» 를 띄우는 근거 (2026-09-13)
       obj.is_service_only = await isServiceOnlyOrder(sequelize, po.id);
       await attachShipmentState(obj);
@@ -302,6 +299,10 @@ router.get('/stats', async (req, res) => {
       PurchaseOrder.count({ where: { ...baseWhere, status: 'cancelled' } })
     ]);
 
+    // 이미 받은 주문의 승인 대기(hold) — «새 주문» 탭 숫자에 포함, 할 일 수(pending)·배지에는 안 넣는다 (2026-11-17)
+    const { holdIds } = await sellerVisibleWhere(baseWhere, undefined);
+    const awaitingOwner = holdIds.length;
+
     // received_this_month: count POs received this month (KPI separate from counts)
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
@@ -332,8 +333,9 @@ router.get('/stats', async (req, res) => {
         received_this_month: receivedThisMonth,
         cancelled,
         // Tab counts (used by incoming-orders TabBadge — submitted/confirmed/shipped/received total/cancelled)
+        awaiting_owner: awaitingOwner,
         counts: {
-          submitted: pending,
+          submitted: pending + awaitingOwner,
           confirmed,
           shipped,
           received,
@@ -566,13 +568,14 @@ router.get('/:id', async (req, res) => {
     if (!checkSellerOwnership(po, req)) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
-    // 발신 전(draft)·승인 대기(pending_approval) 는 판매자에게 존재하지 않는 주문이다
-    if (SELLER_HIDDEN.includes(po.status)) {
+    // 발신 전(draft)·첫 승인 대기는 판매자에게 존재하지 않는 주문 — 이미 받은 주문의 승인 대기(hold)는 읽기 전용으로 보인다
+    if (!isVisibleToSeller(po)) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
 
     const obj = po.toJSON();
     obj.buyer = await resolveBuyerInfo(po);
+    obj.seller_hold = sellerHoldOf(po);
     await attachShipmentState(obj);
     attachAutoReceiveAt(obj);
     await attachSellerProductInfo(obj);
@@ -602,6 +605,7 @@ router.post('/:id/complete', async (req, res) => {
       const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
       if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      { const blk = sellerBlockError(locked); if (blk) throw blk; }   // 숨김 404 · hold 409 (utils/sellerVisibility)
 
       const { isServiceOnlyOrder } = require('../utils/orderFulfillment');
       if (!(await isServiceOnlyOrder(sequelize, locked.id, t))) {
@@ -627,6 +631,7 @@ router.post('/:id/complete', async (req, res) => {
     }));
     res.json({ success: true, data: po });
   } catch (err) {
+    if (sendSellerBlock(res, err)) return;   // 숨김 404 · hold 409 AWAITING_OWNER_APPROVAL
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.code === 'NOT_SERVICE_ONLY') return res.status(400).json({ success: false, code: err.code, message: err.message });
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, code: err.code, message: err.message });
@@ -649,6 +654,7 @@ router.post('/:id/confirm', async (req, res) => {
       const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
       if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      { const blk = sellerBlockError(locked); if (blk) throw blk; }   // 숨김 404 · hold 409 (utils/sellerVisibility)
       if (locked.status !== 'submitted') {
         const e = new Error(`Cannot confirm order in status '${locked.status}'`);
         e.code = 'BAD_STATUS';
@@ -694,6 +700,7 @@ router.post('/:id/confirm', async (req, res) => {
 
     res.json({ success: true, data: po, message: 'Order confirmed' });
   } catch (err) {
+    if (sendSellerBlock(res, err)) return;   // 숨김 404 · hold 409 AWAITING_OWNER_APPROVAL
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/seller-orders/:id/confirm error:', err);
@@ -739,6 +746,7 @@ router.post('/:id/ship', async (req, res) => {
       const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
       if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      { const blk = sellerBlockError(locked); if (blk) throw blk; }   // 숨김 404 · hold 409 (utils/sellerVisibility)
       // 2026-09-01(Q6): 출고 기준은 상태가 아니라 **`shipped_at` 1회**다.
       //   운영 실측: 수령된 발주 8건이 전부 판매자 출고 없이 수령됐다(구매자가 먼저 받는 게
       //   예외가 아니라 유일한 경로였다). 차감이 'confirmed' 에서만 열려 있어서
@@ -1022,6 +1030,7 @@ router.post('/:id/ship', async (req, res) => {
       message: fullyShipped ? 'Order out for delivery' : 'Selected items out for delivery'
     });
   } catch (err) {
+    if (sendSellerBlock(res, err)) return;   // 숨김 404 · hold 409 AWAITING_OWNER_APPROVAL
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.code === 'ALREADY_SHIPPED') return res.status(409).json({ success: false, message: err.message });
     if (err.code === 'BAD_STATUS' || err.code === 'BAD_ITEM' || err.code === 'NOTHING_TO_SHIP') {
@@ -1058,6 +1067,7 @@ router.post('/:id/prepare', async (req, res) => {
       const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
       if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      { const blk = sellerBlockError(locked); if (blk) throw blk; }   // 숨김 404 · hold 409 (utils/sellerVisibility)
       const NOT_PREPARABLE = ['draft', 'pending_approval', 'submitted', 'cancelled', 'rejected'];
       if (NOT_PREPARABLE.includes(locked.status)) {
         const e = new Error(locked.status === 'submitted' ? 'Confirm the order first' : `Cannot prepare order in status '${locked.status}'`);
@@ -1092,6 +1102,7 @@ router.post('/:id/prepare', async (req, res) => {
     emitPoEvent(req, po, 'seller-order-updated');
     res.json({ success: true, data: out });
   } catch (err) {
+    if (sendSellerBlock(res, err)) return;   // 숨김 404 · hold 409 AWAITING_OWNER_APPROVAL
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.code === 'BAD_STATUS') return res.status(409).json({ success: false, code: err.code, message: err.message });
     if (err.code === 'BAD_ITEM' || err.code === 'ALREADY_SHIPPED_LINE') {
@@ -1120,6 +1131,7 @@ router.post('/:id/reject', async (req, res) => {
       const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
       if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      { const blk = sellerBlockError(locked); if (blk) throw blk; }   // 숨김 404 · hold 409 (utils/sellerVisibility)
       if (locked.status !== 'submitted') {
         const e = new Error(`Cannot reject order in status '${locked.status}'`);
         e.code = 'BAD_STATUS';
@@ -1162,6 +1174,7 @@ router.post('/:id/reject', async (req, res) => {
 
     res.json({ success: true, data: po, message: 'Order rejected' });
   } catch (err) {
+    if (sendSellerBlock(res, err)) return;   // 숨김 404 · hold 409 AWAITING_OWNER_APPROVAL
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
     console.error('POST /api/seller-orders/:id/reject error:', err);
@@ -1183,6 +1196,7 @@ router.post('/:id/deliver', async (req, res) => {
       const locked = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!locked) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
       if (!checkSellerOwnership(locked, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      { const blk = sellerBlockError(locked); if (blk) throw blk; }   // 숨김 404 · hold 409 (utils/sellerVisibility)
       if (locked.status !== 'shipped') {
         const e = new Error(`Cannot mark delivered in status '${locked.status}'`);
         e.code = 'BAD_STATUS';
@@ -1228,6 +1242,7 @@ router.post('/:id/deliver', async (req, res) => {
 
     res.json({ success: true, data: po, message: 'Order marked delivered' });
   } catch (err) {
+    if (sendSellerBlock(res, err)) return;   // 숨김 404 · hold 409 AWAITING_OWNER_APPROVAL
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.code === 'NOT_FULLY_SHIPPED') return res.status(400).json({ success: false, code: err.code, message: err.message });
     if (err.code === 'BAD_STATUS') return res.status(400).json({ success: false, message: err.message });
@@ -1247,6 +1262,7 @@ router.put('/:id/tracking', async (req, res) => {
     const po = await PurchaseOrder.findByPk(id);
     if (!po) return res.status(404).json({ success: false, message: 'Order not found' });
     if (!checkSellerOwnership(po, req)) return res.status(404).json({ success: false, message: 'Order not found' });
+    { const blk = sellerBlockError(po); if (blk) return sendSellerBlock(res, blk); }
     if (!['shipped', 'delivered'].includes(po.status)) {
       return res.status(400).json({ success: false, message: `Tracking can only be updated when status is shipped or delivered (current: ${po.status})` });
     }
@@ -1481,7 +1497,7 @@ router.get('/:id/amendable-products', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Order not found' });
     const po = await PurchaseOrder.findByPk(id);
-    if (!po || !checkSellerOwnership(po, req)) {
+    if (!po || !checkSellerOwnership(po, req) || !isVisibleToSeller(po)) {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
     const lines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, attributes: ['ingredient_seller_product_id'] });
@@ -1522,6 +1538,7 @@ router.post('/:id/amend', async (req, res) => {
     if (items.some(r => r && !r.ingredient_seller_product_id && r.brand_product_id)) {
       const pre = await PurchaseOrder.findByPk(id);
       if (!pre || !checkSellerOwnership(pre, req)) return res.status(404).json({ success: false, message: 'Order not found' });
+      { const blk = sellerBlockError(pre); if (blk) return sendSellerBlock(res, blk); }
       if (pre.entity_type !== 'restaurant') {
         return res.status(400).json({ success: false, code: 'BAD_ITEM', message: 'Only brand sellers can add unlinked brand products' });
       }
@@ -1533,6 +1550,7 @@ router.post('/:id/amend', async (req, res) => {
       const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
       if (!po) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
       if (!checkSellerOwnership(po, req)) { const e = new Error('NOT_FOUND'); e.code = 'NOT_FOUND'; throw e; }
+      { const blk = sellerBlockError(po); if (blk) throw blk; }   // 숨김 404 · hold 409
       if (!AMENDABLE_STATUSES.includes(po.status)) {
         const e = new Error(`Cannot amend an order in status '${po.status}'`);
         e.code = 'BAD_STATUS'; throw e;
@@ -1673,6 +1691,7 @@ router.post('/:id/amend', async (req, res) => {
       message: result.needsApproval ? 'Order amended — awaiting buyer Owner approval' : 'Order amended'
     });
   } catch (err) {
+    if (sendSellerBlock(res, err)) return;   // 숨김 404 · hold 409 AWAITING_OWNER_APPROVAL
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.code === 'TOTAL_EXCEEDS') {
       return res.status(400).json({ success: false, code: err.code, message: err.message, ...err.meta });
@@ -1732,7 +1751,8 @@ router.post('/:id/correct-delivery', async (req, res) => {
     result = await sequelize.transaction(async (t) => {
       const { Invoice, InvoiceItem, PurchaseOrderReturn } = require('../models');
       const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
-      if (!po || !checkSellerOwnership(po, req) || SELLER_HIDDEN.includes(po.status)) throw fail('NOT_FOUND', 'Order not found', 404);
+      if (!po || !checkSellerOwnership(po, req)) throw fail('NOT_FOUND', 'Order not found', 404);
+      { const blk = sellerBlockError(po); if (blk) throw blk; }   // 숨김 404 · hold 409
 
       const invoice = po.trade_invoice_id
         ? await Invoice.findByPk(po.trade_invoice_id, { lock: t.LOCK.UPDATE, transaction: t })
@@ -1943,6 +1963,7 @@ router.post('/:id/correct-delivery', async (req, res) => {
       }
     });
   } catch (err) {
+    if (sendSellerBlock(res, err)) return;   // 숨김 404 · hold 409 AWAITING_OWNER_APPROVAL
     if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
     if (err.http) return res.status(err.http).json({ success: false, code: err.code, message: err.message });
     console.error('POST /api/seller-orders/:id/correct-delivery error:', err);

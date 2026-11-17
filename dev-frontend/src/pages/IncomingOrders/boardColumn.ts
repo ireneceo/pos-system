@@ -19,6 +19,8 @@ export interface BoardRow {
   unshipped_count?: number;
   unprepared_count?: number;
   items?: BoardLine[];
+  /** 이미 받은 주문의 오너 승인 대기(서버 utils/sellerVisibility · 2026-11-17) — 있으면 «새 주문» 칸 잠긴 카드 */
+  seller_hold?: unknown;
 }
 
 const HIDDEN = new Set(['cancelled', 'rejected', 'draft', 'pending_approval', 'delivery_failed']);
@@ -45,6 +47,7 @@ export function lineCounts(row: BoardRow): { unshipped: number; unprepared: numb
 /** 이 주문이 보드의 어느 칸에 서는지. null = 보드에 안 보임. («끝» 칸의 «오늘만» 거르기는 화면이 한다.) */
 export function boardColumnOf(row: BoardRow): BoardColumn | null {
   const st = String(row.status || '');
+  if (st === 'pending_approval' && row.seller_hold) return 'new';
   if (HIDDEN.has(st)) return null;
   if (st === 'submitted') return 'new';
   if (DONE.has(st)) return 'done';

@@ -9,6 +9,10 @@ describe('boardColumnOf', () => {
   test('취소·거절·임시 → 숨김', () => {
     ['cancelled', 'rejected', 'draft', 'pending_approval'].forEach(s => expect(boardColumnOf({ status: s })).toBeNull());
   });
+  test('오너 승인 대기 + seller_hold → new (2026-11-17)', () =>
+    expect(boardColumnOf({ status: 'pending_approval', seller_hold: { cause: 'seller_raise' }, items: [line()] })).toBe('new'));
+  test('오너 승인 대기 · seller_hold 없음 → 숨김', () =>
+    expect(boardColumnOf({ status: 'pending_approval', seller_hold: null, items: [line()] })).toBeNull());
   test('끝난 주문 → done', () => {
     ['delivered', 'received', 'closed'].forEach(s => expect(boardColumnOf({ status: s, items: [line()] })).toBe('done'));
   });

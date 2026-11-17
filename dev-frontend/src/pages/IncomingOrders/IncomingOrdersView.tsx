@@ -123,7 +123,16 @@ const ModalButton = styled.button<{ variant?: 'primary' | 'secondary' | 'danger'
  * we pass `sellerScope` only as a UI hint (currently unused server-side).
  */
 
-type POStatus = 'submitted' | 'confirmed' | 'shipped' | 'delivered' | 'received' | 'cancelled';
+type POStatus = 'submitted' | 'confirmed' | 'shipped' | 'delivered' | 'received' | 'cancelled' | 'pending_approval';
+
+/** 이미 받은 주문이 다시 오너 승인 대기로 간 것 — 서버 utils/sellerVisibility.sellerHoldOf 그대로(2026-11-17). 읽기 전용. */
+interface SellerHold {
+  cause: 'seller_raise' | 'buyer_edit' | 'owner_revoke' | 'other' | string;
+  since?: string | null;
+  status_before?: string | null;
+  total_before?: number | null;
+  total_after?: number | null;
+}
 
 type TabKey = 'all' | 'submitted' | 'confirmed' | 'shipped' | 'received' | 'cancelled';
 
@@ -162,6 +171,8 @@ interface IncomingOrderRow {
   buyer_entity_id?: number | null;
   buyer?: { id?: number; type?: string; name?: string; email?: string } | null;
   status: POStatus | string;
+  /** 오너 승인 대기(hold) — 있으면 판매자는 읽기만(서버가 동작을 409 로 막는다) */
+  seller_hold?: SellerHold | null;
   // 결제 상태는 주문 상태와 **따로** 본다 (2026-09-07). 응답에 이미 실려 온다(`po.toJSON()`).
   payment_status?: 'unpaid' | 'paid' | 'refunded' | string | null;
   shipped_at?: string | null;
@@ -434,7 +445,8 @@ const StatusVariantMap: Record<string, 'success' | 'warning' | 'error' | 'info'>
   received: 'success',       // 완료
   partial_received: 'warning',
   cancelled: 'error',
-  draft: 'info'
+  draft: 'info',
+  pending_approval: 'warning'   // 이미 받은 주문의 오너 승인 대기(2026-11-17) — 호박색
 };
 
 /**
@@ -449,6 +461,7 @@ const StatusVariantMap: Record<string, 'success' | 'warning' | 'error' | 'info'>
 function sellerStatusKey(status: string): string {
   if (status === 'received') return 'completed';
   if (status === 'partial_received') return 'partiallyCompleted';
+  if (status === 'pending_approval') return 'awaitingOwner';
   return status;
 }
 
@@ -847,7 +860,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     const buyers = new Set<string>();
     let confirmCount = 0;
     let confirmHrsSum = 0;
-    rows.forEach(r => {
+    // 오너 승인 대기(hold)는 확정 안 된 금액 — 기간 통계에 넣지 않는다(2026-11-17)
+    const counted = rows.filter(r => !r.seller_hold);
+    if (counted.length === 0) {
+      return { totalRevenue: 0, avgOrder: 0, maxOrder: 0, activeBuyers: 0, avgConfirmHrs: null as number | null };
+    }
+    counted.forEach(r => {
       const amt = Number(r.total_amount || 0);
       if (Number.isFinite(amt) && amt > 0) {
         total += amt;
@@ -866,7 +884,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         }
       }
     });
-    const avgOrder = total / rows.length;
+    const avgOrder = total / counted.length;
     const avgConfirmHrs = confirmCount > 0 ? confirmHrsSum / confirmCount : null;
     return {
       totalRevenue: total,
@@ -882,6 +900,16 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     const n = Number(amount);
     if (!Number.isFinite(n)) return '-';
     return formatCurrency(n, currency || 'MYR');
+  };
+  // 오너 승인 대기(hold) 원인 한 줄 — 서버 seller_hold.cause 그대로(2026-11-17)
+  const holdLine = (h: SellerHold, currency?: string): string => {
+    if (h.cause === 'seller_raise' && h.total_before != null && h.total_after != null) {
+      return tNs('orders.hold.seller_raise', 'You raised the total {{from}} → {{to}}')
+        .replace('{{from}}', formatMoney(h.total_before, currency)).replace('{{to}}', formatMoney(h.total_after, currency));
+    }
+    if (h.cause === 'buyer_edit') return tNs('orders.hold.buyer_edit', 'The buyer edited this order — not final until their owner approves');
+    if (h.cause === 'owner_revoke') return tNs('orders.hold.owner_revoke', 'The owner withdrew approval');
+    return tNs('orders.hold.other', "Waiting for the buyer's owner to approve");
   };
 
   const tNs = (key: string, fallback?: string, vars?: Record<string, string | number>) => {
@@ -1558,6 +1586,12 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       <DataTableCell data-label={tNs('orders.table.status', 'Status') as string} align="center">
                         <DataTableStatus variant={StatusVariantMap[row.status] || 'info'}>
                           {tNs(`status.${sellerStatusKey(row.status)}`, sellerStatusKey(row.status))}
+                          {/* 이미 받은 주문의 오너 승인 대기 — 원인 한 줄(2026-11-17 seller hold) */}
+                          {!!row.seller_hold && (
+                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#B45309', marginTop: 2 }}>
+                              {holdLine(row.seller_hold, row.currency)}
+                            </div>
+                          )}
                           {/* 구매자가 먼저 받은 발주 — 출고를 안 누르면 우리 재고가 안 빠진다(2026-09-01 Q6) */}
                           {!row.shipped_at && !row.is_service_only && (row.status === 'received' || row.status === 'partial_received') && (
                             <div style={{ fontSize: '11px', fontWeight: 600, color: '#B45309', marginTop: 2 }}>
@@ -2454,6 +2488,13 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 16 }}>
+            {/* 오너 승인 대기(hold) 안내 띠 — 판매자는 읽기만(2026-11-17 seller hold) */}
+            {!!detailFull.seller_hold && (
+              <div role="status" style={{ padding: '10px 12px', borderRadius: 8, background: '#FFFBEB', border: '1px solid #FCD34D', color: '#92400E', fontSize: 13, lineHeight: 1.5 }}>
+                <strong>{tNs('status.awaitingOwner', 'Awaiting owner approval')}</strong> — {holdLine(detailFull.seller_hold, detailFull.currency)}
+                <div style={{ marginTop: 2 }}>{tNs('orders.hold.banner', "Waiting for the buyer's owner to approve this change. Don't prepare or ship until it is approved.")}</div>
+              </div>
+            )}
             {/* Header summary */}
             <FormGrid3>
               <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8 }}>
@@ -2475,6 +2516,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 <DataTableStatus variant={StatusVariantMap[detailFull.status] || 'info'}>
                   {tNs(`status.${sellerStatusKey(detailFull.status)}`, sellerStatusKey(detailFull.status))}
                 </DataTableStatus>
+                {!!detailFull.seller_hold && (
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#B45309', marginTop: 4 }}>
+                    {holdLine(detailFull.seller_hold, detailFull.currency)}
+                  </div>
+                )}
                 {detailFull.status === 'delivered' && !!detailFull.auto_receive_at && (
                   <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>
                     {tNs('orders.badge.autoCompletes', 'Auto-completes {{date}}').replace('{{date}}', formatDateTime(detailFull.auto_receive_at))}

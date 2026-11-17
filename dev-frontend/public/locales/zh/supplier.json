@@ -283,7 +283,7 @@
       "confirmRaiseApprovalBody": "买方的业主必须批准新总额。在此之前该订单不会出现在您的列表中。若被拒绝，订单将作为草稿退回买方，由买方重新下单。批准后订单会以“已提交”状态返回——请再次确认。",
       "confirmRaiseOk": "提高总额",
       "savedTitle": "订单已更新",
-      "savedPendingApproval": "已保存——等待买方业主批准新总额。",
+      "savedPendingApproval": "已保存——订单仍在列表中，显示为“等待业主批准”。买方业主批准新总额后请再次确认。",
       "ok": "确定"
     },
     "create": {
@@ -360,6 +360,13 @@
       "savedTitle": "数量已更正",
       "saved": "订单和发票已更新，并已通知买方。",
       "ok": "确定"
+    },
+    "hold": {
+      "seller_raise": "您提高了总额 {{from}} → {{to}}",
+      "buyer_edit": "买方修改了此订单——须经其业主批准后才确定",
+      "owner_revoke": "业主撤回了批准",
+      "other": "等待买方业主批准",
+      "banner": "此订单正在等待买方业主批准变更。批准前请勿备货或发货——批准后将回到“新订单”，请再次确认。"
     }
   },
   "tradeInvoicesPage": {
@@ -432,7 +439,8 @@
     "overdue": "逾期",
     "delivered": "已送达",
     "completed": "已完成",
-    "partiallyCompleted": "部分完成"
+    "partiallyCompleted": "部分完成",
+    "awaitingOwner": "等待业主批准"
   },
   "nav": {
     "direct": "外部供应商",

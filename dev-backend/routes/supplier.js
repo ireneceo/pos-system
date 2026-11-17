@@ -229,9 +229,12 @@ router.get('/dashboard', async (req, res) => {
     // 최근 주문 = 받은 주문 목록과 같은 규칙 — 구매자가 아직 안 보낸 것(draft·승인 대기)은 판매자에게 안 보이고,
     //   순서는 발주일(보낸 시각) 기준 (utils/poOrderedAt, 2026-09-21 Irene 「공급업체도 주문 그렇게 정렬되어야 해」).
     const { orderedAtLiteral, orderedAtOf } = require('../utils/poOrderedAt');
+    //   2026-11-17: 판정은 utils/sellerVisibility 한 곳 — 이미 받은 주문이 다시 승인 대기로 간 것(hold)은 보인다.
+    const { sellerVisibleWhere, sellerHoldOf } = require('../utils/sellerVisibility');
+    const { where: recentWhere } = await sellerVisibleWhere({ seller_type: 'supplier', seller_entity_id: company.id }, undefined);
     const recentPOsRaw = await PurchaseOrder.findAll({
-      where: { seller_type: 'supplier', seller_entity_id: company.id, status: { [Op.notIn]: ['draft', 'pending_approval'] } },
-      attributes: ['id', 'po_number', 'status', 'total_amount', 'currency', 'entity_type', 'entity_id', 'submitted_at', 'approved_at', 'created_at'],
+      where: recentWhere,
+      attributes: ['id', 'po_number', 'status', 'total_amount', 'currency', 'entity_type', 'entity_id', 'submitted_at', 'approved_at', 'created_at', 'tracking_info'],
       order: [[orderedAtLiteral(PurchaseOrder.sequelize), 'DESC'], ['id', 'DESC']],
       limit: 5
     });
@@ -266,6 +269,7 @@ router.get('/dashboard', async (req, res) => {
       id: po.id,
       po_number: po.po_number,
       status: po.status,
+      seller_hold: sellerHoldOf(po),
       total_amount: parseFloat(po.total_amount) || 0,
       currency: po.currency,
       customer: resolveCustomer(po.entity_type, po.entity_id),

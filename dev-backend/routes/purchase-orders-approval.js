@@ -353,6 +353,7 @@ router.post('/purchase-orders/:id/approve', authenticateToken, requireOwnerScope
 // ============================================
 router.post('/purchase-orders/:id/reject', authenticateToken, requireOwnerScope, async (req, res) => {
   let po;
+  let sellerSawBefore = false;   // 판매자가 «오너 승인 대기»(hold) 로 보고 있던 주문인가 — update 전에 잰다 (2026-11-17 seller hold)
   try {
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Purchase order not found' });
@@ -374,6 +375,7 @@ router.post('/purchase-orders/:id/reject', authenticateToken, requireOwnerScope,
         const e = new Error('Only orders awaiting approval can be rejected');
         e.code = 'BAD_STATUS'; throw e;
       }
+      sellerSawBefore = !!require('../utils/sellerVisibility').sellerHoldOf(locked);
       const now = new Date();
       const tracking = appendTrackingEvent(locked, 'draft', `Rejected by Owner: ${reason}`.slice(0, 240));
       await locked.update({
@@ -392,7 +394,7 @@ router.post('/purchase-orders/:id/reject', authenticateToken, requireOwnerScope,
       return locked;
     });
 
-    emitPoEvent(req, po, 'seller-order-updated');
+    emitPoEvent(req, po, 'seller-order-updated', { sellerSawBefore });
     setImmediate(() => fireOwnerApprovalResultNotification(po, { approved: false, reason }));
 
     res.json({ success: true, data: po });

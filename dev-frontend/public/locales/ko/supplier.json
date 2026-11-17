@@ -283,7 +283,7 @@
       "confirmRaiseApprovalBody": "구매자 매장의 오너가 새 총액을 승인해야 합니다. 그때까지 이 주문은 목록에 보이지 않습니다. 반려되면 구매자에게 초안으로 돌아가 구매자가 다시 주문합니다. 승인되면 «제출됨» 으로 돌아오니 다시 확인해 주세요.",
       "confirmRaiseOk": "총액 올리기",
       "savedTitle": "주문 수정됨",
-      "savedPendingApproval": "저장했습니다 — 구매자 매장 오너의 새 총액 승인을 기다립니다.",
+      "savedPendingApproval": "저장했습니다 — 주문은 목록에 «오너 승인 대기» 로 남습니다. 구매처 오너가 새 총액을 승인하면 다시 확인해 주세요.",
       "ok": "확인"
     },
     "create": {
@@ -360,6 +360,13 @@
       "savedTitle": "수량을 정정했습니다",
       "saved": "주문과 청구서를 고쳤고 구매처에 알렸습니다.",
       "ok": "확인"
+    },
+    "hold": {
+      "seller_raise": "총액을 올렸습니다 {{from}} → {{to}}",
+      "buyer_edit": "구매처가 주문을 고쳤습니다 — 오너가 승인해야 확정",
+      "owner_revoke": "오너가 승인을 취소했습니다",
+      "other": "구매처 오너 승인을 기다립니다",
+      "banner": "구매처 오너가 이 변경을 승인하길 기다리는 주문입니다. 승인 전에는 준비·출고하지 마세요 — 승인되면 «새 주문» 으로 돌아와 다시 확인합니다."
     }
   },
   "tradeInvoicesPage": {
@@ -432,7 +439,8 @@
     "overdue": "연체",
     "delivered": "배송 완료",
     "completed": "완료",
-    "partiallyCompleted": "부분 완료"
+    "partiallyCompleted": "부분 완료",
+    "awaitingOwner": "오너 승인 대기"
   },
   "nav": {
     "direct": "외부업체",

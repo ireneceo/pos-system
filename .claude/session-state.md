@@ -1,4 +1,41 @@
 ## 현재 작업 상태
+**마지막 업데이트:** 2026-11-17 (/개발완료 · 작업방 990ce4ae)
+
+### 진행 중인 작업 (작업방 990ce4ae)
+- 없음
+
+### 완료된 작업 (이번 세션 · 990ce4ae)
+- [Claude Code] GIT Consulting 발주 «사라짐» 운영 조사 → 판매자 인상으로 오너 승인 대기 14분(옛 설계) → seller hold 구현(아래 ✅ 절 · Fable 설계+게이트 PASS)
+
+### 다음 확정 작업
+- 없음 — 지시 대기
+
+### 후속 후보 (아이디어 메모, 확정 X)
+> 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
+- seller hold Fable 후속 3건(health N5 단언 보강 · 설계 문서 «미구현» 표기 · goneFromSeller 변수명)
+- 판매자가 대신 넣은 새 주문의 승인 대기 표시(설계 §6 범위 밖)
+
+### 답 기다림: PurpleHere 카드 «배포» 버튼을 누르고 «했어요» 라고 답해 주실래요? [Claude Code · 백그라운드 작업방 5c23828a · 2026-11-17]
+- 무엇: 앞 질문 «운영 배포 밀림 — «배포» 버튼으로 내보낼까요?» 에 Irene «권고대로»(= 배포 버튼). 버튼은 주인(인증코드)만 → 작업방은 못 누름(DEPLOY_STRUCTURE §8 · AI 는 막기만). 상황판 act 질문 askmwk1r2kw.
+- 확인(읽기): 운영 마지막 배포 11-15 06:49 UTC 버튼 ok · 그 뒤 커밋 9(e47347c94 ~ 3acc4ea98) · PurpleHere 막음 표식 0 · deploy-to-production.sh 그대로(마지막 변경 4e2713d22) · HEAD wip 아님 · 새 마이그 파일 0 · 정기 점검은 배포를 빼 둔 상태(§9)라 «막힘» 이 아니라 버튼 차례.
+- 답이 오면: deployRuns.purplehere 결과·운영 표식(purplehere.com/asset-manifest.json) 바뀜 읽기로 확인 → 실패면 원인 보고만(운영 명령 실행 안 함). 성공 뒤 할 일: 매장 27 좌표 `node scripts/backfill-restaurant-coords.js`(운영 — 다음 할 일 기록대로) · 자동 신고 닫기 스크립트는 이미 운영 3건 닫음.
+
+### (이전) 답 기다림: PurpleHere 운영 배포가 밀림 — «배포» 버튼으로 내보낼까요? → Irene «권고대로» → 위 버튼 할 일로 [2026-11-17]
+
+### ✅ 완료 (11/17 00:00 정기 점검 · 2026-11-16 16:01 UTC) — /개발완료 건너뜀(바뀐 것 없음) + /개발시작(운영 새 문의 0 · 인쇄 지킴이 새 문제 0) [Claude Code · 백그라운드 작업방 ba52e435]
+- 개발완료 건너뜀: 마지막 개발완료 커밋(3acc4ea98) 뒤 새 커밋 0 · 미커밋은 이 기록 파일(990ce4ae «나중에» 메모)과 오래된 보류(playwright.config · .claude/oneoff-*·run-*.sh)뿐. 같은 폴더 일하는 다른 방 0.
+- 운영 문의(확인 2026-11-16 16:01 UTC · prod-query 읽기 전용): 열린 시스템 문의 0(지난 3건 11-15 resolved 로 닫힘 그대로) · 14일 새 문의 0 · 후속 글 0 · 랜딩 문의 0 · operation_tickets closed 4 / in-progress 1 · 상황판 «들어온 문의» 빈 목록으로 올림(200).
+- 인쇄 지킴이(마지막 실행 15:07 UTC success): 새 문제 0 · 계속 4 · 풀림 0 — 28 print_failures critical(PRINTER_NOT_FOUND «기본 프린터» 18건 · 12→18) · 28 multi_auto_print(3→4대) · 8·28 old_app 0.3.4. 해결 길 그대로(28 앱 0.4.1 · 자동 인쇄 기기 정리).
+- 분기: C — 진행 중 0 · 다음 확정 작업 없음(지시 대기). «나중에» 1건(GIT Consulting 발주 사라짐 조사 · 990ce4ae)은 그대로.
+
+### ✅ 완료 (2026-11-17) — 판매자가 이미 받은 주문은 오너 승인 대기 중에도 판매자 «받은 주문» 에 «오너 승인 대기» 로 남음 (확인·출고 잠금) [Claude Code · 백그라운드 작업방 990ce4ae]
+- 계기: Irene «git consulting incoming-orders 신규 주문이 갑자기 없어졌어» → 운영 읽기: PO-R28-20261115-002 판매자(help@) 3→8kg 인상 909.80→1074.30 → 오너 승인 대기로 14분 숨음 → 승인 뒤 복귀(버그 아님·옛 설계). Irene «권고대로»=(가).
+- Fable 설계: docs/SELLER_ORDER_MANAGEMENT_SYSTEM.md «오너 승인 대기 중에도 판매자에게 남는 주문 (seller hold)». 판정 단일 = utils/sellerVisibility.js(tracking 이력에서 계산 · 새 칸·마이그 0).
+- 구현: routes/seller-orders.js(목록 «전체»·«새 주문» 에 hold · 상세 200 · 통계 awaiting_owner · 동작 9곳 409 AWAITING_OWNER_APPROVAL) · poRealtimeService(판매자 룸 = isVisibleToSeller · 반려 시 removed 만) · purchase-orders-approval(반려 sellerSawBefore) · supplier.js 대시보드 · 화면 IncomingOrdersView(칩·원인 줄·상세 띠·기간 통계 제외)·Board(New 칸 잠긴 카드)·boardColumn·SupplierDashboard · supplier.json 4언어.
+- 검증: jest 11/11 · 화면 jest 18/18 · health inventory 112 · po 13 · pos 70 (P8·B5·N1~N5·승인취소 단언 새 계약) · 고장주입 5/5 잡힘 · verify-all --full 23/24(실패 = 배포 준비 칸: 배포 기록·SW 버전) · 실브라우저 e2e/seller-hold.spec.js 1440·390 3회 연속 통과 · print-guard 8/8 · Fable 게이트 PASS(지문 0c0405a1804a).
+- 확인용 데이터: 개발 PO-CHK-OWNER-HOLD(id 78918, 매장 38 → 브랜드 17, [확인용]).
+- 운영 반영: 다음 배포 때(배포 순간 기존 hold 주문이 판매자에게 보이기 시작 — 설계대로). 마이그 0.
+- 다음 할 일(Fable 후속 · 막는 것 아님): ① health-check N5 에 counts.submitted = submitted+hold · pending 불변 단언 ② 설계 문서 절 제목 «미구현» → 구현됨 ③ 승인취소 테스트 변수 goneFromSeller 이름 바꾸기.
 
 ### ✅ 완료 (2026-11-15) — 해결된 자동 오류 신고는 점검 방이 닫는다 + 운영 3건 닫음 + 문의 상태 변경 권한 구멍 고침 [Claude Code · 백그라운드 작업방 a711f9c2]
 - Irene «권고대로»(Fable 권고 ①). 코드: utils/inquiryAck.js isAutoReport · routes/support-tickets.js PUT 자동 신고 메일 생략 + 소유 검사 403·상태값 400 · scripts/close-auto-reports.js(기본 미리보기 · --apply · [auto] 만 · 고친 시각 뒤 같은 화면 재신고 0 일 때만 · resolved · DB 직접이라 메일 0) · .claude/run-close-auto-reports.sh(배포 전 사본 실행) · 개발시작.md 0-B «예외» 절 · 설계 §7.

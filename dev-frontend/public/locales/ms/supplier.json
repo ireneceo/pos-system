@@ -283,7 +283,7 @@
       "confirmRaiseApprovalBody": "Pemilik pembeli mesti meluluskan jumlah baharu. Sehingga itu pesanan tidak berada dalam senarai anda. Jika ditolak, ia kembali kepada pembeli sebagai draf dan pembeli membuat pesanan semula. Setelah diluluskan ia kembali sebagai Dihantar — sahkan sekali lagi.",
       "confirmRaiseOk": "Naikkan jumlah",
       "savedTitle": "Pesanan dikemas kini",
-      "savedPendingApproval": "Disimpan — menunggu Pemilik pembeli meluluskan jumlah baharu.",
+      "savedPendingApproval": "Disimpan — pesanan kekal dalam senarai anda sebagai «Menunggu kelulusan pemilik». Sahkan semula selepas Pemilik pembeli meluluskan jumlah baharu.",
       "ok": "OK"
     },
     "create": {
@@ -360,6 +360,13 @@
       "savedTitle": "Kuantiti dibetulkan",
       "saved": "Pesanan dan invoisnya dikemas kini, dan pembeli telah dimaklumkan.",
       "ok": "OK"
+    },
+    "hold": {
+      "seller_raise": "Anda menaikkan jumlah {{from}} → {{to}}",
+      "buyer_edit": "Pembeli mengubah pesanan ini — belum muktamad sehingga pemiliknya meluluskan",
+      "owner_revoke": "Pemilik menarik balik kelulusan",
+      "other": "Menunggu kelulusan pemilik pembeli",
+      "banner": "Pesanan ini menunggu pemilik pembeli meluluskan perubahan. Jangan sediakan atau hantar sebelum diluluskan — ia akan kembali ke Pesanan baharu untuk anda sahkan semula."
     }
   },
   "tradeInvoicesPage": {
@@ -432,7 +439,8 @@
     "overdue": "Tertunggak",
     "delivered": "Telah Sampai",
     "completed": "Selesai",
-    "partiallyCompleted": "Selesai Sebahagian"
+    "partiallyCompleted": "Selesai Sebahagian",
+    "awaitingOwner": "Menunggu kelulusan pemilik"
   },
   "nav": {
     "direct": "Luaran",
