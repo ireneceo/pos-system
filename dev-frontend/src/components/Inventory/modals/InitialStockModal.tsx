@@ -4,6 +4,7 @@ import { Table, TableHeader, TableRow } from '../../UI';
 import { Modal, ModalButton, FormInput } from '../../UI/Modal';
 import { InfoBox } from '../styles';
 import { IngredientStock, InitialStockItemValues } from '../types';
+import { categoryLabel } from '../utils';
 
 interface Props {
   isOpen: boolean;
@@ -47,7 +48,7 @@ const InitialStockModal: React.FC<Props> = ({
     </InfoBox>
     {Object.entries(
       inventory.reduce((acc, item) => {
-        const category = item.category || t('inventory:initialStock.other', 'Other');
+        const category = item.category ? categoryLabel(item.category, t) : t('inventory:initialStock.other', 'Other');
         if (!acc[category]) acc[category] = [];
         acc[category].push(item);
         return acc;
@@ -55,7 +56,7 @@ const InitialStockModal: React.FC<Props> = ({
     ).map(([category, items]) => (
       <div key={category} style={{ marginBottom: '24px' }}>
         <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540', marginBottom: '12px', textTransform: 'capitalize' }}>
-          {category.replace('_', ' ')}
+          {category}
         </h3>
         <Table>
           <TableHeader columns="2fr 1fr 1fr">

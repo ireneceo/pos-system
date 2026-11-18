@@ -381,7 +381,19 @@
       "after": "변동 후",
       "notes": "메모"
     },
-    "store": "매장"
+    "store": "매장",
+    "note": {
+      "stockReceived": "입고",
+      "manualAdjustment": "직접 조정",
+      "po": {
+        "received": "발주 {{po}} — 받음",
+        "markReceived": "발주 {{po}} — 받음 표시",
+        "autoReceived": "발주 {{po}} — 자동 받음",
+        "directPurchase": "발주 {{po}} — 직접 구매"
+      },
+      "returnApproved": "반품 #{{id}} 승인 — 재고에서 뺌",
+      "fifo": "먼저 들어온 묶음부터 {{n}}개에서 차감"
+    }
   },
   "receiveModal": {
     "title": "입고",
@@ -475,5 +487,15 @@
     "delete": "삭제",
     "unlinkHint": "이 식자재를 재고 추적에서 연결 해제합니다. 식자재 자체는 레시피 화면에서 삭제되지 않습니다.",
     "deleteHint": "이 일반 재고 품목을 영구 삭제합니다."
+  },
+  "category": {
+    "produce": "채소·과일",
+    "meat": "육류",
+    "seafood": "해산물",
+    "dairy": "유제품",
+    "dry_goods": "건식품",
+    "spices": "양념·향신료",
+    "beverages": "음료",
+    "other": "기타"
   }
 }

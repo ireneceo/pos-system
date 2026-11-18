@@ -30,7 +30,7 @@ import {
   DeleteButton,
   EditButton, PrepTag} from '../styles';
 import { formatCurrency } from '../../../utils/currency';
-import { formatStock, formatDate } from '../utils';
+import { formatStock, formatDate, categoryLabel } from '../utils';
 import VerdictBadge from '../VerdictBadge';
 import { stockVerdict, StockVerdict, FILTER_TO_VERDICT } from '../stockVerdict';
 import {
@@ -267,7 +267,7 @@ const StockListSection: React.FC<Props> = ({
             style={{ minWidth: '160px' }}
           >
             <option value="all">{t('inventory:stockList.allCategories', 'All Categories')}</option>
-            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+            {categories.map(c => <option key={c} value={c}>{categoryLabel(c, t)}</option>)}
           </FilterSelect>
         )}
         {(supplierOptions.length > 0 || unlinkedCount > 0) && (
@@ -366,7 +366,7 @@ const StockListSection: React.FC<Props> = ({
                             </StockItemCode>
                           )}
                           {item.code && <StockItemCode>{item.code}</StockItemCode>}
-                          <IngredientMeta>{item.category}</IngredientMeta>
+                          <IngredientMeta>{categoryLabel(item.category, t)}</IngredientMeta>
                         </StockItemDetails>
                       </StockItemInfo>
                     </MobileValue>
@@ -603,7 +603,7 @@ const StockListSection: React.FC<Props> = ({
                           )}
                           {item.code && <StockItemCode>{item.code}</StockItemCode>}
                           <IngredientMeta>
-                            {item.category} • {(sugg && sugg.daily_usage !== undefined ? sugg.daily_usage : (parseFloat(String(item.avg_daily_usage)) || 0)).toFixed(2)} {t('inventory:stockList.perDay', '{{unit}}/day', { unit: item.unit })}
+                            {categoryLabel(item.category, t)} • {(sugg && sugg.daily_usage !== undefined ? sugg.daily_usage : (parseFloat(String(item.avg_daily_usage)) || 0)).toFixed(2)} {t('inventory:stockList.perDay', '{{unit}}/day', { unit: item.unit })}
                             {sugg && sugg.usage_source === 'ledger' && <> ({t('inventory:foresight.last28d', '28d')})</>}
                           </IngredientMeta>
                           {sugg && !!sugg.committed && (

@@ -1099,7 +1099,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                 ` : ''}
                 ${(invoice.additionalCharges || []).map(charge => `
                 <div class="summary-row tax">
-                    <span>${charge.name} (${charge.rate}%):</span>
+                    <span>${charge.name}${charge.rate != null && String(charge.rate) !== '' ? ` (${charge.rate}%)` : ''}:</span>
                     <span>${formatCurrency(charge.amount, invoice.currency || 'MYR')}</span>
                 </div>
                 `).join('')}
@@ -1733,7 +1733,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     )}
                     {(selectedInvoice.additionalCharges || []).map((charge: any, idx: number) => (
                       <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', fontSize: '14px', color: '#4B5563' }}>
-                        <span>{charge.name} ({charge.rate}%):</span>
+                        <span>{charge.name}{charge.rate != null && String(charge.rate) !== '' ? ` (${charge.rate}%)` : ''}:</span>
                         <span>{formatCurrency(charge.amount, selectedInvoice.currency || 'MYR')}</span>
                       </div>
                     ))}

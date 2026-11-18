@@ -4,7 +4,7 @@ import { EmptyState, Table, TableHeader, TableRow, MobileGrid, MobileLabel, Mobi
 import { getAuthToken } from '../../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../../utils/timezone';
 import { Transaction } from '../types';
-import { formatStock } from '../utils';
+import { formatStock, historyNoteLabel } from '../utils';
 
 interface Props {
   restaurantId?: number;
@@ -148,7 +148,7 @@ const TransactionHistorySection: React.FC<Props> = ({ restaurantId, isBrandGener
             <MobileValue>
               <MobileLabel>{t('inventory:history.col.notes', 'Notes')}</MobileLabel>
               <div style={{ color: '#4B5563', fontSize: '13px' }}>
-                {tx.notes || '-'}
+                {historyNoteLabel(tx.notes, t)}
               </div>
             </MobileValue>
           </MobileGrid>

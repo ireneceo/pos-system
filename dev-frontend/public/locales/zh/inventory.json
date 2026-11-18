@@ -381,7 +381,19 @@
       "after": "变动后",
       "notes": "备注"
     },
-    "store": "门店"
+    "store": "门店",
+    "note": {
+      "stockReceived": "入库",
+      "manualAdjustment": "手动调整",
+      "po": {
+        "received": "采购单 {{po}} — 已收货",
+        "markReceived": "采购单 {{po}} — 标记已收货",
+        "autoReceived": "采购单 {{po}} — 自动收货",
+        "directPurchase": "采购单 {{po}} — 直接采购"
+      },
+      "returnApproved": "退货 #{{id}} 已批准 — 已从库存扣除",
+      "fifo": "按先进先出从 {{n}} 个批次扣除"
+    }
   },
   "receiveModal": {
     "title": "入库",
@@ -475,5 +487,15 @@
     "delete": "删除",
     "unlinkHint": "这将把该食材从库存跟踪中取消关联。食材本身不会从食谱页面删除。",
     "deleteHint": "这将永久删除此一般库存品项。"
+  },
+  "category": {
+    "produce": "蔬果",
+    "meat": "肉类",
+    "seafood": "海鲜",
+    "dairy": "乳制品",
+    "dry_goods": "干货",
+    "spices": "调味料",
+    "beverages": "饮料",
+    "other": "其他"
   }
 }

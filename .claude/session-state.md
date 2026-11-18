@@ -1,5 +1,20 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-11-18 (작업방 19fcc2c8 · 앱 안 요금제 결제 경로 숨기기 · /개발완료)
+**마지막 업데이트:** 2026-11-18 (작업방 0d4372af · 발주 인보이스 보기·재고 영어) · 이전: 2026-11-18 (작업방 99ac247e · Play 내부 테스트 0.4.2 기록) · 이전: 2026-11-18 (작업방 19fcc2c8 · 앱 안 요금제 결제 경로 숨기기 · /개발완료)
+
+### ✅ 완료 (2026-11-18) — 실제 테스트 2건: 발주 인보이스 [보기] 튕김 · 재고 기록/분류 영어 [Claude Code · 백그라운드 작업방 0d4372af]
+- ① 원인 두 개: (가) 발주 상세 [보기] 가 user.restaurant_id(빈 값 — 로그인 정보는 restaurantId)만 봐서 /pos/owner/invoices → 대시보드로 튕김 → PurchaseOrderDetailPage invoiceListPath 가 restaurantId 도 봄 (나) 청구서 48920 자체가 없었음 — 데모 자정 초기화(seed-demo-data resetDemoOrders)가 발주가 가리키는 거래 청구서까지 지움(개발: 매장 38 발주 23건·매장 5 5건이 없는 청구서를 가리킴) → 초기화가 발주 연결 청구서·그 정산서는 남김(읽기 재현: 고치기 전 조건이면 새 49820 도 지울 대상 · 고친 뒤 발주 연결 TRD 0건 삭제)
+- 확인용 발주 청구서 다시 발행(createTradeInvoice): 79832 → 49820 TRD-BRD17-20261118-001 (반품 3줄 · RM 0 · 결제완료로 닫힘) · 79833 → 49821 -002 RM 26 결제됨. 매장 인보이스 목록: «전체» 탭에 Paid · «낼 것» 탭엔 없음(맞음)
+- 덤: 인보이스 보기 화면 6곳(매장·매장 인쇄본·오너·브랜드·푸드코트·관리자)이 세율 없는 요금 줄(반품·배송비)에 «(%)» 를 붙이던 것 → 세율 있을 때만
+- ② 재고: 분류 ENUM 8개 번역(categoryLabel — 목록·고르기·첫 재고 창) · 기록 메모의 서버 고정 영어 문구 번역(historyNoteLabel — Stock received·Manual adjustment·PO … receive 류·Return #… approved·FIFO) · 사람이 쓴 메모는 그대로 · 키 4언어
+- 검증: 빌드 2회 · 실브라우저 한국어(시험 계정 restaurant·38): [보기] → 인보이스 창 열림 · 기록 탭·분류 영어 0 · 콘솔 오류 0 · health-check 497/497(verify-all 중 재고 «비슷한 이름» 1건 일시 실패 → 재실행 118/118) · verify-all 21/23(배포 준비 칸 + 위 일시 실패) · print-guard 8/8 · design-guard 신규 0 · i18n 통과
+- 후속 후보: 매장 인보이스 화면 자체 영어(View·Pay·Paid·Overdue·Invoice Details) · 재고 기록 «Order #null - undefined x2» 메모 · 개발 매장 38 옛 발주 23건·매장 5 5건은 여전히 없는 청구서를 가리킴(확인용 2건만 다시 발행)
+- Fable gate PASS(마커 d5bc9e9ccb26) — 남은 위험(막지 않음): 없는 청구서를 가리키는 옛 발주 26건(매장 38 21·매장 5 5 — 5는 초기화 대상 아님, 원인 다를 수 있음) · 인쇄용 청구서 «(rate%)» 2곳 그대로(FoodcourtInvoicesPage:815 · OwnerInvoicesPage:919) · ?invoice=<없는 id> 화면 미확인
+- 운영 반영: 다음 배포 때
+
+### ✅ 완료 (2026-11-18) — Play 콘솔 Purple POS 앱 생성 + 내부 테스트 0.4.2 게시 (Irene 할 일 todomv96vkxt «했어요») [Claude Code · 백그라운드 작업방 99ac247e]
+- Irene 메모(그대로): 개발자 이름 **WOR-PRO Lab**(기존 조직 계정 — Irene 결정) · 앱 com.purplehere.pos.mobile 무료·앱 · 내부 테스트에 PurplePOS-0.4.2.aab(code 10) 게시 · 테스터 목록 «PlanQ 내부» · 참여 링크 https://play.google.com/apps/internaltest/4699732337129544875 · 매장 직원 기기는 테스터 이메일 목록에 넣어야 받음.
+- 확인 못 함: Play 콘솔은 외부 화면이라 이 방에서 읽을 수 없음 — 메모 기준. dev-apps 의 0.4.2 AAB sha256 4ad55d5b…0a06 은 그대로.
+- 피드(desktop/PurplePOS.apk)는 여전히 0.3.4 — 아래 «다음 할 일 — 0.4.2 사이드로드 피드» 그대로(태블릿 종이 «확인 완료» 뒤 `mobile-app/scripts/build-release.sh --publish-feed` → 다음 배포 때 운영). Play 정식 공개 심사 요청은 운영 배포 뒤(요금제 숨김 19fcc2c8 이 운영에 나간 다음).
 
 ### ✅ 완료 (2026-11-18) — Purple POS 안드로이드 앱(Play) 안에서 요금제 구매·결제 경로 숨기기 [Claude Code · 백그라운드 작업방 19fcc2c8]
 - 지시: 앱(com.purplehere.pos.mobile)은 웹 /pos 를 그대로 띄움 → Play 결제 정책상 앱 안 디지털 서비스(구독) 판매·유도 금지. 웹은 그대로.
@@ -60,7 +75,10 @@
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 · 19fcc2c8)
+### 완료된 작업 (이번 세션 · 0d4372af)
+- [Claude Code] 실제 테스트 2건 — 발주 인보이스 [보기] 튕김·데모 초기화 발주 청구서 삭제 · 재고 기록/분류 영어 (위 ✅ 절 · Fable 게이트 PASS d5bc9e9ccb26) + /개발완료
+
+### 완료된 작업 (앞 세션 · 19fcc2c8)
 - [Claude Code] 안드로이드 앱(Play) 안 요금제 구매·결제 경로 숨기기(위 ✅ 절 · Fable 설계+게이트 PASS 01cc730f45fa) + /개발완료
 
 ### 완료된 작업 (11/18 정기 점검 · b85ffdb9)
@@ -89,6 +107,7 @@
 - 판매자가 대신 넣은 새 주문의 승인 대기 표시(설계 §6 범위 밖)
 - 남은 영어: 브랜드 실적 «All Brands·All Restaurants·N completed·N unique» · 재료 화면(IngredientsTab·ProductIngredientsTab 약 160개) · 공용 Pagination/SortDropdown · MainLayout(🔒 보호파일)
 - 데모 오너 매장에 외부 업체 정산서 [확인용] 만들기(대조 버튼을 개발서버에서 볼 예)
+- 발주·인보이스 후속(0d4372af · Fable 남은 위험): 매장 인보이스 화면 자체 영어(View·Pay·Paid·Overdue·Invoice Details) · 인쇄용 청구서 «(rate%)» 2곳(FoodcourtInvoicesPage:815 · OwnerInvoicesPage:919) · 개발 옛 발주 26건이 없는 청구서를 가리킴(매장 5 원인 미조사) · ?invoice=<없는 id> 화면 · 재고 기록 «Order #null - undefined x2» 메모 · 화면 19곳 user?.restaurant_id 만 읽음
 
 ### ✅ 완료 (2026-11-17) — PurpleHere 운영 배포 나감 (Irene 버튼 · 작업방은 확인만) [Claude Code · 백그라운드 작업방 5c23828a]
 - 확인(읽기): 상황판 실행 depmwk253vj · 02:12→02:34 UTC · result ok · 종료 0 · 배포 커밋 f944b9adb(범위 05cc4812a..3acc4ea98 9커밋 · 화면 버전 6.21 · 새 마이그 0) · 스모크 10/10 · 운영 표식 11-15 06:54 → 11-17 02:18 · 막음 표식 0 · 일시정지 풀림.

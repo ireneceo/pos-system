@@ -180,6 +180,8 @@
 | 매일 리셋 (demoResetScheduler) | ✅ | ❌ |
 | 관리자 공지 이메일 발송 제외 (2026-04-11) | ✅ | ✅ |
 
+**매일 리셋이 지우는 것** (`seed-demo-data.js` resetDemoOrders): 데모 매장의 주문·청구서. 남기는 청구서 = 7일 안 된 `[확인용]` · 하드웨어 견적이 가리키는 것 · **발주가 가리키는 거래 청구서와 그것을 묶은 정산서**(2026-11-18 — 발주는 리셋하지 않아, 청구서만 지우면 발주 상세 «거래 인보이스 #n» 이 빈 곳을 가리켰음).
+
 **관리자 공지 이메일 제외 상세** (`routes/notices.js`):
 - broadcast 4개 target (`all`/`role`/`brand`/`foodcourt`)의 recipient 생성 시 User/Restaurant 양쪽에서 `is_demo=false, is_test=false` 필터 적용
 - `select_restaurants`(명시 선택)는 관리자가 의도적으로 데모를 고를 수 있도록 필터 적용하지 않음

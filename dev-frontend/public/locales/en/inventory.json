@@ -381,7 +381,19 @@
       "after": "After",
       "notes": "Notes"
     },
-    "store": "Store"
+    "store": "Store",
+    "note": {
+      "stockReceived": "Stock received",
+      "manualAdjustment": "Manual adjustment",
+      "po": {
+        "received": "PO {{po}} — Received",
+        "markReceived": "PO {{po}} — Marked received",
+        "autoReceived": "PO {{po}} — Auto-received",
+        "directPurchase": "PO {{po}} — Direct purchase"
+      },
+      "returnApproved": "Return #{{id}} approved — stock taken back out",
+      "fifo": "Deducted from {{n}} batch(es), oldest first"
+    }
   },
   "receiveModal": {
     "title": "Receive Stock",
@@ -475,5 +487,15 @@
     "delete": "Delete",
     "unlinkHint": "This will unlink the ingredient from inventory tracking. The ingredient itself will not be deleted from the Recipes page.",
     "deleteHint": "This will permanently delete this general stock item."
+  },
+  "category": {
+    "produce": "Produce",
+    "meat": "Meat",
+    "seafood": "Seafood",
+    "dairy": "Dairy",
+    "dry_goods": "Dry Goods",
+    "spices": "Spices",
+    "beverages": "Beverages",
+    "other": "Other"
   }
 }

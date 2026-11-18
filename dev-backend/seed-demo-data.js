@@ -1303,12 +1303,18 @@ async function resetDemoOrders() {
     }
 
     // Delete existing invoices (with invoice_items) — 품목과 청구서를 같은 id 목록으로 지운다.
-    // 하드웨어 견적이 가리키는 청구서는 남긴다(견적 기록을 깨지 않게).
+    // 하드웨어 견적·발주가 가리키는 청구서는 남긴다(견적·발주 기록을 깨지 않게).
     const quotedInvoiceIds = await idsOf(
       `SELECT DISTINCT x.id FROM (
          SELECT invoice_id AS id FROM hardware_quotes WHERE invoice_id IS NOT NULL
-         UNION SELECT subscription_invoice_id FROM hardware_quotes WHERE subscription_invoice_id IS NOT NULL) x`
+         UNION SELECT subscription_invoice_id FROM hardware_quotes WHERE subscription_invoice_id IS NOT NULL
+         UNION SELECT trade_invoice_id FROM purchase_orders WHERE trade_invoice_id IS NOT NULL
+         UNION SELECT c.parent_soa_invoice_id FROM invoices c
+               JOIN purchase_orders po ON po.trade_invoice_id = c.id
+               WHERE c.parent_soa_invoice_id IS NOT NULL) x`
     );
+    // ↑ 발주가 가리키는 거래 청구서(와 그것을 묶은 정산서)도 남긴다 — 발주는 초기화하지 않으므로
+    //   청구서만 지우면 발주 상세 «거래 인보이스 #n [보기]» 가 없는 청구서를 가리킨다(2026-11-18 실제 테스트 · 매장 38 23건).
     const demoInvoices = await Invoice.findAll({
       where: {
         restaurant_id: { [Op.in]: demoRestaurantIds },

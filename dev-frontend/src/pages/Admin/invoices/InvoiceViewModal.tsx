@@ -220,7 +220,7 @@ const InvoiceViewModal: React.FC<InvoiceViewModalProps> = ({
               )}
               {(invoice.additionalCharges || []).map((charge: any, idx: number) => (
                 <SummaryRow key={idx}>
-                  <span>{charge.name} ({charge.rate}%):</span>
+                  <span>{charge.name}{charge.rate != null && String(charge.rate) !== '' ? ` (${charge.rate}%)` : ''}:</span>
                   <span>{formatCurrency(charge.amount, invoice.currency || 'MYR')}</span>
                 </SummaryRow>
               ))}

@@ -530,7 +530,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   // 올린 인보이스 «다시 올리기 · 삭제» 창 (2026-10-30)
   const [invoiceFileOpen, setInvoiceFileOpen] = useState(false);
   const invoiceListPath = (() => {
-    if (user?.role === 'Restaurant Admin' || user?.role === 'Staff') return user?.restaurant_id ? `/restaurant/${user.restaurant_id}/invoices` : '/pos/owner/invoices';
+    // 로그인 정보의 매장 번호는 restaurantId(글자) 로 온다 — restaurant_id 만 보면 비어서 오너 경로로 튕겼다(2026-11-18 실제 테스트)
+    if (user?.role === 'Restaurant Admin' || user?.role === 'Staff') {
+      const rid = user?.restaurantId || user?.restaurant_id;
+      return rid ? `/restaurant/${rid}/invoices` : '/pos/owner/invoices';
+    }
     if (user?.role === 'Brand General' || user?.role === 'Brand Manager') return '/pos/brand/invoices';
     if (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager') return '/pos/foodcourt/invoices';
     if (user?.role === 'Restaurant Owner') return '/pos/owner/invoices';

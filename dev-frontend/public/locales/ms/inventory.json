@@ -381,7 +381,19 @@
       "after": "Selepas",
       "notes": "Nota"
     },
-    "store": "Kedai"
+    "store": "Kedai",
+    "note": {
+      "stockReceived": "Stok diterima",
+      "manualAdjustment": "Pelarasan manual",
+      "po": {
+        "received": "PO {{po}} — Diterima",
+        "markReceived": "PO {{po}} — Ditanda diterima",
+        "autoReceived": "PO {{po}} — Diterima automatik",
+        "directPurchase": "PO {{po}} — Pembelian terus"
+      },
+      "returnApproved": "Pemulangan #{{id}} diluluskan — stok dikeluarkan",
+      "fifo": "Ditolak daripada {{n}} kelompok, yang terawal dahulu"
+    }
   },
   "receiveModal": {
     "title": "Terima Stok",
@@ -475,5 +487,15 @@
     "delete": "Padam",
     "unlinkHint": "Ini akan menyahpaut bahan daripada penjejakan inventori. Bahan itu sendiri tidak akan dipadam dari halaman Resipi.",
     "deleteHint": "Ini akan memadam item stok am ini secara kekal."
+  },
+  "category": {
+    "produce": "Sayur & Buah",
+    "meat": "Daging",
+    "seafood": "Makanan Laut",
+    "dairy": "Tenusu",
+    "dry_goods": "Barang Kering",
+    "spices": "Rempah",
+    "beverages": "Minuman",
+    "other": "Lain-lain"
   }
 }
