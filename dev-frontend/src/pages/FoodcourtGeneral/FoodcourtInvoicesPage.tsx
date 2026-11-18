@@ -60,10 +60,13 @@ import { FoodcourtInvoiceViewModal } from './invoices';
 import { FoodcourtInvoiceEditModal } from './invoices';
 import { FoodcourtInvoiceCreateModal } from './invoices';
 import SubscriptionPanel from '../../components/Payment/SubscriptionPanel';
+import { usePlayApp, canPayInvoiceHere } from '../../utils/playApp';
 import { getErrorMessage } from '../../utils/apiError';
 
 const FoodcourtInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('foodcourt');
+  // 안드로이드 앱(Play) 안: 실물 발주 청구서(trade·soa)만 결제 칸 — 구독·서비스 청구서는 보기만 (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
   const { operationSettings } = useStore();
   const { user, refreshUser } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -345,6 +348,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
   };
 
   const handlePayInvoice = async (invoice: Invoice) => {
+    if (!canPayInvoiceHere(playApp, invoice as any)) return;
     setSelectedInvoice(invoice);
     setPaymentData({ paymentMethod: '', transactionId: '', notes: '', receiptImage: '' });
     setPaymentSubmitError(null);
@@ -1232,7 +1236,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
         </Header>
         <Content>
           <SuspendedBanner />
-          {user?.foodcourt_id && (
+          {!playApp && user?.foodcourt_id && (
             <SubscriptionPanel payerType="foodcourt" payerId={user.foodcourt_id} hideWhenEmpty />
           )}
 
@@ -1403,7 +1407,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                       {((invoice as any).parentSoaInvoiceId || (invoice as any).payViaSoa) && invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
                         <span style={{ fontSize: 11, color: '#6B7280', alignSelf: 'center' }}>{t('settings:invoicesPage.payViaSoa', 'Pay via SOA')}</span>
                       )}
-                      {!(invoice as any).parentSoaInvoiceId && !(invoice as any).payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
+                      {canPayInvoiceHere(playApp, invoice as any) && !(invoice as any).parentSoaInvoiceId && !(invoice as any).payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                         // 외부 공급업체 청구서는 발주 결제 모달로 (2026-09-11 §8-5 E-2). 가입 판매자는 기존 Pay 그대로.
                         (invoice as any).issuerIsExternal ? (
                           <ExternalInvoicePayAction

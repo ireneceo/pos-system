@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
+import { usePlayApp } from '../../utils/playApp';
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
 // ============================================================================
@@ -485,6 +486,10 @@ const BrandGeneralDashboard: React.FC = () => {
   const { t } = useTranslation('brand');
   const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
+  // 안드로이드 앱(Play) 안: 구독 배지는 글자만(구독 탭으로 안 감) (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
+  const goSubscription = playApp ? undefined : () => navigate('/pos/profile?tab=subscription');
+  const badgeStyle: React.CSSProperties | undefined = playApp ? { cursor: 'default' } : undefined;
   const { user } = useAuth();
   const { defaultCurrency } = useBrandCurrency();
   const [currency, setCurrency] = useState('RM');
@@ -738,15 +743,15 @@ const BrandGeneralDashboard: React.FC = () => {
             {(() => {
               const s = subscriptionInfo;
               if (s.status === 'trial') {
-                return <SubscriptionBadge variant="trial" onClick={() => navigate('/pos/profile?tab=subscription')}>Trial{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? s.daysLeft + ' days left' : 'Expired'}` : ''}</SubscriptionBadge>;
+                return <SubscriptionBadge variant="trial" onClick={goSubscription} style={badgeStyle}>Trial{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? s.daysLeft + ' days left' : 'Expired'}` : ''}</SubscriptionBadge>;
               }
               if (s.status === 'active' && s.daysLeft !== undefined) {
-                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('brand:brandGeneralDashboard.expired')}</SubscriptionBadge>;
-                if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
-                return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
+                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{t('brand:brandGeneralDashboard.expired')}</SubscriptionBadge>;
+                if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={goSubscription} style={badgeStyle}>{s.daysLeft} days left</SubscriptionBadge>;
+                return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{s.daysLeft} days left</SubscriptionBadge>;
               }
-              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.status}</SubscriptionBadge>;
-              return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('brand:brandGeneralDashboard.active')}</SubscriptionBadge>;
+              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{s.status}</SubscriptionBadge>;
+              return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{t('brand:brandGeneralDashboard.active')}</SubscriptionBadge>;
             })()}
           </Subtitle>
         )}

@@ -35,6 +35,7 @@ import { SearchInput } from '../../components/Common/FilterComponents';
 import { Tabs, Tab as CommonTab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import HostedCheckoutLauncher from '../../components/Payment/HostedCheckoutLauncher';
 import SubscriptionPanel from '../../components/Payment/SubscriptionPanel';
+import { usePlayApp, canPayInvoiceHere } from '../../utils/playApp';
 import ApplyCreditModal from '../../components/Referral/ApplyCreditModal';
 import { renderIframeToPdf, renderHtmlDocumentsToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
@@ -351,6 +352,8 @@ const RestaurantInvoicesPage: React.FC = () => {
   // 청구서 결제 권한은 서버 checkPaymentPermission 이 정한다 — Staff 분기가 없어 누르면 403 이었다.
   //   화면도 같은 기준으로 결제 칸(Pay · Mark paid · Pay via SOA · Confirm)을 그리지 않는다(2026-09-11 Fable 판정 · Irene 「Staff 결제 403 도 같이 고쳐」).
   const canPayInvoices = user?.role !== 'Staff';
+  // 안드로이드 앱(Play) 안: 실물 발주 청구서(trade·soa)만 결제 칸을 그린다 — 구독·서비스 청구서는 보기만 (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
   const { restaurantId: urlRestaurantId } = useParams<{ restaurantId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -825,6 +828,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   //   발주 결제 모달을 그대로 열어 recordPayment 한 손으로 기록한다. 오너·브랜드·푸드코트 화면도 같은 조각을 쓴다.
 
   const handlePayInvoice = async (invoice: Invoice) => {
+    if (!canPayInvoiceHere(playApp, invoice)) return;
     setSelectedInvoice(invoice);
     setPaymentSubmitError('');
     setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '', notes: '' });
@@ -1314,7 +1318,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     {/* Pay button — hidden if invoice is bundled into a SOA (parent_soa_invoice_id) → pay via SOA only */}
                     {/* 외부 공급업체 발행 청구서는 우리 솔루션에서 결제할 수 없다 (설계 §5) —
                         그쪽은 로그인도 수금 계정도 없다. 실제로 낸 뒤 "결제함"으로 기록만 남긴다. */}
-                    {showPayButton && !invoice.parentSoaInvoiceId && !invoice.payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
+                    {showPayButton && canPayInvoiceHere(playApp, invoice) && !invoice.parentSoaInvoiceId && !invoice.payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                       invoice.issuerIsExternal ? (
                         <ExternalInvoicePayAction
                           invoice={invoice.invoiceCategory === 'soa' ? { ...invoice, soaChildCount: soaChildrenOf(invoice).length } : invoice}
@@ -1410,7 +1414,7 @@ const RestaurantInvoicesPage: React.FC = () => {
         <Content>
           <SuspendedBanner />
           {/* Active subscriptions + Customer Portal entry */}
-          {restaurantId && (
+          {!playApp && restaurantId && (
             <SubscriptionPanel payerType="restaurant" payerId={restaurantId} hideWhenEmpty />
           )}
           {/* Stats */}
@@ -1499,7 +1503,7 @@ const RestaurantInvoicesPage: React.FC = () => {
             size="large"
             footer={
               <>
-                {canPayInvoices && !selectedInvoice.parentSoaInvoiceId && !selectedInvoice.payViaSoa && (selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && (
+                {canPayInvoices && canPayInvoiceHere(playApp, selectedInvoice) && !selectedInvoice.parentSoaInvoiceId && !selectedInvoice.payViaSoa && (selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && (
                   <>
                     {!selectedInvoice.issuerIsExternal && (
                       <Button variant="secondary" onClick={() => setShowApplyCreditModal(true)}>
@@ -1753,8 +1757,8 @@ const RestaurantInvoicesPage: React.FC = () => {
                   timeZone={operationSettings?.timeZone}
                 />
 
-                {/* Bank Details (from issuer) */}
-                {issuerInfo?.bankName && (
+                {/* Bank Details (from issuer) — 안드로이드 앱(Play) 안에서는 실물 발주 청구서(trade·soa)만 (2026-11-18 Fable gate · utils/playApp) */}
+                {issuerInfo?.bankName && canPayInvoiceHere(playApp, selectedInvoice) && (
                   <div style={{ background: '#F1F4F8', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
                     <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase' }}>{t('settings:invoicesPage.paymentDetails')}</div>
                     <div style={{ fontSize: '13px', color: '#1F2937', lineHeight: '1.6' }}>

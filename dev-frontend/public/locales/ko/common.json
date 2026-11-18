@@ -1014,5 +1014,13 @@
   "delete": "삭제",
   "ok": "확인",
   "orderControls.moveUp": "위로",
-  "orderControls.moveDown": "아래로"
+  "orderControls.moveDown": "아래로",
+  "appUnavailable": {
+    "title": "앱에서 제공하지 않는 화면입니다",
+    "body": "이 화면은 Purple POS 앱에서 볼 수 없습니다.",
+    "noPlanTitle": "사용 중인 요금제가 없습니다",
+    "noPlanBody": "이 계정에는 사용 중인 요금제가 없습니다.",
+    "suspended": "이 계정은 정지 상태입니다. 일부 기능을 쓸 수 없습니다.",
+    "overdue": "이 계정에 기한이 지난 청구서가 있습니다."
+  }
 }

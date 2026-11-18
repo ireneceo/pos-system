@@ -1014,5 +1014,13 @@
   "delete": "Delete",
   "ok": "OK",
   "orderControls.moveUp": "Move up",
-  "orderControls.moveDown": "Move down"
+  "orderControls.moveDown": "Move down",
+  "appUnavailable": {
+    "title": "Not available in the app",
+    "body": "This page isn't available in the Purple POS app.",
+    "noPlanTitle": "No active plan",
+    "noPlanBody": "This account has no active plan.",
+    "suspended": "This account is suspended. Some features are unavailable.",
+    "overdue": "This account has overdue invoices."
+  }
 }

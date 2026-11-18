@@ -1,6 +1,8 @@
 import React from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
+import { usePlayApp } from '../../utils/playApp';
 
 // Banner shown on the invoice page when the account is suspended due to overdue
 // invoices. ProtectedRoute pins suspended users here; this banner explains why
@@ -50,6 +52,8 @@ const Sub = styled.div`
 
 const SuspendedBanner: React.FC = () => {
   const { user } = useAuth();
+  const playApp = usePlayApp();
+  const { t } = useTranslation('common');
   if (!user) return null;
   const isExempt =
     user.role === 'System Admin' ||
@@ -64,12 +68,19 @@ const SuspendedBanner: React.FC = () => {
     <Banner role="alert">
       <IconWrap>!</IconWrap>
       <Body>
-        <Title>Account on hold — overdue invoice</Title>
-        <Sub>
-          Service is paused because of an unpaid invoice. Pay any overdue invoice
-          below to restore full access. The account reactivates automatically
-          once payment is confirmed.
-        </Sub>
+        {playApp ? (
+          // 안드로이드 앱(Play) 안: 결제하라는 글 없이 상태만 (2026-11-18 · Play 정책 4절 · utils/playApp)
+          <Sub data-testid="play-suspended">{t('appUnavailable.suspended')}</Sub>
+        ) : (
+          <>
+            <Title>Account on hold — overdue invoice</Title>
+            <Sub>
+              Service is paused because of an unpaid invoice. Pay any overdue invoice
+              below to restore full access. The account reactivates automatically
+              once payment is confirmed.
+            </Sub>
+          </>
+        )}
       </Body>
     </Banner>
   );

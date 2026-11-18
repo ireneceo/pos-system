@@ -1014,5 +1014,13 @@
   "delete": "Padam",
   "ok": "OK",
   "orderControls.moveUp": "Naik",
-  "orderControls.moveDown": "Turun"
+  "orderControls.moveDown": "Turun",
+  "appUnavailable": {
+    "title": "Tidak tersedia dalam aplikasi",
+    "body": "Halaman ini tidak tersedia dalam aplikasi Purple POS.",
+    "noPlanTitle": "Tiada pelan aktif",
+    "noPlanBody": "Akaun ini tiada pelan aktif.",
+    "suspended": "Akaun ini digantung. Sesetengah ciri tidak tersedia.",
+    "overdue": "Akaun ini mempunyai invois tertunggak."
+  }
 }

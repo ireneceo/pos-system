@@ -8,6 +8,8 @@ import { useTabParam } from '../../hooks/useTabParam';
 import PhoneInput from '../../components/Common/PhoneInput';
 import PageHeader from '../../components/Common/PageHeader';
 import SubscriptionTab from './SubscriptionTab';
+import PlayUnavailable from '../../components/Common/PlayUnavailable';
+import { usePlayApp } from '../../utils/playApp';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import EmailVerificationNotice from '../../components/Common/EmailVerificationNotice';
 import { useTranslation } from 'react-i18next';
@@ -268,6 +270,8 @@ const DayTime = styled.div`
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation('settings');
+  // 안드로이드 앱(Play) 안: 구독 탭(요금제 바꾸기·업그레이드 문구·청구서로 가기)을 통째로 숨긴다 (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
   // const navigate = useNavigate();
   // const location = useLocation();
   // const { restaurantId } = useParams<{ restaurantId?: string }>();
@@ -768,7 +772,7 @@ const ProfilePage: React.FC = () => {
             <Tab active={activeTab === 'profile'} onClick={() => handleTabChange('profile')}>
               Personal Information
             </Tab>
-            {['Restaurant Admin', 'Brand General', 'Foodcourt General', 'Restaurant Owner'].includes(currentUser.role) && !dbUser?.is_demo && (
+            {!playApp && ['Restaurant Admin', 'Brand General', 'Foodcourt General', 'Restaurant Owner'].includes(currentUser.role) && !dbUser?.is_demo && (
               <Tab active={activeTab === 'subscription'} onClick={() => handleTabChange('subscription')}>
                 Subscription
               </Tab>
@@ -879,7 +883,7 @@ const ProfilePage: React.FC = () => {
           )}
 
           {activeTab === 'subscription' && (
-            <SubscriptionTab />
+            playApp ? <PlayUnavailable /> : <SubscriptionTab />
           )}
 
           {activeTab === 'schedule' && (

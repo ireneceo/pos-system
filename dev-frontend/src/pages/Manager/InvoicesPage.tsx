@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as formatDateTz } from '../../utils/timezone';
 import ReceiptUploadField from '../../components/Invoice/ReceiptUploadField';
+import { usePlayApp, canPayInvoiceHere } from '../../utils/playApp';
 import {
   DataTableContainer,
   DataTable,
@@ -320,6 +321,8 @@ const SummaryRow = styled.div<{ highlight?: boolean }>`
 
 const ManagerInvoicesPage: React.FC = () => {
   const { t } = useTranslation('admin');
+  // 안드로이드 앱(Play) 안: 실물 발주 청구서(trade·soa)만 결제 — 종류 값이 없으면 닫힘 (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
   const { user } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -634,6 +637,7 @@ const ManagerInvoicesPage: React.FC = () => {
   };
 
   const handlePayInvoice = async (invoice: Invoice) => {
+    if (!canPayInvoiceHere(playApp, invoice as any)) return;
     setSelectedInvoice(invoice);
     setPaymentData({
       paymentMethod: '',
@@ -856,7 +860,7 @@ const ManagerInvoicesPage: React.FC = () => {
                         )}
                         {(invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && (
                           <>
-                            {Number(invoice.total) > 0 && <ActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>{t('admin:invoicesPage.payNow')}</ActionButton>}
+                            {Number(invoice.total) > 0 && canPayInvoiceHere(playApp, invoice as any) && <ActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>{t('admin:invoicesPage.payNow')}</ActionButton>}
                             {Number(invoice.total) === 0 && <ActionButton variant="success" onClick={() => handleConfirmFreeInvoice(invoice)}>{t('admin:invoicesPage.confirm')}</ActionButton>}
                             {invoice.status === 'sent' && <ActionButton onClick={() => handleMarkAsOverdue(invoice)}>{t('admin:invoicesPage.markOverdue')}</ActionButton>}
                           </>

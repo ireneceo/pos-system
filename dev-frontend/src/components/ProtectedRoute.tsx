@@ -2,6 +2,8 @@ import React from 'react';
 import { Navigate, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useAllowedRoutes } from '../hooks/useAllowedRoutes';
+import { usePlayApp, isPlayBlockedRoute } from '../utils/playApp';
+import PlayUnavailable from './Common/PlayUnavailable';
 import styled from 'styled-components';
 
 // (2026-11-10) «Different store on this device» 계산대 입구 차단 화면은 제거했다 — Fable 판단:
@@ -146,6 +148,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams<{ restaurantId?: string }>();
+  const playApp = usePlayApp();
 
   // Resolve module entitlements for the current user (brand/foodcourt context).
   // hasModule fails open when plan filtering is skipped (System Admin or error state).
@@ -167,6 +170,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   // 인증되지 않은 경우 로그인 페이지로
   if (!isAuthenticated) {
     return <Navigate to="/pos" state={{ from: location }} replace />;
+  }
+
+  // 안드로이드 앱(Play) 안: 디지털 서비스 결제 화면은 직접 주소로 와도 빈 안내 (2026-11-18 · utils/playApp 한 곳).
+  //   튕기지 않고 그 자리에서 안내 — 정지 계정 고정·역할 튕김보다 앞. 웹은 playApp=false 라 무변경.
+  if (playApp && isPlayBlockedRoute(location.pathname)) {
+    return <PlayUnavailable />;
   }
 
   // Suspended account guard — overdue invoices.

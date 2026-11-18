@@ -76,6 +76,7 @@
     "addCategory": "添加分类",
     "addOptionGroup": "添加选项组",
     "planLimitReached": "已达到当前套餐的商品数量上限，请升级套餐。",
+    "planLimitReachedApp": "已达到当前套餐的商品数量上限。",
     "noProducts": "暂无商品。点击\"添加商品\"开始建立目录。",
     "deleteConfirm": "确定要删除此商品吗？",
     "copySuffix": "（副本）",

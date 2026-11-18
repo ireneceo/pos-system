@@ -1014,5 +1014,13 @@
   "delete": "删除",
   "ok": "确定",
   "orderControls.moveUp": "上移",
-  "orderControls.moveDown": "下移"
+  "orderControls.moveDown": "下移",
+  "appUnavailable": {
+    "title": "应用内不提供此页面",
+    "body": "此页面无法在 Purple POS 应用中查看。",
+    "noPlanTitle": "没有有效的套餐",
+    "noPlanBody": "此账户没有有效的套餐。",
+    "suspended": "此账户已被暂停，部分功能无法使用。",
+    "overdue": "此账户有逾期账单。"
+  }
 }

@@ -43,6 +43,7 @@ import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../co
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { usePlayApp, canPayInvoiceHere } from '../../utils/playApp';
 import { formatDate as formatDateTz } from '../../utils/timezone';
 interface AdditionalCharge {
   name: string;
@@ -318,6 +319,8 @@ type TabType = 'all' | 'to_pay';
 
 const OwnerInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('owner');
+  // 안드로이드 앱(Play) 안: 실물 발주 청구서(trade·soa)만 결제 칸 — 구독·서비스 청구서는 보기만 (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
   const { refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -701,6 +704,7 @@ const OwnerInvoicesPage: React.FC = () => {
   };
 
   const handlePayInvoice = async (invoice: Invoice) => {
+    if (!canPayInvoiceHere(playApp, invoice)) return;
     setSelectedInvoice(invoice);
     setPaymentSubmitError('');
     setPaymentData({ paymentMethod: '', transactionId: '', receiptImage: '', notes: '' });
@@ -1071,7 +1075,7 @@ const OwnerInvoicesPage: React.FC = () => {
                       View
                     </LocalActionButton>
 
-                    {showPayButton && !invoice.parentSoaInvoiceId && !invoice.payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
+                    {showPayButton && canPayInvoiceHere(playApp, invoice) && !invoice.parentSoaInvoiceId && !invoice.payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
                       // 외부 공급업체 청구서는 발주 결제 모달로 (2026-09-11 §8-5 E-2) — 게이트웨이 결제는 외부 발행자에게 닿지 않는다
                       invoice.issuerIsExternal ? (
                         <ExternalInvoicePayAction
@@ -1237,7 +1241,7 @@ const OwnerInvoicesPage: React.FC = () => {
           const payerCompany = selectedInvoice.payerInfo;
 
           return (
-          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{!selectedInvoice.parentSoaInvoiceId && !selectedInvoice.payViaSoa && (selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && ( selectedInvoice.issuerIsExternal ? ( <ExternalInvoicePayAction invoice={selectedInvoice} onPaid={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} renderTrigger={(open) => ( <Button variant="success" onClick={open}> {t('settings:invoicesPage.markPaidLong', 'Mark as paid')} </Button> )} /> ) : ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> ) )}{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )}{/* 공급업체 인보이스 네 가지 일 (2026-10-09 Fable 판정 A-1·A-6 · §3-1 Irene «권고대로» — 오너도 가격 대조) — 매장 창과 같은 조각 */}<TradeInvoiceActions invoice={selectedInvoice} onChanged={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} /> <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
+          <CommonModal isOpen={true} onClose={() => setShowViewModal(false)} title="Invoice Details" size="large" footer={<>{canPayInvoiceHere(playApp, selectedInvoice) && !selectedInvoice.parentSoaInvoiceId && !selectedInvoice.payViaSoa && (selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) > 0 && ( selectedInvoice.issuerIsExternal ? ( <ExternalInvoicePayAction invoice={selectedInvoice} onPaid={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} renderTrigger={(open) => ( <Button variant="success" onClick={open}> {t('settings:invoicesPage.markPaidLong', 'Mark as paid')} </Button> )} /> ) : ( <Button variant="success" onClick={() => { setShowViewModal(false); handlePayInvoice(selectedInvoice); }}> Pay Now </Button> ) )}{(selectedInvoice.status === 'sent' || selectedInvoice.status === 'pending_payment' || selectedInvoice.status === 'overdue') && Number(selectedInvoice.total) === 0 && ( <Button variant="success" onClick={() => { setShowViewModal(false); handleConfirmFreeInvoice(selectedInvoice); }}> Confirm </Button> )}{/* 공급업체 인보이스 네 가지 일 (2026-10-09 Fable 판정 A-1·A-6 · §3-1 Irene «권고대로» — 오너도 가격 대조) — 매장 창과 같은 조각 */}<TradeInvoiceActions invoice={selectedInvoice} onChanged={() => { setShowViewModal(false); fetchInvoicesToPay(); fetchAllInvoices(); }} /> <Button onClick={() => generateInvoicePDF(selectedInvoice)}> Download PDF </Button><Button onClick={() => handlePrintInvoice(selectedInvoice)}> Print </Button><Button variant="secondary" onClick={() => setShowViewModal(false)}> Close </Button></>}>
                 {/* Invoice Header with Issuer Info */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', paddingBottom: '24px', borderBottom: '2px solid #C7CED6' }}>
                   <div style={{ flex: '0 0 55%' }}>
@@ -1413,8 +1417,8 @@ const OwnerInvoicesPage: React.FC = () => {
                 {/* 수정 이력 (2026-10-07 Fable 판정 D5) — 오너 화면은 날짜를 기본 타임존으로 그린다(이 화면의 다른 날짜와 같게) */}
                 <InvoiceModificationHistory history={selectedInvoice.modificationHistory} currency={selectedInvoice.currency || 'MYR'} />
 
-                {/* Bank Details (from issuer) */}
-                {issuerInfo?.bankName && (
+                {/* Bank Details (from issuer) — 안드로이드 앱(Play) 안에서는 실물 발주 청구서(trade·soa)만 (2026-11-18 Fable gate · utils/playApp) */}
+                {issuerInfo?.bankName && canPayInvoiceHere(playApp, selectedInvoice) && (
                   <div style={{ background: '#F1F4F8', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
                     <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase' }}>{t('owner:ownerInvoicesPage.paymentDetails')}</div>
                     <div style={{ fontSize: '13px', color: '#1F2937', lineHeight: '1.6' }}>

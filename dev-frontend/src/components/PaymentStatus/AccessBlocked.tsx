@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { usePaymentStatus } from '../../contexts/PaymentStatusContext';
 import { formatCurrency } from '../../utils/paymentStatus';
+import { useTranslation } from 'react-i18next';
+import { usePlayApp } from '../../utils/playApp';
 
 const BlockedContainer = styled.div`
   min-height: 100vh;
@@ -159,6 +161,24 @@ export const AccessBlocked: React.FC = () => {
   const logout = () => {
     navigate('/pos');
   };
+
+  // 안드로이드 앱(Play) 안: 금액·«View & Pay Invoices»·결제수단·연락처 없이 정지 상태 한 줄 + 계정 바꾸기만
+  //   (2026-11-18 · Play 정책 4절 · utils/playApp). 웹은 아래 원래 화면 그대로.
+  const playApp = usePlayApp();
+  const { t } = useTranslation('common');
+  if (playApp) {
+    return (
+      <BlockedContainer data-testid="play-access-blocked">
+        <BlockedCard>
+          <BlockedIcon>-</BlockedIcon>
+          <BlockedMessage>{t('appUnavailable.suspended')}</BlockedMessage>
+          <ActionSection>
+            <LogoutButton onClick={logout}>Switch Account</LogoutButton>
+          </ActionSection>
+        </BlockedCard>
+      </BlockedContainer>
+    );
+  }
 
   return (
     <BlockedContainer>

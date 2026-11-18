@@ -76,6 +76,7 @@
     "addCategory": "Tambah Kategori",
     "addOptionGroup": "Tambah Kumpulan Pilihan",
     "planLimitReached": "Had produk pelan anda telah dicapai. Sila naik taraf.",
+    "planLimitReachedApp": "Had produk pelan anda telah dicapai.",
     "noProducts": "Tiada produk lagi. Klik \"Tambah Produk\" untuk mula membina katalog anda.",
     "deleteConfirm": "Adakah anda pasti mahu memadam produk ini?",
     "copySuffix": " (Salinan)",

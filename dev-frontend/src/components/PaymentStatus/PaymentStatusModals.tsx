@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { usePaymentStatus } from '../../contexts/PaymentStatusContext';
 import { formatCurrency, getRestrictedFeatures } from '../../utils/paymentStatus';
+import { useTranslation } from 'react-i18next';
+import { usePlayApp } from '../../utils/playApp';
 
 // Warning Banner (1-3 days overdue)
 const WarningBanner = styled.div`
@@ -278,6 +280,56 @@ export const PaymentStatusModals: React.FC = () => {
   const goToInvoices = () => {
     navigate('/invoices');
   };
+
+  // 안드로이드 앱(Play) 안: 금액·«Pay Now»·«if not paid» 없이 상태 한 줄만 (2026-11-18 · Play 정책 4절 · utils/playApp).
+  //   웹은 아래 원래 화면 그대로.
+  const playApp = usePlayApp();
+  const { t } = useTranslation('common');
+  if (playApp) {
+    if (showWarning && paymentStatus.restrictionLevel === 'warning') {
+      return (
+        <WarningBanner data-testid="play-payment-status">
+          <WarningContent>
+            <WarningIcon>!</WarningIcon>
+            <WarningText><WarningMessage>{t('appUnavailable.overdue')}</WarningMessage></WarningText>
+          </WarningContent>
+          <WarningActions>
+            <WarningButton onClick={dismissWarning}>Dismiss</WarningButton>
+          </WarningActions>
+        </WarningBanner>
+      );
+    }
+    if (showPartialRestriction && paymentStatus.restrictionLevel === 'partial') {
+      return (
+        <Modal data-testid="play-payment-status">
+          <ModalContent>
+            <ModalHeader type="partial">
+              <ModalIcon type="partial">×</ModalIcon>
+              <ModalTitle type="partial">{t('appUnavailable.overdue')}</ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+              <ModalActions>
+                <ActionButton variant="secondary" onClick={dismissPartialRestriction}>OK</ActionButton>
+              </ModalActions>
+            </ModalBody>
+          </ModalContent>
+        </Modal>
+      );
+    }
+    if (showBlockedModal && paymentStatus.restrictionLevel === 'blocked') {
+      return (
+        <Modal data-testid="play-payment-status">
+          <ModalContent>
+            <ModalHeader type="blocked">
+              <ModalIcon type="blocked">-</ModalIcon>
+              <ModalTitle type="blocked">{t('appUnavailable.suspended')}</ModalTitle>
+            </ModalHeader>
+          </ModalContent>
+        </Modal>
+      );
+    }
+    return null;
+  }
 
   // Warning Banner (1-3 days overdue)
   if (showWarning && paymentStatus.restrictionLevel === 'warning') {

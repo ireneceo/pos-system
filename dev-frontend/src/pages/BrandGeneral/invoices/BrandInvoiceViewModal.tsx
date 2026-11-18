@@ -7,6 +7,7 @@ import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
 import { formatAddress, formatEntityAddress, AppLocale } from '../../../utils/formatAddress';
 import { Invoice, CompanySettings, Manager, Restaurant } from './types';
 import TradeInvoiceActions from '../../../components/Invoices/TradeInvoiceActions';
+import { usePlayApp, canPayInvoiceHere } from '../../../utils/playApp';
 import {
   Button,
   StatusBadge,
@@ -62,6 +63,7 @@ const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
   onChanged,
 }) => {
   const { t, i18n } = useTranslation('brand');
+  const playApp = usePlayApp();
 
   // Prefer issuerInfo (has bank details from payment_settings), fall back to companySettings.
   const hasIssuerInfo = !!invoice.issuerInfo;
@@ -305,8 +307,8 @@ const BrandInvoiceViewModal: React.FC<BrandInvoiceViewModalProps> = ({
           </div>
         </div>
 
-        {/* Bank Details (if company has bank info) */}
-        {displayCompany?.bankName && (
+        {/* Bank Details (if company has bank info) — 안드로이드 앱(Play) 안에서는 실물 발주 청구서(trade·soa)만 은행 안내 (2026-11-18 Fable gate · utils/playApp) */}
+        {displayCompany?.bankName && canPayInvoiceHere(playApp, invoice as any) && (
           <div style={{ background: '#F1F4F8', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
             <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase' }}>{t('brand:brandInvoicesPage.paymentDetails')}</div>
             <div style={{ fontSize: '13px', color: '#1F2937', lineHeight: '1.6' }}>

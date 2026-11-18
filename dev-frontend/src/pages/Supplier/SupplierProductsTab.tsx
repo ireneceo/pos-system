@@ -20,6 +20,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 import { SellerSpecSummary, useSellerSpecCopy } from '../../components/Common/SellerProductSpecGuide';
 import { getAuthToken } from '../../utils/auth';
+import { usePlayApp } from '../../utils/playApp';
 import { parseMinOrderQty, qtyStepForUnit, PACKAGE_UNIT_SUGGESTIONS, CONTENT_UNIT_OPTIONS, withCurrentUnit, sellerSpecLabel, type OrderMode } from '../../utils/unitConversion';
 
 interface SupplierProductCategory {
@@ -434,6 +435,9 @@ const SupplierProductsTab: React.FC<Props> = ({
 }) => {
   const { t } = useTranslation('supplier');
   const navigate = useNavigate();
+  // 안드로이드 앱(Play) 안: 한도 도달 사실만 — «Upgrade Plan» 버튼·«업그레이드해 주세요» 문장 없음 (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
+  const appLimitText = t('products.planLimitReachedApp', 'Product limit reached for your plan.');
 
   const [products, setProducts] = useState<SupplierProduct[]>([]);
   const [categories, setCategories] = useState<SupplierProductCategory[]>([]);
@@ -812,16 +816,18 @@ const SupplierProductsTab: React.FC<Props> = ({
       {planLimit && (
         <PlanLimitBanner>
           <span>
-            {planLimit.message}
+            {playApp ? appLimitText : planLimit.message}
             {planLimit.current !== undefined && planLimit.limit !== undefined && (
               <strong style={{ marginLeft: 8 }}>
                 ({planLimit.current}/{planLimit.limit})
               </strong>
             )}
           </span>
-          <UpgradeLink onClick={() => navigate('/pos/profile?tab=subscription')}>
-            Upgrade Plan
-          </UpgradeLink>
+          {!playApp && (
+            <UpgradeLink onClick={() => navigate('/pos/profile?tab=subscription')}>
+              Upgrade Plan
+            </UpgradeLink>
+          )}
         </PlanLimitBanner>
       )}
 
@@ -1314,13 +1320,15 @@ const SupplierProductsTab: React.FC<Props> = ({
 
             {formError && formError.includes('limit') && (
               <PlanLimitBanner>
-                <span>{formError}</span>
-                <UpgradeLink
-                  type="button"
-                  onClick={() => navigate('/pos/profile?tab=subscription')}
-                >
-                  Upgrade Plan
-                </UpgradeLink>
+                <span>{playApp ? appLimitText : formError}</span>
+                {!playApp && (
+                  <UpgradeLink
+                    type="button"
+                    onClick={() => navigate('/pos/profile?tab=subscription')}
+                  >
+                    Upgrade Plan
+                  </UpgradeLink>
+                )}
               </PlanLimitBanner>
             )}
           </form>

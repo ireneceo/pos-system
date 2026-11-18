@@ -16,6 +16,7 @@ import { useSetupStatus } from '../../hooks/useSetupStatus';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as tzFormatDate } from '../../utils/timezone';
+import { usePlayApp } from '../../utils/playApp';
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
 // ============================================================================
@@ -429,6 +430,10 @@ const OwnerDashboardPage: React.FC = () => {
   const { t } = useTranslation('owner');
   const displayRole = useRoleDisplayName();
   const navigate = useNavigate();
+  // 안드로이드 앱(Play) 안: 구독 배지는 글자만(구독 탭으로 안 감) · 결제하라는 배너 문구 없음 (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
+  const goSubscription = playApp ? undefined : () => navigate('/pos/profile?tab=subscription');
+  const badgeStyle: React.CSSProperties | undefined = playApp ? { cursor: 'default' } : undefined;
   const { user } = useAuth();
   const { paymentStatus } = usePaymentStatus();
   const [loading, setLoading] = useState(true);
@@ -625,14 +630,14 @@ const OwnerDashboardPage: React.FC = () => {
             <span>{subscriptionInfo.planType}</span>
             {(() => {
               const s = subscriptionInfo;
-              if (s.status === 'trial') return <SubscriptionBadge variant="trial" onClick={() => navigate('/pos/profile?tab=subscription')}>Trial{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? s.daysLeft + ' days left' : 'Expired'}` : ''}</SubscriptionBadge>;
+              if (s.status === 'trial') return <SubscriptionBadge variant="trial" onClick={goSubscription} style={badgeStyle}>Trial{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? s.daysLeft + ' days left' : 'Expired'}` : ''}</SubscriptionBadge>;
               if (s.status === 'active' && s.daysLeft !== undefined) {
-                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('owner:ownerDashboardPage.expired')}</SubscriptionBadge>;
-                if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
-                return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.daysLeft} days left</SubscriptionBadge>;
+                if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{t('owner:ownerDashboardPage.expired')}</SubscriptionBadge>;
+                if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={goSubscription} style={badgeStyle}>{s.daysLeft} days left</SubscriptionBadge>;
+                return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{s.daysLeft} days left</SubscriptionBadge>;
               }
-              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={() => navigate('/pos/profile?tab=subscription')}>{s.status}</SubscriptionBadge>;
-              return <SubscriptionBadge variant="active" onClick={() => navigate('/pos/profile?tab=subscription')}>{t('owner:ownerDashboardPage.active')}</SubscriptionBadge>;
+              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{s.status}</SubscriptionBadge>;
+              return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{t('owner:ownerDashboardPage.active')}</SubscriptionBadge>;
             })()}
           </Subtitle>
         )}
@@ -649,20 +654,20 @@ const OwnerDashboardPage: React.FC = () => {
         )}
         {setupItems.length > 0 && <SetupGuide items={setupItems} entityId={user?.id} />}
         {/* Subscription Status Banner */}
-        {paymentStatus.subscriptionStatus === 'trial' && paymentStatus.trialEndDate && (
+        {!playApp && paymentStatus.subscriptionStatus === 'trial' && paymentStatus.trialEndDate && (
           <SubscriptionBanner $type="trial">
             Trial period active — expires {tzFormatDate(paymentStatus.trialEndDate, null)}. Please pay your invoice to continue service.
           </SubscriptionBanner>
         )}
         {paymentStatus.restrictionLevel === 'warning' && (
           <SubscriptionBanner $type="warning">
-            Payment overdue ({paymentStatus.overdueDays} days). Please pay {paymentStatus.currency ? formatCurrency(paymentStatus.overdueAmount, paymentStatus.currency) : `$${paymentStatus.overdueAmount}`} to avoid service restrictions.
+            {playApp ? t('common:appUnavailable.overdue') : <>Payment overdue ({paymentStatus.overdueDays} days). Please pay {paymentStatus.currency ? formatCurrency(paymentStatus.overdueAmount, paymentStatus.currency) : `$${paymentStatus.overdueAmount}`} to avoid service restrictions.</>}
           </SubscriptionBanner>
         )}
         {(paymentStatus.restrictionLevel === 'partial' || paymentStatus.restrictionLevel === 'blocked') && (
           <SubscriptionBanner $type="danger">
             {paymentStatus.restrictionLevel === 'blocked'
-              ? 'Your subscription is suspended. Pay outstanding invoices to restore access.'
+              ? (playApp ? t('common:appUnavailable.suspended') : 'Your subscription is suspended. Pay outstanding invoices to restore access.')
               : `Service partially restricted due to overdue payment (${paymentStatus.overdueDays} days). Some features are disabled.`}
           </SubscriptionBanner>
         )}

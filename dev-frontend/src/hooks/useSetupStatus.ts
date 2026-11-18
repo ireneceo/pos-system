@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { SetupItem } from '../components/Common/SetupGuide';
 
 import { getAuthToken } from '../utils/auth';
+import { isPlayApp } from '../utils/playApp';
 interface UseSetupStatusParams {
   role: string;
   restaurantId?: string | number | null;
@@ -428,14 +429,15 @@ export function useSetupStatus(params: UseSetupStatusParams) {
               completed: hasAdmin,
               dependsOn: ['first_restaurant']
             },
-            {
+            // 안드로이드 앱(Play) 안에서는 «구독 활성화» 항목을 빼 둔다 — 앱 안 구독 유도 금지 (2026-11-18 · utils/playApp)
+            ...(isPlayApp() ? [] : [{
               key: 'activate_plan',
               label: 'Activate a Subscription Plan',
               description: 'Choose a plan so the restaurant can take live orders and invoices',
               path: '/pos/owner/subscriptions',
               completed: hasActivePlan,
               dependsOn: ['first_restaurant']
-            }
+            }])
           ]);
 
         } else if (role === 'System Admin') {

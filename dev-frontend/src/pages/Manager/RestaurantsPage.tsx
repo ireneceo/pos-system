@@ -20,6 +20,7 @@ import BillingTermsModal, { formatTermsSummary } from '../../components/Billing/
 import type { PaymentTerms } from '../../components/Billing/BillingTermsModal';
 
 import { getAuthToken } from '../../utils/auth';
+import { usePlayApp } from '../../utils/playApp';
 interface Restaurant extends Omit<BaseRestaurant, 'status'> {
   status: 'active' | 'trial' | 'expired' | 'suspended' | 'cancelled';
   cuisine: string;
@@ -534,6 +535,7 @@ const ClearButton = styled.button`
 
 const ManagerRestaurantsPage: React.FC = () => {
   const { t } = useTranslation('admin');
+  const playApp = usePlayApp();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1520,13 +1522,17 @@ const ManagerRestaurantsPage: React.FC = () => {
           business_registration: newRestaurant.businessRegistration || undefined,
           tax_id: newRestaurant.taxId || undefined,
           cuisine: newRestaurant.cuisine,
-          plan_type: newRestaurant.planType,
-          plan_amount: parseFloat(newRestaurant.planAmount),
           currency: newRestaurant.currency,
-          billing_cycle: newRestaurant.billingCycle,
-          payment_model: newRestaurant.paymentModel === 'manager'
-            ? (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ? 'foodcourt_manager' : 'brand_manager')
-            : 'restaurant',
+          // 안드로이드 앱(Play) 안에서는 요금제 칸을 그리지 않으므로 보내지도 않는다 — 서버는 빠진 칸을 그대로 둔다
+          //   (routes/restaurants-crud.js PUT /:id «!== undefined» 일 때만 바꿈). 매장 이름만 고쳐도 요금제가 바뀌지 않게 (2026-11-18)
+          ...(playApp ? {} : {
+            plan_type: newRestaurant.planType,
+            plan_amount: parseFloat(newRestaurant.planAmount),
+            billing_cycle: newRestaurant.billingCycle,
+            payment_model: newRestaurant.paymentModel === 'manager'
+              ? (user?.role === 'Foodcourt General' || user?.role === 'Foodcourt Manager' ? 'foodcourt_manager' : 'brand_manager')
+              : 'restaurant',
+          }),
           // Allow Brand/Foodcourt General to relink restaurant
           ...(user?.role === 'Brand General' ? { brand_id: newRestaurant.brand_id ? parseInt(newRestaurant.brand_id) : null } : {}),
           ...(user?.role === 'Foodcourt General' ? {
@@ -1657,7 +1663,8 @@ const ManagerRestaurantsPage: React.FC = () => {
           <Title>{t('admin:restaurantsPage.restaurants')}</Title>
           <ActionSection>
             <Button variant="secondary" onClick={handleExportData}>{t('admin:restaurantsPage.exportData')}</Button>
-            <Button variant="primary" onClick={handleAddRestaurant}>{t('admin:restaurantsPage.addRestaurant')}</Button>
+            {/* 안드로이드 앱(Play) 안: 새 매장 만들기(요금제 고르기 포함) 숨김 (2026-11-18 · utils/playApp) */}
+            {!playApp && <Button variant="primary" onClick={handleAddRestaurant}>{t('admin:restaurantsPage.addRestaurant')}</Button>}
           </ActionSection>
         </Header>
         
@@ -2318,6 +2325,8 @@ const ManagerRestaurantsPage: React.FC = () => {
                   />
                 </FormGroup>
 
+                {/* 안드로이드 앱(Play) 안: 요금제·브랜드/푸드코트 플랜 칸을 그리지 않고, 저장 요청에서도 요금제 칸을 뺀다(handleUpdateRestaurant) (2026-11-18 · utils/playApp) */}
+                {!playApp && (<>
                 {/* Solution Subscription (platform POS fee — paid to System Admin) */}
                 <div style={{gridColumn: '1 / -1', marginTop: '20px', marginBottom: '10px'}}>
                   <h3 style={{margin: 0, fontSize: '18px', fontWeight: '600', color: '#0A2540', borderBottom: '2px solid #635BFF', paddingBottom: '8px'}}>
@@ -2678,6 +2687,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     </div>
                   </div>
                 )}
+                </>)}
               </FormGrid>
 
         </CommonModal>

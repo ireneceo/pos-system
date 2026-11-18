@@ -722,3 +722,15 @@ Week 12      │ 통합 테스트 & 버그 수정
 ---
 
 **문서 끝**
+
+---
+
+## 안드로이드 앱(Google Play) 안에서는 요금제를 팔지 않는다 (2026-11-18)
+
+**규칙:** Purple POS 안드로이드 앱(com.purplehere.pos.mobile)은 웹 `/pos` 를 그대로 띄운다. Google Play 결제 정책(디지털 서비스는 Play 결제 · 다른 결제로 이끄는 버튼·링크·글 금지)에 따라 **앱 안에서는 우리 구독·브랜드/푸드코트 플랜을 사거나 바꾸거나 돈 내는 길과 그리로 이끄는 글이 없다.** 웹 브라우저·윈도우 앱은 지금 그대로.
+
+- 판별·막는 주소·청구서 판정 단일 진실: `dev-frontend/src/utils/playApp.ts` (`usePlayApp` · `isPlayBlockedRoute` · `invoicePayableInApp`). 새 결제·요금제 화면을 만들면 **이 파일의 `PLAY_BLOCKED_ROUTES` 에 추가**한다(메뉴 숨김·직접 주소 막기가 같이 읽음).
+- 앱에서 막힌 주소는 튕기지 않고 빈 안내(`PlayUnavailable` — «웹에서 결제» 같은 글·링크 넣지 않음).
+- 청구서: 앱에서는 실물 발주 청구서(`trade`·`soa`)만 결제 버튼·은행 안내. 구독·서비스·하드웨어·브랜드 로열티/플랜 청구서는 보기만.
+- 그대로: 손님 음식값 결제(POS·모바일·키오스크).
+- 설계·검증: `.claude/fable-design-20261118-play-billing-hide.md` · `.claude/play-billing-verify-20261118.md` · e2e `dev-frontend/e2e/play-billing-hide.spec.js`

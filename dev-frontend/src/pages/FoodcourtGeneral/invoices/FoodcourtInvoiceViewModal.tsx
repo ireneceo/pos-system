@@ -7,6 +7,7 @@ import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
 import { formatAddress, formatEntityAddress, AppLocale } from '../../../utils/formatAddress';
 import { Invoice, Manager, Restaurant, CompanySettings } from './types';
 import TradeInvoiceActions from '../../../components/Invoices/TradeInvoiceActions';
+import { usePlayApp, canPayInvoiceHere } from '../../../utils/playApp';
 import {
   Button,
   StatusBadge,
@@ -55,6 +56,7 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
   onChanged,
 }) => {
   const { t, i18n } = useTranslation('foodcourt');
+  const playApp = usePlayApp();
 
   const formatDate = (dateString: string) => {
     return formatDateTime(dateString, operationSettings, { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -249,6 +251,7 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
           const bankAccountName = invoice.issuerInfo?.bankAccountName || companySettings?.bankAccountName;
           const swiftCode = invoice.issuerInfo?.swiftCode || companySettings?.swiftCode;
           if (!bankName) return null;
+          if (!canPayInvoiceHere(playApp, invoice as any)) return null; // 안드로이드 앱(Play) 안에서는 실물 발주 청구서(trade·soa)만 은행 안내 (2026-11-18 Fable gate · utils/playApp)
           return (
             <div style={{ background: '#F1F4F8', borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
               <div style={{ fontSize: '12px', fontWeight: '600', color: '#4B5563', marginBottom: '8px', textTransform: 'uppercase' }}>{t('foodcourt:foodcourtInvoicesPage.paymentDetails')}</div>

@@ -84,10 +84,13 @@ import BrandInvoiceEditModal from './invoices/BrandInvoiceEditModal';
 import BrandInvoiceCreateModal from './invoices/BrandInvoiceCreateModal';
 import BrandInvoiceCategoryManager from './invoices/BrandInvoiceCategoryManager';
 import SubscriptionPanel from '../../components/Payment/SubscriptionPanel';
+import { usePlayApp, canPayInvoiceHere } from '../../utils/playApp';
 import { getErrorMessage } from '../../utils/apiError';
 
 const BrandInvoicesPage: React.FC = () => {
   const { t, i18n } = useTranslation('brand');
+  // 안드로이드 앱(Play) 안: 실물 발주 청구서(trade·soa)만 결제 칸 — 구독·서비스 청구서는 보기만 (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
   const { operationSettings } = useStore();
   const { user, refreshUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -410,6 +413,7 @@ const BrandInvoicesPage: React.FC = () => {
   };
 
   const handlePayInvoice = async (invoice: Invoice) => {
+    if (!canPayInvoiceHere(playApp, invoice as any)) return;
     setSelectedInvoice(invoice);
     setPaymentData({ paymentMethod: '', transactionId: '', notes: '', receiptImage: '' });
     setShowPaymentSubmitModal(true);
@@ -1375,7 +1379,7 @@ const BrandInvoicesPage: React.FC = () => {
           {((invoice as any).parentSoaInvoiceId || (invoice as any).payViaSoa) && invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
             <span style={{ fontSize: 11, color: '#6B7280', alignSelf: 'center' }}>{t('settings:invoicesPage.payViaSoa', 'Pay via SOA')}</span>
           )}
-          {!(invoice as any).parentSoaInvoiceId && !(invoice as any).payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
+          {canPayInvoiceHere(playApp, invoice as any) && !(invoice as any).parentSoaInvoiceId && !(invoice as any).payViaSoa && (invoice.status === 'sent' || invoice.status === 'pending_payment' || invoice.status === 'overdue') && Number(invoice.total) > 0 && (
             // 외부 공급업체 청구서는 발주 결제 모달로 (2026-09-11 §8-5 E-2 · Irene 「브랜드제너럴에서도 외부공급업체 결제가
             //   내부 솔루션공급업체처럼 페이가 나오네」). 가입 판매자는 기존 Pay(submit-payment) 그대로.
             (invoice as any).issuerIsExternal ? (
@@ -1434,7 +1438,7 @@ const BrandInvoicesPage: React.FC = () => {
         </Header>
         <Content>
           <SuspendedBanner />
-          {user?.brand_id && (
+          {!playApp && user?.brand_id && (
             <SubscriptionPanel payerType="brand" payerId={user.brand_id} hideWhenEmpty />
           )}
 

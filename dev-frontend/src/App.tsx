@@ -16,6 +16,8 @@ import ScrollToTop from './components/ScrollToTop';
 import CookieConsentBanner from './components/Common/CookieConsentBanner';
 import PageViewTracker from './components/Common/PageViewTracker';
 import PosLayout from './components/Layout/PosLayout';
+// 안드로이드 앱(Play) 안에서는 가격표·가입 화면을 빈 안내로 (2026-11-18 · utils/playApp)
+import { PlayGate } from './components/Common/PlayUnavailable';
 import { PwaInstallProvider } from './contexts/PwaInstallContext';
 import { OfflineProvider } from './contexts/OfflineContext';
 import OfflineBanner from './components/Offline/OfflineBanner';
@@ -550,12 +552,12 @@ function App() {
                       <Route path="/about" element={<AboutPage />} />
                       <Route path="/features" element={<FeaturesPage />} />
                       <Route path="/service" element={<Navigate to="/features" replace />} />
-                      <Route path="/pricing" element={<PricingPage />} />
+                      <Route path="/pricing" element={<PlayGate><PricingPage /></PlayGate>} />
                       <Route path="/shop/:slug" element={<ShopCatalogPage />} />
-                      <Route path="/packages" element={<PackagesPage />} />
+                      <Route path="/packages" element={<PlayGate><PackagesPage /></PlayGate>} />
                       <Route path="/contact" element={<ContactPage />} />
                       <Route path="/demo" element={<DemoPage />} />
-                      <Route path="/signup" element={<SignupPage />} />
+                      <Route path="/signup" element={<PlayGate><SignupPage /></PlayGate>} />
                       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                       <Route path="/reset-password" element={<ResetPasswordPage />} />
                       <Route path="/company" element={<CompanyPage />} />

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { isRouteDenied } from '../utils/roleRouteDeny';
+import { usePlayApp, isPlayBlockedRoute } from '../utils/playApp';
 
 import { getAuthToken } from '../utils/auth';
 interface AllowedRoutesResponse {
@@ -30,6 +31,7 @@ interface UseAllowedRoutesParams {
  * Supports Restaurant, Brand, Foodcourt, and Owner roles.
  */
 export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null) => {
+  const playApp = usePlayApp();
   const [allowedRoutes, setAllowedRoutes] = useState<string[]>([]);
   const [includedModules, setIncludedModules] = useState<string[]>([]);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
@@ -122,6 +124,10 @@ export const useAllowedRoutes = (params: UseAllowedRoutesParams | number | null)
     //   `skipFiltering`(플랜 검사 생략) **앞**에 둔다 — 필터를 건너뛰는 역할도 거부는 적용되게.
     //   목록은 `utils/roleRouteDeny` 한 곳에만 있다(복사 금지 — 복사하면 곧 갈라진다).
     if (isRouteDenied(role, route)) return false;
+
+    // 안드로이드 앱(Play) 안에서는 디지털 서비스 결제 화면 메뉴를 숨긴다 (2026-11-18 · utils/playApp 한 곳).
+    //   MainLayout(🔒)이 이 함수로 사이드바를 그리므로 그 파일을 안 건드리고 메뉴가 사라진다. 웹은 playApp=false 라 무변경.
+    if (playApp && isPlayBlockedRoute(route)) return false;
 
     // Skip filtering for roles without plan-based restrictions (System Admin, etc.)
     // or when API call failed (fail-open on error only)

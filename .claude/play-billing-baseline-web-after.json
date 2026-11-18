@@ -1,0 +1,986 @@
+{
+ "restaurant": {
+  "url": "/restaurant/38/profile",
+  "links": [
+   [
+    "/mobile",
+    "Kiosk"
+   ],
+   [
+    "/pos/purchase-orders",
+    "Purchase Order"
+   ],
+   [
+    "/pos/purchase-orders/history",
+    "Order History"
+   ],
+   [
+    "/pos/suppliers",
+    "Suppliers"
+   ],
+   [
+    "/restaurant/38/attendance",
+    "Attendance"
+   ],
+   [
+    "/restaurant/38/brand-menu-updates",
+    "Brand Menu Updates"
+   ],
+   [
+    "/restaurant/38/cash-management",
+    "Cash Management"
+   ],
+   [
+    "/restaurant/38/categories",
+    "Categories"
+   ],
+   [
+    "/restaurant/38/company-information",
+    "Company Info"
+   ],
+   [
+    "/restaurant/38/coupons",
+    "Coupons"
+   ],
+   [
+    "/restaurant/38/customers",
+    "Customers"
+   ],
+   [
+    "/restaurant/38/dashboard",
+    "Dashboard"
+   ],
+   [
+    "/restaurant/38/display",
+    "Pickup Display"
+   ],
+   [
+    "/restaurant/38/floor-plan",
+    "Floor Plan"
+   ],
+   [
+    "/restaurant/38/history",
+    "Change History"
+   ],
+   [
+    "/restaurant/38/ingredients",
+    "Stock Items"
+   ],
+   [
+    "/restaurant/38/inventory",
+    "Inventory"
+   ],
+   [
+    "/restaurant/38/invoices",
+    "Operations"
+   ],
+   [
+    "/restaurant/38/kitchen",
+    "Kitchen Display"
+   ],
+   [
+    "/restaurant/38/live-orders",
+    "Live Orders"
+   ],
+   [
+    "/restaurant/38/menu",
+    "Products"
+   ],
+   [
+    "/restaurant/38/my-attendance",
+    "My Attendance"
+   ],
+   [
+    "/restaurant/38/notices",
+    "Communication"
+   ],
+   [
+    "/restaurant/38/notification-settings",
+    "Notifications"
+   ],
+   [
+    "/restaurant/38/operation-inquiry",
+    "Operation Inquiry"
+   ],
+   [
+    "/restaurant/38/options",
+    "Options"
+   ],
+   [
+    "/restaurant/38/pos-terminal",
+    "POS Terminal"
+   ],
+   [
+    "/restaurant/38/profile",
+    "My Profile"
+   ],
+   [
+    "/restaurant/38/profitability?tab=menus",
+    "Profitability"
+   ],
+   [
+    "/restaurant/38/profitability?tab=mix",
+    "Order mix"
+   ],
+   [
+    "/restaurant/38/profitability?tab=settings",
+    "Settings"
+   ],
+   [
+    "/restaurant/38/profitability?tab=simulator",
+    "Simulator"
+   ],
+   [
+    "/restaurant/38/recipe-management",
+    "Recipes"
+   ],
+   [
+    "/restaurant/38/reports?tab=customers",
+    "Customer Insights"
+   ],
+   [
+    "/restaurant/38/reports?tab=details",
+    "Sales Details"
+   ],
+   [
+    "/restaurant/38/reports?tab=menu",
+    "Menu Analysis"
+   ],
+   [
+    "/restaurant/38/reports?tab=operations",
+    "Operations"
+   ],
+   [
+    "/restaurant/38/reports?tab=payment",
+    "Payment Analysis"
+   ],
+   [
+    "/restaurant/38/reports?tab=sales",
+    "Reports"
+   ],
+   [
+    "/restaurant/38/reports?tab=void-log",
+    "Void & Cancel Log"
+   ],
+   [
+    "/restaurant/38/reservations",
+    "Reservations"
+   ],
+   [
+    "/restaurant/38/settings?tab=kiosk",
+    "Kiosk"
+   ],
+   [
+    "/restaurant/38/settings?tab=kitchenStations",
+    "Kitchen Stations"
+   ],
+   [
+    "/restaurant/38/settings?tab=membership",
+    "Membership"
+   ],
+   [
+    "/restaurant/38/settings?tab=mobileOrder",
+    "Mobile Order"
+   ],
+   [
+    "/restaurant/38/settings?tab=payment",
+    "Payment Methods"
+   ],
+   [
+    "/restaurant/38/settings?tab=printer",
+    "Printer"
+   ],
+   [
+    "/restaurant/38/settings?tab=reservation",
+    "Reservation"
+   ],
+   [
+    "/restaurant/38/settings?tab=salesReporting",
+    "Mall Sales Reporting"
+   ],
+   [
+    "/restaurant/38/settings?tab=store",
+    "Store Settings"
+   ],
+   [
+    "/restaurant/38/settings?tab=tablesQr",
+    "Tables & QR"
+   ],
+   [
+    "/restaurant/38/staff",
+    "Team & Marketing"
+   ],
+   [
+    "/restaurant/38/support",
+    "System Inquiry"
+   ],
+   [
+    "/restaurant/38/time-clock",
+    "Time Clock"
+   ]
+  ],
+  "errors": []
+ },
+ "brand": {
+  "url": "/pos/profile",
+  "links": [
+   [
+    "/pos/brand-ingredients",
+    "Stock Items"
+   ],
+   [
+    "/pos/brand-inventory",
+    "Inventory"
+   ],
+   [
+    "/pos/brand-menus",
+    "Brand Menus"
+   ],
+   [
+    "/pos/brand-product-recipes",
+    "Product Recipes"
+   ],
+   [
+    "/pos/brand-products",
+    "Products"
+   ],
+   [
+    "/pos/brand/company-info",
+    "Company Info"
+   ],
+   [
+    "/pos/brand/franchise",
+    "Franchise"
+   ],
+   [
+    "/pos/brand/franchise-map",
+    "Franchise Map"
+   ],
+   [
+    "/pos/brand/general/dashboard",
+    "Dashboard"
+   ],
+   [
+    "/pos/brand/general/incoming-orders",
+    "Sales Orders"
+   ],
+   [
+    "/pos/brand/general/management",
+    "Brands"
+   ],
+   [
+    "/pos/brand/general/notices",
+    "Communication"
+   ],
+   [
+    "/pos/brand/general/operation-inquiry",
+    "Inquiry Management"
+   ],
+   [
+    "/pos/brand/general/performance",
+    "Performance"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=customers",
+    "Customer Insights"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=details",
+    "Sales Details"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=menu",
+    "Menu Analysis"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=operations",
+    "Operations"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=ranking",
+    "Sales Ranking"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=sales",
+    "Sales Report"
+   ],
+   [
+    "/pos/brand/general/profitability",
+    "Profitability"
+   ],
+   [
+    "/pos/brand/general/reports",
+    "Reports"
+   ],
+   [
+    "/pos/brand/general/subscriptions",
+    "Brand Subscriptions"
+   ],
+   [
+    "/pos/brand/general/system-inquiry",
+    "System Inquiry"
+   ],
+   [
+    "/pos/brand/general/work-manuals",
+    "Work Manuals"
+   ],
+   [
+    "/pos/brand/history",
+    "Change History"
+   ],
+   [
+    "/pos/brand/invoices",
+    "Operations"
+   ],
+   [
+    "/pos/brand/manager",
+    "Managers"
+   ],
+   [
+    "/pos/brand/payment-settings",
+    "Payment Settings"
+   ],
+   [
+    "/pos/brand/plans",
+    "Plans & Payments"
+   ],
+   [
+    "/pos/manager/admins",
+    "Restaurant Admins"
+   ],
+   [
+    "/pos/manager/notification-settings",
+    "Notifications"
+   ],
+   [
+    "/pos/manager/restaurants",
+    "Restaurants"
+   ],
+   [
+    "/pos/profile",
+    "My Profile"
+   ],
+   [
+    "/pos/purchase-orders",
+    "Purchase Order"
+   ],
+   [
+    "/pos/purchase-orders/history",
+    "Order History"
+   ],
+   [
+    "/pos/recipes",
+    "Brand Recipes"
+   ],
+   [
+    "/pos/suppliers",
+    "Suppliers"
+   ]
+  ],
+  "errors": []
+ },
+ "foodcourt": {
+  "url": "/pos/profile",
+  "links": [
+   [
+    "/pos/foodcourt/branches",
+    "Management"
+   ],
+   [
+    "/pos/foodcourt/company-info",
+    "Company Info"
+   ],
+   [
+    "/pos/foodcourt/floor-plan",
+    "Floor Plan"
+   ],
+   [
+    "/pos/foodcourt/general/dashboard",
+    "Dashboard"
+   ],
+   [
+    "/pos/foodcourt/general/incoming-orders",
+    "Sales Orders"
+   ],
+   [
+    "/pos/foodcourt/general/inventory",
+    "Inventory"
+   ],
+   [
+    "/pos/foodcourt/general/notices",
+    "Communication"
+   ],
+   [
+    "/pos/foodcourt/general/operation-inquiry",
+    "Inquiry Management"
+   ],
+   [
+    "/pos/foodcourt/general/products",
+    "Products"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=customers",
+    "Customer Insights"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=details",
+    "Sales Details"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=menu",
+    "Menu Analysis"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=operations",
+    "Operations"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=ranking",
+    "Reports"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=sales",
+    "Sales Report"
+   ],
+   [
+    "/pos/foodcourt/general/subscriptions",
+    "Foodcourt Subscriptions"
+   ],
+   [
+    "/pos/foodcourt/general/system-inquiry",
+    "System Inquiry"
+   ],
+   [
+    "/pos/foodcourt/history",
+    "Change History"
+   ],
+   [
+    "/pos/foodcourt/invoices",
+    "Operations"
+   ],
+   [
+    "/pos/foodcourt/manager",
+    "Managers"
+   ],
+   [
+    "/pos/foodcourt/payment-settings",
+    "Payment Settings"
+   ],
+   [
+    "/pos/foodcourt/plans",
+    "Plans & Payments"
+   ],
+   [
+    "/pos/foodcourt/tenancy",
+    "Tenancy"
+   ],
+   [
+    "/pos/foodcourt/tenancy-map",
+    "Branch Map"
+   ],
+   [
+    "/pos/manager/admins",
+    "Restaurant Admins"
+   ],
+   [
+    "/pos/manager/coupons",
+    "Coupons"
+   ],
+   [
+    "/pos/manager/notification-settings",
+    "Notifications"
+   ],
+   [
+    "/pos/manager/restaurants",
+    "Restaurants"
+   ],
+   [
+    "/pos/profile",
+    "My Profile"
+   ],
+   [
+    "/pos/purchase-orders",
+    "Purchase Order"
+   ],
+   [
+    "/pos/purchase-orders/history",
+    "Order History"
+   ],
+   [
+    "/pos/suppliers",
+    "Suppliers"
+   ]
+  ],
+  "errors": []
+ },
+ "owner": {
+  "url": "/pos/profile",
+  "links": [
+   [
+    "/pos/owner/dashboard",
+    "Dashboard"
+   ],
+   [
+    "/pos/owner/history",
+    "Change History"
+   ],
+   [
+    "/pos/owner/invoices",
+    "Operations"
+   ],
+   [
+    "/pos/owner/notices",
+    "Communication"
+   ],
+   [
+    "/pos/owner/operation-inquiry",
+    "Operation Inquiry"
+   ],
+   [
+    "/pos/owner/performance",
+    "Performance"
+   ],
+   [
+    "/pos/owner/po-approvals",
+    "PO Approvals"
+   ],
+   [
+    "/pos/owner/profitability",
+    "Profitability"
+   ],
+   [
+    "/pos/owner/reports?tab=customers",
+    "Customer Insights"
+   ],
+   [
+    "/pos/owner/reports?tab=details",
+    "Sales Details"
+   ],
+   [
+    "/pos/owner/reports?tab=menu",
+    "Menu Analysis"
+   ],
+   [
+    "/pos/owner/reports?tab=operations",
+    "Operations"
+   ],
+   [
+    "/pos/owner/reports?tab=ranking",
+    "Reports"
+   ],
+   [
+    "/pos/owner/reports?tab=sales",
+    "Sales Report"
+   ],
+   [
+    "/pos/owner/restaurants",
+    "Restaurants"
+   ],
+   [
+    "/pos/owner/system-inquiry",
+    "System Inquiry"
+   ],
+   [
+    "/pos/profile",
+    "My Profile"
+   ],
+   [
+    "/pos/purchase-orders",
+    "Purchase Order"
+   ],
+   [
+    "/pos/purchase-orders/history",
+    "Order History"
+   ],
+   [
+    "/pos/suppliers",
+    "Suppliers"
+   ]
+  ],
+  "errors": []
+ },
+ "supplier": {
+  "url": "/pos/profile",
+  "links": [
+   [
+    "/pos/profile",
+    "My Profile"
+   ],
+   [
+    "/pos/supplier/company-info",
+    "Company Info"
+   ],
+   [
+    "/pos/supplier/contracts",
+    "Contracts"
+   ],
+   [
+    "/pos/supplier/customers",
+    "Customers"
+   ],
+   [
+    "/pos/supplier/dashboard",
+    "Dashboard"
+   ],
+   [
+    "/pos/supplier/inventory",
+    "Inventory"
+   ],
+   [
+    "/pos/supplier/invoice-settings",
+    "Invoice Settings"
+   ],
+   [
+    "/pos/supplier/invoices",
+    "Invoices"
+   ],
+   [
+    "/pos/supplier/notices",
+    "Communication"
+   ],
+   [
+    "/pos/supplier/orders",
+    "Sales Orders"
+   ],
+   [
+    "/pos/supplier/payment-settings",
+    "Payment Settings"
+   ],
+   [
+    "/pos/supplier/products",
+    "Operations"
+   ],
+   [
+    "/pos/supplier/staff",
+    "Staff"
+   ],
+   [
+    "/pos/supplier/system-inquiry",
+    "System Inquiry"
+   ],
+   [
+    "/pos/supplier/trade-invoices",
+    "Plans & Payments"
+   ]
+  ],
+  "errors": []
+ },
+ "brand_manager": {
+  "url": "/pos/profile",
+  "links": [
+   [
+    "/pos/brand-ingredients",
+    "Stock Items"
+   ],
+   [
+    "/pos/brand-inventory",
+    "Inventory"
+   ],
+   [
+    "/pos/brand-menus",
+    "Brand Menus"
+   ],
+   [
+    "/pos/brand-product-recipes",
+    "Product Recipes"
+   ],
+   [
+    "/pos/brand-products",
+    "Products"
+   ],
+   [
+    "/pos/brand/company-info",
+    "Company Info"
+   ],
+   [
+    "/pos/brand/franchise",
+    "Franchise"
+   ],
+   [
+    "/pos/brand/franchise-map",
+    "Franchise Map"
+   ],
+   [
+    "/pos/brand/general/dashboard",
+    "Dashboard"
+   ],
+   [
+    "/pos/brand/general/incoming-orders",
+    "Sales Orders"
+   ],
+   [
+    "/pos/brand/general/management",
+    "Brands"
+   ],
+   [
+    "/pos/brand/general/notices",
+    "Communication"
+   ],
+   [
+    "/pos/brand/general/operation-inquiry",
+    "Inquiry Management"
+   ],
+   [
+    "/pos/brand/general/performance",
+    "Performance"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=customers",
+    "Customer Insights"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=details",
+    "Sales Details"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=menu",
+    "Menu Analysis"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=operations",
+    "Operations"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=ranking",
+    "Sales Ranking"
+   ],
+   [
+    "/pos/brand/general/performance/stores?tab=sales",
+    "Sales Report"
+   ],
+   [
+    "/pos/brand/general/profitability",
+    "Profitability"
+   ],
+   [
+    "/pos/brand/general/reports",
+    "Reports"
+   ],
+   [
+    "/pos/brand/general/subscriptions",
+    "Brand Subscriptions"
+   ],
+   [
+    "/pos/brand/general/system-inquiry",
+    "System Inquiry"
+   ],
+   [
+    "/pos/brand/general/work-manuals",
+    "Work Manuals"
+   ],
+   [
+    "/pos/brand/history",
+    "Change History"
+   ],
+   [
+    "/pos/brand/invoices",
+    "Operations"
+   ],
+   [
+    "/pos/brand/plans",
+    "Plans & Payments"
+   ],
+   [
+    "/pos/manager/admins",
+    "Restaurant Admins"
+   ],
+   [
+    "/pos/manager/notification-settings",
+    "Notifications"
+   ],
+   [
+    "/pos/manager/restaurants",
+    "Restaurants"
+   ],
+   [
+    "/pos/profile",
+    "My Profile"
+   ],
+   [
+    "/pos/purchase-orders",
+    "Purchase Order"
+   ],
+   [
+    "/pos/purchase-orders/history",
+    "Order History"
+   ],
+   [
+    "/pos/recipes",
+    "Brand Recipes"
+   ],
+   [
+    "/pos/suppliers",
+    "Suppliers"
+   ]
+  ],
+  "errors": []
+ },
+ "foodcourt_manager": {
+  "url": "/pos/profile",
+  "links": [
+   [
+    "/pos/foodcourt/company-info",
+    "Company Info"
+   ],
+   [
+    "/pos/foodcourt/floor-plan",
+    "Floor Plan"
+   ],
+   [
+    "/pos/foodcourt/general/dashboard",
+    "Dashboard"
+   ],
+   [
+    "/pos/foodcourt/general/incoming-orders",
+    "Sales Orders"
+   ],
+   [
+    "/pos/foodcourt/general/inventory",
+    "Inventory"
+   ],
+   [
+    "/pos/foodcourt/general/notices",
+    "Communication"
+   ],
+   [
+    "/pos/foodcourt/general/operation-inquiry",
+    "Inquiry Management"
+   ],
+   [
+    "/pos/foodcourt/general/products",
+    "Products"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=customers",
+    "Customer Insights"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=details",
+    "Sales Details"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=menu",
+    "Menu Analysis"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=operations",
+    "Operations"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=ranking",
+    "Reports"
+   ],
+   [
+    "/pos/foodcourt/general/reports?tab=sales",
+    "Sales Report"
+   ],
+   [
+    "/pos/foodcourt/general/subscriptions",
+    "Foodcourt Subscriptions"
+   ],
+   [
+    "/pos/foodcourt/general/system-inquiry",
+    "System Inquiry"
+   ],
+   [
+    "/pos/foodcourt/history",
+    "Change History"
+   ],
+   [
+    "/pos/foodcourt/invoices",
+    "Operations"
+   ],
+   [
+    "/pos/foodcourt/payment-settings",
+    "Payment Settings"
+   ],
+   [
+    "/pos/foodcourt/plans",
+    "Plans & Payments"
+   ],
+   [
+    "/pos/foodcourt/tenancy",
+    "Tenancy"
+   ],
+   [
+    "/pos/foodcourt/tenancy-map",
+    "Branch Map"
+   ],
+   [
+    "/pos/manager/admins",
+    "Restaurant Admins"
+   ],
+   [
+    "/pos/manager/coupons",
+    "Coupons"
+   ],
+   [
+    "/pos/manager/notification-settings",
+    "Notifications"
+   ],
+   [
+    "/pos/manager/restaurants",
+    "Management"
+   ],
+   [
+    "/pos/profile",
+    "My Profile"
+   ],
+   [
+    "/pos/purchase-orders",
+    "Purchase Order"
+   ],
+   [
+    "/pos/purchase-orders/history",
+    "Order History"
+   ],
+   [
+    "/pos/suppliers",
+    "Suppliers"
+   ]
+  ],
+  "errors": []
+ },
+ "supplier_staff": {
+  "url": "/pos/profile",
+  "links": [
+   [
+    "/pos/profile",
+    "My Profile"
+   ],
+   [
+    "/pos/supplier/company-info",
+    "Company Info"
+   ],
+   [
+    "/pos/supplier/dashboard",
+    "Dashboard"
+   ],
+   [
+    "/pos/supplier/invoice-settings",
+    "Invoice Settings"
+   ],
+   [
+    "/pos/supplier/notices",
+    "Communication"
+   ],
+   [
+    "/pos/supplier/orders",
+    "Sales Orders"
+   ],
+   [
+    "/pos/supplier/payment-settings",
+    "Payment Settings"
+   ],
+   [
+    "/pos/supplier/products",
+    "Operations"
+   ],
+   [
+    "/pos/supplier/trade-invoices",
+    "Plans & Payments"
+   ]
+  ],
+  "errors": []
+ }
+}

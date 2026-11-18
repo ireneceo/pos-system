@@ -1,5 +1,21 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-11-17 (작업방 9a2262fa · 판매 주문 반품 · /개발완료)
+**마지막 업데이트:** 2026-11-18 (작업방 19fcc2c8 · 앱 안 요금제 결제 경로 숨기기 · /개발완료)
+
+### ✅ 완료 (2026-11-18) — Purple POS 안드로이드 앱(Play) 안에서 요금제 구매·결제 경로 숨기기 [Claude Code · 백그라운드 작업방 19fcc2c8]
+- 지시: 앱(com.purplehere.pos.mobile)은 웹 /pos 를 그대로 띄움 → Play 결제 정책상 앱 안 디지털 서비스(구독) 판매·유도 금지. 웹은 그대로.
+- Fable 설계 .claude/fable-design-20261118-play-billing-hide.md → 구현 → Fable gate 1차 FAIL(청구서 상세 은행 안내 · 요금제 없음 실측 · SW · verify-all 미완) → 고침 → 재판정 PASS(마커 01cc730f45fa). 검증 기록 .claude/play-billing-verify-20261118.md
+- 판별·목록 한 곳 utils/playApp.ts(브릿지 platform android + 걸쇠 localStorage ph_android_app + 페이지 감시 2분). 에뮬 실측: 원격 페이지에 window.Capacitor 없음 · 브릿지는 page load 뒤 13~17초.
+- 앱에서 막힘: 메뉴(useAllowedRoutes) · 직접 주소 12개 빈 안내(ProtectedRoute·PlayGate: brand/foodcourt plans·subscriptions·payment-settings · manager plans·subscriptions · /restaurant/:id/upgrade · /pricing·/packages·/signup) · 요금제 없음 화면(PosLayout 선점) · 결제 경고·차단·정지 문구 · 프로필 구독 탭 · 대시보드 배지·오너 배너 · 공급업체 Upgrade Plan · 오너 체크리스트 구독 항목 · 매니저 빠른 버튼·새 매장·요금제 칸(저장 때 요금제 칸 안 보냄) · 청구서 5화면 결제 버튼·구독 패널·은행 안내는 trade·soa 만.
+- 그대로: 손님 음식값 결제(POS·모바일) · 실물 발주 청구서 결제 · 웹 전부(8역할 사이드바 전후 글자 동일) · 🔒 보호파일 8/8 · 서버·DB·APK 무변경.
+- 검증: jest 24/24(고장주입 5종 모두 잡힘) · e2e 7건 3회 연속 7/7(앱 흉내 끔·win32 주입 시 실패) · 에뮬 purplepos-ci-36 0.4.2-dev 24/25(남은 1 = Capacitor 없음 사실) · verify-all --full 23/24(배포 준비 칸만) · health-check 497/497 · SW 6.22-play-billing-hide-20261118
+- 확인 못 함: 오너 청구서 상세 실화면(데모 오너 청구서 0건) · 앱 안 현금 결제 끝까지 · 실기기 태블릿 · Play 정책 원문 정식 재대조(공개 직전)
+- 운영 반영: 다음 배포 때. Play 정식 공개 심사 요청은 운영 배포 뒤(앱이 운영 웹을 띄움).
+
+### ✅ 완료 (11/18 00:00 정기 점검 · 2026-11-17 16:01 UTC) — /개발완료(설계 문서 1건 커밋 6d9da2b0b) + /개발시작(운영 새 문의 0 · 인쇄 지킴이 새 문제 0) [Claude Code · 백그라운드 작업방 b85ffdb9]
+- 개발완료: 같은 폴더 일하는 다른 방 0 · 마지막 개발완료(26417fe4c) 뒤 미커밋이던 docs/STORE_DIRECT_ADDRESS_DESIGN.md(75a4942d 완료 설계)를 기록·커밋·푸시(deploy-isolation) · 검증 print-guard 8/8 · health-check 497/497 · 백업 backups/dev-daily/20261117 · 오래된 보류(playwright.config · .claude/oneoff-*·run-*.sh)는 그대로 둠 · 민감 diff 판정 «FABLE 게이트 대상» 은 운영 대비 누적(반품 — 이미 Fable PASS 97f005eeb413)
+- 운영 문의(확인 2026-11-17 16:03 UTC · 읽기만): 열린 시스템 문의 0 · 최근 14일 새 문의·후속 글 0 · 랜딩 문의 0 · 매장↔브랜드 운영 문의 in-progress 1·closed 4 · 상황판 «들어온 문의» 빈 목록으로 올림(200)
+- 인쇄 지킴이(마지막 실행 15:07 UTC success): 새 문제 0 · 계속 4 · 풀림 0 — 28 print_failures critical(PRINTER_NOT_FOUND «기본 프린터» 17건) · 28 multi_auto_print(3대) · 8·28 old_app 0.3.4. 해결 길 그대로(28 앱 0.4.1 · 자동 인쇄 기기 정리).
+- 개발시작 분기 C: 진행 중 0 · 다음 확정 작업 없음 — 지시 대기
 
 ### ✅ 완료 (2026-11-17) — 판매 주문 반품: 줄·주문 전체·고객 신청·금액 차감·결제 막기 [Claude Code · 백그라운드 작업방 9a2262fa]
 - Irene 원문: «incoming-orders 여기에서 아이템 한개씩 또는 주문 전체 반품 처리할 수 있어야 해. 그리고 고객도 신청해야 하고, 그럼 비용이 차감되고 결제가 된 경우 말고는 되어야 해. 확인해줘.»
@@ -44,6 +60,9 @@
 ### 진행 중인 작업
 - 없음
 
+### 완료된 작업 (이번 세션 · 19fcc2c8)
+- [Claude Code] 안드로이드 앱(Play) 안 요금제 구매·결제 경로 숨기기(위 ✅ 절 · Fable 설계+게이트 PASS 01cc730f45fa) + /개발완료
+
 ### 완료된 작업 (11/18 정기 점검 · b85ffdb9)
 - [Claude Code] /개발완료: 미커밋이던 docs/STORE_DIRECT_ADDRESS_DESIGN.md(75a4942d 완료 설계) 커밋·기록
 
@@ -64,6 +83,7 @@
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
+- 앱 결제 숨김 후속: Play 정식 공개 직전 결제 정책 원문 재대조(운영 배포 뒤) · 오너 청구서 상세 은행 안내 실화면(데모 오너 청구서 생기면) · 실기기 태블릿에서 메뉴·직접 주소 한 번
 - 반품 후속(Fable · 막지 않음): 0원 줄 섞인 주문 전체 반품이 «이미 결제됨» 400 으로 거부(closeIfFullyReturned 를 줄 루프 뒤 한 번으로) · 반품 목록 청구서 번호·구매자 «판매자가 반품 처리함» 배너 · 대조 재저장 시 반품 줄 이름 · brand-revenue·foodCostReport 반품 미차감(Fable calc)
 - seller hold Fable 후속 3건(health N5 단언 보강 · 설계 문서 «미구현» 표기 · goneFromSeller 변수명)
 - 판매자가 대신 넣은 새 주문의 승인 대기 표시(설계 §6 범위 밖)

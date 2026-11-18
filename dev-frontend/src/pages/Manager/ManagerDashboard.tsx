@@ -8,6 +8,7 @@ import { DashboardStatsGrid, DashboardStatCard, DashboardStatLabel, DashboardSta
 import { useBrandCurrency } from '../../hooks/useBrandCurrency';
 import { formatCurrency } from '../../utils/currency';
 import { getAuthHeaders } from '../../utils/auth';
+import { usePlayApp } from '../../utils/playApp';
 import { useTranslation } from 'react-i18next';
 
 // API base URL - replaced at build time
@@ -213,6 +214,8 @@ const QuickActionText = styled.div`
 const ManagerDashboard: React.FC = () => {
   const { t } = useTranslation('admin');
   const navigate = useNavigate();
+  // 안드로이드 앱(Play) 안: 매장 청구서·구독 관리 빠른 버튼 숨김 (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const { defaultCurrency } = useBrandCurrency();
   const [selectedCurrency, setSelectedCurrency] = useState<string>('RM');
@@ -305,15 +308,17 @@ const ManagerDashboard: React.FC = () => {
             </QuickActionIcon>
             <QuickActionText>{t('admin:managerDashboard.viewReports')}</QuickActionText>
           </QuickActionCard>
-          <QuickActionCard onClick={() => navigate('/pos/manager/invoices')}>
-            <QuickActionIcon>
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h8c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
-                <path d="M9 15h6v-1H9v1zm0-3h6v-1H9v1zm0-3h6V8H9v1z"/>
-              </svg>
-            </QuickActionIcon>
-            <QuickActionText>{t('admin:managerDashboard.restaurantInvoices')}</QuickActionText>
-          </QuickActionCard>
+          {!playApp && (
+            <QuickActionCard onClick={() => navigate('/pos/manager/invoices')}>
+              <QuickActionIcon>
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h8c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/>
+                  <path d="M9 15h6v-1H9v1zm0-3h6v-1H9v1zm0-3h6V8H9v1z"/>
+                </svg>
+              </QuickActionIcon>
+              <QuickActionText>{t('admin:managerDashboard.restaurantInvoices')}</QuickActionText>
+            </QuickActionCard>
+          )}
           <QuickActionCard onClick={() => navigate('/pos/manager/sales')}>
             <QuickActionIcon>
               <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -330,14 +335,16 @@ const ManagerDashboard: React.FC = () => {
             </QuickActionIcon>
             <QuickActionText>{t('admin:managerDashboard.restaurantAdmins')}</QuickActionText>
           </QuickActionCard>
-          <QuickActionCard onClick={() => navigate('/pos/manager/subscriptions')}>
-            <QuickActionIcon>
-              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
-              </svg>
-            </QuickActionIcon>
-            <QuickActionText>{t('admin:managerDashboard.manageSubscriptions')}</QuickActionText>
-          </QuickActionCard>
+          {!playApp && (
+            <QuickActionCard onClick={() => navigate('/pos/manager/subscriptions')}>
+              <QuickActionIcon>
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/>
+                </svg>
+              </QuickActionIcon>
+              <QuickActionText>{t('admin:managerDashboard.manageSubscriptions')}</QuickActionText>
+            </QuickActionCard>
+          )}
         </QuickActions>
 
         <SectionTitle>{t('admin:managerDashboard.yourRestaurants')}</SectionTitle>

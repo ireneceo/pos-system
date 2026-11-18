@@ -12,6 +12,7 @@ import { DataTable, DataTableHead, DataTableHeaderCell, DataTableRow, DataTableC
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatDate } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
+import { usePlayApp } from '../../utils/playApp';
 import { Walkthrough, TourTrigger, type TourStep } from '../../components/Walkthrough';
 
 interface SubscriptionInfo {
@@ -282,6 +283,10 @@ const supplierTourSteps = (t: (k: string, fallback?: string) => string): TourSte
 const SupplierDashboard: React.FC = () => {
   const { t } = useTranslation('supplier');
   const navigate = useNavigate();
+  // 안드로이드 앱(Play) 안: 구독 배지는 글자만(구독 탭으로 안 감) (2026-11-18 · utils/playApp)
+  const playApp = usePlayApp();
+  const goSubscription = playApp ? undefined : () => navigate('/pos/profile?tab=subscription');
+  const badgeStyle: React.CSSProperties | undefined = playApp ? { cursor: 'default' } : undefined;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DashboardData | null>(null);
@@ -347,7 +352,7 @@ const SupplierDashboard: React.FC = () => {
         {data?.subscription?.status && (
           <Subtitle>
             {data.subscription.plan_name && <span>{data.subscription.plan_name}</span>}
-            <SubscriptionBadge variant={subscriptionVariant()} onClick={() => navigate('/pos/profile?tab=subscription')} style={{ cursor: 'pointer' }}>
+            <SubscriptionBadge variant={subscriptionVariant()} onClick={goSubscription} style={badgeStyle || { cursor: 'pointer' }}>
               {data.subscription.status === 'trial' && data.subscription.days_until_trial_end !== null
                 ? `${t('dashboard.trial')} - ${t('dashboard.daysLeft', { n: Math.max(0, data.subscription.days_until_trial_end) })}`
                 : data.subscription.status}

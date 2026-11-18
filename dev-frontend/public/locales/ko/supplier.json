@@ -76,6 +76,7 @@
     "addCategory": "카테고리 추가",
     "addOptionGroup": "옵션 그룹 추가",
     "planLimitReached": "현재 플랜의 상품 등록 한도에 도달했습니다. 업그레이드해 주세요.",
+    "planLimitReachedApp": "현재 플랜의 상품 등록 한도에 도달했습니다.",
     "noProducts": "등록된 상품이 없습니다. \"상품 추가\"를 눌러 카탈로그를 만들어 보세요.",
     "deleteConfirm": "이 상품을 삭제하시겠습니까?",
     "copySuffix": " (복사본)",
