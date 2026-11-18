@@ -121,6 +121,19 @@
 - 데모 오너 매장에 외부 업체 정산서 [확인용] 만들기(대조 버튼을 개발서버에서 볼 예)
 - 발주·인보이스 후속(0d4372af · Fable 남은 위험): 매장 인보이스 화면 자체 영어(View·Pay·Paid·Overdue·Invoice Details) · 인쇄용 청구서 «(rate%)» 2곳(FoodcourtInvoicesPage:815 · OwnerInvoicesPage:919) · 개발 옛 발주 26건이 없는 청구서를 가리킴(매장 5 원인 미조사) · ?invoice=<없는 id> 화면 · 재고 기록 «Order #null - undefined x2» 메모 · 화면 19곳 user?.restaurant_id 만 읽음
 
+### ✅ 완료 (2026-11-18) — PurpleHere 운영 배포 나감 (Irene 버튼 · 작업방은 확인만) [Claude Code · 백그라운드 작업방 7bc1395d]
+- 확인(읽기): 상황판 실행 depmwm3dn7e · 12:22→12:44 UTC · result ok · 종료 0 · 배포 커밋 a0179499c(범위 f944b9adb..9ad962f4d 8커밋 · SW 6.22 · 마이그 1 migrate-po-return-deduction) · 스모크 10/10 · 운영 표식 11-17 02:18 → 11-18 12:28 · 운영 sw.js 6.22-play-billing-hide-20261118 · 백업 backups/20261118_122256.
+- 배포 뒤 기록(releases archive 이동 · deploy-manifest) 커밋함.
+- 이어서 할 수 있게 된 것: Play 정식 공개 심사 요청(요금제 숨김이 운영에 나감 — 99ac247e 기록대로).
+
+### 답 기다림 (이전) (Irene «했어요» → 위 ✅): PurpleHere 카드 «배포» 버튼을 눌러 주실래요? [Claude Code · 백그라운드 작업방 7bc1395d · 2026-11-18]
+- 무엇: 질문 «운영 배포 밀림 — «배포» 버튼으로 내보낼까요?» 에 Irene «권고대로»(= 배포 버튼). 버튼은 주인(인증코드)만 → 작업방은 못 누름(DEPLOY_STRUCTURE §5·§9 · AI 는 막기만).
+- 확인(읽기): 마지막 운영 배포 11-17 02:12 UTC 버튼 ok(f944b9adb) · 그 뒤 커밋 8(929ee0c6d ~ 9ad962f4d) · 막음 표식(deployHold) PurpleHere 없음 · Fable 대기 0 · deploy-to-production.sh 그대로(4e2713d22 · 지난 성공과 같은 스크립트) · wip 커밋 0 · 같은 폴더 일하는 다른 방 0 · 새 마이그 1개 migrate-po-return-deduction.js(deploy 등록 · 반품 칸 4개 · Fable PASS 97f005eeb413).
+- 막힌 까닭: 정기 점검은 배포를 빼 둔 상태(§9) — 고장이 아니라 버튼 차례.
+- 답이 오면: deployRunLog purplehere 결과·운영 표식 바뀜 읽기로 확인 → 실패면 원인 보고만(운영 명령 실행 안 함).
+
+### (이전) 답 기다림: PurpleHere 운영 배포가 밀림 — «배포» 버튼으로 내보낼까요? → Irene «권고대로» → 위 버튼 할 일로 [2026-11-18]
+
 ### ✅ 완료 (2026-11-17) — PurpleHere 운영 배포 나감 (Irene 버튼 · 작업방은 확인만) [Claude Code · 백그라운드 작업방 5c23828a]
 - 확인(읽기): 상황판 실행 depmwk253vj · 02:12→02:34 UTC · result ok · 종료 0 · 배포 커밋 f944b9adb(범위 05cc4812a..3acc4ea98 9커밋 · 화면 버전 6.21 · 새 마이그 0) · 스모크 10/10 · 운영 표식 11-15 06:54 → 11-17 02:18 · 막음 표식 0 · 일시정지 풀림.
 - 배포 뒤 기록(releases archive · deploy-manifest)은 다른 방 커밋 929ee0c6d 에 이미 묶여 들어감. 929ee0c6d(판매자 주문 오너 승인 대기)는 이번 배포 뒤 커밋 — 다음 배포 때.
