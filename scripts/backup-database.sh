@@ -37,20 +37,25 @@ mysqldump -u $DB_USER -p$DB_PASS \
   --routines \
   --triggers \
   --no-tablespaces \
-  $DB_NAME | gzip > $BACKUP_FILE
+  $DB_NAME | gzip > "$BACKUP_FILE.part"
+PS=("${PIPESTATUS[@]}"); DUMP_RC=${PS[0]}; GZIP_RC=${PS[1]}
 
-# 백업 성공 여부 확인
-if [ $? -eq 0 ] && [ -s $BACKUP_FILE ]; then
+# 백업 성공 여부 확인 — 임시 파일(.part)이 덤프·압축 성공 · 크기 0 아님 · gzip -t 통과일 때만
+# 오늘 파일로 바꿔 넣는다(2026-11-18 · 상황판 «지금 백업» 으로 하루 두 번 돌 수 있어, 도중 실패가 오늘의 좋은 사본을 깨지 않게)
+if [ $DUMP_RC -eq 0 ] && [ $GZIP_RC -eq 0 ] && [ -s "$BACKUP_FILE.part" ] && gzip -t "$BACKUP_FILE.part" 2>/dev/null; then
+    mv -f "$BACKUP_FILE.part" "$BACKUP_FILE"
     BACKUP_SIZE=$(du -h $BACKUP_FILE | cut -f1)
     echo "$(date '+%Y-%m-%d %H:%M:%S') - ✓ Backup successful: $BACKUP_FILE ($BACKUP_SIZE)" >> $LOG_FILE
 else
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - ✗ Backup failed!" >> $LOG_FILE
+    rm -f "$BACKUP_FILE.part"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - ✗ Backup failed! (dump=$DUMP_RC gzip=$GZIP_RC — 이전 사본은 그대로)" >> $LOG_FILE
     exit 1
 fi
 
 # 14일 이상 된 백업 삭제
 find $BACKUP_DIR/daily/ -name "dev_db_*.sql.gz" -mtime +14 -delete
 find $BACKUP_DIR/daily/ -name "dev_uploads_*.tar.gz" -mtime +14 -delete
+find $BACKUP_DIR/daily/ -name "*.part" -mmin +120 -delete
 # 크로스 백업도 14일 이상 삭제
 find /home/irene/backups/cross-backup/production-pos/ -name "db_*.sql.gz" -mtime +14 -delete 2>/dev/null
 find /home/irene/backups/cross-backup/production-pos/ -name "uploads_*.tar.gz" -mtime +14 -delete 2>/dev/null
@@ -59,11 +64,13 @@ echo "$(date '+%Y-%m-%d %H:%M:%S') - Cleaned up backups older than 14 days" >> $
 # Uploads 백업 (이미지/계약서/첨부파일)
 UPLOADS_BACKUP="$BACKUP_DIR/daily/dev_uploads_${DATE}.tar.gz"
 if [ -d /var/www/uploads ]; then
-    tar czf $UPLOADS_BACKUP -C /var/www uploads/ 2>/dev/null
-    if [ $? -eq 0 ] && [ -s $UPLOADS_BACKUP ]; then
+    tar czf "$UPLOADS_BACKUP.part" -C /var/www uploads/ 2>/dev/null
+    if [ $? -eq 0 ] && [ -s "$UPLOADS_BACKUP.part" ] && gzip -t "$UPLOADS_BACKUP.part" 2>/dev/null; then
+        mv -f "$UPLOADS_BACKUP.part" "$UPLOADS_BACKUP"
         UPLOADS_SIZE=$(du -h $UPLOADS_BACKUP | cut -f1)
         echo "$(date '+%Y-%m-%d %H:%M:%S') - ✓ Uploads backup: $UPLOADS_BACKUP ($UPLOADS_SIZE)" >> $LOG_FILE
     else
+        rm -f "$UPLOADS_BACKUP.part"
         echo "$(date '+%Y-%m-%d %H:%M:%S') - ✗ Uploads backup failed!" >> $LOG_FILE
     fi
 fi
