@@ -58,4 +58,38 @@ describe('brandPerformanceMath', () => {
     expect(s.overallAvgOrder).toBe(25);
     expect(s.maxOrderValue).toBe(40);
   });
+  test('주문 금액 = 주문 관리 Total Sales: 완료 전 포함 · 취소/삭제 제외 · 날짜는 order_date', () => {
+    const [m] = computeRestaurantMetrics([rest(1)], [
+      o(1, '2026-11-01T02:00:00Z', 10, { status: 'completed' }),
+      o(1, '2026-11-01T03:00:00Z', 20, { status: 'pending' }),
+      o(1, '2026-11-01T03:10:00Z', 5, { status: 'outstanding' }),
+      o(1, '2026-11-01T03:30:00Z', 99, { status: 'cancelled' }),
+      o(1, '2026-11-01T04:00:00Z', 50, { status: 'preparing', is_deleted: true }),
+      // 오프라인 동기화: 어제(KL) 받은 주문이 오늘 올라옴 → order_date 기준 어제라 빠짐
+      o(1, '2026-11-01T05:00:00Z', 70, { status: 'pending', order_date: '2026-10-31T10:00:00Z' }),
+      // 반대로 어제 생성됐지만 order_date 가 오늘
+      o(1, '2026-10-31T15:00:00Z', 3, { status: 'ready', order_date: '2026-10-31T16:30:00Z' })
+    ], range);
+    expect(m.sales).toBe(10);
+    expect(m.orderValue).toBe(38);
+    expect(m.orderValueCount).toBe(4);
+    const s = summarize([m, ...computeRestaurantMetrics([rest(2)], [o(2, '2026-11-01T02:00:00Z', 2, { status: 'served' })], range)]);
+    expect(s.totalOrderValue).toBe(40);
+    expect(s.totalOrderValueCount).toBe(5);
+  });
+  test('Max Fulfillment = 매출 주문 중 가장 오래 걸린 분 · 없으면 0', () => {
+    const rows = computeRestaurantMetrics([rest(1), rest(2), rest(3)], [
+      o(1, '2026-11-01T02:00:00Z', 10, { served_at: '2026-11-01T02:10:00Z' }),
+      o(1, '2026-11-01T03:00:00Z', 10, { served_at: '2026-11-01T03:47:20Z' }),
+      o(1, '2026-11-01T04:00:00Z', 10, { status: 'cancelled', served_at: '2026-11-01T09:00:00Z' }),
+      o(2, '2026-11-01T02:00:00Z', 10, { status: 'served', served_at: '2026-11-01T03:05:00Z' }),
+      o(3, '2026-11-01T02:00:00Z', 10)
+    ], range);
+    expect(rows[0].maxServiceTime).toBe(47);
+    expect(rows[0].avgServiceTime).toBe(Math.round((10 + 47 + 20 / 60) / 2));
+    expect(rows[1].maxServiceTime).toBe(65);
+    expect(rows[2].maxServiceTime).toBe(0);
+    expect(summarize(rows).overallMaxServiceTime).toBe(65);
+    expect(summarize([]).overallMaxServiceTime).toBe(0);
+  });
 });

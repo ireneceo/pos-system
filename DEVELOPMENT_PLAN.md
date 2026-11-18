@@ -15756,3 +15756,9 @@ const token = localStorage.getItem('auth_token'); // 'token' → 'auth_token'
 - ✅ 화면: 단건·일괄 «Add to Pending POs» · 결과 «Review & Send» · 발주 대기 «From Stock» · 재고 목록 «In Pending POs · n» · 판매자 타임라인 숨김 · 행 Order 버튼 «0.00» 버그 · 4개 언어
 - ✅ 검증: health-check K1~K3 + 고장주입 · consolidate·BG 실호출 · 실브라우저 흐름 · verify-all --full 23/24(deploy-ready 만 — 배포 때) · Fable 설계 .claude/fable-design-20261110-stock-order-to-staging.md · 게이트 .claude/fable-gate-20261110-stock-order-to-staging.md
 - 운영 반영 전: SW 버전 올리기 + 배포 기록(안 올리면 매장 브라우저가 옛 «바로 보내기» 번들을 씀)
+
+## ✅ 완료: 브랜드 실적 «주문 금액» · «최대 처리 시간» (2026-11-18) [Claude Code] 작업방 4e2be5ab
+- ✅ 주문 금액 = 매장 주문 관리 Total Sales 와 같은 계산(취소·삭제 제외 · 완료 전 포함 · order_date 매장 시간대) — 위 통계 + 매장 카드 + CSV
+- ✅ 최대 처리 시간(주문→서빙 최댓값) — 평균 처리 시간 아래 · 위 통계 + CSV
+- ✅ 검증: jest 10/10 + 고장주입 3 · 실데이터 대조 6/6 · 실브라우저 한국어 · verify-all --full 23/24(배포 기록 칸만) · 서버 무변경 · 미배포
+- 수정 파일: `dev-frontend/src/utils/brandPerformanceMath.ts` · `src/utils/__tests__/brandPerformanceMath.test.ts` · `src/pages/BrandGeneral/BrandPerformance.tsx` · `public/locales/{en,ko,zh,ms}/brand.json` · `docs/STATISTICS_GUIDE.md`

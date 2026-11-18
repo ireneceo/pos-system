@@ -8,8 +8,13 @@
  *   - Customers = 매출 주문의 고유 customer_id. 총계는 매장별 합이 아니라 합집합.
  *   - Avg Fulfillment = createdAt→served_at 분의 주문 가중 평균(총계도 Σ분 ÷ Σ건).
  *   - Growth = 이전 기간 매출이 0 이면 null(정의 안 됨 — 화면은 «—»).
+ *   - Order Value(주문 금액, 2026-11-18 Irene) = 매장 «주문 관리»(Live Orders) 상단 Total Sales 와 같은 계산
+ *     (서버 routes/orders-views.js /restaurant/:id/counts statistics.totalSales):
+ *     취소·삭제 아닌 모든 주문의 total_amount 합 · 기간은 order_date(없으면 createdAt)의 매장 시간대 날짜.
+ *     완료 전(pending·preparing·ready·outstanding …) 주문까지 들어간다 — 매출(Revenue)과 다른 값.
+ *   - Max Fulfillment = createdAt→served_at 분의 최댓값(Avg 와 같은 주문들 · 음수는 0).
  */
-import { isRevenueOrder } from './orderRevenue';
+import { isRevenueOrder, isDeletedOrder } from './orderRevenue';
 import { localDateKey, inDateRange, previousPeriod } from './orderLocalTime';
 
 export interface PerfRestaurant {
@@ -31,6 +36,7 @@ export interface PerfOrder {
   createdAt: string;
   customer_id?: number | string | null;
   served_at?: string | null;
+  order_date?: string | null;
 }
 
 export interface RestaurantPerformanceData extends PerfRestaurant {
@@ -43,6 +49,9 @@ export interface RestaurantPerformanceData extends PerfRestaurant {
   maxOrder: number;
   uniqueCustomers: number;
   avgServiceTime: number;
+  maxServiceTime: number;
+  orderValue: number;
+  orderValueCount: number;
   customerIds: string[];
   servedCount: number;
   servedMinutesSum: number;
@@ -56,6 +65,9 @@ export interface PerformanceStats {
   maxOrderValue: number;
   overallAvgOrder: number;
   overallAvgServiceTime: number;
+  overallMaxServiceTime: number;
+  totalOrderValue: number;
+  totalOrderValueCount: number;
   overallGrowth: number | null;
 }
 
@@ -86,6 +98,16 @@ export function computeRestaurantMetrics(
     const mine = byRest.get(Number(r.id)) || [];
     const cur: PerfOrder[] = [];
     const prv: PerfOrder[] = [];
+    // 주문 금액 — 주문 관리 화면과 같은 기준(order_date · 취소/삭제 제외 · 상태 무관)
+    let orderValue = 0;
+    let orderValueCount = 0;
+    for (const o of mine) {
+      if (o.status === 'cancelled' || isDeletedOrder(o as any)) continue;
+      const vk = localDateKey(o.order_date || o.createdAt, r.timeZone);
+      if (!inDateRange(vk, range.start, range.end)) continue;
+      orderValue += amount(o);
+      orderValueCount += 1;
+    }
     for (const o of mine) {
       const k = localDateKey(o.createdAt, r.timeZone);
       if (inDateRange(k, range.start, range.end)) cur.push(o);
@@ -99,12 +121,14 @@ export function computeRestaurantMetrics(
     const customerIds = Array.from(new Set(rev.filter(o => o.customer_id != null && o.customer_id !== '').map(o => String(o.customer_id))));
     let servedCount = 0;
     let servedMinutesSum = 0;
+    let servedMinutesMax = 0;
     for (const o of rev) {
       if (!o.served_at || !o.createdAt) continue;
       const diff = (new Date(o.served_at).getTime() - new Date(o.createdAt).getTime()) / 60000;
       if (!isFinite(diff)) continue;
       servedCount += 1;
       servedMinutesSum += diff > 0 ? diff : 0;
+      if (diff > servedMinutesMax) servedMinutesMax = diff;
     }
     return {
       ...r,
@@ -117,6 +141,9 @@ export function computeRestaurantMetrics(
       maxOrder: r2(maxOrder),
       uniqueCustomers: customerIds.length,
       avgServiceTime: servedCount ? Math.round(servedMinutesSum / servedCount) : 0,
+      maxServiceTime: Math.round(servedMinutesMax),
+      orderValue: r2(orderValue),
+      orderValueCount,
       customerIds,
       servedCount,
       servedMinutesSum
@@ -140,6 +167,9 @@ export function summarize(rows: RestaurantPerformanceData[]): PerformanceStats {
     maxOrderValue: Math.max(0, ...rows.map(r => r.maxOrder)),
     overallAvgOrder: totalOrders ? r2(totalSales / totalOrders) : 0,
     overallAvgServiceTime: servedCount ? Math.round(servedMinutes / servedCount) : 0,
+    overallMaxServiceTime: Math.max(0, ...rows.map(r => r.maxServiceTime)),
+    totalOrderValue: r2(rows.reduce((s, r) => s + r.orderValue, 0)),
+    totalOrderValueCount: rows.reduce((s, r) => s + r.orderValueCount, 0),
     overallGrowth: growthPct(totalSales, previousTotalSales)
   };
 }

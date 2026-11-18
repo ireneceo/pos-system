@@ -627,8 +627,8 @@ const BrandPerformance: React.FC = () => {
 
   const handleExportReport = () => {
     const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const header = ['Restaurant', 'Brand', 'Total Orders', 'Completed/Served', 'Sales', 'Growth %', 'Avg Order', 'Max Order', 'Unique Customers', 'Avg Service (min)'];
-    const rows = sortedRestaurants.map(r => [r.branch_name ? `${r.name} (${r.branch_name})` : r.name, r.brandName, r.totalOrders, r.completedOrders, r.sales, r.growth ?? '', r.avgOrder, r.maxOrder, r.uniqueCustomers, r.avgServiceTime].map(esc).join(','));
+    const header = ['Restaurant', 'Brand', 'Total Orders', 'Completed/Served', 'Sales', 'Order Value', 'Growth %', 'Avg Order', 'Max Order', 'Unique Customers', 'Avg Service (min)', 'Max Service (min)'];
+    const rows = sortedRestaurants.map(r => [r.branch_name ? `${r.name} (${r.branch_name})` : r.name, r.brandName, r.totalOrders, r.completedOrders, r.sales, r.orderValue, r.growth ?? '', r.avgOrder, r.maxOrder, r.uniqueCustomers, r.avgServiceTime, r.maxServiceTime].map(esc).join(','));
     const csv = [header.map(esc).join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -791,6 +791,20 @@ const BrandPerformance: React.FC = () => {
             </StatCard>
           </StatsGrid>
 
+          {/* Stats Grid - Row 3 (2026-11-18): 주문 금액(주문 관리 Total Sales 와 같은 계산) · Max Fulfillment(Avg 아래) */}
+          <StatsGrid style={{ marginTop: '-16px' }}>
+            <StatCard color="#6366F1">
+              <StatValue>{formatCurrency(stats.totalOrderValue)}</StatValue>
+              <StatLabel>{t('brand:brandPerformance.orderValue', 'Order Value')}</StatLabel>
+              <StatDescription>{t('brand:brandPerformance.orderValueDesc', 'All orders incl. not completed · excl. cancelled')} ({stats.totalOrderValueCount.toLocaleString()})</StatDescription>
+            </StatCard>
+            <StatCard color="#0891B2">
+              <StatValue>{stats.overallMaxServiceTime > 0 ? `${stats.overallMaxServiceTime} min` : 'N/A'}</StatValue>
+              <StatLabel>{t('brand:brandPerformance.maxFulfillmentTime', 'Max Fulfillment Time')}</StatLabel>
+              <StatDescription>{t('brand:brandPerformance.longestOrderToServed', 'Longest order to served')}</StatDescription>
+            </StatCard>
+          </StatsGrid>
+
           {loading && sortedRestaurants.length === 0 ? (
             <EmptyState>
               <p>{t('brand:brandPerformance.loadingPerformanceData')}</p>
@@ -821,6 +835,10 @@ const BrandPerformance: React.FC = () => {
                       </MetricValue>
                     </MetricRow>
                     <MetricRow>
+                      <MetricLabel>{t('brand:brandPerformance.orderValue', 'Order Value')}</MetricLabel>
+                      <MetricValue>{formatCurrency(restaurant.orderValue, restaurant.currency)}</MetricValue>
+                    </MetricRow>
+                    <MetricRow>
                       <MetricLabel>{t('brand:brandPerformance.orders')}</MetricLabel>
                       <MetricValue>{restaurant.completedOrders.toLocaleString()} completed</MetricValue>
                     </MetricRow>
@@ -844,6 +862,12 @@ const BrandPerformance: React.FC = () => {
                       <MetricLabel>{t('brand:brandPerformance.avgFulfillment')}</MetricLabel>
                       <MetricValue>
                         {restaurant.avgServiceTime > 0 ? `${restaurant.avgServiceTime} min` : 'N/A'}
+                      </MetricValue>
+                    </MetricRow>
+                    <MetricRow>
+                      <MetricLabel>{t('brand:brandPerformance.maxFulfillment', 'Max Fulfillment')}</MetricLabel>
+                      <MetricValue>
+                        {restaurant.maxServiceTime > 0 ? `${restaurant.maxServiceTime} min` : 'N/A'}
                       </MetricValue>
                     </MetricRow>
                   </RestaurantCard>

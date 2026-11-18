@@ -473,3 +473,8 @@ import DateRangeFilter, { PeriodType, calculateDateRange } from '../../component
 - 계산 한 곳: `dev-frontend/src/utils/brandPerformanceMath.ts` `growthPct(cur, prev)` (브랜드 실적 화면).
 - 이전 기간 매출이 0 이하이거나 결과가 **+1000%(`GROWTH_CAP_PCT`) 초과**면 `null` → 화면 «—» · «이전 기간 매출 없음·거의 없음 (새 매출)». 이전 매출이 거의 없을 때의 +3000% 같은 값은 의미가 없어서(Irene 실제 테스트).
 - 시험: `src/utils/brandPerformanceMath.test.ts`.
+
+## 브랜드 실적 «주문 금액» · «최대 처리 시간» (2026-11-18)
+- **주문 금액(Order Value)** = 매장 «주문 관리»(Live Orders) 위 Total Sales 와 **같은 계산** — 서버 `routes/orders-views.js` `/restaurant/:id/counts` `statistics.totalSales`: 취소·삭제 아닌 모든 주문의 `total_amount` 합(완료 전 포함), 기간은 `order_date`(없으면 `createdAt`)의 매장 시간대 날짜. **매출(Revenue = completed·served)과 다른 값**이다.
+- **최대 처리 시간(Max Fulfillment)** = 매출 주문의 createdAt→served_at 분 최댓값(평균과 같은 주문들 · 음수 0).
+- 계산 한 곳: `brandPerformanceMath.ts` `orderValue`·`maxServiceTime` / `summarize` `totalOrderValue`·`overallMaxServiceTime`. 시험: `src/utils/__tests__/brandPerformanceMath.test.ts`.

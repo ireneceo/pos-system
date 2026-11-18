@@ -1,5 +1,17 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-11-18 (작업방 0d4372af · 발주 인보이스 보기·재고 영어) · 이전: 2026-11-18 (작업방 99ac247e · Play 내부 테스트 0.4.2 기록) · 이전: 2026-11-18 (작업방 19fcc2c8 · 앱 안 요금제 결제 경로 숨기기 · /개발완료)
+**마지막 업데이트:** 2026-11-18 (작업방 4e2be5ab · 브랜드 실적 주문 금액·최대 처리 시간) · 이전: 2026-11-18 (작업방 0d4372af · 발주 인보이스 보기·재고 영어) · 이전: 2026-11-18 (작업방 99ac247e · Play 내부 테스트 0.4.2 기록) · 이전: 2026-11-18 (작업방 19fcc2c8 · 앱 안 요금제 결제 경로 숨기기 · /개발완료)
+
+### ✅ 완료 (2026-11-18) — 브랜드 실적(/pos/brand/general/performance)에 «주문 금액» · «최대 처리 시간» 추가 [Claude Code · 백그라운드 작업방 4e2be5ab]
+- Irene 원문: «주문이 들어온 금액도 기준으로 알고 싶어. 완료된 건 실매출인거고 완료를 안누르고 들어온 총 주문, 그거 레스토랑에서 오더관리 페이지가면 나오는 계산 그대로 항목 하나만 넣어줘. 그리고 Avg Fulfillment 아래에 Max Fulfillment도 필요해»
+- 주문 금액 = 매장 주문 관리(Live Orders) 위 Total Sales 와 같은 계산(서버 orders-views /restaurant/:id/counts statistics.totalSales): 취소·삭제 아닌 모든 주문 total_amount 합 · 날짜는 order_date(없으면 createdAt)의 매장 시간대. 서버 무변경 — 화면 utils/brandPerformanceMath.ts 에 orderValue/orderValueCount/maxServiceTime · summarize totalOrderValue/overallMaxServiceTime
+- 화면: 위 통계 3번째 줄 «주문 금액(건수)» · «최대 처리 시간» / 매장 카드 «매출» 아래 «주문 금액», «평균 처리 시간» 아래 «최대 처리 시간» / CSV 2칸 / 번역 5키×4언어
+- 검증: verify-all --full 23/24(배포 기록 칸만 — 배포 때) · jest 10/10(새 2 · 고장주입 3종 모두 잡힘) · 실데이터 대조 매장 38·39 × 기간 3 = 6/6 금액·건수 주문 관리와 일치 · 실브라우저 한국어 시험 브랜드 계정: 주문 금액 RM 4,233.45 = 38 RM 3,701.07 + 39 RM 532.38 · 최대 38 min(평균 25) · 콘솔 오류 0 · 폰 폭 넘침 0 · print-guard 8/8 · design-guard 신규 0 · i18n 통과
+- 확인용 주문(데모 매장 38): 50278 «[확인용] 처리시간 12분» RM 18.50 · 50279 «[확인용] 처리시간 38분» RM 42 (인쇄 안 함 표시 · 생성 시각만 개발 DB 에서 당김)
+- 운영 읽기(쓰기 없음, 최근 60일): order_date↔createdAt 5분 넘게 다른 주문 75/3435 · 20시간 넘는 것 0 → 하루 넓혀 받는 지금 범위로 빠짐 없음
+- Fable 안 씀 — 정의를 Irene 이 «주문 관리 계산 그대로» 로 정했고 기존 계산과 숫자 대조로 갈리는 일
+- 문서: docs/STATISTICS_GUIDE.md «주문 금액·최대 처리 시간» 절 · /개발완료 커밋 이어서 함
+- 다음 확정 작업: 없음 — 지시 대기 · 후속 후보(확정 X): 오너 실적(OwnerPerformance)에도 같은 두 칸이 필요한지
+- 운영 반영: 다음 배포 때
 
 ### ✅ 완료 (2026-11-18) — 실제 테스트 2건: 발주 인보이스 [보기] 튕김 · 재고 기록/분류 영어 [Claude Code · 백그라운드 작업방 0d4372af]
 - ① 원인 두 개: (가) 발주 상세 [보기] 가 user.restaurant_id(빈 값 — 로그인 정보는 restaurantId)만 봐서 /pos/owner/invoices → 대시보드로 튕김 → PurchaseOrderDetailPage invoiceListPath 가 restaurantId 도 봄 (나) 청구서 48920 자체가 없었음 — 데모 자정 초기화(seed-demo-data resetDemoOrders)가 발주가 가리키는 거래 청구서까지 지움(개발: 매장 38 발주 23건·매장 5 5건이 없는 청구서를 가리킴) → 초기화가 발주 연결 청구서·그 정산서는 남김(읽기 재현: 고치기 전 조건이면 새 49820 도 지울 대상 · 고친 뒤 발주 연결 TRD 0건 삭제)
