@@ -32,7 +32,9 @@
 | `purple-build` | **2850MB** (상자 3705) | 실측 정점 2475MB(10-23 타입 검사기 뺀 뒤 빌드 29번 최댓값) + 15% | `dev-frontend/deploy-dev.sh` **스크립트 전체**(맨 위에서 자기를 자리표로 다시 띄움 · `BUILD_MB`) — 지우기·빌드·복사가 한 자리 안이라 다음 빌드가 앞 빌드의 build/ 를 못 지운다(11-03 10:05 사고) · `build:dev`·운영 배포(`deploy-to-production.sh` 가 `build:dev` 를 부름) 둘 다 |
 | `purple-chrome` | 1000MB | 공용 어림값 — 실측 뒤 고침 | `verify-all.js` 의 `mount`·`print-routes` 게이트 (`slot:`) |
 | `purple-emulator` | 4500MB (상자 5494 로 잘림) | qemu 약 4.5GB RSS(07-14 실측) | `mobile-app/scripts/verify/run-v3.js`·`run-v4.js` — 에뮬레이터만 상자에, 차례가 온 뒤부터 부팅 5분을 잰다 |
-| `purple-typecheck` | 4000MB | tsc 힙 상한 3584MB 기준 어림 — 실측 뒤 고침 | `check-type-baseline.js` (빌드 밖 tsc) |
+| `purple-typecheck` | **3800MB** | 11-19 실측 캐시 없음 정점 3310MB(2분48초)+15% · 캐시 있음 730MB(8초) | `check-type-baseline.js` (빌드 밖 tsc · 힙 3584MB · 증분 캐시 `/tmp/purple-type-baseline`) — 작업방은 `cd dev-frontend && npm run typecheck [-- 파일이름…]` |
+
+- ⚠ **맨 `tsc` 금지 (2026-11-19)** — 작업방이 `npx tsc --noEmit -p . | grep 내파일` 을 자리표 없이 쳐 기본 힙(2GB)에서 죽음(SIGABRT) · 11-17~18 다섯 번 · 매번 2.3GB 기록 파일 → 디스크 11GB. 공용 `mem-slot-guard` 는 `tsc -b` 만 본다. 그래서 이 솔루션 실행 전 검사(`.claude/hooks/safety-guard.sh` → `tsc-guard.py`)가 자리표 없는 tsc 를 막고 `npm run typecheck` 를 알려 준다. 전체 출력은 `/tmp/purple-type-baseline/last-output.txt`.
 
 - 몫 숫자는 한 곳: 빌드 = `deploy-dev.sh` 의 `BUILD_MB`, 나머지 = `dev-backend/scripts/lib/memSlot.js` 의 `SHARES`. 실측 정점+15% 로 고친다(빌드는 끝에 «빌드 상자 메모리 피크» 줄이 찍힌다).
 - ⚠ **두 겹 금지** — 자리표 안에서 또 자리표를 부르면 자기 자리를 기다리며 멈춘다. 그래서 `package.json` 의 `build` 는 감싸지 않고 `deploy-dev.sh` 에서 한 번만 감싼다. `deploy-dev.sh` 도 이미 자리표 상자 안이면 다시 감싸지 않는다(11-03 10:05 — 작업방이 바깥에서 `mem-slot run … -- npm run build:dev` 로 감싸 두 겹이 되어 멈추고 뒤의 PlanQ 빌드까지 막힌 일). `memSlot.wrap` 은 이미 자리표 상자 안(`/proc/self/cgroup` 에 `memslot-`)이거나 `PURPLE_MEM_SLOT` 이 있으면 감싸지 않는다.

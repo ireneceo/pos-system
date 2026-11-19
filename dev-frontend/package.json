@@ -60,6 +60,7 @@
   "scripts": {
     "i18n:verify": "node scripts/verify-translations.js",
     "check:hydration": "node scripts/state-hydration-check.js",
+    "typecheck": "node ../dev-backend/scripts/check-type-baseline.js",
     "start": "react-scripts start",
     "build": "GENERATE_SOURCEMAP=false NODE_OPTIONS='--max-old-space-size=2560' node scripts/react-build.js",
     "build:dev": "./deploy-dev.sh # 빌드 줄은 deploy-dev.sh 안에서 mem-slot run purple-build 로 감쌈(한 겹만)",

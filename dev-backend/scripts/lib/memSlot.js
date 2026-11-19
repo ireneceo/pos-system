@@ -20,7 +20,7 @@ const SLOT = '/home/irene/dev-server/bin/mem-slot';
 const SHARES = {
   'purple-chrome': 1000,     // 헤드리스 크롬 한 벌(mount sweep · 인쇄 라우트) — 공용 어림값, 실측 뒤 고침
   'purple-emulator': 4500,   // 안드로이드 에뮬레이터 시험(run-v3/v4) — qemu 약 4.5GB RSS(07-14 실측) · 상자는 나눠 쓸 메모리 한도로 잘림
-  'purple-typecheck': 4000,  // 빌드 밖 tsc(힙 상한 3584MB) — 힙 상한 기준 어림, 실측 뒤 고침
+  'purple-typecheck': 3800,  // 빌드 밖 tsc(힙 상한 3584MB) — 2026-11-19 실측 캐시 없음 정점 3310MB(2분48초)+15% · 캐시 있음 730MB
 };
 
 function available() {

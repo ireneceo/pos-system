@@ -1,5 +1,23 @@
 ## 현재 작업 상태
-**마지막 업데이트:** 2026-11-19 (작업방 85f880c7 · 폰·태블릿 헤더·표 기능 알아보기 · /개발완료) · 이전: 2026-11-18 (작업방 4e2be5ab · 브랜드 실적 주문 금액·최대 처리 시간) · 이전: 2026-11-18 (작업방 0d4372af · 발주 인보이스 보기·재고 영어) · 이전: 2026-11-18 (작업방 99ac247e · Play 내부 테스트 0.4.2 기록) · 이전: 2026-11-18 (작업방 19fcc2c8 · 앱 안 요금제 결제 경로 숨기기 · /개발완료)
+**마지막 업데이트:** 2026-11-19 (작업방 1862b6b2 · 타입 검사 메모리 부족 막기·dev-backend 512MB · /개발완료) · 이전: 2026-11-19 (작업방 85f880c7 · 폰·태블릿 헤더·표 기능 알아보기 · /개발완료) · 이전: 2026-11-18 (작업방 4e2be5ab · 브랜드 실적 주문 금액·최대 처리 시간) · 이전: 2026-11-18 (작업방 0d4372af · 발주 인보이스 보기·재고 영어) · 이전: 2026-11-18 (작업방 99ac247e · Play 내부 테스트 0.4.2 기록) · 이전: 2026-11-18 (작업방 19fcc2c8 · 앱 안 요금제 결제 경로 숨기기 · /개발완료)
+
+### 답 기다림 (이전) — dev-backend 메모리 상한 250MB → 512MB 바꾸기 → Irene 2차 명령 실행 ✔ [작업방 1862b6b2]
+- 확인(11-19): 한도 536870912(512MB) · 저장본(dump)도 512MB · 작업방 표식 0 · pm2 id 1 → 7 · fork · Pool max 20(server) · /api/health 200 · dev 사이트 200 · health-check 497/497
+- 1차(11-19 Irene 실행): `pm2 restart … --max-memory-restart 512M` → 백엔드 200 이지만 한도 그대로 250MB(restart 는 이 값을 못 바꿈) · pm2 env 에 작업방 표식(CLAUDECODE 등) 박혀 있음
+- 무엇(2차): 이 방에서 `! env -i HOME=$HOME PATH=$PATH LANG=C.UTF-8 PM2_HOME=$HOME/.pm2 bash -c 'cd /var/www/dev-backend && pm2 delete dev-backend && pm2 start server.js --name dev-backend --max-memory-restart 512M && pm2 save'`
+- 왜: 250MB 는 설정 파일(512M·1G) 어디에도 없는 섞여 들어온 값 · 메모리가 새는 게 아니라 검사·sweep 때 265~300MB 로 올라 재시작
+- 답이 오면: pm2 jlist 로 max_memory_restart=536870912 · 상태 online · /api 200 확인 → ✅
+
+### ✅ 완료 (2026-11-19) — 프론트 타입 검사 메모리 부족(SIGABRT) 막기 + dev-backend 250MB 재시작 원인 [Claude Code · 백그라운드 작업방 1862b6b2]
+- 원인: 11-17 09:12 · 12:01 · 12:03 · 11-18 02:44 · 04:41 다섯 번 = 작업방들이 `npx tsc --noEmit -p . | grep 내파일` 을 자리표 없이 침(기본 힙 2096MB) → 죽으며 2.3GB 기록 파일. 같은 시각 자리표 상자 기록 없음 · 지난 대화 기록에 그 명령 다수. 공용 mem-slot-guard 는 `tsc -b` 만 막음
+- 고침: ① `dev-frontend` `npm run typecheck [-- 파일이름…]` = check-type-baseline.js(자리표·힙 3584·증분 캐시·기준선 대조) + 이름 준 파일 오류 줄 출력 + 전체 출력 `/tmp/purple-type-baseline/last-output.txt` ② `.claude/hooks/tsc-guard.py`(safety-guard.sh 에서 부름) — 자리표 없는 tsc 를 막고 위 명령 안내 ③ memSlot purple-typecheck 4000 → 3800(실측) ④ docs/SERVER_MEMORY_PROTECTION.md
+- 실측: 캐시 없음 정점 3310MB · 2분48초 · 379건 / 캐시 있음 730MB · 8초 / `npm run typecheck -- BrandProductsTab.tsx` 11초·46줄 · 자리표 상자 안에서 돈 것 확인
+- 검사 시험: 막을 것 10종(npx·npx --no-install·-y·yarn·npm exec·./node_modules/.bin·환경변수 앞·timeout 앞) 막힘 · 통과할 것 9종(mem-slot run·check-type-baseline·npm run typecheck·-v·grep·ps|grep·pkill "tsc "·heredoc 안) 통과 · 이 방에서 실제로 맨 tsc 쳐서 막힘 확인. 알려진 오탐: `echo npx tsc` (드묾)
+- dev-backend 250MB: 새는 것 아님 — health-check 497건 3번 RSS 153→221→216→215MB · 힙 80~98MB. 재시작(11-17 02:15·12:13 · 11-18 04:48)은 빌드 뒤 sweep 몰릴 때. 상한 250MB 가 ecosystem(512M·1G)에 없는 섞인 값 → 512M 로(위 답 기다림)
+- 덤: health-check 를 연달아 4번 돌려 4번째에 po 13건 429(요청 제한 1000/15분) — 기능 문제 아님
+- 서버 쪽에 넘길 것(내 폴더 밖이라 안 고침): 공용 mem-slot-guard 가 `tsc --noEmit` 도 보면 PlanQ·Lingo 도 같이 막힘
+- Fable 안 씀 — 내부 도구·검사 스크립트 작은 수정, 기계로 갈리는 확인
+- 운영 반영: 없음(개발 도구만)
 
 ### 답 기다림 (이전) — 헤더 고침을 «인쇄에 문제없는 변경» 으로 등록할까요 → 2026-11-19 Irene «권고대로 진행해 줘» → `check-print-guard --bless` 실행(04:10 UTC) · print-guard 8/8 · health-check print 14/14 [작업방 85f880c7]
 
@@ -125,7 +143,10 @@
 ### 진행 중인 작업
 - 없음
 
-### 완료된 작업 (이번 세션 · 0d4372af)
+### 완료된 작업 (이번 세션 · 1862b6b2)
+- [Claude Code] 타입 검사 메모리 부족 막기(`npm run typecheck` · 맨 tsc 차단) + dev-backend 메모리 한도 250→512MB(Irene 명령) (위 ✅ 절) + /개발완료
+
+### 완료된 작업 (앞 세션 · 0d4372af)
 - [Claude Code] 실제 테스트 2건 — 발주 인보이스 [보기] 튕김·데모 초기화 발주 청구서 삭제 · 재고 기록/분류 영어 (위 ✅ 절 · Fable 게이트 PASS d5bc9e9ccb26) + /개발완료
 
 ### 완료된 작업 (앞 세션 · 19fcc2c8)
@@ -151,6 +172,7 @@
 
 ### 후속 후보 (아이디어 메모, 확정 X)
 > 다음 사이클 결정은 Irene 지시 기준. /개발시작 에서 자동 추천 대상 아님.
+- 서버 방 몫: 공용 mem-slot-guard 가 `tsc --noEmit` 도 보면 PlanQ·Lingo 도 같이 막힘(1862b6b2 는 PurpleHere 안에서만 막음)
 - 앱 결제 숨김 후속: Play 정식 공개 직전 결제 정책 원문 재대조(운영 배포 뒤) · 오너 청구서 상세 은행 안내 실화면(데모 오너 청구서 생기면) · 실기기 태블릿에서 메뉴·직접 주소 한 번
 - 반품 후속(Fable · 막지 않음): 0원 줄 섞인 주문 전체 반품이 «이미 결제됨» 400 으로 거부(closeIfFullyReturned 를 줄 루프 뒤 한 번으로) · 반품 목록 청구서 번호·구매자 «판매자가 반품 처리함» 배너 · 대조 재저장 시 반품 줄 이름 · brand-revenue·foodCostReport 반품 미차감(Fable calc)
 - seller hold Fable 후속 3건(health N5 단언 보강 · 설계 문서 «미구현» 표기 · goneFromSeller 변수명)

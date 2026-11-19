@@ -54,6 +54,11 @@ if [ "$TOOL_NAME" = "Bash" ]; then
     deny "BLOCKED: 'npm run build' 직접 실행 금지. 'npm run build:dev'를 사용하세요."
   fi
 
+  # 프론트 타입 검사(tsc)를 메모리 자리표 없이 직접 실행 차단 (2026-11-19 — 11-17~18 다섯 번 SIGABRT · 기록 파일 11GB)
+  if ! printf '%s' "$CMD" | python3 -I /var/www/.claude/hooks/tsc-guard.py; then
+    deny "BLOCKED: tsc 를 직접 치지 마세요 — 기본 힙에서 메모리 부족으로 죽고(SIGABRT) 2.3GB 기록 파일을 남깁니다. 대신: cd /var/www/dev-frontend && npm run typecheck  (내 파일 오류만 보려면: npm run typecheck -- 파일이름.tsx) — 메모리 자리표·힙 3584MB·증분 캐시·기준선 대조가 붙은 정식 경로입니다. 전체 출력은 끝줄에 적힌 파일에 남습니다."
+  fi
+
   # node_modules/.cache 삭제 차단
   if echo "$CMD" | grep -qE "rm.*node_modules/.cache"; then
     deny "BLOCKED: node_modules/.cache 삭제 금지. 삭제하면 빌드가 5분+ 걸립니다."

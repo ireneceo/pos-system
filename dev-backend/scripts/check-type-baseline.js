@@ -23,6 +23,12 @@
  *
  * 사용: node scripts/check-type-baseline.js           # 대조
  *       node scripts/check-type-baseline.js --bless   # 지금 상태를 기준선으로 (정식 개선·승인 후에만)
+ *       node scripts/check-type-baseline.js MyPage.tsx Foo   # 대조 + 이름에 그 글자가 든 파일의 오류 줄 전부 출력
+ *       (프론트 폴더에서 `npm run typecheck [-- 파일이름…]` 과 같다)
+ *
+ * ⚠ 작업방이 `npx tsc --noEmit -p .` 를 직접 치지 않는다 — 기본 힙 2GB 에서 죽어(SIGABRT) 매번 2.3GB 기록 파일을
+ *   남겼다(2026-11-17~18 다섯 번 · 디스크 11GB). 그래서 .claude/hooks/tsc-guard.py 가 맨 tsc 를 막고 이 명령을 알려 준다.
+ *   실측(2026-11-19): 캐시 없음 정점 3.3GB · 2분48초 / 캐시 있음 0.73GB · 8초 — 증분 캐시는 아래 tmpDir 에 남는다.
  */
 const { spawnSync } = require('child_process');
 const fs = require('fs');
@@ -33,6 +39,7 @@ const FRONTEND = path.resolve(__dirname, '../../dev-frontend');
 const BASELINE = path.join(__dirname, 'type-baseline.json');
 const GATE = '/var/www/scripts/heavy-task-gate.sh';
 const bless = process.argv.includes('--bless');
+const filters = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 
 function fail(msg) { console.error(`✗ ${msg}`); process.exit(1); }
 
@@ -78,6 +85,16 @@ for (const l of errLines) {
   byFile[f] = (byFile[f] || 0) + 1;
 }
 const total = errLines.length;
+
+// 전체 출력은 매번 남긴다 — 다시 tsc 를 돌리지 않고 grep 할 수 있게.
+const lastOut = path.join(tmpDir, 'last-output.txt');
+try { fs.writeFileSync(lastOut, out); } catch { /* 남기기 실패는 판정과 무관 */ }
+if (filters.length) {
+  const hit = errLines.filter((l) => filters.some((f) => l.slice(0, l.indexOf('(')).includes(f)));
+  console.log(`— «${filters.join(' · ')}» 가 든 파일 오류 ${hit.length}건 —`);
+  for (const l of hit) console.log(`   ${l}`);
+}
+console.log(`(tsc 전체 출력: ${lastOut})`);
 
 if (bless) {
   const sorted = Object.fromEntries(Object.entries(byFile).sort(([a], [b]) => a.localeCompare(b)));
