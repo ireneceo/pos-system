@@ -2307,9 +2307,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     clearHoverTimer();
     hoverTimerRef.current = setTimeout(() => setHoveredCatId(null), 120);
   };
-  // M6 짝: 손가락 기기에서 창 밖(메뉴 칸·창 말고)을 누르면 창을 닫는다
+  // M6 짝: 창 밖(메뉴 칸·창 말고)을 누르면 창을 닫는다 — 손가락·마우스 모두(2026-11-19 · 누르면 창 여는 게 마우스에도 적용됨)
   useEffect(() => {
-    if (!hoveredCatId || typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia('(hover: none)').matches) return undefined;
+    if (!hoveredCatId || typeof window === 'undefined') return undefined;
     const onDown = (ev: TouchEvent | MouseEvent) => {
       const el = ev.target as HTMLElement | null;
       if (el && (el.closest('[data-sec-popover]') || el.closest('nav'))) return;
@@ -2782,9 +2782,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   }
                   // 2026-11-18 (Fable 설계 M6): 손가락 기기(마우스 올리기 없음) · 769 이상 · 하위 메뉴 칸 접힘 —
                   // 이동하지 않고 하위 메뉴 창만 연다(예전엔 첫 화면으로 이동하면서 창이 내용 위에 남아 가렸다).
-                  // 창의 항목을 누르면 이동하고 닫힌다(아래 SecondaryPopover onClick). 마우스 PC 는 그대로.
+                  // 창의 항목을 누르면 이동하고 닫힌다(아래 SecondaryPopover onClick).
+                  // 2026-11-19: 마우스·트랙패드도 같게 — 하위 메뉴 칸이 접혀 있으면(≤1280) 1단은 묶음 이름이라 누르면 창만 연다.
+                  // (예전엔 «마우스 올리기 없음» 기기만 → 마우스 달린 태블릿·작은 노트북·손가락+마우스 겸용 노트북은 바로 첫 화면으로 이동)
                   if (cat.items && cat.items.length > 0 && isSecondaryCollapsed && typeof window !== 'undefined'
-                      && window.innerWidth > 768 && typeof window.matchMedia === 'function' && window.matchMedia('(hover: none)').matches) {
+                      && window.innerWidth > 768) {
                     e.preventDefault();
                     clearHoverTimer();
                     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
