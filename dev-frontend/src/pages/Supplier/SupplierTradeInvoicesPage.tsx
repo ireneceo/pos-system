@@ -231,7 +231,7 @@ const SupplierTradeInvoicesPage: React.FC = () => {
         </FilterBar>
 
         <DataTableContainer>
-          <DataTable>
+          <DataTable data-card-upto="1280">
             <DataTableHead>
               <tr>
                 <DataTableHeaderCell align="left">{t('supplier:tradeInvoicesPage.table.invoiceNumber')}</DataTableHeaderCell>

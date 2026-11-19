@@ -517,7 +517,7 @@ const ManagerAdminManagementPage: React.FC = () => {
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder="Search by name or email..."
+            placeholder={t('common:ui.managers.searchNameEmailPh')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -558,7 +558,7 @@ const ManagerAdminManagementPage: React.FC = () => {
               <tbody>
                 {filteredStaff.map(staff => (
                   <DataTableRow key={staff.id}>
-                    <DataTableCell data-label="Name">
+                    <DataTableCell data-label={t('admin:adminManagementPage.name')}>
                       <StaffInfo>
                         <StaffDetails>
                           <StaffName>{staff.full_name}</StaffName>
@@ -567,19 +567,19 @@ const ManagerAdminManagementPage: React.FC = () => {
                       </StaffInfo>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Restaurant">
+                    <DataTableCell data-label={t('admin:adminManagementPage.restaurant')}>
                       <div style={{ fontSize: '14px', fontWeight: '600', color: '#0A2540' }}>
                         {staff.restaurantName || '-'}
                       </div>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Role" align="center">
+                    <DataTableCell data-label={t('admin:adminManagementPage.role')} align="center">
                       <RoleBadge role={staff.role}>{displayRole(staff.role)}</RoleBadge>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Status" align="center">
+                    <DataTableCell data-label={t('admin:adminManagementPage.status')} align="center">
                       <StatusBadge active={staff.is_active}>
-                        {staff.is_active ? 'Active' : 'Inactive'}
+                        {staff.is_active ? t('common:status.active') : t('common:status.inactive')}
                       </StatusBadge>
                     </DataTableCell>
 
@@ -591,7 +591,7 @@ const ManagerAdminManagementPage: React.FC = () => {
                           variant="danger"
                           onClick={() => setDeactivateConfirm({ isOpen: true, staff })}
                         >
-                          {staff.is_active ? 'Deactivate' : 'Activate'}
+                          {staff.is_active ? t('brand:categoryTabCommon.deactivate') : t('brand:categoryTabCommon.activate')}
                         </ActionButton>
                       </ActionButtons>
                     </DataTableCell>
@@ -623,7 +623,7 @@ const ManagerAdminManagementPage: React.FC = () => {
           <RestaurantSearchContainer>
             <FormInput
               type="text"
-              placeholder="Search restaurant..."
+              placeholder={t('common:ui.managers.searchRestaurantPh')}
               value={restaurantSearch}
               onChange={(e) => { setRestaurantSearch(e.target.value); setShowRestaurantDropdown(true); }}
               onFocus={() => setShowRestaurantDropdown(true)}
@@ -652,7 +652,7 @@ const ManagerAdminManagementPage: React.FC = () => {
             <FormLabel>Username *</FormLabel>
             <FormInput
               type="text"
-              placeholder="Username"
+              placeholder={t('common:label.username')}
               value={createForm.username}
               onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
             />
@@ -661,7 +661,7 @@ const ManagerAdminManagementPage: React.FC = () => {
             <FormLabel>Full Name *</FormLabel>
             <FormInput
               type="text"
-              placeholder="Full name"
+              placeholder={t('admin:adminManagementPage.fullName')}
               value={createForm.full_name}
               onChange={(e) => setCreateForm({ ...createForm, full_name: e.target.value })}
             />
@@ -673,7 +673,7 @@ const ManagerAdminManagementPage: React.FC = () => {
             <FormLabel>Email *</FormLabel>
             <FormInput
               type="email"
-              placeholder="Email"
+              placeholder={t('common:label.email')}
               value={createForm.email}
               onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
             />
@@ -739,7 +739,7 @@ const ManagerAdminManagementPage: React.FC = () => {
                 <ViewLabel>{t('admin:adminManagementPage.status')}</ViewLabel>
                 <ViewValue>
                   <StatusBadge active={viewStaff.is_active}>
-                    {viewStaff.is_active ? 'Active' : 'Inactive'}
+                    {viewStaff.is_active ? t('common:status.active') : t('common:status.inactive')}
                   </StatusBadge>
                 </ViewValue>
               </ViewField>
@@ -818,12 +818,12 @@ const ManagerAdminManagementPage: React.FC = () => {
         isOpen={deactivateConfirm.isOpen}
         onCancel={() => setDeactivateConfirm({ isOpen: false, staff: null })}
         onConfirm={handleToggleActive}
-        title={deactivateConfirm.staff?.is_active ? 'Deactivate Admin' : 'Activate Admin'}
+        title={deactivateConfirm.staff?.is_active ? t('common:ui.managers.deactivateAdmin') : t('common:ui.managers.activateAdmin')}
         message={deactivateConfirm.staff?.is_active
           ? `Are you sure you want to deactivate "${deactivateConfirm.staff?.full_name}"? They will no longer be able to log in.`
           : `Activate "${deactivateConfirm.staff?.full_name}"? They will be able to log in again.`
         }
-        confirmText={deactivateConfirm.staff?.is_active ? 'Deactivate' : 'Activate'}
+        confirmText={deactivateConfirm.staff?.is_active ? t('brand:categoryTabCommon.deactivate') : t('brand:categoryTabCommon.activate')}
         cancelText="Cancel"
         type={deactivateConfirm.staff?.is_active ? 'danger' : 'info'}
       />

@@ -77,5 +77,8 @@
     "graceHint": "예약 시간 이후 이 시간이 지나면 자동으로 노쇼 처리합니다.",
     "blockAfter": "노쇼 N회 이상 차단",
     "blockAfterHint": "이 횟수 이상 노쇼한 고객은 신규 예약이 차단됩니다."
-  }
+  },
+  "ui.col.guest": "예약자",
+  "ui.col.source": "경로",
+  "ui.tomorrow": "내일"
 }

@@ -464,8 +464,8 @@ const ReportsPage: React.FC = () => {
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip formatter={(value: number) => formatCurrency(value, currency)} />
                   <Legend />
-                  <Line type="monotone" dataKey="billed" stroke="#635BFF" strokeWidth={2} name="Billed" dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="collected" stroke="#059669" strokeWidth={2} name="Collected" dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="billed" stroke="#635BFF" strokeWidth={2} name={t('purchaseInvoices:soa.totalBilled')} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="collected" stroke="#059669" strokeWidth={2} name={t('brand:brandRevenue.collected')} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : <NoDataMessage>{t('admin:reportsPage.noTrendData')}</NoDataMessage>}
@@ -601,7 +601,7 @@ const ReportsPage: React.FC = () => {
             <DataTable>
               <DataTableHead>
                 <tr>
-                  <DataTableHeaderCell align="left">Invoice #</DataTableHeaderCell>
+                  <DataTableHeaderCell align="left">{t('common:tableCol.invoiceNo')}</DataTableHeaderCell>
                   <DataTableHeaderCell align="left">{t('admin:reportsPage.restaurant')}</DataTableHeaderCell>
                   <DataTableHeaderCell align="right">{t('admin:reportsPage.amount')}</DataTableHeaderCell>
                   <DataTableHeaderCell align="left">{t('admin:reportsPage.dueDate')}</DataTableHeaderCell>
@@ -611,7 +611,7 @@ const ReportsPage: React.FC = () => {
               <tbody>
                 {overdueInvoices.map(inv => (
                   <DataTableRow key={inv.id}>
-                    <DataTableCell data-label="Invoice #" style={{ fontWeight: 500 }}>{inv.invoiceNumber}</DataTableCell>
+                    <DataTableCell data-label={t('common:tableCol.invoiceNo')} style={{ fontWeight: 500 }}>{inv.invoiceNumber}</DataTableCell>
                     <DataTableCell data-label={t('admin:reportsPage.restaurant')}>{inv.restaurantName}</DataTableCell>
                     <DataTableCell data-label={t('admin:reportsPage.amount')} align="right">{formatCurrency(inv.amount, inv.currency)}</DataTableCell>
                     <DataTableCell data-label={t('admin:reportsPage.dueDate')}>{new Date(inv.dueDate).toLocaleDateString('en-GB', { timeZone: siteTimezone || 'Asia/Kuala_Lumpur' })}</DataTableCell>

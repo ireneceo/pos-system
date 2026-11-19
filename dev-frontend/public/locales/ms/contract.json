@@ -363,5 +363,13 @@
   "newProposal.franchise": "Cadangan Francais Baharu",
   "newProposal.supply": "Cadangan Bekalan Baharu",
   "types.franchise": "Francais",
-  "types.supply": "Bekalan (pesanan sahaja)"
+  "types.supply": "Bekalan (pesanan sahaja)",
+  "ui.contractType.franchise": "Francais",
+  "ui.contractType.license": "Lesen",
+  "ui.contractType.master": "Francais induk",
+  "ui.contractType.direct": "Langsung",
+  "ui.contractType.supply": "Bekalan",
+  "ui.contractType.tenancy": "Penyewaan",
+  "ui.contractType.new": "Baharu",
+  "ui.map.primary": "UTAMA"
 }

@@ -180,5 +180,15 @@
   "orderCancel.cardVoidFailed": "단말기에서 카드 결제를 취소하지 못해 주문을 취소하지 않았습니다.",
   "orderCancel.cardVoidNoBridge": "카드 RM {{amount}} 는 여기서 취소되지 않았습니다. 단말기에서 Void 하세요.",
   "brandMenuUpdatesPage.unlockedReplacedNote": "잠기지 않은 칸을 고쳤어도 브랜드가 다시 보내면 브랜드 값으로 바뀝니다.",
-  "brandMenuUpdatesPage.brandPaused": "브랜드가 매장으로 보내기를 멈춰 두었습니다. 브랜드가 다시 켤 때까지 여기서 적용할 수 없습니다."
+  "brandMenuUpdatesPage.brandPaused": "브랜드가 매장으로 보내기를 멈춰 두었습니다. 브랜드가 다시 켤 때까지 여기서 적용할 수 없습니다.",
+  "ui.liveOrders.guest": "손님",
+  "ui.liveOrders.allOrders": "전체 주문",
+  "ui.liveOrders.startCooking": "조리 시작",
+  "ui.liveOrders.startPreparing": "준비 시작",
+  "ui.liveOrders.markReady": "준비 완료",
+  "ui.liveOrders.completeOrder": "주문 완료",
+  "ui.liveOrders.outForDelivery": "배달 출발",
+  "ui.liveOrders.markDelivered": "배달 완료",
+  "ui.liveOrders.continuePayment": "결제 이어 하기",
+  "ui.liveOrders.verifyingPayment": "결제 확인 중"
 }

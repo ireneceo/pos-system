@@ -19,6 +19,7 @@ import {
 import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime } from '../../utils/timezone';
+import { statusLabel } from '../../utils/statusLabel';
 
 interface Carrier {
   id: number;
@@ -264,7 +265,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
           </div>
           <div>
             {t('admin:carrierWebhooks.helpDesc', 'These are events recorded automatically whenever an external carrier (Lalamove, GrabExpress, etc.) reports the delivery status of a PO (picked up, in transit, delivered, failed, etc.). Failed events can be reprocessed with the Retry button, and you can send a test event with "Send Simulate Event". The webhook URL and secret for each carrier are managed on the ')}
-            <a href="/pos/admin/carriers" style={{ color: '#635BFF', fontWeight: 600 }}>Carriers</a>
+            <a href="/pos/admin/carriers" style={{ color: '#635BFF', fontWeight: 600 }}>{t('admin:ui.carrierWebhooks.carriersLink', 'Carriers')}</a>
             {t('admin:carrierWebhooks.helpDesc2', ' page.')}
           </div>
         </div>
@@ -299,7 +300,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
         </FilterBar>
 
         <DataTableContainer>
-          <DataTable>
+          <DataTable data-card-upto="1280">
             <DataTableHead>
               <DataTableRow>
                 <DataTableHeaderCell>{t('admin:carrierWebhooks.col.received', 'Received')}</DataTableHeaderCell>
@@ -308,7 +309,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
                 <DataTableHeaderCell>{t('admin:carrierWebhooks.col.po', 'PO')}</DataTableHeaderCell>
                 <DataTableHeaderCell>{t('admin:carrierWebhooks.col.status', 'Status')}</DataTableHeaderCell>
                 <DataTableHeaderCell>{t('admin:carrierWebhooks.col.error', 'Error / Note')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">{t('common:actions', 'Actions')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('common:label.actions', 'Actions')}</DataTableHeaderCell>
               </DataTableRow>
             </DataTableHead>
             <tbody>
@@ -321,25 +322,25 @@ const CarrierWebhookEventsPage: React.FC = () => {
                 </td></tr>
               ) : events.map(ev => (
                 <DataTableRow key={ev.id}>
-                  <DataTableCell data-label="Received">
+                  <DataTableCell data-label={t('admin:carrierWebhooks.col.received', 'Received')}>
                     <div style={{ fontSize: 12, color: '#0A2540' }}>{formatDateTime(ev.received_at)}</div>
                   </DataTableCell>
-                  <DataTableCell data-label="Carrier">
+                  <DataTableCell data-label={t('admin:carrierWebhooks.col.carrier', 'Carrier')}>
                     <strong>{ev.carrier?.name || '?'}</strong>
                     {ev.simulated && <SimulatedBadge>SIM</SimulatedBadge>}
                   </DataTableCell>
-                  <DataTableCell data-label="Mapped">
+                  <DataTableCell data-label={t('admin:carrierWebhooks.col.mapped', 'Mapped')}>
                     {ev.mapped_status ? <Code>{ev.mapped_status}</Code> : <span style={{ color: '#6B7280' }}>—</span>}
                   </DataTableCell>
-                  <DataTableCell data-label="PO">
+                  <DataTableCell data-label={t('admin:carrierWebhooks.col.po', 'PO')}>
                     {ev.purchase_order_id ? (
                       <a href={`/pos/admin/purchase-orders/${ev.purchase_order_id}`} style={{ color: '#635BFF', fontWeight: 600, fontSize: 13 }}>#{ev.purchase_order_id}</a>
                     ) : <span style={{ color: '#6B7280' }}>—</span>}
                   </DataTableCell>
-                  <DataTableCell data-label="Status">
-                    <StatusBadge $status={ev.status}>{ev.status}</StatusBadge>
+                  <DataTableCell data-label={t('admin:carrierWebhooks.col.status', 'Status')}>
+                    <StatusBadge $status={ev.status}>{statusLabel(t, ev.status)}</StatusBadge>
                   </DataTableCell>
-                  <DataTableCell data-label="Error">
+                  <DataTableCell data-label={t('admin:carrierWebhooks.col.error', 'Error')}>
                     <div style={{ fontSize: 12, color: ev.error ? '#991B1B' : '#4B5563', maxWidth: 280, wordBreak: 'break-word' }}>
                       {ev.error || (ev.signature_valid ? '' : t('admin:carrierWebhooks.invalidSig', 'invalid signature'))}
                     </div>
@@ -367,7 +368,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
       <Modal
         isOpen={!!selected}
         onClose={() => setSelected(null)}
-        title={`Event #${selected?.id || ''}`}
+        title={t('admin:ui.carrierWebhooks.eventNo', { id: selected?.id || '', defaultValue: `Event #${selected?.id || ''}` }) as string}
         size="large"
         footer={
           <ModalButton variant="secondary" onClick={() => setSelected(null)}>
@@ -378,21 +379,21 @@ const CarrierWebhookEventsPage: React.FC = () => {
         {selected && (
           <div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Carrier:</strong> {selected.carrier?.name}</div>
-              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Carrier event id:</strong> {selected.carrier_event_id || '—'}</div>
-              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Received:</strong> {formatDateTime(selected.received_at)}</div>
-              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Applied:</strong> {selected.applied_at ? formatDateTime(selected.applied_at) : '—'}</div>
-              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Signature:</strong> <span style={{ color: selected.signature_valid ? '#15803D' : '#991B1B', fontWeight: 600 }}>{selected.signature_valid ? 'valid' : 'invalid'}</span></div>
-              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Source IP:</strong> <Code>{selected.source_ip || '—'}</Code></div>
-              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Status:</strong> <StatusBadge $status={selected.status}>{selected.status}</StatusBadge></div>
-              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>Retry count:</strong> {selected.retry_count}</div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>{t('admin:carrierWebhooks.col.carrier', 'Carrier')}:</strong> {selected.carrier?.name}</div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>{t('admin:ui.carrierWebhooks.carrierEventId', 'Carrier event id')}:</strong> {selected.carrier_event_id || '—'}</div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>{t('admin:carrierWebhooks.col.received', 'Received')}:</strong> {formatDateTime(selected.received_at)}</div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>{t('admin:ui.carrierWebhooks.appliedAt', 'Applied')}:</strong> {selected.applied_at ? formatDateTime(selected.applied_at) : '—'}</div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>{t('admin:ui.carrierWebhooks.signature', 'Signature')}:</strong> <span style={{ color: selected.signature_valid ? '#15803D' : '#991B1B', fontWeight: 600 }}>{selected.signature_valid ? t('admin:ui.carrierWebhooks.valid', 'valid') : t('admin:ui.carrierWebhooks.invalid', 'invalid')}</span></div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>{t('admin:ui.carrierWebhooks.sourceIp', 'Source IP')}:</strong> <Code>{selected.source_ip || '—'}</Code></div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>{t('admin:carrierWebhooks.col.status', 'Status')}:</strong> <StatusBadge $status={selected.status}>{statusLabel(t, selected.status)}</StatusBadge></div>
+              <div><strong style={{ fontSize: 12, color: '#4B5563' }}>{t('admin:ui.carrierWebhooks.retryCount', 'Retry count')}:</strong> {selected.retry_count}</div>
             </div>
             {selected.error && (
               <div style={{ padding: 10, background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 8, fontSize: 13, color: '#991B1B', marginBottom: 12 }}>
-                <strong>Error:</strong> {selected.error}
+                <strong>{t('admin:ui.carrierWebhooks.error', 'Error')}:</strong> {selected.error}
               </div>
             )}
-            <div style={{ fontSize: 11, color: '#4B5563', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.4, marginBottom: 6 }}>Payload</div>
+            <div style={{ fontSize: 11, color: '#4B5563', textTransform: 'uppercase', fontWeight: 600, letterSpacing: 0.4, marginBottom: 6 }}>{t('admin:ui.carrierWebhooks.payload', 'Payload')}</div>
             <PreBox>{JSON.stringify(selected.payload, null, 2)}</PreBox>
           </div>
         )}
@@ -410,7 +411,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
               {t('common:cancel', 'Cancel')}
             </ModalButton>
             <ModalButton variant="primary" onClick={onSimulate} disabled={simSubmitting || !simCarrierCode}>
-              {simSubmitting ? t('common:sending', 'Sending…') : t('admin:carrierWebhooks.send', 'Send')}
+              {simSubmitting ? t('admin:ui.carrierWebhooks.sending', 'Sending…') : t('admin:carrierWebhooks.send', 'Send')}
             </ModalButton>
           </>
         }
@@ -418,7 +419,7 @@ const CarrierWebhookEventsPage: React.FC = () => {
         <FormGroup>
           <FormLabel>{t('admin:carrierWebhooks.simulateCarrier', 'Carrier')}</FormLabel>
           <Select value={simCarrierCode} onChange={(e) => setSimCarrierCode(e.target.value)}>
-            <option value="">{t('common:select', 'Select…')}</option>
+            <option value="">{t('common:button.select', 'Select…')}</option>
             {carriers.map(c => <option key={c.id} value={c.code}>{c.name} ({c.code})</option>)}
           </Select>
         </FormGroup>
@@ -436,8 +437,8 @@ const CarrierWebhookEventsPage: React.FC = () => {
               <span style={{ color: '#991B1B', fontWeight: 600 }}>{simResult.error}</span>
             ) : (
               <div style={{ color: '#065F46' }}>
-                <strong>Event {simResult.event_id}</strong> — status: <strong>{simResult.status}</strong>
-                {simResult.mapped_status && <> · mapped: <Code>{simResult.mapped_status}</Code></>}
+                <strong>{t('admin:ui.carrierWebhooks.eventNo', { id: simResult.event_id, defaultValue: `Event #${simResult.event_id}` })}</strong> — {t('admin:carrierWebhooks.col.status', 'Status')}: <strong>{statusLabel(t, simResult.status)}</strong>
+                {simResult.mapped_status && <> · {t('admin:carrierWebhooks.col.mapped', 'Mapped status')}: <Code>{simResult.mapped_status}</Code></>}
                 {simResult.purchase_order_id && <> · PO #{simResult.purchase_order_id}</>}
                 {simResult.error && <div style={{ marginTop: 6, color: '#991B1B', fontWeight: 600 }}>{simResult.error}</div>}
               </div>

@@ -182,6 +182,13 @@ const SidebarNav = styled.nav`
   /* 스크롤 페이드 효과 */
   mask-image: linear-gradient(to bottom, transparent 0%, black 10px, black calc(100% - 10px), transparent 100%);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10px, black calc(100% - 10px), transparent 100%);
+
+  /* 2026-11-18 (Fable 설계 N3·M7): 태블릿 가로(높이 ≤900)에서 메뉴가 아래 묶음에 가려 4개가 안 보이는데
+     줄 경계에서 딱 잘려 «더 있다» 를 알 수 없었다 → 아래 흐림을 크게(내려 보면 다 나옴). */
+  @media (min-width: 769px) and (max-height: 900px) {
+    mask-image: linear-gradient(to bottom, transparent 0%, black 10px, black calc(100% - 36px), transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 10px, black calc(100% - 36px), transparent 100%);
+  }
   
   @media (max-width: 768px) {
     padding-bottom: 30px;
@@ -507,16 +514,19 @@ const SecondaryPopoverNav = styled.nav`
   overflow-y: auto;
 `;
 
+/* 2026-11-18 (Fable 설계 N1·M5): 예전엔 위 24px 에서 사이드바 접기 «‹» 와 나란히 붙어 둘의 차이를 알 수 없었고
+   화면 제목에 붙어 보였다 → 머리 밑줄(약 66px) 위치로 내리고 32px. 태블릿(≤1024)은 이 칸을 고정으로 펼치면
+   본문이 너무 좁아지므로 숨긴다 — 하위 메뉴는 1단을 누르면 뜨는 창으로 연다(손가락 실측 합격). */
 const ExpandSecondaryBtn = styled.button<{ $sidebarW: number }>`
   position: fixed;
-  top: 24px;
-  left: ${p => p.$sidebarW - 14}px;
+  top: 66px;
+  left: ${p => p.$sidebarW - 16}px;
   z-index: 1200;
   background: #FFFFFF;
   border: 1px solid #C7CED6;
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -526,7 +536,7 @@ const ExpandSecondaryBtn = styled.button<{ $sidebarW: number }>`
   transition: all 0.15s;
   &:hover { color: #635BFF; border-color: #635BFF; }
   svg { width: 14px; height: 14px; }
-  @media (max-width: 768px) { display: none; }
+  @media (max-width: 1024px) { display: none; }
 `;
 
 const SecondaryNav = styled.nav`
@@ -622,6 +632,16 @@ const MobileHeader = styled.div`
   @media (max-width: 768px) {
     display: flex;
   }
+
+  /* 2026-11-18 (Fable 설계 H1·M3): 폰(≤480)은 같은 80px 안에서 두 줄 — 윗줄 버튼은 위로 붙이고,
+     아랫줄은 매장·역할 전환(HeaderContextSwitcher 폰 변형, 머리줄 기준 absolute)이 쓴다. 전환이 없는 사람은 그대로.
+     (:has 문법은 2022 가을 이전 브라우저에서 안 먹어 겹치므로 data-two-row 속성으로 가른다 — 전환 버튼이 그려지는 조건과 같게) */
+  @media (max-width: 480px) {
+    &[data-two-row='1'] {
+      align-items: flex-start;
+      padding-top: 2px;
+    }
+  }
 `;
 
 const HamburgerButton = styled.button`
@@ -650,6 +670,12 @@ const MobileTitle = styled.div`
   text-align: center;
   font-size: 18px;
   font-weight: 600;
+  min-width: 0;
+
+  /* 폰: 언어 버튼에 «KO» 글자가 돌아와 로고를 줄여 자리를 만든다(버튼을 숨기지 않는다) */
+  @media (max-width: 480px) {
+    img { max-width: 100px; }
+  }
 `;
 
 const HeaderActions = styled.div`
@@ -945,6 +971,8 @@ const UserRole = styled.div`
 `;
 
 const UserEmail = styled.div`
+  /* 낮은 태블릿 가로: 메일 줄을 빼서 위 메뉴가 한 줄이라도 더 보이게(N3) */
+  @media (min-width: 769px) and (max-height: 900px) { display: none; }
   font-size: 10px;
   color: #8898AA;
   margin-top: 1px;
@@ -2279,6 +2307,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
     clearHoverTimer();
     hoverTimerRef.current = setTimeout(() => setHoveredCatId(null), 120);
   };
+  // M6 짝: 손가락 기기에서 창 밖(메뉴 칸·창 말고)을 누르면 창을 닫는다
+  useEffect(() => {
+    if (!hoveredCatId || typeof window === 'undefined' || typeof window.matchMedia !== 'function' || !window.matchMedia('(hover: none)').matches) return undefined;
+    const onDown = (ev: TouchEvent | MouseEvent) => {
+      const el = ev.target as HTMLElement | null;
+      if (el && (el.closest('[data-sec-popover]') || el.closest('nav'))) return;
+      setHoveredCatId(null);
+    };
+    document.addEventListener('touchstart', onDown, { passive: true });
+    document.addEventListener('mousedown', onDown);
+    return () => { document.removeEventListener('touchstart', onDown); document.removeEventListener('mousedown', onDown); };
+  }, [hoveredCatId]);
   const hoveredCategory = hoveredCatId ? adminCategoriesWithPending.find(c => c.id === hoveredCatId) : null;
   const showPopover = useTwoTier && isSecondaryCollapsed && !!hoveredCategory?.items;
 
@@ -2611,8 +2651,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           </div>
         )}
 
-        <MobileHeader>
-        <HamburgerButton onClick={toggleSidebar}>
+        <MobileHeader data-two-row={isLoggedIn && user && user.role !== 'System Admin' ? '1' : undefined}>
+        <HamburgerButton onClick={toggleSidebar} aria-label={t('nav.openMenu', 'Open menu')} title={t('nav.openMenu', 'Open menu')}>
           ☰
         </HamburgerButton>
         <MobileTitle onClick={() => navigate(getDashboardPath())} style={{ cursor: 'pointer' }}>
@@ -2627,7 +2667,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
           {isLoggedIn && <InboxBell />}
           <LanguageSelector variant="globe" />
           {isLoggedIn && currentStaff ? (
-            <ProfileButton onClick={() => {
+            <ProfileButton aria-label={t('nav.myProfile', 'My profile')} title={t('nav.myProfile', 'My profile')} onClick={() => {
               if (user?.role === 'Restaurant Admin' || user?.role === 'Staff') {
                 navigate(`/restaurant/${restaurantId}/profile`);
               } else {
@@ -2643,7 +2683,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               </StaffInfo>
             </ProfileButton>
           ) : (
-            <ProfileButton onClick={() => {
+            <ProfileButton aria-label={t('nav.myProfile', 'My profile')} title={t('nav.myProfile', 'My profile')} onClick={() => {
               if (user?.role === 'Restaurant Admin' || user?.role === 'Staff') {
                 navigate(`/restaurant/${restaurantId}/profile`);
               } else {
@@ -2667,7 +2707,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
               )}
             </Logo>
           )}
-          <SidebarToggleButton onClick={toggleSidebarCollapse} title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>
+          <SidebarToggleButton onClick={toggleSidebarCollapse} title={isSidebarCollapsed ? t('nav.expandSidebar', 'Expand menu') : t('nav.collapseSidebar', 'Collapse menu')} aria-label={isSidebarCollapsed ? t('nav.expandSidebar', 'Expand menu') : t('nav.collapseSidebar', 'Collapse menu')}>
             {isSidebarCollapsed ? (
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 18l6-6-6-6"/>
@@ -2738,6 +2778,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
                   if (cat.items && cat.items.length > 0 && typeof window !== 'undefined' && window.innerWidth <= 768) {
                     e.preventDefault();
                     setMobileExpandedCatId(prev => prev === cat.id ? null : cat.id);
+                    return;
+                  }
+                  // 2026-11-18 (Fable 설계 M6): 손가락 기기(마우스 올리기 없음) · 769 이상 · 하위 메뉴 칸 접힘 —
+                  // 이동하지 않고 하위 메뉴 창만 연다(예전엔 첫 화면으로 이동하면서 창이 내용 위에 남아 가렸다).
+                  // 창의 항목을 누르면 이동하고 닫힌다(아래 SecondaryPopover onClick). 마우스 PC 는 그대로.
+                  if (cat.items && cat.items.length > 0 && isSecondaryCollapsed && typeof window !== 'undefined'
+                      && window.innerWidth > 768 && typeof window.matchMedia === 'function' && window.matchMedia('(hover: none)').matches) {
+                    e.preventDefault();
+                    clearHoverTimer();
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setHoveredCatTop(Math.max(8, rect.top));
+                    setHoveredCatId(cat.id);
                     return;
                   }
                   closeSidebar();
@@ -4107,7 +4159,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         isCollapsed={isSidebarCollapsed}
         $isSystemAdmin={useTwoTier}
         onClick={toggleSidebarCollapse}
-        title="Open Sidebar"
+        title={t('nav.expandSidebar', 'Expand menu')}
+        aria-label={t('nav.expandSidebar', 'Expand menu')}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M9 18l6-6-6-6"/>
@@ -4119,7 +4172,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
         <SecondaryPanel $sidebarW={adminSidebarW}>
           <SecondaryHeader>
             {activeAdminCategory.label}
-            <CollapseSecondaryBtn onClick={toggleSecondaryCollapse} title="Collapse panel">
+            <CollapseSecondaryBtn onClick={toggleSecondaryCollapse} title={t('nav.collapseSubmenu', 'Collapse submenu')} aria-label={t('nav.collapseSubmenu', 'Collapse submenu')}>
               <ChevronsLeft />
             </CollapseSecondaryBtn>
           </SecondaryHeader>
@@ -4154,6 +4207,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
       {/* Hover popover (collapsed mode) */}
       {showPopover && hoveredCategory?.items && (
         <SecondaryPopover
+          data-sec-popover="1"
           $top={hoveredCatTop}
           $left={adminSidebarW + 4}
           onMouseEnter={handlePopoverEnter}
@@ -4192,7 +4246,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
 
       {/* Expand 2뎁스 button (collapsed mode) */}
       {useTwoTier && isSecondaryCollapsed && (
-        <ExpandSecondaryBtn $sidebarW={adminSidebarW} onClick={toggleSecondaryCollapse} title="Expand panel">
+        <ExpandSecondaryBtn $sidebarW={adminSidebarW} onClick={toggleSecondaryCollapse} title={t('nav.pinSubmenu', 'Keep submenu open')} aria-label={t('nav.pinSubmenu', 'Keep submenu open')}>
           <ChevronsRight />
         </ExpandSecondaryBtn>
       )}

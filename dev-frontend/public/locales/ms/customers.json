@@ -38,5 +38,6 @@
   "customersPage.noCouponsAvailableOrUsed": "Tiada kupon tersedia atau digunakan",
   "customersPage.noCouponData": "Tidak Kupon Data",
   "customersPage.deleteFailedTitle": "Padam Gagal",
-  "customersPage.deleteFailedMessage": "Gagal memadam pelanggan. Sila cuba lagi."
+  "customersPage.deleteFailedMessage": "Gagal memadam pelanggan. Sila cuba lagi.",
+  "ui.customers.searchPh": "Cari pelanggan mengikut nama, telefon atau e-mel..."
 }

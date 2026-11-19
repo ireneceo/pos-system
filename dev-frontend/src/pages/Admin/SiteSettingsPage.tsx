@@ -430,13 +430,13 @@ const SiteSettingsPage: React.FC = () => {
             color: '#374151',
             lineHeight: 1.6
           }}>
-            <div style={{ fontWeight: 600, color: '#635BFF', marginBottom: 6 }}>Where these settings appear</div>
+            <div style={{ fontWeight: 600, color: '#635BFF', marginBottom: 6 }}>{t('admin:ui.siteSettings.whereTitle')}</div>
             <div style={{ fontSize: 12.5 }}>
-              <strong>Site name</strong> — public landing pages, browser tab title, email subject lines.<br />
-              <strong>Brand logo</strong> — landing header, all email notifications (sender header), invoice PDFs.<br />
-              <strong>Favicon</strong> — browser tab icon for the public site.<br />
-              <strong>Default currency</strong> — applied to <em>new</em> restaurants only. Existing restaurants keep their own currency.<br />
-              <strong>Contact info</strong> — public footer + Contact page.
+              <strong>{t('admin:ui.siteSettings.siteName')}</strong> — {t('admin:ui.siteSettings.siteNameDesc')}<br />
+              <strong>{t('admin:ui.siteSettings.brandLogo')}</strong> — {t('admin:ui.siteSettings.brandLogoDesc')}<br />
+              <strong>{t('admin:ui.siteSettings.favicon')}</strong> — {t('admin:ui.siteSettings.faviconDesc')}<br />
+              <strong>{t('admin:ui.siteSettings.defaultCurrency')}</strong> — {t('admin:ui.siteSettings.currencyPre')}<em>{t('admin:ui.siteSettings.currencyNew')}</em>{t('admin:ui.siteSettings.currencyPost')}<br />
+              <strong>{t('admin:ui.siteSettings.contactInfo')}</strong> — {t('admin:ui.siteSettings.contactInfoDesc')}
             </div>
           </div>
           <Form onSubmit={(e) => e.preventDefault()}>
@@ -454,7 +454,7 @@ const SiteSettingsPage: React.FC = () => {
                       name="site_name"
                       value={settings.site_name}
                       onChange={handleInputChange}
-                      placeholder="Purple Here POS"
+                      placeholder={t('admin:ui.siteSettings.siteNamePh')}
                     />
                   </AutoSaveField>
                   <HelpText>{t('admin:siteSettingsPage.theNameOfYourSitesolution')}</HelpText>
@@ -581,7 +581,7 @@ const SiteSettingsPage: React.FC = () => {
                     name="seo_title"
                     value={settings.seo_title}
                     onChange={handleInputChange}
-                    placeholder="Purple Here - Restaurant POS System"
+                    placeholder={t('admin:ui.siteSettings.metaTitlePh')}
                     maxLength={60}
                   />
                 </AutoSaveField>
@@ -596,7 +596,7 @@ const SiteSettingsPage: React.FC = () => {
                     name="seo_description"
                     value={settings.seo_description}
                     onChange={handleInputChange}
-                    placeholder="Complete restaurant management solution with POS, ordering, and analytics"
+                    placeholder={t('admin:ui.siteSettings.metaDescPh')}
                     maxLength={160}
                   />
                 </AutoSaveField>
@@ -612,7 +612,7 @@ const SiteSettingsPage: React.FC = () => {
                     name="seo_keywords"
                     value={settings.seo_keywords}
                     onChange={handleInputChange}
-                    placeholder="restaurant pos, food ordering, restaurant management, pos system"
+                    placeholder={t('admin:ui.siteSettings.keywordsPh')}
                   />
                 </AutoSaveField>
                 <HelpText>{t('admin:siteSettingsPage.commaseparatedKeywordsForSearchEngines')}</HelpText>

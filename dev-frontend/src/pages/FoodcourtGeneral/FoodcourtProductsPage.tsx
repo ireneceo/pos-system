@@ -22,21 +22,21 @@ const FoodcourtProductsPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>{t('foodcourt:products.title', 'Foodcourt Products')}</Title>
+        <Title>{t('foodcourt:ui.fcProducts.title', 'Foodcourt Products')}</Title>
       </Header>
 
       <Content>
         <Tabs>
           <Tab active={activeTab === 'products'} onClick={() => handleTabChange('products')}>
-            {t('foodcourt:products.tabs.products', 'Products')}
+            {t('common:nav.products', 'Products')}
             <Badge count={productsCount} showZero />
           </Tab>
           <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>
-            {t('foodcourt:products.tabs.categories', 'Categories')}
+            {t('common:nav.categories', 'Categories')}
             <Badge count={categoriesCount} showZero />
           </Tab>
           <Tab active={activeTab === 'options'} onClick={() => handleTabChange('options')}>
-            {t('foodcourt:products.tabs.options', 'Option Groups')}
+            {t('foodcourt:ui.fcProducts.optionGroups', 'Option Groups')}
             <Badge count={optionsCount} showZero />
           </Tab>
         </Tabs>

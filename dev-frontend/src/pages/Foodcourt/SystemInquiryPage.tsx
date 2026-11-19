@@ -13,6 +13,7 @@ import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { StatsGrid, StatCard, StatValue, StatLabel, Modal as CommonModal } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
@@ -541,7 +542,7 @@ const SystemInquiryPage: React.FC = () => {
 
           <FilterBar>
             <SearchInput
-              placeholder="Search tickets..."
+              placeholder={t('common:ui.search.tickets')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -570,12 +571,12 @@ const SystemInquiryPage: React.FC = () => {
                     <TicketNumber>{ticket.ticketNumber}</TicketNumber>
                     <TicketSubject>{ticket.subject}</TicketSubject>
                     <TicketMeta>
-                      <span>Category: {ticket.category}</span>
+                      <span>{t('common:ui.inquiry.categoryPrefix')} {statusLabel(t, ticket.category)}</span>
                     </TicketMeta>
                   </TicketInfo>
                   <BadgeContainer>
-                    <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
-                    <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
+                    <StatusBadge status={ticket.status}>{statusLabel(t, ticket.status)}</StatusBadge>
+                    <PriorityBadge priority={ticket.priority}>{statusLabel(t, ticket.priority)}</PriorityBadge>
                   </BadgeContainer>
                 </TicketHeader>
 
@@ -620,7 +621,7 @@ const SystemInquiryPage: React.FC = () => {
                       }}
                       style={{ marginLeft: 'auto' }}
                     >
-                      Close
+                      {t('common:button.close')}
                     </CloseTicketButton>
                   )}
                 </TicketFooter>
@@ -667,7 +668,7 @@ const SystemInquiryPage: React.FC = () => {
                       type="text"
                       value={newTicket.subject}
                       onChange={(e) => setNewTicket({...newTicket, subject: e.target.value})}
-                      placeholder="Brief description of your inquiry"
+                      placeholder={t('common:ui.inquiry.subjectPh')}
                       required
                     />
                   </FormGroup>
@@ -676,7 +677,7 @@ const SystemInquiryPage: React.FC = () => {
                     <FormTextArea
                       value={newTicket.description}
                       onChange={(e) => setNewTicket({...newTicket, description: e.target.value})}
-                      placeholder="Detailed description of your inquiry..."
+                      placeholder={t('common:ui.inquiry.detailPh')}
                       required
                     />
                   </FormGroup>
@@ -753,12 +754,12 @@ const SystemInquiryPage: React.FC = () => {
                       <div>
                         <FormLabel>{t('common:systemInquiryPage.priority')}</FormLabel>
                         <div style={{ padding: '8px 0' }}>
-                          <PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge>
+                          <PriorityBadge priority={selectedTicket.priority}>{statusLabel(t, selectedTicket.priority)}</PriorityBadge>
                         </div>
                       </div>
                       <div>
                         <FormLabel>{t('common:systemInquiryPage.category')}</FormLabel>
-                        <div style={{ padding: '8px 0', color: '#1F2937', textTransform: 'capitalize' }}>{selectedTicket.category.replace('-', ' ')}</div>
+                        <div style={{ padding: '8px 0', color: '#1F2937', textTransform: 'capitalize' }}>{statusLabel(t, selectedTicket.category)}</div>
                       </div>
                     </div>
                     <div>

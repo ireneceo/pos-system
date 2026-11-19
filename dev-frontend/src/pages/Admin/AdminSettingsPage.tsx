@@ -343,7 +343,7 @@ const AdminSettingsPage: React.FC = () => {
                     type="text"
                     value={settings.companyName}
                     onChange={(e) => handleInputChange('companyName', e.target.value)}
-                    placeholder="Enter company name"
+                    placeholder={t('common:ui.companyInfo.companyNamePh')}
                     required
                   />
                 </AutoSaveField>
@@ -355,7 +355,7 @@ const AdminSettingsPage: React.FC = () => {
                     type="text"
                     value={settings.registrationNumber}
                     onChange={(e) => handleInputChange('registrationNumber', e.target.value)}
-                    placeholder="ROC/SSM Number"
+                    placeholder={t('admin:ui.adminSettings.rocPh')}
                   />
                 </AutoSaveField>
               </FormGroup>
@@ -420,7 +420,7 @@ const AdminSettingsPage: React.FC = () => {
                     type="email"
                     value={settings.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    placeholder="admin@company.com"
+                    placeholder={t('admin:ui.adminSettings.emailPh')}
                     required
                   />
                 </AutoSaveField>
@@ -432,7 +432,7 @@ const AdminSettingsPage: React.FC = () => {
                     type="url"
                     value={settings.website}
                     onChange={(e) => handleInputChange('website', e.target.value)}
-                    placeholder="www.company.com"
+                    placeholder={t('admin:ui.adminSettings.websitePh')}
                   />
                 </AutoSaveField>
               </FormGroup>
@@ -446,7 +446,7 @@ const AdminSettingsPage: React.FC = () => {
                     type="text"
                     value={settings.taxNumber}
                     onChange={(e) => handleInputChange('taxNumber', e.target.value)}
-                    placeholder="GST/SST Registration Number"
+                    placeholder={t('admin:ui.adminSettings.taxPh')}
                   />
                 </AutoSaveField>
               </FormGroup>
@@ -460,7 +460,7 @@ const AdminSettingsPage: React.FC = () => {
                     type="text"
                     value={settings.businessHours?.weekdays || ''}
                     onChange={(e) => handleBusinessHoursChange('weekdays', e.target.value)}
-                    placeholder="e.g., 9:00 AM - 6:00 PM (GMT+8)"
+                    placeholder={t('admin:ui.adminSettings.weekdayHoursPh')}
                   />
                 </AutoSaveField>
               </FormGroup>
@@ -471,7 +471,7 @@ const AdminSettingsPage: React.FC = () => {
                     type="text"
                     value={settings.businessHours?.weekend || ''}
                     onChange={(e) => handleBusinessHoursChange('weekend', e.target.value)}
-                    placeholder="e.g., Closed or 10:00 AM - 2:00 PM"
+                    placeholder={t('admin:ui.adminSettings.weekendHoursPh')}
                   />
                 </AutoSaveField>
               </FormGroup>

@@ -657,7 +657,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
     return (
       <>
         <Container>
-          <PageHeader title="Payment Settings" />
+          <PageHeader title={t('common:nav.paymentSettings')} />
           <Content>
             <p>{t('foodcourt:foodcourtPaymentSettingsPage.loading')}</p>
           </Content>
@@ -669,7 +669,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
   return (
     <>
       <Container>
-        <PageHeader title="Payment Settings" />
+        <PageHeader title={t('common:nav.paymentSettings')} />
         <Content>
           {/* 매장 발주 배송 조건 (2026-09-25 Fable 판정 (d)) — 브랜드 결제 설정 카드와 같은 모양 */}
           <Section>
@@ -882,7 +882,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="text"
-                        placeholder="Enter PayPal Client ID"
+                        placeholder={t('common:ui.paymentSettings.paypalClientIdPh')}
                         value={paymentSettings.paypal.clientId}
                         onChange={(e) => handlePayPalChange('clientId', e.target.value)}
                       />
@@ -904,7 +904,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                     <AutoSaveField onSave={savePaymentSettings}>
                       <Input
                         type="text"
-                        placeholder="Enter PayPal Webhook ID (e.g. WH-…)"
+                        placeholder={t('common:ui.paymentSettings.paypalWebhookPh')}
                         value={paymentSettings.paypal.webhookId || ''}
                         onChange={(e) => handlePayPalChange('webhookId', e.target.value)}
                       />
@@ -966,7 +966,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
-                            placeholder="e.g., Maybank, CIMB, Shinhan Bank"
+                            placeholder={t('common:ui.paymentSettings.bankNamePh')}
                             value={getBankConfig(selectedCurrency).bankName}
                             onChange={(e) => handleBankTransferChange(selectedCurrency, 'bankName', e.target.value)}
                           />
@@ -977,7 +977,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
-                            placeholder="Enter bank account number"
+                            placeholder={t('common:ui.paymentSettings.accountNumberPh')}
                             value={getBankConfig(selectedCurrency).accountNumber}
                             onChange={(e) => handleBankTransferChange(selectedCurrency, 'accountNumber', e.target.value)}
                           />
@@ -988,7 +988,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
-                            placeholder="Enter account holder name"
+                            placeholder={t('common:ui.paymentSettings.accountHolderPh')}
                             value={getBankConfig(selectedCurrency).accountName}
                             onChange={(e) => handleBankTransferChange(selectedCurrency, 'accountName', e.target.value)}
                           />
@@ -1031,7 +1031,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                         <AutoSaveField onSave={savePaymentSettings}>
                           <Input
                             type="text"
-                            placeholder="e.g., Scan to pay via DuitNow"
+                            placeholder={t('common:ui.paymentSettings.qrNotePh')}
                             value={getQRConfig(selectedCurrency).qrDescription}
                             onChange={(e) => handleQRPaymentChange(selectedCurrency, 'qrDescription', e.target.value)}
                           />
@@ -1057,7 +1057,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                       <MethodHeader>
                         <MethodInfo>
                           <MethodLabel>Charge Item {index + 1}</MethodLabel>
-                          <MethodDescription>{charge.enabled && charge.name ? `${charge.name} (${charge.rate}%)` : 'Not configured'}</MethodDescription>
+                          <MethodDescription>{charge.enabled && charge.name ? `${charge.name} (${charge.rate}%)` : t('common:ui.paymentSettings.notConfigured')}</MethodDescription>
                         </MethodInfo>
                         <ToggleSwitch>
                           <ToggleInput
@@ -1078,7 +1078,7 @@ const FoodcourtPaymentSettingsPage: React.FC = () => {
                                   type="text"
                                   value={charge.name}
                                   onChange={(e) => handleChargeChange(selectedCurrency, index, 'name', e.target.value)}
-                                  placeholder="e.g., SST, VAT, Service Charge"
+                                  placeholder={t('common:ui.paymentSettings.taxNamePh')}
                                 />
                               </AutoSaveField>
                               <HelpText>{t('foodcourt:foodcourtPaymentSettingsPage.nameDisplayedOnInvoices')}</HelpText>

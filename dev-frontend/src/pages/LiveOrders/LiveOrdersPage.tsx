@@ -32,6 +32,7 @@ import SettlementMenu from '../../components/Settlement/SettlementMenu';
 import CashDrawerModal from '../../components/CashManagement/CashDrawerModal';
 import FinalReconcilePanel from '../Reports/FinalReconcilePanel';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 import { voidTerminalForOrder, getTerminalApprovals, approvalsTotal } from '../../utils/terminalVoid';
 import { getAuthToken } from '../../utils/auth';
 
@@ -640,10 +641,10 @@ const LiveOrdersPage: React.FC = () => {
 
   // Format status for display
   const formatStatusDisplay = (status: string): string => {
-    if (status === 'rejected') return 'Payment Rejected';
-    if (status === 'verifying') return 'Verifying Payment';
-    if (status === 'outstanding') return 'Outstanding';
-    return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    if (status === 'rejected') return t('orders:liveOrdersPage.paymentRejected');
+    if (status === 'verifying') return t('orders:ui.liveOrders.verifyingPayment');
+    if (status === 'outstanding') return statusLabel(t, 'outstanding');
+    return statusLabel(t, status);
   };
 
   const getFilteredOrdersByTab = () => {
@@ -765,14 +766,14 @@ const LiveOrdersPage: React.FC = () => {
   const getActionLabel = (status: DbOrder['status'], _paymentStatus?: string, orderType?: string) => {
     if (orderType === 'delivery') {
       const deliveryLabels: Record<string, string> = {
-        outstanding: 'Proceed Without Payment', pending: 'Start Preparing', preparing: 'Mark Ready',
-        ready: 'Out for Delivery', served: 'Mark Delivered', completed: 'Completed', cancelled: 'Cancelled'
+        outstanding: t('orders:liveOrdersPage.proceedWithoutPayment'), pending: t('orders:ui.liveOrders.startPreparing'), preparing: t('orders:ui.liveOrders.markReady'),
+        ready: t('orders:ui.liveOrders.outForDelivery'), served: t('orders:ui.liveOrders.markDelivered'), completed: statusLabel(t, 'completed'), cancelled: statusLabel(t, 'cancelled')
       };
       return deliveryLabels[status] || '';
     }
     const labels: Record<string, string> = {
-      outstanding: 'Proceed Without Payment', pending: 'Start Cooking', preparing: 'Mark Ready',
-      ready: 'Served', served: 'Complete Order', completed: 'Completed', cancelled: 'Cancelled'
+      outstanding: t('orders:liveOrdersPage.proceedWithoutPayment'), pending: t('orders:ui.liveOrders.startCooking'), preparing: t('orders:ui.liveOrders.markReady'),
+      ready: statusLabel(t, 'served'), served: t('orders:ui.liveOrders.completeOrder'), completed: statusLabel(t, 'completed'), cancelled: statusLabel(t, 'cancelled')
     };
     return labels[status] || '';
   };
@@ -1944,7 +1945,7 @@ const LiveOrdersPage: React.FC = () => {
             </div>
             <SearchInputContainer>
               <SearchIcon>🔍</SearchIcon>
-              <SearchInput type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <SearchInput type="text" placeholder={t('common:ui.search.generic')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               {searchQuery && (<ClearSearchButton onClick={() => setSearchQuery('')} title="Clear search">×</ClearSearchButton>)}
             </SearchInputContainer>
             <DownloadButton onClick={handleDownloadCSV} title="Download CSV">
@@ -1975,7 +1976,7 @@ const LiveOrdersPage: React.FC = () => {
           <StatusTabs>
             {(['all', 'outstanding', 'pending', 'preparing', 'ready', 'served', 'completed', 'cancelled'] as const).map(tab => (
               <StatusTab key={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)}>
-                {tab === 'all' ? 'All Orders' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'all' ? t('orders:ui.liveOrders.allOrders') : statusLabel(t, tab)}
                 <TabBadge>{getStatusCount(tab)}</TabBadge>
               </StatusTab>
             ))}
@@ -2051,7 +2052,7 @@ const LiveOrdersPage: React.FC = () => {
                         ) : (<span style={{ color: '#6B7280', fontSize: '12px' }}>-</span>)}
                       </DataTableCell>
                     )}
-                    <DataTableCell data-label="ORDER">
+                    <DataTableCell data-label={t('orders:liveOrdersPage.order')}>
                       <OrderNumber onClick={() => handleOrderClick(order)}>
                         {order.order_number}
                         {order.order_type === 'takeaway' && (<OrderTypeBadge>{t('orders:liveOrdersPage.takeaway')}</OrderTypeBadge>)}
@@ -2071,7 +2072,7 @@ const LiveOrdersPage: React.FC = () => {
                         {order.payment_method === 'staffMeal' && (<OrderTypeBadge style={{ background: '#FEE2E2', color: '#DC2626' }}>{t('orders:liveOrdersPage.staffMeal')}</OrderTypeBadge>)}
                       </OrderNumber>
                       <CustomerInfo>
-                        {order.customer_name || 'Guest'}
+                        {(!order.customer_name || order.customer_name === 'Guest') ? t('orders:ui.liveOrders.guest') : order.customer_name}
                         {order.customer_phone && <><br />{order.customer_phone}</>}
                         {order.table_number && (<><br /><span style={{ color: '#635BFF', fontWeight: 500 }}>Table: {getTableLabel(order.table_number, floorPlan).display}{order.guest_count ? ` (${order.guest_count}p)` : ''}</span></>)}
                         {/* Dine-in with no table → never read as "pickup". Flag it so staff can locate
@@ -2086,7 +2087,7 @@ const LiveOrdersPage: React.FC = () => {
                         {order.cashier_name && (<><br /><span style={{ color: '#8898AA', fontSize: '11px' }}>Cashier: {stripStaffNs(order.cashier_name)}</span></>)}
                       </CustomerInfo>
                     </DataTableCell>
-                    <DataTableCell data-label="ITEMS">
+                    <DataTableCell data-label={t('orders:liveOrdersPage.items')}>
                       <ItemsList>
                         {order.order_items && Array.isArray(order.order_items) && order.order_items.map((item: any, index: number) => (
                           <ItemWithOptions key={index}>
@@ -2098,10 +2099,10 @@ const LiveOrdersPage: React.FC = () => {
                         ))}
                       </ItemsList>
                     </DataTableCell>
-                    <DataTableCell data-label="STATUS" align="center">
+                    <DataTableCell data-label={t('orders:liveOrdersPage.status')} align="center">
                       <StatusBadge status={getDisplayStatus(order)}>{formatStatusDisplay(getDisplayStatus(order))}</StatusBadge>
                     </DataTableCell>
-                    <DataTableCell data-label="TIME" align="center">
+                    <DataTableCell data-label={t('orders:liveOrdersPage.time')} align="center">
                       <TimeInfo>
                         {formatDateTime(order.createdAt || order.order_date)}<br />
                         {!order.served_at && (
@@ -2119,24 +2120,24 @@ const LiveOrdersPage: React.FC = () => {
                         )}
                       </TimeInfo>
                     </DataTableCell>
-                    <DataTableCell data-label="AMOUNT" align="right">
+                    <DataTableCell data-label={t('orders:liveOrdersPage.amount')} align="right">
                       <div style={{ textAlign: 'right' }}>
                         <DataTableAmount highlight>{formatCurrency(Number(order.total_amount), operationSettings.currency)}</DataTableAmount>
                         {Number((order as any).points_used) > 0 && (
                           <div style={{ fontSize: '11px', color: '#10B981' }}>(-{Number((order as any).points_used).toLocaleString()}P)</div>
                         )}
                         {Number((order as any).coupon_discount) > 0 && (
-                          <div style={{ fontSize: '11px', color: '#F59E0B' }}>(Coupon)</div>
+                          <div style={{ fontSize: '11px', color: '#F59E0B' }}>({statusLabel(t, 'coupon')})</div>
                         )}
                         <PaymentMethod isPending={order.payment_status === 'pending' || order.payment_status === 'partial'} isVerificationPending={order.payment_status === 'payment_verification_pending'}>
                           {formatPaymentDisplay(order.payment_method, (order as any).card_type, paymentSettings || undefined)}
-                          {order.payment_status === 'pending' && ' (Pending)'}
-                          {order.payment_status === 'partial' && ` (Partial ${Number((order as any).amount_paid || 0).toFixed(2)} / ${Number(order.total_amount || 0).toFixed(2)})`}
-                          {order.payment_status === 'payment_verification_pending' && ' (Verifying)'}
+                          {order.payment_status === 'pending' && ` (${statusLabel(t, 'pending')})`}
+                          {order.payment_status === 'partial' && ` (${statusLabel(t, 'partial')} ${Number((order as any).amount_paid || 0).toFixed(2)} / ${Number(order.total_amount || 0).toFixed(2)})`}
+                          {order.payment_status === 'payment_verification_pending' && ` (${statusLabel(t, 'verifying')})`}
                         </PaymentMethod>
                       </div>
                     </DataTableCell>
-                    <DataTableCell data-label="ACTION" mobileFullWidth>
+                    <DataTableCell data-label={t('orders:liveOrdersPage.action')} mobileFullWidth>
                       <ActionButtonsGroup>
                         {order.status !== 'completed' && order.status !== 'cancelled' && (
                           <>
@@ -2161,7 +2162,7 @@ const LiveOrdersPage: React.FC = () => {
                         {canTakePayment && (order.payment_status === 'pending' || order.payment_status === 'partial') && (
                           <ActionButton onClick={(e) => handlePaymentClick(order, e)}
                             style={order.status === 'served' ? { background: '#10B981', borderColor: '#10B981', color: 'white' } : { background: '#F4F6F9', color: '#4B5563', border: '1px solid #C7CED6' }}>
-                            {order.payment_status === 'partial' ? 'Continue Payment' : 'Payment'}
+                            {order.payment_status === 'partial' ? t('orders:ui.liveOrders.continuePayment') : t('orders:liveOrdersPage.payment')}
                           </ActionButton>
                         )}
                         {canTakePayment && (order.payment_status as any) === 'payment_verification_pending' && (

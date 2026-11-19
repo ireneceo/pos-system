@@ -9,6 +9,7 @@ import { Modal, ModalButton } from '../../components/UI/Modal';
 import { getActionGuide } from '../../utils/logActionGuides';
 import { formatDateTime } from '../../utils/timezone';
 import DateField from '../../components/Common/DateField';
+import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 interface SystemLog {
@@ -607,6 +608,7 @@ const transformLog = (log: any): SystemLog => ({
 });
 
 const SystemLogsPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [activeTab, setActiveTab] = useState<ActiveTab>('logs');
   const [logs, setLogs] = useState<SystemLog[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -876,17 +878,17 @@ const SystemLogsPage: React.FC = () => {
 
   const renderHealthTab = () => {
     if (healthLoading && !healthData) {
-      return <NoDataMessage>{'Loading server health data...'}</NoDataMessage>;
+      return <NoDataMessage>{t('admin:ui.systemLogs.loadingHealth', 'Loading server health data...')}</NoDataMessage>;
     }
 
     if (!healthData || !healthData.current) {
       return (
         <NoDataMessage>
-          No health data available yet.<br />
-          Health checks run every 30 minutes, or click "Check Now" to trigger one.
+          {t('admin:ui.systemLogs.noHealth1', 'No health data available yet.')}<br />
+          {t('admin:ui.systemLogs.noHealth2', 'Health checks run every 30 minutes, or click \'Check Now\' to trigger one.')}
           <div style={{ marginTop: 16 }}>
             <CheckNowBtn onClick={handleCheckNow} disabled={checkNowLoading}>
-              {checkNowLoading ? 'Checking...' : 'Check Now'}
+              {checkNowLoading ? t('admin:ui.systemLogs.checking', 'Checking...') : t('admin:ui.systemLogs.checkNow', 'Check Now')}
             </CheckNowBtn>
           </div>
         </NoDataMessage>
@@ -904,27 +906,27 @@ const SystemLogsPage: React.FC = () => {
         <HealthHeaderRow>
           <HealthLastCheck>
             {lastCheck ? (
-              <>Last check: {formatDateTime(lastCheck, null, { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })} &middot; Status: <span style={{ fontWeight: 600, color: overallStatus === 'ok' ? '#059669' : overallStatus === 'warning' ? '#D97706' : '#DC2626' }}>{overallStatus === 'ok' ? 'Healthy' : overallStatus === 'warning' ? 'Warning' : 'Critical'}</span> &middot; Alerts (24h): {alertCount}</>
-            ) : 'No health data yet'}
+              <>{t('admin:ui.systemLogs.lastCheck', 'Last check')}: {formatDateTime(lastCheck, null, { hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })} &middot; {t('common:label.status', 'Status')}: <span style={{ fontWeight: 600, color: overallStatus === 'ok' ? '#059669' : overallStatus === 'warning' ? '#D97706' : '#DC2626' }}>{overallStatus === 'ok' ? t('admin:ui.systemLogs.healthy', 'Healthy') : overallStatus === 'warning' ? t('admin:ui.systemLogs.level.warning', 'Warning') : t('admin:ui.systemLogs.level.critical', 'Critical')}</span> &middot; t('admin:ui.systemLogs.alerts24h', 'Alerts (24h)'): {alertCount}</>
+            ) : t('admin:ui.systemLogs.noHealthYet', 'No health data yet')}
           </HealthLastCheck>
           <CheckNowBtn onClick={handleCheckNow} disabled={checkNowLoading || checkNowCooldown > 0}>
-            {checkNowLoading ? 'Checking...' : checkNowCooldown > 0 ? `Wait ${checkNowCooldown}s` : 'Check Now'}
+            {checkNowLoading ? t('admin:ui.systemLogs.checking', 'Checking...') : checkNowCooldown > 0 ? t('admin:ui.systemLogs.waitSec', { sec: checkNowCooldown, defaultValue: `Wait ${checkNowCooldown}s` }) : t('admin:ui.systemLogs.checkNow', 'Check Now')}
           </CheckNowBtn>
         </HealthHeaderRow>
 
         <HealthGrid>
           <HealthCard status={cpuStatus}>
-            <HealthCardTitle>{'CPU Usage'}</HealthCardTitle>
+            <HealthCardTitle>{t('admin:ui.systemLogs.cpuUsage', 'CPU Usage')}</HealthCardTitle>
             <HealthCardValue status={cpuStatus}>{current.cpu.usage}%</HealthCardValue>
-            <HealthCardSub>{'Production Server'}</HealthCardSub>
+            <HealthCardSub>{t('admin:ui.systemLogs.productionServer', 'Production Server')}</HealthCardSub>
           </HealthCard>
           <HealthCard status={memStatus}>
-            <HealthCardTitle>{'Memory Usage'}</HealthCardTitle>
+            <HealthCardTitle>{t('admin:ui.systemLogs.memoryUsage', 'Memory Usage')}</HealthCardTitle>
             <HealthCardValue status={memStatus}>{current.memory.usagePercent}%</HealthCardValue>
             <HealthCardSub>{current.memory.used}MB / {current.memory.total}MB</HealthCardSub>
           </HealthCard>
           <HealthCard status={diskStatus}>
-            <HealthCardTitle>{'Disk Usage'}</HealthCardTitle>
+            <HealthCardTitle>{t('admin:ui.systemLogs.diskUsage', 'Disk Usage')}</HealthCardTitle>
             <HealthCardValue status={diskStatus}>{current.disk.usagePercent}%</HealthCardValue>
             <HealthCardSub>{current.disk.used} / {current.disk.total}</HealthCardSub>
           </HealthCard>
@@ -932,17 +934,17 @@ const SystemLogsPage: React.FC = () => {
 
         {/* Services Status */}
         <HealthSection>
-          <HealthSectionTitle>{'Services'}</HealthSectionTitle>
+          <HealthSectionTitle>{t('admin:ui.systemLogs.services', 'Services')}</HealthSectionTitle>
           <ServiceRow>
-            <ServiceName>{'Nginx (Web Server)'}</ServiceName>
+            <ServiceName>{t('admin:ui.systemLogs.nginx', 'Nginx (Web Server)')}</ServiceName>
             <ServiceBadge status={getServiceStatus(current.services.nginx)}>
-              {current.services.nginx === 'active' ? 'Active' : current.services.nginx}
+              {current.services.nginx === 'active' ? t('common:status.active', 'Active') : current.services.nginx}
             </ServiceBadge>
           </ServiceRow>
           <ServiceRow>
-            <ServiceName>{'MySQL (Database)'}</ServiceName>
+            <ServiceName>{t('admin:ui.systemLogs.mysql', 'MySQL (Database)')}</ServiceName>
             <ServiceBadge status={getServiceStatus(current.services.mysql)}>
-              {current.services.mysql === 'active' ? 'Active' : current.services.mysql}
+              {current.services.mysql === 'active' ? t('common:status.active', 'Active') : current.services.mysql}
             </ServiceBadge>
           </ServiceRow>
           {(current.pm2 || []).map((proc, idx) => (
@@ -950,10 +952,10 @@ const SystemLogsPage: React.FC = () => {
               <ServiceName>PM2: {proc.name}</ServiceName>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <span style={{ fontSize: 12, color: '#4B5563' }}>
-                  CPU: {proc.cpu}% &middot; MEM: {proc.memory}MB &middot; Restarts: {proc.restarts}
+                  CPU: {proc.cpu}% &middot; MEM: {proc.memory}MB &middot; {t('admin:ui.systemLogs.restarts', 'Restarts')}: {proc.restarts}
                 </span>
                 <ServiceBadge status={getServiceStatus(proc.status)}>
-                  {proc.status === 'online' ? 'Online' : proc.status}
+                  {proc.status === 'online' ? t('admin:ui.systemLogs.online', 'Online') : proc.status}
                 </ServiceBadge>
               </div>
             </ServiceRow>
@@ -962,17 +964,17 @@ const SystemLogsPage: React.FC = () => {
 
         {/* Server Info */}
         <HealthSection>
-          <HealthSectionTitle>{'Server Info'}</HealthSectionTitle>
+          <HealthSectionTitle>{t('admin:ui.systemLogs.serverInfo', 'Server Info')}</HealthSectionTitle>
           <ServiceRow>
-            <ServiceName>{'Server'}</ServiceName>
+            <ServiceName>{t('admin:ui.systemLogs.server', 'Server')}</ServiceName>
             <span style={{ fontSize: 14, color: '#1F2937' }}>{current.ip} (production)</span>
           </ServiceRow>
           <ServiceRow>
-            <ServiceName>{'Uptime'}</ServiceName>
+            <ServiceName>{t('admin:ui.systemLogs.uptime', 'Uptime')}</ServiceName>
             <span style={{ fontSize: 14, color: '#1F2937' }}>{formatUptime(current.serverUptime)}</span>
           </ServiceRow>
           <ServiceRow>
-            <ServiceName>{'Pending Security Updates'}</ServiceName>
+            <ServiceName>{t('admin:ui.systemLogs.securityUpdates', 'Pending Security Updates')}</ServiceName>
             <span style={{ fontSize: 14, fontWeight: 600, color: current.securityUpdates > 10 ? '#D97706' : '#1F2937' }}>
               {current.securityUpdates}
             </span>
@@ -982,7 +984,7 @@ const SystemLogsPage: React.FC = () => {
         {/* 24h Trend */}
         {trend.length > 0 && (
           <HealthSection>
-            <HealthSectionTitle>24h Resource Trend ({trend.length} data points)</HealthSectionTitle>
+            <HealthSectionTitle>{t('admin:ui.systemLogs.trend', { count: trend.length, defaultValue: `24h Resource Trend (${trend.length} data points)` })}</HealthSectionTitle>
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: '#1F2937', marginBottom: 8 }}>{'CPU'}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
@@ -996,7 +998,7 @@ const SystemLogsPage: React.FC = () => {
               ))}
             </div>
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#1F2937', marginBottom: 8 }}>{'Memory'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1F2937', marginBottom: 8 }}>{t('admin:ui.systemLogs.memory', 'Memory')}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`mem-${idx}`}>
                   <TrendTime>{formatDateTime(point.timestamp, null, { hour: '2-digit', minute: '2-digit', hour12: false, year: undefined, month: undefined, day: undefined })}</TrendTime>
@@ -1008,7 +1010,7 @@ const SystemLogsPage: React.FC = () => {
               ))}
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#1F2937', marginBottom: 8 }}>{'Disk'}</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#1F2937', marginBottom: 8 }}>{t('admin:ui.systemLogs.disk', 'Disk')}</div>
               {trend.filter((_, i) => i % Math.max(1, Math.floor(trend.length / 12)) === 0 || i === trend.length - 1).map((point, idx) => (
                 <TrendRow key={`disk-${idx}`}>
                   <TrendTime>{formatDateTime(point.timestamp, null, { hour: '2-digit', minute: '2-digit', hour12: false, year: undefined, month: undefined, day: undefined })}</TrendTime>
@@ -1029,12 +1031,12 @@ const SystemLogsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>{'System Logs'}</Title>
+          <Title>{t('admin:ui.systemLogs.title', 'System Logs')}</Title>
           <ActionSection>
             {activeTab === 'logs' && (
               <>
-                <BaseButton variant="secondary" onClick={handleExportLogs}>{'Export Logs'}</BaseButton>
-                <BaseButton variant="danger" onClick={handleClearLogs}>{'Clear Logs'}</BaseButton>
+                <BaseButton variant="secondary" onClick={handleExportLogs}>{t('admin:ui.systemLogs.exportLogs', 'Export Logs')}</BaseButton>
+                <BaseButton variant="danger" onClick={handleClearLogs}>{t('admin:ui.systemLogs.clearLogs', 'Clear Logs')}</BaseButton>
               </>
             )}
           </ActionSection>
@@ -1043,10 +1045,10 @@ const SystemLogsPage: React.FC = () => {
         <Content>
         <TabBar>
           <Tab active={activeTab === 'logs'} onClick={() => setActiveTab('logs')}>
-            Logs
+            {t('admin:ui.systemLogs.tabLogs', 'Logs')}
           </Tab>
           <Tab active={activeTab === 'health'} onClick={() => setActiveTab('health')}>
-            Server Health
+            {t('admin:ui.systemLogs.serverHealth', 'Server Health')}
           </Tab>
         </TabBar>
 
@@ -1055,90 +1057,91 @@ const SystemLogsPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalLogs}</StatValue>
-            <StatLabel>{'Total Logs (24h)'}</StatLabel>
+            <StatLabel>{t('admin:ui.systemLogs.total24h', 'Total Logs (24h)')}</StatLabel>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{errorLogs}</StatValue>
-            <StatLabel>{'Errors & Critical'}</StatLabel>
+            <StatLabel>{t('admin:ui.systemLogs.errorsCritical', 'Errors & Critical')}</StatLabel>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{warningLogs}</StatValue>
-            <StatLabel>{'Warnings'}</StatLabel>
+            <StatLabel>{t('admin:ui.systemLogs.warnings', 'Warnings')}</StatLabel>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{recentLogs}</StatValue>
-            <StatLabel>{'Recent (1h)'}</StatLabel>
+            <StatLabel>{t('admin:ui.systemLogs.recent1h', 'Recent (1h)')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
         <FilterBar>
           <FilterSelect value={filterLevel} onChange={(e) => setFilterLevel(e.target.value)}>
-            <option value="all">{'All Levels'}</option>
-            <option value="critical">{'Critical'}</option>
-            <option value="error">{'Error'}</option>
-            <option value="warning">{'Warning'}</option>
-            <option value="info">{'Info'}</option>
-            <option value="debug">{'Debug'}</option>
+            <option value="all">{t('admin:ui.systemLogs.allLevels', 'All Levels')}</option>
+            <option value="critical">{t('admin:ui.systemLogs.level.critical', 'Critical')}</option>
+            <option value="error">{t('admin:ui.systemLogs.level.error', 'Error')}</option>
+            <option value="warning">{t('admin:ui.systemLogs.level.warning', 'Warning')}</option>
+            <option value="info">{t('admin:ui.systemLogs.level.info', 'Info')}</option>
+            <option value="debug">{t('admin:ui.systemLogs.level.debug', 'Debug')}</option>
           </FilterSelect>
           <FilterSelect value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-            <option value="all">{'All Categories'}</option>
-            <option value="system">{'System'}</option>
-            <option value="database">{'Database'}</option>
-            <option value="auth">{'Authentication'}</option>
-            <option value="payment">{'Payment'}</option>
+            <option value="all">{t('admin:ui.systemLogs.allCategories', 'All Categories')}</option>
+            <option value="system">{t('admin:ui.systemLogs.category.system', 'System')}</option>
+            <option value="database">{t('admin:ui.systemLogs.category.database', 'Database')}</option>
+            <option value="auth">{t('admin:ui.systemLogs.category.auth', 'Authentication')}</option>
+            <option value="payment">{t('admin:ui.systemLogs.category.payment', 'Payment')}</option>
             <option value="api">{'API'}</option>
-            <option value="security">{'Security'}</option>
-            <option value="backup">{'Backup'}</option>
+            <option value="security">{t('admin:ui.systemLogs.category.security', 'Security')}</option>
+            <option value="backup">{t('admin:ui.systemLogs.category.backup', 'Backup')}</option>
           </FilterSelect>
           <FilterSelect value={filterService} onChange={(e) => setFilterService(e.target.value)}>
-            <option value="all">{'All Services'}</option>
-            <option value="server-health">{'Server Health'}</option>
-            <option value="invoice-scheduler">{'Invoice Scheduler'}</option>
-            <option value="subscription-scheduler">{'Subscription Scheduler'}</option>
+            <option value="all">{t('admin:ui.systemLogs.allServices', 'All Services')}</option>
+            <option value="server-health">{t('admin:ui.systemLogs.serverHealth', 'Server Health')}</option>
+            <option value="invoice-scheduler">{t('admin:ui.systemLogs.svcInvoiceScheduler', 'Invoice Scheduler')}</option>
+            <option value="subscription-scheduler">{t('admin:ui.systemLogs.svcSubscriptionScheduler', 'Subscription Scheduler')}</option>
             <option value="stripe">{'Stripe'}</option>
             <option value="stripe-webhook">{'Stripe Webhook'}</option>
-            <option value="order-service">{'Order Service'}</option>
-            <option value="auth-service">{'Auth Service'}</option>
+            <option value="order-service">{t('admin:ui.systemLogs.svcOrder', 'Order Service')}</option>
+            <option value="auth-service">{t('admin:ui.systemLogs.svcAuth', 'Auth Service')}</option>
             <option value="pos-api">{'POS API'}</option>
-            <option value="payment-service">{'Payment Service'}</option>
-            <option value="backup-service">{'Backup Service'}</option>
-            <option value="kitchen-display-service">{'Kitchen Display'}</option>
+            <option value="payment-service">{t('admin:ui.systemLogs.svcPayment', 'Payment Service')}</option>
+            <option value="backup-service">{t('admin:ui.systemLogs.svcBackup', 'Backup Service')}</option>
+            <option value="kitchen-display-service">{t('admin:ui.systemLogs.svcKitchen', 'Kitchen Display')}</option>
           </FilterSelect>
           <div style={{ minWidth: '180px' }}>
             <DateField
               value={filterDate}
               onChange={(v) => setFilterDate(v)}
+              placeholder={t('admin:ui.systemLogs.selectDate', 'Select date')}
             />
           </div>
           <SearchInput
-            placeholder="Search logs..."
+            placeholder={t('admin:ui.systemLogs.searchPh', 'Search logs...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <LiveToggle>
             <span style={{ fontSize: '12px', color: '#4B5563', fontWeight: '600', textTransform: 'uppercase' }}>
-              Live Mode
+              {t('admin:ui.systemLogs.liveMode', 'Live Mode')}
             </span>
             <ToggleButton
               active={liveMode}
               onClick={() => setLiveMode(!liveMode)}
             >
-              {liveMode ? 'ON' : 'OFF'}
+              {liveMode ? t('admin:ui.systemLogs.on', 'ON') : t('admin:ui.systemLogs.off', 'OFF')}
             </ToggleButton>
           </LiveToggle>
         </FilterBar>
 
         <LogsContainer>
           <LogsHeader>
-            <LogsTitle>System Logs ({filteredLogs.length} entries)</LogsTitle>
+            <LogsTitle>{t('admin:ui.systemLogs.logsTitle', { count: filteredLogs.length, defaultValue: `System Logs (${filteredLogs.length} entries)` })}</LogsTitle>
             <LogsActions>
               <BaseButton
                 variant={autoScroll ? 'primary' : 'secondary'}
                 onClick={() => setAutoScroll(!autoScroll)}
               >
-                {autoScroll ? '✓ Auto-scroll' : 'Auto-scroll'}
+                {autoScroll ? `✓ ${t('admin:ui.systemLogs.autoScroll', 'Auto-scroll')}` : t('admin:ui.systemLogs.autoScroll', 'Auto-scroll')}
               </BaseButton>
-              <BaseButton variant="secondary" onClick={handleRefresh}>Refresh</BaseButton>
+              <BaseButton variant="secondary" onClick={handleRefresh}>{t('common:button.refresh', 'Refresh')}</BaseButton>
             </LogsActions>
           </LogsHeader>
           <LogsList ref={logsListRef}>
@@ -1146,8 +1149,8 @@ const SystemLogsPage: React.FC = () => {
               <LogItem key={log.id} level={log.level}>
                 <LogHeader>
                   <LogTimestamp>{formatTimestamp(log.timestamp)}</LogTimestamp>
-                  <LogLevel level={log.level}>{log.level}</LogLevel>
-                  <LogCategory>{log.category}</LogCategory>
+                  <LogLevel level={log.level}>{t(`admin:ui.systemLogs.level.${log.level}`, { defaultValue: log.level })}</LogLevel>
+                  <LogCategory>{t(`admin:ui.systemLogs.category.${log.category}`, { defaultValue: log.category })}</LogCategory>
                   <LogService>{log.service}</LogService>
                   {log.statusCode && (
                     <span style={{ color: log.statusCode >= 400 ? '#DC2626' : '#059669', fontWeight: '500' }}>
@@ -1160,15 +1163,15 @@ const SystemLogsPage: React.FC = () => {
                 </LogHeader>
                 <LogMessage>{log.message}</LogMessage>
                 <LogMeta>
-                  {log.requestId && <span>Request: {log.requestId}</span>}
-                  {log.userId && <span>User: {log.userName || log.userId}</span>}
+                  {log.requestId && <span>{t('admin:ui.systemLogs.request', 'Request')}: {log.requestId}</span>}
+                  {log.userId && <span>{t('admin:ui.systemLogs.user', 'User')}: {log.userName || log.userId}</span>}
                   {log.ipAddress && <span>IP: {log.ipAddress}</span>}
                   {log.details && (
                     <span 
                       style={{ cursor: 'pointer', textDecoration: 'underline' }}
                       onClick={() => toggleLogDetails(log.id)}
                     >
-                      {expandedLogs.has(log.id) ? 'Hide Details' : 'Show Details'}
+                      {expandedLogs.has(log.id) ? t('admin:ui.systemLogs.hideDetails', 'Hide Details') : t('admin:ui.systemLogs.showDetails', 'Show Details')}
                     </span>
                   )}
                 </LogMeta>
@@ -1180,9 +1183,9 @@ const SystemLogsPage: React.FC = () => {
                   if (!guide) return null;
                   return (
                     <ActionGuidePanel>
-                      <GuideTitle>{'Action Guide'}</GuideTitle>
+                      <GuideTitle>{t('admin:ui.systemLogs.actionGuide', 'Action Guide')}</GuideTitle>
                       <GuideWhatHappened>{guide.whatHappened}</GuideWhatHappened>
-                      <GuideTitle style={{ fontSize: '11px', marginBottom: '6px' }}>{'What to do'}</GuideTitle>
+                      <GuideTitle style={{ fontSize: '11px', marginBottom: '6px' }}>{t('admin:ui.systemLogs.whatToDo', 'What to do')}</GuideTitle>
                       <GuideStepList>
                         {guide.whatToDo.map((step, i) => <li key={i}>{step}</li>)}
                       </GuideStepList>
@@ -1193,7 +1196,7 @@ const SystemLogsPage: React.FC = () => {
             ))}
             {filteredLogs.length === 0 && (
               <div style={{ padding: '40px', textAlign: 'center', color: '#4B5563' }}>
-                No logs match the current filters
+                {t('admin:ui.systemLogs.noLogs', 'No logs match the current filters')}
               </div>
             )}
           </LogsList>
@@ -1206,26 +1209,26 @@ const SystemLogsPage: React.FC = () => {
         <Modal
           isOpen={showExportModal}
           onClose={() => setShowExportModal(false)}
-          title="Export System Logs"
+          title={t('admin:ui.systemLogs.exportTitle', 'Export System Logs')}
         >
-          <p>Select the format for exporting {filteredLogs.length} log entries:</p>
+          <p>{t('admin:ui.systemLogs.exportSelect', { count: filteredLogs.length, defaultValue: `Select the format for exporting ${filteredLogs.length} log entries:` })}</p>
           <ExportOptions>
             <ExportOption onClick={() => confirmExport('csv')}>
               <ExportInfo>
-                <ExportTitle>{'CSV Format'}</ExportTitle>
-                <ExportDesc>{'Comma-separated values for spreadsheet analysis'}</ExportDesc>
+                <ExportTitle>{t('admin:ui.systemLogs.csv', 'CSV Format')}</ExportTitle>
+                <ExportDesc>{t('admin:ui.systemLogs.csvDesc', 'Comma-separated values for spreadsheet analysis')}</ExportDesc>
               </ExportInfo>
             </ExportOption>
             <ExportOption onClick={() => confirmExport('json')}>
               <ExportInfo>
-                <ExportTitle>{'JSON Format'}</ExportTitle>
-                <ExportDesc>{'Structured data with full details'}</ExportDesc>
+                <ExportTitle>{t('admin:ui.systemLogs.json', 'JSON Format')}</ExportTitle>
+                <ExportDesc>{t('admin:ui.systemLogs.jsonDesc', 'Structured data with full details')}</ExportDesc>
               </ExportInfo>
             </ExportOption>
             <ExportOption onClick={() => confirmExport('txt')}>
               <ExportInfo>
-                <ExportTitle>{'Text Format'}</ExportTitle>
-                <ExportDesc>{'Human-readable log format'}</ExportDesc>
+                <ExportTitle>{t('admin:ui.systemLogs.txt', 'Text Format')}</ExportTitle>
+                <ExportDesc>{t('admin:ui.systemLogs.txtDesc', 'Human-readable log format')}</ExportDesc>
               </ExportInfo>
             </ExportOption>
           </ExportOptions>
@@ -1235,23 +1238,23 @@ const SystemLogsPage: React.FC = () => {
         <Modal
           isOpen={showClearModal}
           onClose={() => setShowClearModal(false)}
-          title="Clear System Logs"
+          title={t('admin:ui.systemLogs.clearTitle', 'Clear System Logs')}
           footer={
             <ModalActions>
               <ModalButton variant="secondary" onClick={() => setShowClearModal(false)}>
-                Cancel
+                {t('common:button.cancel', 'Cancel')}
               </ModalButton>
               <ModalButton variant="danger" onClick={confirmClearLogs}>
-                Clear All Logs
+                {t('admin:ui.systemLogs.clearAll', 'Clear All Logs')}
               </ModalButton>
             </ModalActions>
           }
         >
           <WarningText>
-            Are you sure you want to clear all system logs?
+            {t('admin:ui.systemLogs.clearQ', 'Are you sure you want to clear all system logs?')}
           </WarningText>
           <WarningSubtext>
-            This action cannot be undone. All {logs.length} log entries will be permanently removed.
+            {t('admin:ui.systemLogs.clearWarn', { count: logs.length, defaultValue: `This action cannot be undone. All ${logs.length} log entries will be permanently removed.` })}
           </WarningSubtext>
         </Modal>
       </Container>

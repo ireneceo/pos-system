@@ -15,7 +15,7 @@ interface LanguageSelectorProps {
 }
 
 const LanguageSelector: React.FC<LanguageSelectorProps> = ({ variant = 'dropdown' }) => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user, updateLanguage } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -68,7 +68,7 @@ const LanguageSelector: React.FC<LanguageSelectorProps> = ({ variant = 'dropdown
   if (variant === 'globe') {
     return (
       <Container ref={ref}>
-        <GlobeToggle onClick={() => setOpen(!open)}>
+        <GlobeToggle onClick={() => setOpen(!open)} aria-label={t('common:language.selectLanguage', 'Select language')} title={t('common:language.selectLanguage', 'Select language')} aria-expanded={open}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <path d="M2 12h20"/>
@@ -181,12 +181,13 @@ const GlobeToggle = styled.button`
     border-color: rgba(0, 0, 0, 0.2);
   }
 
-  /* 폰 폭: 관리 화면 머리줄에서 «EN» 글자 때문에 내 정보 버튼이 화면 밖으로 밀렸다(375px 실측).
-     지구 모양만 남긴다 — 고른 언어는 펼친 목록의 ✓ 로 보인다. */
+  /* 폰 폭: 11-04 에 «EN» 글자 때문에 내 정보 버튼이 화면 밖으로 밀려 지구 모양만 남겼는데, 그러면 무엇인지
+     알아보기 어려웠다. 2026-11-18(Fable 설계 H2): 관리 화면 머리줄은 매장 이름이 아랫줄로 내려가 자리가 생겼으므로
+     글자를 작게 다시 보인다 — 여백·간격을 줄여 폭은 약 56px. */
   @media (max-width: 480px) {
-    padding: 8px;
-    gap: 0;
-    span { display: none; }
+    padding: 6px 8px;
+    gap: 4px;
+    span { font-size: 12px; }
   }
 `;
 

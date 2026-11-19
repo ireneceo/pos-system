@@ -15,6 +15,8 @@ import CommentSection from '../../components/Common/CommentSection';
 import { linkifyText } from '../../utils/linkify';
 import { Modal as CommonModal } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as tzFormatDateTime, formatDate as tzFormatDate } from '../../utils/timezone';
@@ -825,10 +827,10 @@ const NoticesPage: React.FC = () => {
         {/* Tabs */}
         <Tabs>
           <Tab active={activeTab === 'received'} onClick={() => setActiveTab('received')}>
-            Received<TabBadge count={receivedNotices.length} showZero />
+            {t('common:ui.notices.received')}<TabBadge count={receivedNotices.length} showZero />
           </Tab>
           <Tab active={activeTab === 'sent'} onClick={() => setActiveTab('sent')}>
-            Sent<TabBadge count={sentNotices.length} showZero />
+            {t('common:ui.notices.sent')}<TabBadge count={sentNotices.length} showZero />
           </Tab>
         </Tabs>
 
@@ -892,7 +894,7 @@ const NoticesPage: React.FC = () => {
                 transition: 'all 0.15s'
               }}
             >
-              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : cat === 'guide' ? 'Guide' : 'Updates'}
+              {cat === 'all' ? t('common:label.all') : statusLabel(t, cat)}
             </button>
           ))}
         </div>
@@ -901,7 +903,7 @@ const NoticesPage: React.FC = () => {
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder="Search notices..."
+            placeholder={t('common:ui.search.notices')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -946,7 +948,7 @@ const NoticesPage: React.FC = () => {
                       <NoticeTitleText>{notice.title}</NoticeTitleText>
                       <NoticeMeta>
                         <span>From: {notice.author_name || notice.author?.full_name || 'Unknown'}</span>
-                        <span>{notice.author_role || notice.author?.role || ''}</span>
+                        <span>{getRoleDisplayName(notice.author_role || notice.author?.role, t)}</span>
                         {activeTab === 'sent' && (
                           <RecipientInfo>To: {getRecipientSummary(notice)}</RecipientInfo>
                         )}
@@ -958,9 +960,9 @@ const NoticesPage: React.FC = () => {
                       <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>{t('common:noticesPage.guide')}</span>
                     )}
                     {notice.category === 'updates' && (
-                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6' }}>Updates</span>
+                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6' }}>{statusLabel(t, 'updates')}</span>
                     )}
-                    <PriorityBadge priority={notice.priority}>{notice.priority}</PriorityBadge>
+                    <PriorityBadge priority={notice.priority}>{statusLabel(t, notice.priority)}</PriorityBadge>
                   </BadgeContainer>
                 </NoticeHeader>
 
@@ -1000,7 +1002,7 @@ const NoticesPage: React.FC = () => {
       {/* New Notice Modal */}
       {/* ================================================================== */}
       {showNewModal && (
-        <CommonModal isOpen={true} onClose={() => setShowNewModal(false)} title="New Notice" footer={<><Button variant="secondary" onClick={() => setShowNewModal(false)}>{t('common:noticesPage.cancel')}</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim() || (newNotice.target_type === 'select_restaurants' && newNotice.restaurant_ids.length === 0) || (newNotice.target_type === 'restaurant' && newNotice.restaurant_ids.length === 0)}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => setShowNewModal(false)} title={t('common:noticesPage.newNotice')} footer={<><Button variant="secondary" onClick={() => setShowNewModal(false)}>{t('common:noticesPage.cancel')}</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim() || (newNotice.target_type === 'select_restaurants' && newNotice.restaurant_ids.length === 0) || (newNotice.target_type === 'restaurant' && newNotice.restaurant_ids.length === 0)}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
               <FormGroup>
                 <FormLabel>Title *</FormLabel>
                 <FormInput
@@ -1130,13 +1132,13 @@ const NoticesPage: React.FC = () => {
                   From: <strong style={{ marginLeft: '4px' }}>{selectedNotice.author_name || selectedNotice.author?.full_name || 'Unknown'}</strong>
                 </NoticeDetailMetaItem>
                 <NoticeDetailMetaItem>
-                  {selectedNotice.author_role || selectedNotice.author?.role || ''}
+                  {getRoleDisplayName(selectedNotice.author_role || selectedNotice.author?.role, t)}
                 </NoticeDetailMetaItem>
                 <NoticeDetailMetaItem>
                   {formatDateTime(selectedNotice.createdAt)}
                 </NoticeDetailMetaItem>
                 <PriorityBadge priority={selectedNotice.priority}>
-                  {selectedNotice.priority}
+                  {statusLabel(t, selectedNotice.priority)}
                 </PriorityBadge>
               </NoticeDetailMeta>
 

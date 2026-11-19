@@ -17,6 +17,7 @@ import { useSetupStatus } from '../../hooks/useSetupStatus';
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as tzFormatDate } from '../../utils/timezone';
 import { usePlayApp } from '../../utils/playApp';
+import { statusLabel } from '../../utils/statusLabel';
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
 // ============================================================================
@@ -537,30 +538,30 @@ const OwnerDashboardPage: React.FC = () => {
       // Alerts
       const alertList: Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }> = [];
       if (overdueCount > 0) {
-        alertList.push({ type: 'warning', title: 'Overdue Invoices', message: `${overdueCount} invoice(s) need attention`, link: '/pos/owner/invoices' });
+        alertList.push({ type: 'warning', title: t('brand:brandGeneralDashboard.overdueInvoices'), message: t('owner:ui.ownerDashboard.alertOverdueMsg', { count: overdueCount }), link: '/pos/owner/invoices' });
       }
       if ((dash.pendingInvoices || 0) > 0) {
-        alertList.push({ type: 'info', title: 'Pending Invoices', message: `${dash.pendingInvoices} invoice(s) pending payment`, link: '/pos/owner/invoices' });
+        alertList.push({ type: 'info', title: t('owner:ownerDashboardPage.pendingInvoices'), message: t('owner:ui.ownerDashboard.alertPendingMsg', { count: dash.pendingInvoices }), link: '/pos/owner/invoices' });
       }
       const inactiveRestaurants = restaurantList.filter((r: RestaurantSummary) => r.status === 'inactive');
       if (inactiveRestaurants.length > 0) {
-        alertList.push({ type: 'warning', title: 'Inactive Restaurants', message: `${inactiveRestaurants.length} restaurant(s) currently inactive`, link: '/pos/owner/restaurants' });
+        alertList.push({ type: 'warning', title: t('owner:ui.ownerDashboard.alertInactiveTitle'), message: t('owner:ui.ownerDashboard.alertInactiveMsg', { count: inactiveRestaurants.length }), link: '/pos/owner/restaurants' });
       }
       const noRevenueToday = restaurantList.filter((r: RestaurantSummary) => (r.todayRevenue || 0) === 0 && r.status === 'active');
       if (noRevenueToday.length > 0 && noRevenueToday.length < restaurantList.length) {
-        alertList.push({ type: 'info', title: 'No Orders Today', message: `${noRevenueToday.length} active restaurant(s) with no orders today`, link: '/pos/owner/restaurants' });
+        alertList.push({ type: 'info', title: t('owner:ui.ownerDashboard.alertNoOrdersTitle'), message: t('owner:ui.ownerDashboard.alertNoOrdersMsg', { count: noRevenueToday.length }), link: '/pos/owner/restaurants' });
       }
       if (badgeCounts.notices > 0) {
-        alertList.push({ type: 'info', title: 'Unread Notices', message: `${badgeCounts.notices} unread notice(s)`, link: '/pos/owner/notices' });
+        alertList.push({ type: 'info', title: t('settings:restaurantDashboard.unreadNotices'), message: t('owner:ui.ownerDashboard.alertNoticesMsg', { count: badgeCounts.notices }), link: '/pos/owner/notices' });
       }
       if (badgeCounts.systemInquiry > 0) {
-        alertList.push({ type: 'info', title: 'System Inquiry', message: `${badgeCounts.systemInquiry} inquiry(s) with new replies`, link: '/pos/owner/system-inquiry' });
+        alertList.push({ type: 'info', title: t('common:nav.systemInquiry'), message: t('owner:ui.ownerDashboard.alertSystemInquiryMsg', { count: badgeCounts.systemInquiry }), link: '/pos/owner/system-inquiry' });
       }
       if (badgeCounts.operationInquiry > 0) {
-        alertList.push({ type: 'info', title: 'Operation Inquiry', message: `${badgeCounts.operationInquiry} inquiry(s) with responses`, link: '/pos/owner/operation-inquiry' });
+        alertList.push({ type: 'info', title: t('common:nav.operationInquiry'), message: t('owner:ui.ownerDashboard.alertOperationInquiryMsg', { count: badgeCounts.operationInquiry }), link: '/pos/owner/operation-inquiry' });
       }
       if (alertList.length === 0) {
-        alertList.push({ type: 'success', title: 'All Clear', message: 'All systems running smoothly. No issues detected.' });
+        alertList.push({ type: 'success', title: t('owner:ui.ownerDashboard.alertAllClearTitle'), message: t('owner:ui.ownerDashboard.alertAllClearMsg') });
       }
       setAlerts(alertList);
 
@@ -630,13 +631,13 @@ const OwnerDashboardPage: React.FC = () => {
             <span>{subscriptionInfo.planType}</span>
             {(() => {
               const s = subscriptionInfo;
-              if (s.status === 'trial') return <SubscriptionBadge variant="trial" onClick={goSubscription} style={badgeStyle}>Trial{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? s.daysLeft + ' days left' : 'Expired'}` : ''}</SubscriptionBadge>;
+              if (s.status === 'trial') return <SubscriptionBadge variant="trial" onClick={goSubscription} style={badgeStyle}>{t('common:status.trial')}{s.daysLeft !== undefined ? ` • ${s.daysLeft > 0 ? t('owner:ui.ownerDashboard.daysLeft', { count: s.daysLeft }) : t('owner:ownerDashboardPage.expired')}` : ''}</SubscriptionBadge>;
               if (s.status === 'active' && s.daysLeft !== undefined) {
                 if (s.daysLeft <= 0) return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{t('owner:ownerDashboardPage.expired')}</SubscriptionBadge>;
-                if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={goSubscription} style={badgeStyle}>{s.daysLeft} days left</SubscriptionBadge>;
-                return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{s.daysLeft} days left</SubscriptionBadge>;
+                if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={goSubscription} style={badgeStyle}>{t('owner:ui.ownerDashboard.daysLeft', { count: s.daysLeft })}</SubscriptionBadge>;
+                return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{t('owner:ui.ownerDashboard.daysLeft', { count: s.daysLeft })}</SubscriptionBadge>;
               }
-              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{s.status}</SubscriptionBadge>;
+              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{statusLabel(t, s.status)}</SubscriptionBadge>;
               return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{t('owner:ownerDashboardPage.active')}</SubscriptionBadge>;
             })()}
           </Subtitle>
@@ -656,19 +657,19 @@ const OwnerDashboardPage: React.FC = () => {
         {/* Subscription Status Banner */}
         {!playApp && paymentStatus.subscriptionStatus === 'trial' && paymentStatus.trialEndDate && (
           <SubscriptionBanner $type="trial">
-            Trial period active — expires {tzFormatDate(paymentStatus.trialEndDate, null)}. Please pay your invoice to continue service.
+            {t('owner:ui.ownerDashboard.trialBanner', { date: tzFormatDate(paymentStatus.trialEndDate, null) })}
           </SubscriptionBanner>
         )}
         {paymentStatus.restrictionLevel === 'warning' && (
           <SubscriptionBanner $type="warning">
-            {playApp ? t('common:appUnavailable.overdue') : <>Payment overdue ({paymentStatus.overdueDays} days). Please pay {paymentStatus.currency ? formatCurrency(paymentStatus.overdueAmount, paymentStatus.currency) : `$${paymentStatus.overdueAmount}`} to avoid service restrictions.</>}
+            {playApp ? t('common:appUnavailable.overdue') : <>{t('owner:ui.ownerDashboard.overdueBanner', { days: paymentStatus.overdueDays, amount: paymentStatus.currency ? formatCurrency(paymentStatus.overdueAmount, paymentStatus.currency) : `$${paymentStatus.overdueAmount}` })}</>}
           </SubscriptionBanner>
         )}
         {(paymentStatus.restrictionLevel === 'partial' || paymentStatus.restrictionLevel === 'blocked') && (
           <SubscriptionBanner $type="danger">
             {paymentStatus.restrictionLevel === 'blocked'
-              ? (playApp ? t('common:appUnavailable.suspended') : 'Your subscription is suspended. Pay outstanding invoices to restore access.')
-              : `Service partially restricted due to overdue payment (${paymentStatus.overdueDays} days). Some features are disabled.`}
+              ? (playApp ? t('common:appUnavailable.suspended') : t('owner:ui.ownerDashboard.suspendedBanner'))
+              : t('owner:ui.ownerDashboard.partialBanner', { days: paymentStatus.overdueDays })}
           </SubscriptionBanner>
         )}
 
@@ -731,7 +732,7 @@ const OwnerDashboardPage: React.FC = () => {
                       fontSize: '13px'
                     }}
                   >
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                    {t(`common:time.${p}`)}
                   </button>
                 ))}
               </div>
@@ -741,11 +742,11 @@ const OwnerDashboardPage: React.FC = () => {
                 <BarChart data={barData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F4F8" />
                   <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#4B5563' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#4B5563' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                  <YAxis tick={{ fontSize: 12, fill: '#4B5563' }} tickFormatter={(v) => v >= 1000 ? `${Number((v / 1000).toFixed(v % 1000 === 0 ? 0 : 1))}k` : v} />
                   <Tooltip
                     formatter={(value: any, name: string) => [
                       name === 'revenue' ? formatCurrency(value, currency) : value,
-                      name === 'revenue' ? 'Revenue' : 'Orders'
+                      name === 'revenue' ? t('owner:ownerPerformance.revenue') : t('owner:ownerPerformance.orders')
                     ]}
                     labelStyle={{ color: '#0A2540', fontWeight: 600 }}
                     contentStyle={{ borderRadius: 8, border: '1px solid #C7CED6' }}
@@ -853,9 +854,9 @@ const OwnerDashboardPage: React.FC = () => {
               <CardHeader>
                 <div>
                   <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '1px 8px', borderRadius: '4px', marginLeft: '6px' }}>{restaurant.branch_name}</span>}</RestaurantName>
-                  <AdminName>{restaurant.admin_name || 'No admin assigned'}</AdminName>
+                  <AdminName>{restaurant.admin_name || t('owner:ui.ownerDashboard.noAdmin')}</AdminName>
                 </div>
-                <StatusBadge status={restaurant.status}>{restaurant.status}</StatusBadge>
+                <StatusBadge status={restaurant.status}>{statusLabel(t, restaurant.status)}</StatusBadge>
               </CardHeader>
               <CardStats>
                 <div>

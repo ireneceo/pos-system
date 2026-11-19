@@ -13,6 +13,9 @@ const statGridColumns = css`
 
   /* 7장: 4열이면 끝줄 3장 + 빈칸 → 마지막 카드가 두 칸 */
   &:has(> :nth-child(7):last-child) > :last-child { grid-column: span 2; }
+  /* 9장·10장 (2026-11-18 · 브랜드 대시보드 10장이 4+4+2 로 떨어져 빈 구멍 — R3): 3+3+3 / 5+5 */
+  &:has(> :nth-child(9):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  &:has(> :nth-child(10):last-child) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 
   @media (max-width: 1024px) {
     &:has(> :nth-child(6):last-child) { grid-template-columns: repeat(3, minmax(0, 1fr)); }

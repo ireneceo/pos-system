@@ -59,5 +59,19 @@
   "staffPage.remove": "Remove",
   "staffPage.removeTitle": "Remove staff",
   "staffPage.removeConfirm": "this staff account will be deleted and can no longer sign in or use a PIN. Past orders keep their name. This cannot be undone.",
-  "staffPage.removeFailed": "Failed to remove staff"
+  "staffPage.removeFailed": "Failed to remove staff",
+  "ui.perm.access_pos": "POS / Counter",
+  "ui.perm.access_payment": "Payment",
+  "ui.perm.access_void": "Cancel / Void",
+  "ui.perm.access_serving": "Serving",
+  "ui.perm.access_kitchen": "Kitchen",
+  "ui.perm.menu_management": "Products",
+  "ui.perm.inventory": "Stock Management",
+  "ui.perm.purchasing": "Purchase Orders",
+  "ui.perm.marketing": "Marketing",
+  "ui.perm.reports": "Analytics",
+  "ui.perm.support": "Communication",
+  "ui.perm.settings": "Settings",
+  "ui.staff.searchPh": "Search by name, email, department...",
+  "ui.staff.resetPw": "Reset PW"
 }

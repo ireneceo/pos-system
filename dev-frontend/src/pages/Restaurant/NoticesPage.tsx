@@ -12,6 +12,8 @@ import CommentSection from '../../components/Common/CommentSection';
 import { linkifyText } from '../../utils/linkify';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as tzFormatDate, formatDateTime as tzFormatDateTime } from '../../utils/timezone';
@@ -578,7 +580,7 @@ const NoticesPage: React.FC = () => {
                 transition: 'all 0.15s'
               }}
             >
-              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : cat === 'guide' ? 'Guide' : 'Updates'}
+              {cat === 'all' ? t('common:label.all') : statusLabel(t, cat)}
             </button>
           ))}
         </div>
@@ -587,7 +589,7 @@ const NoticesPage: React.FC = () => {
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder="Search notices..."
+            placeholder={t('common:ui.search.notices')}
             value={searchTerm}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
           />
@@ -648,7 +650,7 @@ const NoticesPage: React.FC = () => {
                         <AuthorInfo>
                           {notice.author_name}
                           <AuthorRoleBadge role={notice.author_role}>
-                            {notice.author_role}
+                            {getRoleDisplayName(notice.author_role, t)}
                           </AuthorRoleBadge>
                         </AuthorInfo>
                         <DateText>{formatDate(notice.createdAt)}</DateText>
@@ -669,10 +671,10 @@ const NoticesPage: React.FC = () => {
                         <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>{t('settings:noticesPage.guide')}</span>
                       )}
                       {notice.category === 'updates' && (
-                        <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6' }}>Updates</span>
+                        <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6' }}>{statusLabel(t, 'updates')}</span>
                       )}
                       <PriorityBadge priority={notice.priority}>
-                        {notice.priority}
+                        {statusLabel(t, notice.priority)}
                       </PriorityBadge>
                     </NoticeCardBadges>
                   </NoticeCardHeader>
@@ -725,7 +727,7 @@ const NoticesPage: React.FC = () => {
                     {selectedNotice.title}
                   </div>
                   <PriorityBadge priority={selectedNotice.priority}>
-                    {selectedNotice.priority}
+                    {statusLabel(t, selectedNotice.priority)}
                   </PriorityBadge>
                 </div>
 
@@ -741,7 +743,7 @@ const NoticesPage: React.FC = () => {
                         {noticeDetail?.author_name || selectedNotice.author_name}
                       </NoticeFromName>
                       <NoticeFromRole>
-                        {noticeDetail?.author_role || selectedNotice.author_role}
+                        {getRoleDisplayName(noticeDetail?.author_role || selectedNotice.author_role, t)}
                       </NoticeFromRole>
                     </NoticeFromDetails>
                   </NoticeFromInfo>
@@ -758,7 +760,7 @@ const NoticesPage: React.FC = () => {
                   <DetailMetaItem>
                     <DetailMetaLabel>{t('settings:noticesPage.priority')}</DetailMetaLabel>
                     <DetailMetaValue style={{ textTransform: 'capitalize' }}>
-                      {noticeDetail?.priority || selectedNotice.priority}
+                      {statusLabel(t, noticeDetail?.priority || selectedNotice.priority)}
                     </DetailMetaValue>
                   </DetailMetaItem>
                   <DetailMetaItem>

@@ -23,6 +23,15 @@ export const InvoiceActionButtons = styled(ActionButtons)`
       flex: 1 1 100%;
     }
   }
+
+  /* 칸 많은 표를 태블릿 가로(1025~1280)에서 카드로 바꾼 경우(DataTable data-card-upto) — 버튼을 한 줄로 */
+  @media (min-width: 1025px) and (max-width: 1280px) {
+    table[data-card-upto='1280'] & {
+      width: auto;
+      > button:not(:has(> *)),
+      > span { flex: 0 0 auto; }
+    }
+  }
 `;
 
 /** 같은 표의 «Actions» 머리칸 최소 폭 = 위 묶음 폭. 표 칸은 content-box 라 좌우 여백 32 는 따로 붙어 칸 = 150px. */

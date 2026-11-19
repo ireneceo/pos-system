@@ -38,6 +38,7 @@ import { useStore } from '../../contexts/StoreContext';
 import PhoneInput from '../../components/Common/PhoneInput';
 import SearchableSelect from '../../components/Common/SearchableSelect';
 import { useTranslation } from 'react-i18next';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
 import SubscriptionFormFields, { type BillingCycle, type PaymentModel, type DiscountType } from '../../components/Subscription/SubscriptionFormFields';
@@ -1556,7 +1557,7 @@ const AdminStaffManagementPage: React.FC = () => {
           <ActionSection>
             <Button variant="secondary" onClick={handleExportData}>{t('admin:staffManagementPage.export')}</Button>
             <Button variant="primary" onClick={handleAddStaff}>
-              Add Staff
+              {t('admin:staffManagementPage.addStaff')}
             </Button>
           </ActionSection>
         </Header>
@@ -1615,7 +1616,7 @@ const AdminStaffManagementPage: React.FC = () => {
             >
               <option value="all">{t('admin:staffManagementPage.allRoles')}</option>
               {roles.map(role => (
-                <option key={role} value={role}>{role}</option>
+                <option key={role} value={role}>{getRoleDisplayName(role, t)}</option>
               ))}
             </FilterSelect>
 
@@ -1686,7 +1687,7 @@ const AdminStaffManagementPage: React.FC = () => {
                     <MobileValue>
                       <MobileLabel>{t('admin:staffManagementPage.role')}</MobileLabel>
                       <RoleBadge role={staff.role}>
-                        {staff.role}
+                        {getRoleDisplayName(staff.role, t)}
                       </RoleBadge>
                     </MobileValue>
 
@@ -1700,14 +1701,14 @@ const AdminStaffManagementPage: React.FC = () => {
                     <MobileValue>
                       <MobileLabel>{t('admin:staffManagementPage.status')}</MobileLabel>
                       <StatusBadge status={staff.status}>
-                        {staff.status === 'active' ? 'Active' : 'Inactive'}
+                        {staff.status === 'active' ? t('common:status.active') : t('common:status.inactive')}
                       </StatusBadge>
                     </MobileValue>
                   </MobileGrid>
 
                   <ActionButtons>
                     <ActionButton onClick={() => handleEditStaff(staff)}>
-                      Edit
+                      {t('common:button.edit')}
                     </ActionButton>
                     <IconButton
                       onClick={() => handleToggleStaffStatus(staff)}
@@ -1745,7 +1746,7 @@ const AdminStaffManagementPage: React.FC = () => {
         </Content>
         
         {showAddModal && (
-        <CommonModal isOpen={true} onClose={handleCloseModal} title="Add Staff" footer={<><Button variant="secondary" onClick={handleCloseModal}>{t('admin:staffManagementPage.cancel')}</Button><Button variant="primary" onClick={handleSubmitStaff}>{t('admin:staffManagementPage.addStaff')}</Button></>}>
+        <CommonModal isOpen={true} onClose={handleCloseModal} title={t('admin:staffManagementPage.addStaff')} footer={<><Button variant="secondary" onClick={handleCloseModal}>{t('admin:staffManagementPage.cancel')}</Button><Button variant="primary" onClick={handleSubmitStaff}>{t('admin:staffManagementPage.addStaff')}</Button></>}>
             
             <FormGrid>
               <FormGroup>
@@ -1757,12 +1758,12 @@ const AdminStaffManagementPage: React.FC = () => {
                   <option value="">{t('admin:staffManagementPage.selectRole')}</option>
                   <option value="Staff">{t('admin:staffManagementPage.staff')}</option>
                   <option value="Restaurant Admin">{t('admin:staffManagementPage.restaurantAdmin')}</option>
-                  <option value="Restaurant Owner">Restaurant Owner</option>
+                  <option value="Restaurant Owner">{getRoleDisplayName('Restaurant Owner', t)}</option>
                   <option value="Foodcourt Manager">{t('admin:staffManagementPage.foodcourtManager')}</option>
                   <option value="Foodcourt General">{t('admin:staffManagementPage.foodcourtGeneral')}</option>
                   <option value="Brand Manager">{t('admin:staffManagementPage.brandManager')}</option>
                   <option value="Brand General">{t('admin:staffManagementPage.brandGeneral')}</option>
-                  <option value="Supplier Admin">Supplier Admin</option>
+                  <option value="Supplier Admin">{getRoleDisplayName('Supplier Admin', t)}</option>
                   <option value="System Admin">{t('admin:staffManagementPage.systemAdmin')}</option>
                 </Select>
               </FormGroup>
@@ -2214,7 +2215,7 @@ const AdminStaffManagementPage: React.FC = () => {
                         {viewingPermissions.name}
                       </div>
                       <div style={{ fontSize: '14px', color: '#4B5563' }}>
-                        {viewingPermissions.role} - {viewingPermissions.companyName}
+                        {getRoleDisplayName(viewingPermissions.role, t)} - {viewingPermissions.companyName}
                       </div>
                     </div>
                   </div>
@@ -2343,7 +2344,7 @@ const AdminStaffManagementPage: React.FC = () => {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 14, color: '#111827' }}>{c.label || '-'}</div>
                       <div style={{ fontSize: 12, color: '#6B7280' }}>
-                        {c.role}
+                        {getRoleDisplayName(c.role, t)}
                         {c.kind === 'default'
                           ? ` · ${t('admin:staffManagementPage.contexts.own', 'Their own role')}`
                           : ''}
@@ -2370,7 +2371,7 @@ const AdminStaffManagementPage: React.FC = () => {
                   {t('admin:staffManagementPage.contexts.orphans', 'Some contexts point to a restaurant that no longer exists:')}
                   {contextsOrphans.map((o: any) => (
                     <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 6 }}>
-                      <span>#{o.entity_id} · {o.role}</span>
+                      <span>#{o.entity_id} · {getRoleDisplayName(o.role, t)}</span>
                       <Button variant="secondary" onClick={() => handleRevokeContext(o.id)}>
                         {t('admin:staffManagementPage.contexts.revoke', 'Remove')}
                       </Button>
@@ -2431,7 +2432,7 @@ const AdminStaffManagementPage: React.FC = () => {
                         {deletingStaff.name}
                       </div>
                       <div style={{ fontSize: '14px', color: '#4B5563' }}>
-                        {deletingStaff.role} - {deletingStaff.companyName}
+                        {getRoleDisplayName(deletingStaff.role, t)} - {deletingStaff.companyName}
                       </div>
                     </div>
                   </div>
@@ -2477,7 +2478,7 @@ const AdminStaffManagementPage: React.FC = () => {
                           {selectedStaff.name}
                         </div>
                         <div style={{ fontSize: '14px', color: '#4B5563' }}>
-                          {selectedStaff.role} - {selectedStaff.companyName}
+                          {getRoleDisplayName(selectedStaff.role, t)} - {selectedStaff.companyName}
                         </div>
                       </div>
                     </div>

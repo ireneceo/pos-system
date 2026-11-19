@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { Header, Title, ActionSection } from '../../components/UI/PageComponents';
 import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend } from '../../components/UI';
@@ -183,6 +184,7 @@ interface Stats {
 }
 
 const RentManagement: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [rentData, setRentData] = useState<RentData[]>([]);
@@ -244,13 +246,13 @@ const RentManagement: React.FC = () => {
       });
       const json = await res.json();
       if (!res.ok || !json.success) {
-        setInfoModal({ open: true, title: 'Could not issue invoices', message: json.message || 'Failed to issue rent invoices.' });
+        setInfoModal({ open: true, title: t('common:rentManagement.issueFailedTitle'), message: json.message || t('common:rentManagement.issueFailed') });
         return;
       }
       await loadRent();
     } catch (err) {
       console.error('Error generating rent invoices:', err);
-      setInfoModal({ open: true, title: 'Could not issue invoices', message: 'Failed to issue rent invoices.' });
+      setInfoModal({ open: true, title: t('common:rentManagement.issueFailedTitle'), message: t('common:rentManagement.issueFailed') });
     } finally {
       setGenerating(false);
     }
@@ -259,9 +261,9 @@ const RentManagement: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'paid': return 'Paid';
-      case 'pending': return 'Pending';
-      case 'overdue': return 'Overdue';
+      case 'paid': return t('common:rentManagement.paid');
+      case 'pending': return t('common:rentManagement.pending');
+      case 'overdue': return t('common:rentManagement.overdue');
       default: return status;
     }
   };
@@ -275,15 +277,15 @@ const RentManagement: React.FC = () => {
       <Container>
         <Header>
           <div>
-            <Title>{'Rent Management'}</Title>
-            <Subtitle>{'Foodcourt tenant rent status and payment management'}</Subtitle>
+            <Title>{t('common:rentManagement.rentManagement')}</Title>
+            <Subtitle>{t('common:rentManagement.foodcourtTenantRentStatusAndPaymentManagement')}</Subtitle>
           </div>
           <ActionSection>
             <ThemedButton variant="outline" onClick={() => navigate('/pos/foodcourt/tenancy')}>
-              {'Manage Contracts'}
+              {t('common:rentManagement.manageContracts')}
             </ThemedButton>
             <ThemedButton variant="primary" onClick={handleGenerateInvoices} disabled={generating}>
-              {generating ? 'Issuing...' : 'Issue This Month'}
+              {generating ? t('common:rentManagement.issuing') : t('common:rentManagement.issueThisMonth')}
             </ThemedButton>
           </ActionSection>
         </Header>
@@ -292,29 +294,29 @@ const RentManagement: React.FC = () => {
           <StatsGrid>
             <StatCard>
               <StatValue>{stats.totalStores}</StatValue>
-              <StatLabel>{'Total Tenants'}</StatLabel>
-              <StatTrend trend="up">{'All active spaces'}</StatTrend>
+              <StatLabel>{t('common:rentManagement.totalTenants')}</StatLabel>
+              <StatTrend trend="up">{t('common:rentManagement.allActiveSpaces')}</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{stats.paidStores}</StatValue>
-              <StatLabel>{'Paid'}</StatLabel>
+              <StatLabel>{t('common:rentManagement.paid')}</StatLabel>
               <StatTrend trend="up">
-                {stats.totalStores > 0 ? `${Math.round((stats.paidStores / stats.totalStores) * 100)}% payment rate` : 'No tenants'}
+                {stats.totalStores > 0 ? t('common:rentManagement.paymentRate', { pct: Math.round((stats.paidStores / stats.totalStores) * 100) }) : t('common:rentManagement.noTenants')}
               </StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{stats.pendingStores}</StatValue>
-              <StatLabel>{'Pending'}</StatLabel>
-              <StatTrend trend="down">{'Awaiting payment'}</StatTrend>
+              <StatLabel>{t('common:rentManagement.pending')}</StatLabel>
+              <StatTrend trend="down">{t('common:rentManagement.awaitingPayment')}</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{stats.overdueStores}</StatValue>
-              <StatLabel>{'Overdue'}</StatLabel>
-              <StatTrend trend={stats.overdueStores > 0 ? "down" : "up"}>{'Requires attention'}</StatTrend>
+              <StatLabel>{t('common:rentManagement.overdue')}</StatLabel>
+              <StatTrend trend={stats.overdueStores > 0 ? "down" : "up"}>{t('common:rentManagement.requiresAttention')}</StatTrend>
             </StatCard>
             <StatCard>
               <StatValue>{formatCurrency(stats.totalRevenue, currency)}</StatValue>
-              <StatLabel>{'Monthly Rent Total'}</StatLabel>
+              <StatLabel>{t('common:rentManagement.monthlyRentTotal')}</StatLabel>
               <StatTrend trend="up">{'Base rent + maintenance'}</StatTrend>
             </StatCard>
           </StatsGrid>
@@ -322,13 +324,13 @@ const RentManagement: React.FC = () => {
           <ActionBar>
             <SearchInput
               type="text"
-              placeholder="Search by tenant or unit..."
+              placeholder={t('common:rentManagement.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
             <ButtonGroup>
               <ThemedButton variant="outline" onClick={loadRent} disabled={loading}>
-                {loading ? 'Loading...' : 'Refresh'}
+                {loading ? t('common:rentManagement.loading') : t('common:rentManagement.refresh')}
               </ThemedButton>
             </ButtonGroup>
           </ActionBar>
@@ -337,40 +339,40 @@ const RentManagement: React.FC = () => {
             {filteredData.length === 0 ? (
               rentData.length === 0 ? (
                 <EmptyState
-                  title="No tenants yet"
-                  description="Rent management lists each active tenant restaurant and their monthly billing status. Once you have tenants linked to your branch units, they will appear here."
-                  primaryAction={{ label: 'Manage Tenants', onClick: () => navigate('/pos/foodcourt/tenancy') }}
-                  secondaryAction={{ label: 'Open Floor Plan', onClick: () => navigate('/pos/foodcourt/floor-plan') }}
+                  title={t('common:rentManagement.emptyTitle')}
+                  description={t('common:rentManagement.emptyDesc')}
+                  primaryAction={{ label: t('common:rentManagement.manageTenants'), onClick: () => navigate('/pos/foodcourt/tenancy') }}
+                  secondaryAction={{ label: t('common:rentManagement.openFloorPlan'), onClick: () => navigate('/pos/foodcourt/floor-plan') }}
                 />
               ) : (
-                <DataTableEmpty>No tenants match the current filter</DataTableEmpty>
+                <DataTableEmpty>{t('common:rentManagement.noMatch')}</DataTableEmpty>
               )
             ) : (
               <DataTable>
                 <DataTableHead>
                   <tr>
-                    <DataTableHeaderCell align="left">{'Tenant'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">{'Unit'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">{'Contact'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">{'Monthly Rent'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{'Due Date'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{'Status'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{'Invoice'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="center">{'Contract End'}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="right">{'Actions'}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('common:tableCol.tenant')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('common:tableCol.unit')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('common:rentManagement.contact')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('common:rentManagement.monthlyRent')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:rentManagement.dueDate')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:rentManagement.status')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:tableCol.invoice')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:rentManagement.contractEnd')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('common:rentManagement.actions')}</DataTableHeaderCell>
                   </tr>
                 </DataTableHead>
                 <tbody>
                   {filteredData.map((item) => (
                     <DataTableRow key={item.contractId}>
-                      <DataTableCell data-label="Tenant">
+                      <DataTableCell data-label={t('common:tableCol.tenant')}>
                         <strong>{item.storeName}</strong>
                       </DataTableCell>
-                      <DataTableCell data-label="Unit">
+                      <DataTableCell data-label={t('common:tableCol.unit')}>
                         {item.unit || '-'}{item.unitSize ? ` (${item.unitSize})` : ''}
                       </DataTableCell>
-                      <DataTableCell data-label="Contact">{item.phone || '-'}</DataTableCell>
-                      <DataTableCell data-label="Monthly Rent" align="right">
+                      <DataTableCell data-label={t('common:rentManagement.contact')}>{item.phone || '-'}</DataTableCell>
+                      <DataTableCell data-label={t('common:rentManagement.monthlyRent')} align="right">
                         <strong>{formatCurrency(item.totalMonthly, item.currency || currency)}</strong>
                         {item.maintenanceFee > 0 && (
                           <div style={{ fontSize: '11px', color: '#4B5563' }}>
@@ -378,10 +380,10 @@ const RentManagement: React.FC = () => {
                           </div>
                         )}
                       </DataTableCell>
-                      <DataTableCell data-label="Due Date" align="center">
+                      <DataTableCell data-label={t('common:rentManagement.dueDate')} align="center">
                         {item.dueDate ? formatDate(item.dueDate) : '-'}
                       </DataTableCell>
-                      <DataTableCell data-label="Status" align="center">
+                      <DataTableCell data-label={t('common:rentManagement.status')} align="center">
                         <StatusBadge status={item.status}>
                           {getStatusText(item.status)}
                         </StatusBadge>
@@ -389,10 +391,10 @@ const RentManagement: React.FC = () => {
                           <div style={{ fontSize: '11px', color: '#DC2626' }}>{`${item.daysOverdue}d overdue`}</div>
                         )}
                       </DataTableCell>
-                      <DataTableCell data-label="Invoice" align="center">
-                        {item.lastInvoice ? item.lastInvoice.number : 'Not issued'}
+                      <DataTableCell data-label={t('common:tableCol.invoice')} align="center">
+                        {item.lastInvoice ? item.lastInvoice.number : t('common:rentManagement.notIssued')}
                       </DataTableCell>
-                      <DataTableCell data-label="Contract End" align="center">
+                      <DataTableCell data-label={t('common:rentManagement.contractEnd')} align="center">
                         {item.contractEndDate ? formatDate(item.contractEndDate) : '-'}
                       </DataTableCell>
                       <DataTableCell data-label="" align="right" mobileFullWidth>
@@ -425,7 +427,7 @@ const RentManagement: React.FC = () => {
         message={infoModal.message}
         onConfirm={() => setInfoModal({ open: false, title: '', message: '' })}
         onCancel={() => setInfoModal({ open: false, title: '', message: '' })}
-        confirmText="OK"
+        confirmText={t('common:button.ok', 'OK')}
         type="info"
         singleButton
       />

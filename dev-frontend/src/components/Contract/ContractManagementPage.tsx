@@ -449,7 +449,7 @@ const ContractManagementPage: React.FC<ContractManagementPageProps> = ({ entityT
                             )}
                           </DataTableCell>
                           <DataTableCell data-label={t('list.stage', 'Stage')}>
-                            <StageBadge bg={badge.bg} color={badge.color}>{c.stage}</StageBadge>
+                            <StageBadge bg={badge.bg} color={badge.color}>{t(`stages.${c.stage}`, { defaultValue: c.stage })}</StageBadge>
                           </DataTableCell>
                           <DataTableCell data-label={t('list.period', 'Period')}>
                             {c.start_date && c.end_date

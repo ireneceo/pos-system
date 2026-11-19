@@ -257,11 +257,11 @@ const SupplierInventoryPage: React.FC = () => {
 
     const delta = parseFloat(adjustForm.quantity_delta);
     if (Number.isNaN(delta) || delta === 0) {
-      setFormError(t('common:invalidValue', 'Enter a non-zero number'));
+      setFormError(t('supplier:ui.inventory.nonZero'));
       return;
     }
     if (!adjustForm.reason) {
-      setFormError(t('common:required', 'Reason is required'));
+      setFormError(t('supplier:ui.inventory.reasonRequired'));
       return;
     }
 
@@ -303,7 +303,7 @@ const SupplierInventoryPage: React.FC = () => {
 
     const qty = parseFloat(receiveForm.quantity);
     if (Number.isNaN(qty) || qty <= 0) {
-      setFormError(t('common:invalidValue', 'Quantity must be > 0'));
+      setFormError(t('supplier:ui.inventory.qtyPositive'));
       return;
     }
 
@@ -387,7 +387,7 @@ const SupplierInventoryPage: React.FC = () => {
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder={t('common:search', 'Search') as string}
+            placeholder={t('common:button.search') as string}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -395,7 +395,7 @@ const SupplierInventoryPage: React.FC = () => {
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="all">{t('common:allCategories', 'All Categories')}</option>
+            <option value="all">{t('inventory:stockList.allCategories')}</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id.toString()}>
                 {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
@@ -416,49 +416,49 @@ const SupplierInventoryPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell align="left">{t('common:name', 'Name')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:label.name')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="left">SKU</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">{t('common:unit', 'Unit')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">{t('common:category', 'Category')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">{t('common:stock', 'Stock')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">{t('supplier:inventory.modals.delta', 'Threshold')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">{t('common:price', 'Unit Price')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">{t('common:status', 'Status')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right" isActions>{t('common:actions', 'Actions')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:tableCol.unit')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:label.category')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('supplier:ui.inventory.stock')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('supplier:products.fields.lowStockThreshold')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('supplier:products.fields.unitPrice')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:label.status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right" isActions>{t('common:label.actions')}</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>
               {loading && rows.length === 0 ? (
                 <tr>
                   <td colSpan={9}>
-                    <DataTableEmpty>{t('common:loading', 'Loading...')}</DataTableEmpty>
+                    <DataTableEmpty>{t('common:status.loading')}</DataTableEmpty>
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
                   <td colSpan={9}>
                     <DataTableEmpty>
-                      {t('supplier:inventory.emptyHint', 'No products yet. Create products in the Products page first.')}
+                      {t('supplier:ui.inventory.emptyHint')}
                     </DataTableEmpty>
                   </td>
                 </tr>
               ) : (
                 rows.map(row => (
                   <DataTableRow key={row.product_id}>
-                    <DataTableCell data-label={t('common:name', 'Name') as string}>{row.name}</DataTableCell>
+                    <DataTableCell data-label={t('common:label.name') as string}>{row.name}</DataTableCell>
                     <DataTableCell data-label="SKU">{row.sku || '-'}</DataTableCell>
-                    <DataTableCell data-label={t('common:unit', 'Unit') as string} align="center">{row.unit || '-'}</DataTableCell>
-                    <DataTableCell data-label={t('common:category', 'Category') as string}>{row.category_name || '-'}</DataTableCell>
-                    <DataTableCell data-label={t('common:stock', 'Stock') as string} align="right">
+                    <DataTableCell data-label={t('common:tableCol.unit') as string} align="center">{row.unit || '-'}</DataTableCell>
+                    <DataTableCell data-label={t('common:label.category') as string}>{row.category_name || '-'}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:ui.inventory.stock') as string} align="right">
                       {Number(row.current_stock).toFixed(2)}
                     </DataTableCell>
-                    <DataTableCell data-label={t('supplier:inventory.modals.delta', 'Threshold') as string} align="right">
+                    <DataTableCell data-label={t('supplier:products.fields.lowStockThreshold') as string} align="right">
                       {Number(row.low_stock_threshold).toFixed(2)}
                     </DataTableCell>
-                    <DataTableCell data-label={t('common:price', 'Unit Price') as string} align="right">
+                    <DataTableCell data-label={t('supplier:products.fields.unitPrice') as string} align="right">
                       {fmtMoney(row.unit_price)}
                     </DataTableCell>
-                    <DataTableCell data-label={t('common:status', 'Status') as string} align="center">
+                    <DataTableCell data-label={t('common:label.status') as string} align="center">
                       {row.is_out_of_stock ? (
                         <DataTableStatus variant="error">
                           {t('supplier:inventory.outOfStockBadge', 'OUT')}
@@ -514,7 +514,7 @@ const SupplierInventoryPage: React.FC = () => {
                   <tr>
                     <DataTableHeaderCell align="left">{t('supplier:inventory.history.date', 'Date')}</DataTableHeaderCell>
                     <DataTableHeaderCell align="left">{t('supplier:inventory.history.type.label', 'Type')}</DataTableHeaderCell>
-                    <DataTableHeaderCell align="left">{t('common:product', 'Product')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="left">{t('supplier:allProducts.col.product')}</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">{t('supplier:inventory.history.delta', 'Change')}</DataTableHeaderCell>
                     <DataTableHeaderCell align="right">{t('supplier:inventory.history.stockAfter', 'Stock After')}</DataTableHeaderCell>
                     <DataTableHeaderCell align="left">{t('supplier:inventory.history.referenceNotes', 'Reference / Notes')}</DataTableHeaderCell>
@@ -522,7 +522,7 @@ const SupplierInventoryPage: React.FC = () => {
                 </DataTableHead>
                 <tbody>
                   {txLoading ? (
-                    <tr><td colSpan={6}><DataTableEmpty>{t('common:loading', 'Loading...')}</DataTableEmpty></td></tr>
+                    <tr><td colSpan={6}><DataTableEmpty>{t('common:status.loading')}</DataTableEmpty></td></tr>
                   ) : transactions.length === 0 ? (
                     <tr><td colSpan={6}><DataTableEmpty>{t('supplier:inventory.history.empty', 'No transactions yet.')}</DataTableEmpty></td></tr>
                   ) : transactions.map(tx => {
@@ -540,7 +540,7 @@ const SupplierInventoryPage: React.FC = () => {
                         <DataTableCell data-label={t('supplier:inventory.history.type.label', 'Type') as string}>
                           <DataTableStatus variant={variant}>{typeLabel}</DataTableStatus>
                         </DataTableCell>
-                        <DataTableCell data-label={t('common:product', 'Product') as string}>
+                        <DataTableCell data-label={t('supplier:allProducts.col.product') as string}>
                           {tx.product_name || `#${tx.product_id}`}
                         </DataTableCell>
                         <DataTableCell data-label={t('supplier:inventory.history.delta', 'Change') as string} align="right">
@@ -578,7 +578,7 @@ const SupplierInventoryPage: React.FC = () => {
         footer={
           <>
             <ModalButton type="button" onClick={closeModals} disabled={submitting}>
-              {t('common:cancel', 'Cancel')}
+              {t('common:button.cancel')}
             </ModalButton>
             <ModalButton
               type="submit"
@@ -586,7 +586,7 @@ const SupplierInventoryPage: React.FC = () => {
               variant="primary"
               disabled={submitting}
             >
-              {submitting ? t('common:saving', 'Saving...') : t('common:save', 'Save')}
+              {submitting ? t('common:status.saving') : t('common:button.save')}
             </ModalButton>
           </>
         }
@@ -594,7 +594,7 @@ const SupplierInventoryPage: React.FC = () => {
         <form id="adjust-form" onSubmit={submitAdjust}>
           {activeRow && (
             <UIFormGroup>
-              <FormLabel>{t('common:currentStock', 'Current Stock')}</FormLabel>
+              <FormLabel>{t('supplier:products.fields.currentStock')}</FormLabel>
               <FormInput
                 type="text"
                 value={`${Number(activeRow.current_stock).toFixed(2)} ${activeRow.unit || ''}`}
@@ -613,7 +613,7 @@ const SupplierInventoryPage: React.FC = () => {
               required
             />
             <HelpText>
-              {t('supplier:inventory.deltaHint', 'Use negative values to deduct stock.')}
+              {t('supplier:ui.inventory.deltaHint')}
             </HelpText>
           </UIFormGroup>
           <UIFormGroup>
@@ -623,10 +623,10 @@ const SupplierInventoryPage: React.FC = () => {
               onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
               required
             >
-              <option value="lost">{t('supplier:inventory.reason.lost', 'Lost')}</option>
-              <option value="damaged">{t('supplier:inventory.reason.damaged', 'Damaged')}</option>
-              <option value="correction">{t('supplier:inventory.reason.correction', 'Correction')}</option>
-              <option value="other">{t('supplier:inventory.reason.other', 'Other')}</option>
+              <option value="lost">{t('supplier:ui.inventory.reasonLost')}</option>
+              <option value="damaged">{t('supplier:ui.inventory.reasonDamaged')}</option>
+              <option value="correction">{t('supplier:ui.inventory.reasonCorrection')}</option>
+              <option value="other">{t('common:statusExtra.other')}</option>
             </FormSelect>
           </UIFormGroup>
           <UIFormGroup>
@@ -650,7 +650,7 @@ const SupplierInventoryPage: React.FC = () => {
         footer={
           <>
             <ModalButton type="button" onClick={closeModals} disabled={submitting}>
-              {t('common:cancel', 'Cancel')}
+              {t('common:button.cancel')}
             </ModalButton>
             <ModalButton
               type="submit"
@@ -658,7 +658,7 @@ const SupplierInventoryPage: React.FC = () => {
               variant="primary"
               disabled={submitting}
             >
-              {submitting ? t('common:saving', 'Saving...') : t('common:save', 'Save')}
+              {submitting ? t('common:status.saving') : t('common:button.save')}
             </ModalButton>
           </>
         }
@@ -666,7 +666,7 @@ const SupplierInventoryPage: React.FC = () => {
         <form id="receive-form" onSubmit={submitReceive}>
           {activeRow && (
             <UIFormGroup>
-              <FormLabel>{t('common:currentStock', 'Current Stock')}</FormLabel>
+              <FormLabel>{t('supplier:products.fields.currentStock')}</FormLabel>
               <FormInput
                 type="text"
                 value={`${Number(activeRow.current_stock).toFixed(2)} ${activeRow.unit || ''}`}
@@ -693,7 +693,7 @@ const SupplierInventoryPage: React.FC = () => {
               onChange={(e) => setReceiveForm({ ...receiveForm, batch_no: e.target.value })}
             />
             <HelpText>
-              {t('supplier:inventory.batchHint', 'Sprint 3 — auto-tracked when PO ships')}
+              {t('supplier:ui.inventory.batchHint')}
             </HelpText>
           </UIFormGroup>
           <UIFormGroup>

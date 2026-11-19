@@ -216,6 +216,7 @@ const AutoBadge = styled.span`
 const StatusBadge = styled(CommonStatusBadge)`
   max-width: 100px;
   white-space: normal;
+  word-break: keep-all; /* 한국어 «대기중» 이 한 글자씩 세로로 쪼개지지 않게 — 띄어쓰기에서만 줄바꿈 */
   line-height: 1.3;
   text-align: center;
 `;
@@ -998,7 +999,7 @@ const OwnerInvoicesPage: React.FC = () => {
   // Render table
   const renderInvoiceTable = (invoices: Invoice[], showPayButton: boolean = false) => (
     <DataTableContainer>
-      <DataTable>
+      <DataTable data-card-upto="1280">
         <DataTableHead>
           <tr>
             <DataTableHeaderCell align="left">{t('owner:ownerInvoicesPage.invoice')}</DataTableHeaderCell>
@@ -1017,7 +1018,7 @@ const OwnerInvoicesPage: React.FC = () => {
           {invoices.length > 0 ? (
             invoices.map(invoice => (
               <DataTableRow key={invoice.id}>
-                <DataTableCell data-label="Invoice" align="left">
+                <DataTableCell data-label={t('owner:ownerInvoicesPage.invoice')} align="left">
                   <InvoiceInfo>
                     <InvoiceNumber>
                       {invoice.invoiceNumber}
@@ -1034,39 +1035,39 @@ const OwnerInvoicesPage: React.FC = () => {
                     )}
                   </InvoiceInfo>
                 </DataTableCell>
-                <DataTableCell data-label="Restaurant" align="left">
+                <DataTableCell data-label={t('owner:ownerInvoicesPage.restaurant')} align="left">
                   <span style={{ fontSize: '13px', fontWeight: 500, color: '#0A2540' }}>
                     {invoice.restaurantName || '-'}
                   </span>
                 </DataTableCell>
-                <DataTableCell data-label="Issuer" align="left">
+                <DataTableCell data-label={t('owner:ownerInvoicesPage.issuer')} align="left">
                   <InvoiceInfo>
                     <InvoiceNumber>
                       {invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : 'Foodcourt')}
                     </InvoiceNumber>
                   </InvoiceInfo>
                 </DataTableCell>
-                <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>
+                <DataTableCell data-label={t('owner:ownerInvoicesPage.period')} align="center" style={{ fontSize: '12px' }}>
                   {/* 구입 청구서는 «기간» 대신 발주일 / 수령일 (§8-3 C-4 · §8-5 E-2) */}
                   {invoice.invoiceCategory === 'trade' && invoice.purchaseOrderId ? (
                     <TradeInvoiceDates variant="cell" orderedAt={invoice.poOrderedAt} receivedAt={invoice.poReceivedAt} formatDate={formatDate} />
                   ) : (invoice.billingPeriod || '-')}
                 </DataTableCell>
-                <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>
+                <DataTableCell data-label={t('owner:ownerInvoicesPage.issued')} align="center" style={{ fontSize: '13px' }}>
                   {formatDate(invoice.issueDate)}
                 </DataTableCell>
-                <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>
+                <DataTableCell data-label={t('owner:ownerInvoicesPage.due')} align="center" style={{ fontSize: '13px' }}>
                   {formatDate(invoice.dueDate)}
                 </DataTableCell>
-                <DataTableCell data-label="Status" align="center">
+                <DataTableCell data-label={t('owner:ownerInvoicesPage.status')} align="center">
                   <StatusBadge status={getEffectiveStatus(invoice)}>
                     {getStatusDisplay(getEffectiveStatus(invoice))}
                   </StatusBadge>
                 </DataTableCell>
-                <DataTableCell data-label="Amount" align="right">
+                <DataTableCell data-label={t('owner:ownerInvoicesPage.amount')} align="right">
                   <DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
-                <DataTableCell data-label="Total" align="right">
+                <DataTableCell data-label={t('owner:ownerInvoicesPage.total')} align="right">
                   <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('owner:ownerInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="" mobileFullWidth>
@@ -1214,7 +1215,7 @@ const OwnerInvoicesPage: React.FC = () => {
             </RestaurantFilter>
 
             <SearchInput
-              placeholder="Search invoice, issuer, restaurant..."
+              placeholder={t('owner:ui.ownerInvoices.searchPh')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />

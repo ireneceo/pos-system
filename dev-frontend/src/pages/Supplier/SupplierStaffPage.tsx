@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 import { Container, Header, Title, Content, StatsGrid, StatCard, StatValue, StatLabel, DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell, DataTableHeaderCell, DataTableActions, DataTableEmpty, Modal, ModalButton, FormRow, FormGroup, FormLabel, FormInput, ActionSection } from '../../components/UI';
 import { FilterBar, SearchInput } from '../../components/Common/FilterComponents';
 import { ThemedButton } from '../../components/Theme/ThemedButton';
@@ -46,8 +47,8 @@ const SupplierStaffPage: React.FC = () => {
       if (!res.ok || !data.success) {
         if (data.code === 'MODULE_NOT_INCLUDED') {
           setAlertDlg({
-            title: t('supplier:staff.upgradeRequiredTitle', 'Upgrade Required') as string,
-            message: t('supplier:staff.upgradeRequiredMsg', 'Staff management requires an Advanced subscription plan.') as string
+            title: t('supplier:ui.staff.upgradeRequiredTitle') as string,
+            message: t('supplier:ui.staff.upgradeRequiredMsg') as string
           });
         }
         setRows([]);
@@ -86,8 +87,8 @@ const SupplierStaffPage: React.FC = () => {
   const handleAdd = async () => {
     if (!form.username || !form.email || !form.password || !form.full_name) {
       setAlertDlg({
-        title: t('supplier:staff.requiredTitle', 'Required Fields') as string,
-        message: t('supplier:staff.requiredMsg', 'Username, email, password, and full name are required.') as string
+        title: t('supplier:ui.staff.requiredTitle') as string,
+        message: t('supplier:ui.staff.requiredMsg') as string
       });
       return;
     }
@@ -175,10 +176,10 @@ const SupplierStaffPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>{t('supplier:staff.title', 'Staff')}</Title>
+        <Title>{t('supplier:ui.staff.title')}</Title>
         <ActionSection>
           <ThemedButton variant="primary" onClick={() => { resetForm(); setAddOpen(true); }}>
-            + {t('supplier:staff.addStaff', 'Add Staff')}
+            + {t('supplier:ui.staff.addStaff')}
           </ThemedButton>
         </ActionSection>
       </Header>
@@ -187,22 +188,22 @@ const SupplierStaffPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#635BFF">
             <StatValue>{stats.total}</StatValue>
-            <StatLabel>{t('supplier:staff.stats.total', 'Total Members')}</StatLabel>
+            <StatLabel>{t('supplier:ui.staff.stats.total')}</StatLabel>
           </StatCard>
           <StatCard color="#10B981">
             <StatValue>{stats.admin}</StatValue>
-            <StatLabel>{t('supplier:staff.stats.admin', 'Admin')}</StatLabel>
+            <StatLabel>{t('supplier:ui.staff.stats.admin')}</StatLabel>
           </StatCard>
           <StatCard color="#3B82F6">
             <StatValue>{stats.staff}</StatValue>
-            <StatLabel>{t('supplier:staff.stats.staff', 'Staff')}</StatLabel>
+            <StatLabel>{t('supplier:ui.staff.stats.staff')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder={t('supplier:staff.filter.search', 'Search by name, username, or email') as string}
+            placeholder={t('supplier:ui.staff.filter.search') as string}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -212,12 +213,12 @@ const SupplierStaffPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell align="left">{t('supplier:staff.table.name', 'Name')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">{t('supplier:staff.table.username', 'Username')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">{t('supplier:staff.table.email', 'Email')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">{t('supplier:staff.table.role', 'Role')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">{t('supplier:staff.table.joined', 'Joined')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right" isActions>{t('supplier:staff.table.actions', 'Actions')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('supplier:ui.staff.table.name')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('supplier:ui.staff.table.username')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('supplier:ui.staff.table.email')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('supplier:ui.staff.table.role')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('supplier:ui.staff.table.joined')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right" isActions>{t('supplier:ui.staff.table.actions')}</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>
@@ -227,31 +228,31 @@ const SupplierStaffPage: React.FC = () => {
                 <tr>
                   <td colSpan={6}>
                     <DataTableEmpty>
-                      <div style={{ color: '#4B5563' }}>{t('supplier:staff.empty', 'No staff yet. Add your first team member to delegate work.')}</div>
+                      <div style={{ color: '#4B5563' }}>{t('supplier:ui.staff.empty')}</div>
                     </DataTableEmpty>
                   </td>
                 </tr>
               ) : (
                 filteredRows.map(row => (
                   <DataTableRow key={row.id}>
-                    <DataTableCell data-label={t('supplier:staff.table.name', 'Name') as string}>{row.full_name || '-'}</DataTableCell>
-                    <DataTableCell data-label={t('supplier:staff.table.username', 'Username') as string}>{row.username}</DataTableCell>
-                    <DataTableCell data-label={t('supplier:staff.table.email', 'Email') as string}>{row.email}</DataTableCell>
-                    <DataTableCell data-label={t('supplier:staff.table.role', 'Role') as string}>{t(`supplier:staff.role.${row.role}`, row.role)}</DataTableCell>
-                    <DataTableCell data-label={t('supplier:staff.table.joined', 'Joined') as string}>{row.createdAt ? formatDate(row.createdAt) : '-'}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:ui.staff.table.name') as string}>{row.full_name || '-'}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:ui.staff.table.username') as string}>{row.username}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:ui.staff.table.email') as string}>{row.email}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:ui.staff.table.role') as string}>{getRoleDisplayName(row.role, t)}</DataTableCell>
+                    <DataTableCell data-label={t('supplier:ui.staff.table.joined') as string}>{row.createdAt ? formatDate(row.createdAt) : '-'}</DataTableCell>
                     <DataTableCell align="right" mobileFullWidth>
                       <DataTableActions>
                         {row.role === 'Supplier Staff' ? (
                           <>
                             <ThemedButton size="small" variant="outline" onClick={() => openEdit(row)}>
-                              {t('common:edit', 'Edit')}
+                              {t('common:button.edit')}
                             </ThemedButton>
                             <ThemedButton size="small" variant="cancel" onClick={() => setDeleteTarget(row)}>
-                              {t('common:delete', 'Delete')}
+                              {t('common:button.delete')}
                             </ThemedButton>
                           </>
                         ) : (
-                          <span style={{ color: '#6B7280', fontSize: 12 }}>{t('supplier:staff.ownerLabel', 'Owner')}</span>
+                          <span style={{ color: '#6B7280', fontSize: 12 }}>{t('supplier:ui.staff.ownerLabel')}</span>
                         )}
                       </DataTableActions>
                     </DataTableCell>
@@ -267,44 +268,44 @@ const SupplierStaffPage: React.FC = () => {
       <Modal
         isOpen={addOpen}
         onClose={() => { setAddOpen(false); resetForm(); }}
-        title={t('supplier:staff.addStaff', 'Add Staff') as string}
+        title={t('supplier:ui.staff.addStaff') as string}
         footer={(
           <>
             <ModalButton onClick={() => { setAddOpen(false); resetForm(); }}>
-              {t('common:cancel', 'Cancel')}
+              {t('common:button.cancel')}
             </ModalButton>
             <ModalButton variant="primary" onClick={handleAdd}>
-              {t('common:save', 'Save')}
+              {t('common:button.save')}
             </ModalButton>
           </>
         )}
       >
         <FormGroup>
-          <FormLabel>{t('supplier:staff.form.fullName', 'Full Name')} *</FormLabel>
+          <FormLabel>{t('supplier:ui.staff.form.fullName')} *</FormLabel>
           <FormInput value={form.full_name} onChange={(e) => setForm(p => ({ ...p, full_name: e.target.value }))} />
         </FormGroup>
         <FormRow>
           <FormGroup>
-            <FormLabel>{t('supplier:staff.form.username', 'Username')} *</FormLabel>
-            <FormInput value={form.username} onChange={(e) => setForm(p => ({ ...p, username: e.target.value }))} placeholder="3-30 chars" />
+            <FormLabel>{t('supplier:ui.staff.form.username')} *</FormLabel>
+            <FormInput value={form.username} onChange={(e) => setForm(p => ({ ...p, username: e.target.value }))} placeholder={t('supplier:ui.staff.usernamePh')} />
           </FormGroup>
           <FormGroup>
-            <FormLabel>{t('supplier:staff.form.email', 'Email')} *</FormLabel>
+            <FormLabel>{t('supplier:ui.staff.form.email')} *</FormLabel>
             <FormInput type="email" value={form.email} onChange={(e) => setForm(p => ({ ...p, email: e.target.value }))} />
           </FormGroup>
         </FormRow>
         <FormRow>
           <FormGroup>
-            <FormLabel>{t('supplier:staff.form.password', 'Password')} *</FormLabel>
-            <FormInput type="password" value={form.password} onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))} placeholder="Min 8 chars" />
+            <FormLabel>{t('supplier:ui.staff.form.password')} *</FormLabel>
+            <FormInput type="password" value={form.password} onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))} placeholder={t('supplier:ui.staff.passwordPh')} />
           </FormGroup>
           <FormGroup>
-            <FormLabel>{t('supplier:staff.form.phone', 'Phone')}</FormLabel>
+            <FormLabel>{t('supplier:ui.staff.form.phone')}</FormLabel>
             <FormInput value={form.phone} onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))} />
           </FormGroup>
         </FormRow>
         <FormGroup>
-          <FormLabel>{t('supplier:staff.form.pin', 'PIN (4 digits, optional)')}</FormLabel>
+          <FormLabel>{t('supplier:ui.staff.form.pinOptional')}</FormLabel>
           <FormInput value={form.pin_code} onChange={(e) => setForm(p => ({ ...p, pin_code: e.target.value.replace(/\D/g, '').slice(0, 4) }))} maxLength={4} />
         </FormGroup>
       </Modal>
@@ -313,43 +314,43 @@ const SupplierStaffPage: React.FC = () => {
       <Modal
         isOpen={!!editTarget}
         onClose={() => { setEditTarget(null); resetForm(); }}
-        title={t('supplier:staff.editStaff', 'Edit Staff') as string}
+        title={t('supplier:ui.staff.editStaff') as string}
         footer={(
           <>
             <ModalButton onClick={() => { setEditTarget(null); resetForm(); }}>
-              {t('common:cancel', 'Cancel')}
+              {t('common:button.cancel')}
             </ModalButton>
             <ModalButton variant="primary" onClick={handleEdit}>
-              {t('common:save', 'Save')}
+              {t('common:button.save')}
             </ModalButton>
           </>
         )}
       >
         <FormGroup>
-          <FormLabel>{t('supplier:staff.form.username', 'Username')}</FormLabel>
+          <FormLabel>{t('supplier:ui.staff.form.username')}</FormLabel>
           <FormInput value={form.username} disabled />
         </FormGroup>
         <FormGroup>
-          <FormLabel>{t('supplier:staff.form.email', 'Email')}</FormLabel>
+          <FormLabel>{t('supplier:ui.staff.form.email')}</FormLabel>
           <FormInput value={form.email} disabled />
         </FormGroup>
         <FormGroup>
-          <FormLabel>{t('supplier:staff.form.fullName', 'Full Name')} *</FormLabel>
+          <FormLabel>{t('supplier:ui.staff.form.fullName')} *</FormLabel>
           <FormInput value={form.full_name} onChange={(e) => setForm(p => ({ ...p, full_name: e.target.value }))} />
         </FormGroup>
         <FormRow>
           <FormGroup>
-            <FormLabel>{t('supplier:staff.form.phone', 'Phone')}</FormLabel>
+            <FormLabel>{t('supplier:ui.staff.form.phone')}</FormLabel>
             <FormInput value={form.phone} onChange={(e) => setForm(p => ({ ...p, phone: e.target.value }))} />
           </FormGroup>
           <FormGroup>
-            <FormLabel>{t('supplier:staff.form.pin', 'PIN (4 digits)')}</FormLabel>
+            <FormLabel>{t('supplier:ui.staff.form.pin')}</FormLabel>
             <FormInput value={form.pin_code} onChange={(e) => setForm(p => ({ ...p, pin_code: e.target.value.replace(/\D/g, '').slice(0, 4) }))} maxLength={4} />
           </FormGroup>
         </FormRow>
         <FormGroup>
-          <FormLabel>{t('supplier:staff.form.newPassword', 'New Password (leave blank to keep)')}</FormLabel>
-          <FormInput type="password" value={form.password} onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))} placeholder="Min 8 chars" />
+          <FormLabel>{t('supplier:ui.staff.form.newPassword')}</FormLabel>
+          <FormInput type="password" value={form.password} onChange={(e) => setForm(p => ({ ...p, password: e.target.value }))} placeholder={t('supplier:ui.staff.passwordPh')} />
         </FormGroup>
       </Modal>
 
@@ -363,12 +364,12 @@ const SupplierStaffPage: React.FC = () => {
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
-        title={t('supplier:staff.deleteTitle', 'Remove Staff') as string}
+        title={t('supplier:ui.staff.deleteTitle') as string}
         message={deleteTarget
-          ? (t('supplier:staff.deleteConfirm', { name: deleteTarget.full_name || deleteTarget.username, defaultValue: 'Remove {{name}} from your team? This cannot be undone.' }) as string)
+          ? (t('supplier:ui.staff.deleteConfirm', { name: deleteTarget.full_name || deleteTarget.username }) as string)
           : ''}
-        confirmText={t('common:delete', 'Delete') as string}
-        cancelText={t('common:cancel', 'Cancel') as string}
+        confirmText={t('common:button.delete') as string}
+        cancelText={t('common:button.cancel') as string}
         variant="danger"
       />
     </Container>

@@ -258,7 +258,7 @@ const SupplierCustomersPage: React.FC = () => {
                         {t('customers.noCustomersHint', 'Once you approve buyer contract requests, your customers will appear here.')}
                       </div>
                       <ThemedButton variant="outline" size="small" onClick={() => navigate('/pos/supplier/contracts?tab=pending')}>
-                        {t('customers.viewPendingContracts', 'View Pending Contracts')}
+                        {t('supplierDirectory:ui.customers.viewPendingContracts')}
                       </ThemedButton>
                     </DataTableEmpty>
                   </td>
@@ -275,7 +275,7 @@ const SupplierCustomersPage: React.FC = () => {
                       </div>
                     </DataTableCell>
                     <DataTableCell data-label={t('customers.table.type') as string} align="center">
-                      <Pill>{row.entity_type}</Pill>
+                      <Pill>{t(`common:label.${row.entity_type}`, { defaultValue: row.entity_type })}</Pill>
                     </DataTableCell>
                     <DataTableCell data-label={t('customers.table.activeSince') as string}>
                       {formatDate(row.approved_at) || '-'}

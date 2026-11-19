@@ -11,6 +11,7 @@ import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
@@ -585,7 +586,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
           </Tabs>
           <FilterBar>
             <SearchInput
-              placeholder="Search inquiries..."
+              placeholder={t('common:ui.search.inquiries')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -626,8 +627,8 @@ const OwnerOperationInquiryPage: React.FC = () => {
                     </RequesterInfo>
                   </TicketInfo>
                   <TicketBadges>
-                    <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
-                    <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
+                    <StatusBadge status={ticket.status}>{statusLabel(t, ticket.status)}</StatusBadge>
+                    <PriorityBadge priority={ticket.priority}>{statusLabel(t, ticket.priority)}</PriorityBadge>
                   </TicketBadges>
                 </TicketHeader>
 
@@ -640,7 +641,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
                   </MetaItem>
                   <MetaItem>
                     <MetaLabel>{t('owner:ownerOperationInquiryPage.category')}</MetaLabel>
-                    <MetaValue style={{textTransform: 'capitalize'}}>{ticket.category}</MetaValue>
+                    <MetaValue style={{textTransform: 'capitalize'}}>{statusLabel(t, ticket.category)}</MetaValue>
                   </MetaItem>
                   {unreadCounts[String(ticket.id)] && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -686,7 +687,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
                       type="text"
                       value={newTicket.subject}
                       onChange={(e) => setNewTicket({...newTicket, subject: e.target.value})}
-                      placeholder="Brief description of your inquiry"
+                      placeholder={t('common:ui.inquiry.subjectPh')}
                       required
                     />
                   </FormGroup>
@@ -695,7 +696,7 @@ const OwnerOperationInquiryPage: React.FC = () => {
                     <FormTextArea
                       value={newTicket.description}
                       onChange={(e) => setNewTicket({...newTicket, description: e.target.value})}
-                      placeholder="Detailed description..."
+                      placeholder={t('common:ui.inquiry.detailShortPh')}
                       rows={4}
                       required
                     />
@@ -757,11 +758,11 @@ const OwnerOperationInquiryPage: React.FC = () => {
                     </InfoRow>
                     <InfoRow>
                       <InfoLabel>Priority:</InfoLabel>
-                      <InfoValue><PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge></InfoValue>
+                      <InfoValue><PriorityBadge priority={selectedTicket.priority}>{statusLabel(t, selectedTicket.priority)}</PriorityBadge></InfoValue>
                     </InfoRow>
                     <InfoRow>
                       <InfoLabel>Category:</InfoLabel>
-                      <InfoValue style={{ textTransform: 'capitalize' }}>{selectedTicket.category}</InfoValue>
+                      <InfoValue style={{ textTransform: 'capitalize' }}>{statusLabel(t, selectedTicket.category)}</InfoValue>
                     </InfoRow>
                     <InfoRow>
                       <InfoLabel>Created:</InfoLabel>

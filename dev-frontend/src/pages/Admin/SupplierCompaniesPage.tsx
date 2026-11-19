@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 import {
   Container,
   Header,
@@ -474,7 +475,7 @@ const SupplierCompaniesPage: React.FC = () => {
         <Title>{t('supplierCompanies.title', 'Supplier Companies')}</Title>
         <ActionSection>
           <Button variant="primary" onClick={() => { setCreateForm(blankNew()); setShowCreate(true); }}>
-            Add Supplier
+            {t('suppliers:suppliersPage.addSupplier')}
           </Button>
         </ActionSection>
       </Header>
@@ -482,19 +483,19 @@ const SupplierCompaniesPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#635BFF">
             <StatValue>{totalCount}</StatValue>
-            <StatLabel>Total</StatLabel>
+            <StatLabel>{t('common:label.total')}</StatLabel>
           </StatCard>
           <StatCard color="#059669">
             <StatValue>{activeCount}</StatValue>
-            <StatLabel>Active</StatLabel>
+            <StatLabel>{t('common:status.active')}</StatLabel>
           </StatCard>
           <StatCard color="#0284C7">
             <StatValue>{trialCount}</StatValue>
-            <StatLabel>Trial</StatLabel>
+            <StatLabel>{t('common:status.trial')}</StatLabel>
           </StatCard>
           <StatCard color="#6B7280">
             <StatValue>{inactiveCount}</StatValue>
-            <StatLabel>Inactive / Suspended</StatLabel>
+            <StatLabel>{t('admin:ui.supplierCompanies.inactiveSuspended')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -506,13 +507,13 @@ const SupplierCompaniesPage: React.FC = () => {
               setPage(1);
             }}
           >
-            <option value="">All Status</option>
+            <option value="">{t('admin:plansPage.allStatus')}</option>
             {STATUS_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>{statusLabel(t, o.value)}</option>
             ))}
           </FilterSelect>
           <SearchInput
-            placeholder="Search by name, email, company..."
+            placeholder={t('admin:ui.contactInquiries.searchPh')}
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             onKeyDown={e => {
@@ -527,7 +528,7 @@ const SupplierCompaniesPage: React.FC = () => {
             onClick={() => { setSearch(searchInput); setPage(1); }}
             style={{ padding: '8px 16px', fontSize: '13px' }}
           >
-            Search
+            {t('common:button.search')}
           </Button>
         </FiltersContainer>
 
@@ -535,19 +536,19 @@ const SupplierCompaniesPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell align="left">Name</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">Owner</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">Plan</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Products</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Created</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">Actions</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:label.name')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:label.owner')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:tableCol.plan')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:label.status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:tableCol.products')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:label.createdAt')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('common:label.actions')}</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>
               {companies.map(c => (
                 <DataTableRow key={c.id} onClick={() => openDetail(c)} style={{ cursor: 'pointer' }}>
-                  <DataTableCell data-label="Name">
+                  <DataTableCell data-label={t('common:label.name')}>
                     <strong>{c.name}</strong>
                     {c.is_demo && (
                       <span style={{
@@ -559,7 +560,7 @@ const SupplierCompaniesPage: React.FC = () => {
                         fontSize: 11,
                         fontWeight: 600
                       }}>
-                        DEMO
+                        {t('admin:managersPage.demo')}
                       </span>
                     )}
                     {c.is_test && (
@@ -576,7 +577,7 @@ const SupplierCompaniesPage: React.FC = () => {
                       </span>
                     )}
                   </DataTableCell>
-                  <DataTableCell data-label="Owner">
+                  <DataTableCell data-label={t('common:label.owner')}>
                     {c.owner ? (
                       <div>
                         <div style={{ color: '#0A2540' }}>{c.owner.full_name || c.owner.email}</div>
@@ -586,30 +587,30 @@ const SupplierCompaniesPage: React.FC = () => {
                       <span style={{ color: '#6B7280' }}>—</span>
                     )}
                   </DataTableCell>
-                  <DataTableCell data-label="Plan">
+                  <DataTableCell data-label={t('common:tableCol.plan')}>
                     {c.plan ? (c.plan.display_name || c.plan.name) : <span style={{ color: '#6B7280' }}>—</span>}
                   </DataTableCell>
-                  <DataTableCell data-label="Status" align="center">
+                  <DataTableCell data-label={t('common:label.status')} align="center">
                     <DataTableStatus variant={statusVariant(c.status)}>
-                      {STATUS_OPTIONS.find(o => o.value === c.status)?.label || c.status}
+                      {statusLabel(t, c.status)}
                     </DataTableStatus>
                   </DataTableCell>
-                  <DataTableCell data-label="Products" align="center">
+                  <DataTableCell data-label={t('common:tableCol.products')} align="center">
                     {c.product_count !== undefined ? c.product_count : '—'}
                   </DataTableCell>
-                  <DataTableCell data-label="Created" align="center">
+                  <DataTableCell data-label={t('common:label.createdAt')} align="center">
                     {c.created_at ? formatDate(c.created_at, null) : (c.createdAt ? formatDate(c.createdAt, null) : '—')}
                   </DataTableCell>
-                  <DataTableCell data-label="Actions" align="right" mobileFullWidth>
+                  <DataTableCell data-label={t('common:label.actions')} align="right" mobileFullWidth>
                     <DataTableActions>
                       <ActionLink onClick={e => { e.stopPropagation(); openEdit(c); }}>
-                        Edit
+                        {t('common:button.edit')}
                       </ActionLink>
                       <ActionLink
                         variant="danger"
                         onClick={e => { e.stopPropagation(); setConfirmDeleteId(c.id); }}
                       >
-                        Delete
+                        {t('common:button.delete')}
                       </ActionLink>
                     </DataTableActions>
                   </DataTableCell>
@@ -652,7 +653,7 @@ const SupplierCompaniesPage: React.FC = () => {
             size="large"
             footer={
               <>
-                <ModalButton variant="primary" onClick={() => openEdit(selected)}>Edit</ModalButton>
+                <ModalButton variant="primary" onClick={() => openEdit(selected)}>{t('common:button.edit')}</ModalButton>
               </>
             }
           >
@@ -663,7 +664,7 @@ const SupplierCompaniesPage: React.FC = () => {
                   <DetailLabel>Status</DetailLabel>
                   <DetailValue>
                     <DataTableStatus variant={statusVariant(selected.status)}>
-                      {STATUS_OPTIONS.find(o => o.value === selected.status)?.label || selected.status}
+                      {statusLabel(t, selected.status)}
                     </DataTableStatus>
                   </DetailValue>
                 </DetailItem>
@@ -781,11 +782,11 @@ const SupplierCompaniesPage: React.FC = () => {
           <CommonModal
             isOpen={true}
             onClose={() => { setShowEdit(false); setEditId(null); }}
-            title="Edit Supplier"
+            title={t('admin:ui.supplierCompanies.editTitle')}
             size="large"
             footer={
               <>
-                <ModalButton onClick={() => { setShowEdit(false); setEditId(null); }}>Cancel</ModalButton>
+                <ModalButton onClick={() => { setShowEdit(false); setEditId(null); }}>{t('common:button.cancel')}</ModalButton>
                 <ModalButton variant="primary" onClick={handleSaveEdit} disabled={!editForm.name}>
                   Save
                 </ModalButton>
@@ -807,7 +808,7 @@ const SupplierCompaniesPage: React.FC = () => {
                   onChange={e => setEditForm({ ...editForm, status: e.target.value })}
                 >
                   {STATUS_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
+                    <option key={o.value} value={o.value}>{statusLabel(t, o.value)}</option>
                   ))}
                 </FormSelect>
               </FormGroup>
@@ -951,7 +952,7 @@ const SupplierCompaniesPage: React.FC = () => {
             size="medium"
             footer={
               <>
-                <ModalButton onClick={() => setShowCreate(false)}>Cancel</ModalButton>
+                <ModalButton onClick={() => setShowCreate(false)}>{t('common:button.cancel')}</ModalButton>
                 <ModalButton
                   variant="primary"
                   onClick={handleCreate}
@@ -1017,7 +1018,7 @@ const SupplierCompaniesPage: React.FC = () => {
                 onChange={e => setCreateForm({ ...createForm, status: e.target.value })}
               >
                 {STATUS_OPTIONS.map(o => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
+                  <option key={o.value} value={o.value}>{statusLabel(t, o.value)}</option>
                 ))}
               </FormSelect>
             </FormGroup>
@@ -1063,7 +1064,7 @@ const SupplierCompaniesPage: React.FC = () => {
             size="small"
             footer={
               <>
-                <ModalButton onClick={() => setConfirmDeleteId(null)}>Cancel</ModalButton>
+                <ModalButton onClick={() => setConfirmDeleteId(null)}>{t('common:button.cancel')}</ModalButton>
                 <ModalButton variant="danger" onClick={handleDelete}>Delete</ModalButton>
               </>
             }

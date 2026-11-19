@@ -655,11 +655,11 @@ const NotificationSettingsPage: React.FC = () => {
                   {Object.entries(groupedCategories).map(([section, cats], idx) => (
                     <React.Fragment key={section}>
                       {idx > 0 && <SectionSpacer />}
-                      <SectionTitle>{section}</SectionTitle>
+                      <SectionTitle>{t(`notifications:ui.section.${section.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`, { defaultValue: section })}</SectionTitle>
                       {cats.map(cat => (
                         <PreferenceRow key={cat.key}>
                           <PreferenceInfo>
-                            <PreferenceLabel>{cat.label}</PreferenceLabel>
+                            <PreferenceLabel>{t(`notifications:ui.cat.${String(cat.label).toLowerCase().replace(/[^a-z0-9]+/g, '_')}`, { defaultValue: cat.label })}</PreferenceLabel>
                             <PreferenceDesc>{cat.description}</PreferenceDesc>
                           </PreferenceInfo>
                           <AutoSaveField

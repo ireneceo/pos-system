@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as formatDateTz } from '../../utils/timezone';
+import { statusLabel } from '../../utils/statusLabel';
 interface ContentCategory {
   id: number;
   type: 'blog' | 'faq' | 'docs';
@@ -344,14 +345,14 @@ const ContentManagementPage: React.FC = () => {
       );
 
       if (response.ok) {
-        setSuccessMessage(isNew ? 'Category created successfully' : 'Category updated successfully');
+        setSuccessMessage(isNew ? t('admin:ui.content.catCreated', 'Category created successfully') : t('admin:ui.content.catUpdated', 'Category updated successfully'));
         setShowCategoryModal(false);
         setEditingCategory(null);
         fetchData();
         setTimeout(() => setSuccessMessage(''), 3000);
       } else {
         const error = await response.json();
-        setInfoModal({ open: true, title: 'Save Failed', message: error.error || 'Failed to save category. Please try again.' });
+        setInfoModal({ open: true, title: t('admin:ui.content.saveFailed', 'Save Failed'), message: error.error || t('admin:ui.content.catSaveFailed', 'Failed to save category. Please try again.') });
       }
     } catch (error) {
       console.error('Error saving category:', error);
@@ -361,8 +362,8 @@ const ContentManagementPage: React.FC = () => {
   const handleDeleteCategory = async (id: number) => {
     setConfirmDialog({
       show: true,
-      title: 'Delete Category',
-      message: 'Are you sure you want to delete this category? This action cannot be undone.',
+      title: t('admin:ui.content.deleteCategory', 'Delete Category'),
+      message: t('admin:ui.content.deleteCategoryQ', 'Are you sure you want to delete this category? This action cannot be undone.'),
       onConfirm: async () => {
         try {
           const token = getAuthToken();
@@ -372,12 +373,12 @@ const ContentManagementPage: React.FC = () => {
           });
 
           if (response.ok) {
-            setSuccessMessage('Category deleted successfully');
+            setSuccessMessage(t('admin:ui.content.catDeleted', 'Category deleted successfully'));
             fetchData();
             setTimeout(() => setSuccessMessage(''), 3000);
           } else {
             const error = await response.json();
-            setInfoModal({ open: true, title: 'Delete Failed', message: error.error || 'Failed to delete category. Please try again.' });
+            setInfoModal({ open: true, title: t('admin:ui.content.deleteFailed', 'Delete Failed'), message: error.error || t('admin:ui.content.catDeleteFailed', 'Failed to delete category. Please try again.') });
           }
         } catch (error) {
           console.error('Error deleting category:', error);
@@ -389,7 +390,7 @@ const ContentManagementPage: React.FC = () => {
 
   const handleSaveContent = async () => {
     if (!editingContent?.title || !editingContent?.content || !editingContent?.category_id) {
-      setInfoModal({ open: true, title: 'Required Fields', message: 'Please fill in all required fields.' });
+      setInfoModal({ open: true, title: t('admin:ui.content.requiredFields', 'Required Fields'), message: t('admin:ui.content.fillRequired', 'Please fill in all required fields.') });
       return;
     }
 
@@ -425,7 +426,7 @@ const ContentManagementPage: React.FC = () => {
       );
 
       if (response.ok) {
-        setSuccessMessage(isNew ? 'Content created successfully' : 'Content updated successfully');
+        setSuccessMessage(isNew ? t('admin:ui.content.contentCreated', 'Content created successfully') : t('admin:ui.content.contentUpdated', 'Content updated successfully'));
         setIsEditing(false);
         setEditingContent(null);
         fetchData();
@@ -439,8 +440,8 @@ const ContentManagementPage: React.FC = () => {
   const handleDeleteContent = async (id: number) => {
     setConfirmDialog({
       show: true,
-      title: 'Delete Content',
-      message: 'Are you sure you want to delete this content? This action cannot be undone.',
+      title: t('admin:ui.content.deleteContent', 'Delete Content'),
+      message: t('admin:ui.content.deleteContentQ', 'Are you sure you want to delete this content? This action cannot be undone.'),
       onConfirm: async () => {
         try {
           const token = getAuthToken();
@@ -448,7 +449,7 @@ const ContentManagementPage: React.FC = () => {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          setSuccessMessage('Content deleted successfully');
+          setSuccessMessage(t('admin:ui.content.contentDeleted', 'Content deleted successfully'));
           fetchData();
           setTimeout(() => setSuccessMessage(''), 3000);
         } catch (error) {
@@ -469,7 +470,7 @@ const ContentManagementPage: React.FC = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      setSuccessMessage(newStatus === 'published' ? 'Content published' : 'Content unpublished');
+      setSuccessMessage(newStatus === 'published' ? t('admin:ui.content.contentPublished', 'Content published') : t('admin:ui.content.contentUnpublished', 'Content unpublished'));
       fetchData();
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
@@ -498,17 +499,17 @@ const ContentManagementPage: React.FC = () => {
     <EditorWrapper>
       <EditorHeader>
         <EditorTitle>
-          {editingContent?.id ? 'Edit' : 'New'} {contentType === 'docs' ? 'Doc' : contentType !== 'faq' ? 'Blog Post' : 'FAQ Item'}
+          {editingContent?.id ? t('common:button.edit', 'Edit') : t('admin:ui.content.new', 'New')} {contentType === 'docs' ? t('admin:ui.content.doc', 'Doc') : contentType !== 'faq' ? t('admin:ui.content.blogPost', 'Blog Post') : t('admin:ui.content.faqItem', 'FAQ Item')}
         </EditorTitle>
         <EditorActions>
           <ThemedButton variant="secondary" onClick={() => { setIsEditing(false); setEditingContent(null); }}>
-            Cancel
+            {t('common:button.cancel', 'Cancel')}
           </ThemedButton>
           <ThemedButton variant="secondary" onClick={() => { setEditingContent({ ...editingContent, status: 'draft' }); handleSaveContent(); }}>
-            Save as Draft
+            {t('admin:ui.content.saveDraft', 'Save as Draft')}
           </ThemedButton>
           <ThemedButton onClick={() => { setEditingContent({ ...editingContent, status: 'published' }); handleSaveContent(); }}>
-            Publish
+            {t('admin:ui.content.publish', 'Publish')}
           </ThemedButton>
         </EditorActions>
       </EditorHeader>
@@ -516,15 +517,15 @@ const ContentManagementPage: React.FC = () => {
       <EditorForm>
         <FormRow>
           <FormGroup>
-            <FormLabel>Title *</FormLabel>
+            <FormLabel>{t('admin:contentManagementPage.title', 'Title')} *</FormLabel>
             <FormInput
               value={editingContent?.title || ''}
               onChange={(e) => setEditingContent({ ...editingContent, title: e.target.value })}
-              placeholder={contentType !== 'faq' ? 'Enter post title' : 'Enter question'}
+              placeholder={contentType !== 'faq' ? t('admin:ui.content.titlePh', 'Enter post title') : t('admin:ui.content.questionPh', 'Enter question')}
             />
           </FormGroup>
           <FormGroup>
-            <FormLabel>Category *</FormLabel>
+            <FormLabel>{t('admin:contentManagementPage.category', 'Category')} *</FormLabel>
             <FilterSelect
               value={editingContent?.category_id?.toString() || ''}
               onChange={(e) => setEditingContent({ ...editingContent, category_id: parseInt(e.target.value) })}
@@ -544,7 +545,7 @@ const ContentManagementPage: React.FC = () => {
               <FormTextArea
                 value={editingContent?.excerpt || ''}
                 onChange={(e) => setEditingContent({ ...editingContent, excerpt: e.target.value })}
-                placeholder="Brief summary for the blog card"
+                placeholder={t('admin:ui.content.excerptPh', 'Brief summary for the blog card')}
                 rows={3}
               />
             </FormGroup>
@@ -560,7 +561,7 @@ const ContentManagementPage: React.FC = () => {
                   type="text"
                   value={editingContent?.thumbnail_url || ''}
                   onChange={(e) => setEditingContent({ ...editingContent, thumbnail_url: e.target.value })}
-                  placeholder="Enter image URL"
+                  placeholder={t('admin:ui.content.imageUrlPh', 'Enter image URL')}
                   style={{ marginTop: '12px' }}
                 />
               </ThumbnailUpload>
@@ -569,18 +570,18 @@ const ContentManagementPage: React.FC = () => {
         )}
 
         <FormGroup>
-          <FormLabel>{contentType !== 'faq' ? 'Content *' : 'Answer *'}</FormLabel>
+          <FormLabel>{contentType !== 'faq' ? `${t('admin:contentManagementPage.content', 'Content')} *` : `${t('admin:ui.content.answer', 'Answer')} *`}</FormLabel>
           <RichTextEditor
             value={editingContent?.content || ''}
             onChange={(e) => setEditingContent({ ...editingContent, content: e.target.value })}
-            placeholder={contentType !== 'faq' ? 'Write your blog post content...' : 'Write the answer to this question...'}
+            placeholder={contentType !== 'faq' ? t('admin:ui.content.bodyPh', 'Write your blog post content...') : t('admin:ui.content.answerPh', 'Write the answer to this question...')}
           />
         </FormGroup>
 
         {/* SEO/AEO Section */}
         <div style={{ marginTop: '24px', padding: '20px', background: '#F1F4F8', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
           <h4 style={{ margin: '0 0 16px', fontSize: '14px', fontWeight: 600, color: '#0F172A' }}>
-            SEO & AEO Settings
+            {t('admin:ui.content.seoSettings', 'SEO & AEO Settings')}
           </h4>
 
           <FormGroup>
@@ -588,11 +589,11 @@ const ContentManagementPage: React.FC = () => {
             <FormTextArea
               value={editingContent?.ai_summary || ''}
               onChange={(e) => setEditingContent({ ...editingContent, ai_summary: e.target.value })}
-              placeholder="2-3 sentence summary that AI assistants will use to cite this content. Be concise and include key facts."
+              placeholder={t('admin:ui.content.aiSummaryPh', '2-3 sentence summary that AI assistants will use to cite this content. Be concise and include key facts.')}
               rows={3}
               maxLength={500}
             />
-            <small style={{ color: '#475569', fontSize: '12px' }}>{(editingContent?.ai_summary || '').length}/500 characters</small>
+            <small style={{ color: '#475569', fontSize: '12px' }}>{(editingContent?.ai_summary || '').length}/500 {t('admin:ui.content.chars', 'characters')}</small>
           </FormGroup>
 
           {contentType !== 'faq' && (
@@ -604,7 +605,7 @@ const ContentManagementPage: React.FC = () => {
                     type="text"
                     value={editingContent?.seo_title || ''}
                     onChange={(e) => setEditingContent({ ...editingContent, seo_title: e.target.value })}
-                    placeholder="Custom title for search results"
+                    placeholder={t('admin:ui.content.seoTitlePh', 'Custom title for search results')}
                     maxLength={70}
                   />
                 </FormGroup>
@@ -614,7 +615,7 @@ const ContentManagementPage: React.FC = () => {
                     type="text"
                     value={editingContent?.og_image_url || ''}
                     onChange={(e) => setEditingContent({ ...editingContent, og_image_url: e.target.value })}
-                    placeholder="Image URL for social sharing"
+                    placeholder={t('admin:ui.content.ogPh', 'Image URL for social sharing')}
                   />
                 </FormGroup>
               </FormRow>
@@ -624,11 +625,11 @@ const ContentManagementPage: React.FC = () => {
                 <FormTextArea
                   value={editingContent?.seo_description || ''}
                   onChange={(e) => setEditingContent({ ...editingContent, seo_description: e.target.value })}
-                  placeholder="Description for search results"
+                  placeholder={t('admin:ui.content.seoDescPh', 'Description for search results')}
                   rows={2}
                   maxLength={160}
                 />
-                <small style={{ color: '#475569', fontSize: '12px' }}>{(editingContent?.seo_description || '').length}/160 characters</small>
+                <small style={{ color: '#475569', fontSize: '12px' }}>{(editingContent?.seo_description || '').length}/160 {t('admin:ui.content.chars', 'characters')}</small>
               </FormGroup>
 
               <FormGroup>
@@ -637,7 +638,7 @@ const ContentManagementPage: React.FC = () => {
                   type="text"
                   value={editingContent?.seo_keywords || ''}
                   onChange={(e) => setEditingContent({ ...editingContent, seo_keywords: e.target.value })}
-                  placeholder="keyword1, keyword2, keyword3"
+                  placeholder={t('admin:ui.content.keywordsPh', 'keyword1, keyword2, keyword3')}
                 />
               </FormGroup>
             </>
@@ -653,14 +654,14 @@ const ContentManagementPage: React.FC = () => {
       <FilterBarWithButton>
         <SearchInput
           type="text"
-          placeholder="Search categories..."
+          placeholder={t('admin:ui.content.searchCategoriesPh', 'Search categories...')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ maxWidth: '300px' }}
         />
         <div style={{ marginLeft: 'auto' }}>
           <ThemedButton onClick={() => { setEditingCategory({ type: contentType as 'blog' | 'faq' | 'docs' }); setShowCategoryModal(true); }}>
-            Add Category
+            {t('admin:ui.content.addCategory', 'Add Category')}
           </ThemedButton>
         </div>
       </FilterBarWithButton>
@@ -669,9 +670,9 @@ const ContentManagementPage: React.FC = () => {
         {categories.length === 0 ? (
           <EmptyState>
             <h3>{t('admin:contentManagementPage.noCategoriesYet')}</h3>
-            <p>Create your first category to organize your {contentType !== 'faq' ? 'blog posts' : 'FAQ items'}</p>
+            <p>{contentType !== 'faq' ? t('admin:ui.content.firstCategoryBlog', 'Create your first category to organize your blog posts') : t('admin:ui.content.firstCategoryFaq', 'Create your first category to organize your FAQ items')}</p>
             <ThemedButton onClick={() => { setEditingCategory({ type: contentType as 'blog' | 'faq' | 'docs' }); setShowCategoryModal(true); }}>
-              Add Category
+              {t('admin:ui.content.addCategory', 'Add Category')}
             </ThemedButton>
           </EmptyState>
         ) : (
@@ -683,7 +684,7 @@ const ContentManagementPage: React.FC = () => {
               <CategoryInfo>
                 <CategoryName>{cat.name}</CategoryName>
                 <CategoryMeta>
-                  {cat.content_count} {contentType !== 'faq' ? 'posts' : 'items'} • {cat.description || 'No description'}
+                  {cat.content_count} {contentType !== 'faq' ? t('admin:ui.content.posts', 'posts') : t('admin:ui.content.items', 'items')} • {cat.description || t('admin:ui.content.noDescription', 'No description')}
                 </CategoryMeta>
               </CategoryInfo>
               <CategoryActions>
@@ -711,7 +712,7 @@ const ContentManagementPage: React.FC = () => {
       <StatsGrid>
         <StatCard>
           <StatValue>{stats.total}</StatValue>
-          <StatLabel>Total {contentType !== 'faq' ? 'Posts' : 'FAQs'}</StatLabel>
+          <StatLabel>{contentType !== 'faq' ? t('admin:ui.content.totalPosts', 'Total Posts') : t('admin:ui.content.totalFaqs', 'Total FAQs')}</StatLabel>
         </StatCard>
         <StatCard>
           <StatValue>{stats.published}</StatValue>
@@ -741,13 +742,13 @@ const ContentManagementPage: React.FC = () => {
         </FilterSelect>
         <SearchInput
           type="text"
-          placeholder="Search..."
+          placeholder={t('admin:ui.content.searchPh', 'Search...')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
         <div style={{ marginLeft: 'auto' }}>
           <ThemedButton onClick={() => { setEditingContent({ type: contentType as 'blog' | 'faq' | 'docs' }); setIsEditing(true); }}>
-            New {contentType !== 'faq' ? 'Post' : 'FAQ'}
+            {contentType !== 'faq' ? t('admin:ui.content.newPost', 'New Post') : t('admin:ui.content.newFaq', 'New FAQ')}
           </ThemedButton>
         </div>
       </FilterBarWithButton>
@@ -757,9 +758,9 @@ const ContentManagementPage: React.FC = () => {
       ) : filteredContents.length === 0 ? (
         <EmptyState>
           <h3>{t('admin:contentManagementPage.noContentYet')}</h3>
-          <p>Create your first {contentType !== 'faq' ? 'blog post' : 'FAQ item'}</p>
+          <p>{contentType !== 'faq' ? t('admin:ui.content.firstPost', 'Create your first blog post') : t('admin:ui.content.firstFaq', 'Create your first FAQ item')}</p>
           <ThemedButton onClick={() => { setEditingContent({ type: contentType as 'blog' | 'faq' | 'docs' }); setIsEditing(true); }}>
-            New {contentType !== 'faq' ? 'Post' : 'FAQ'}
+            {contentType !== 'faq' ? t('admin:ui.content.newPost', 'New Post') : t('admin:ui.content.newFaq', 'New FAQ')}
           </ThemedButton>
         </EmptyState>
       ) : (
@@ -781,27 +782,27 @@ const ContentManagementPage: React.FC = () => {
                   <strong>{item.title}</strong>
                   {contentType === 'blog' && item.view_count > 0 && (
                     <span style={{ fontSize: '12px', color: '#4B5563', marginLeft: '8px' }}>
-                      {item.view_count} views
+                      {item.view_count} {t('admin:ui.content.views', 'views')}
                     </span>
                   )}
                 </DataTableCell>
                 <DataTableCell data-label={t('admin:contentManagementPage.category')}>{item.category?.icon} {item.category?.name}</DataTableCell>
                 <DataTableCell data-label={t('admin:contentManagementPage.status')}>
                   <StatusBadge status={item.status}>
-                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                    {item.status === 'published' ? t('admin:contentManagementPage.published', 'Published') : item.status === 'draft' ? t('admin:contentManagementPage.draft', 'Draft') : statusLabel(t, item.status)}
                   </StatusBadge>
                 </DataTableCell>
                 <DataTableCell data-label={t('admin:contentManagementPage.date')}>{formatDateTz(item.updated_at, null)}</DataTableCell>
                 <DataTableCell data-label={t('admin:contentManagementPage.actions')} mobileFullWidth>
                   <ActionButtons>
                     <ActionButton onClick={() => { setEditingContent(item); setIsEditing(true); }}>
-                      Edit
+                      {t('common:button.edit', 'Edit')}
                     </ActionButton>
                     <ActionButton onClick={() => handleTogglePublish(item)}>
-                      {item.status === 'published' ? 'Unpublish' : 'Publish'}
+                      {item.status === 'published' ? t('admin:ui.content.unpublish', 'Unpublish') : t('admin:ui.content.publish', 'Publish')}
                     </ActionButton>
                     <ActionButton onClick={() => handleDeleteContent(item.id)} className="danger">
-                      Delete
+                      {t('common:button.delete', 'Delete')}
                     </ActionButton>
                   </ActionButtons>
                 </DataTableCell>
@@ -832,19 +833,19 @@ const ContentManagementPage: React.FC = () => {
               Blog
             </Tab>
             <Tab active={activeTab === 'blog-categories'} onClick={() => handleTabChange('blog-categories')}>
-              Blog Categories
+              {t('admin:ui.content.blogCategories', 'Blog Categories')}
             </Tab>
             <Tab active={activeTab === 'faq'} onClick={() => handleTabChange('faq')}>
               FAQ
             </Tab>
             <Tab active={activeTab === 'faq-categories'} onClick={() => handleTabChange('faq-categories')}>
-              FAQ Categories
+              {t('admin:ui.content.faqCategories', 'FAQ Categories')}
             </Tab>
             <Tab active={activeTab === 'docs'} onClick={() => handleTabChange('docs')}>
-              Docs
+              {t('admin:ui.content.docs', 'Docs')}
             </Tab>
             <Tab active={activeTab === 'docs-categories'} onClick={() => handleTabChange('docs-categories')}>
-              Docs Categories
+              {t('admin:ui.content.docsCategories', 'Docs Categories')}
             </Tab>
           </Tabs>
 
@@ -856,24 +857,24 @@ const ContentManagementPage: React.FC = () => {
       <Modal
         isOpen={showCategoryModal}
         onClose={() => { setShowCategoryModal(false); setEditingCategory(null); }}
-        title={editingCategory?.id ? 'Edit Category' : 'New Category'}
+        title={editingCategory?.id ? t('admin:ui.content.editCategory', 'Edit Category') : t('admin:ui.content.newCategory', 'New Category')}
         footer={
           <>
             <ModalButton variant="secondary" onClick={() => { setShowCategoryModal(false); setEditingCategory(null); }}>
-              Cancel
+              {t('common:button.cancel', 'Cancel')}
             </ModalButton>
             <ModalButton onClick={handleSaveCategory}>
-              {editingCategory?.id ? 'Update' : 'Create'}
+              {editingCategory?.id ? t('common:button.update', 'Update') : t('common:button.create', 'Create')}
             </ModalButton>
           </>
         }
       >
         <FormGroup>
-          <FormLabel>Name *</FormLabel>
+          <FormLabel>{t('admin:ui.content.name', 'Name')} *</FormLabel>
           <FormInput
             value={editingCategory?.name || ''}
             onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
-            placeholder="Category name"
+            placeholder={t('admin:ui.content.categoryNamePh', 'Category name')}
           />
         </FormGroup>
         <FormGroup>
@@ -881,7 +882,7 @@ const ContentManagementPage: React.FC = () => {
           <FormInput
             value={editingCategory?.icon || ''}
             onChange={(e) => setEditingCategory({ ...editingCategory, icon: e.target.value })}
-            placeholder="e.g. 📚"
+            placeholder={t('admin:ui.content.iconPh', 'e.g. 📚')}
           />
         </FormGroup>
         <FormGroup>
@@ -889,7 +890,7 @@ const ContentManagementPage: React.FC = () => {
           <FormTextArea
             value={editingCategory?.description || ''}
             onChange={(e) => setEditingCategory({ ...editingCategory, description: e.target.value })}
-            placeholder="Brief description"
+            placeholder={t('admin:ui.content.descPh', 'Brief description')}
             rows={3}
           />
         </FormGroup>
@@ -902,8 +903,8 @@ const ContentManagementPage: React.FC = () => {
         message={confirmDialog.message}
         onConfirm={confirmDialog.onConfirm}
         onClose={() => setConfirmDialog({ ...confirmDialog, show: false })}
-        confirmText="Delete"
-        cancelText="Cancel"
+        confirmText={t('common:button.delete', 'Delete')}
+        cancelText={t('common:button.cancel', 'Cancel')}
         variant="danger"
       />
       <ConfirmModal

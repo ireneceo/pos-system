@@ -77,5 +77,8 @@
     "graceHint": "Auto-tanda sebagai tidak hadir selepas minit ini berlalu dari masa tempahan.",
     "blockAfter": "Sekat selepas N kali tidak hadir",
     "blockAfterHint": "Pelanggan yang mencapai bilangan ini akan disekat daripada tempahan baru."
-  }
+  },
+  "ui.col.guest": "Tetamu",
+  "ui.col.source": "Sumber",
+  "ui.tomorrow": "Esok"
 }

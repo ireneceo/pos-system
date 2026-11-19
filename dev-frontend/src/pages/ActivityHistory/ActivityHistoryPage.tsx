@@ -201,10 +201,10 @@ const ActivityHistoryPage: React.FC = () => {
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffInSeconds < 60) return 'just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
+    if (diffInSeconds < 60) return t('supplier:orders.timeAgo.justNow');
+    if (diffInSeconds < 3600) return t('admin:ui.activity.minutesAgo', { n: Math.floor(diffInSeconds / 60) });
+    if (diffInSeconds < 86400) return t('admin:ui.activity.hoursAgo', { n: Math.floor(diffInSeconds / 3600) });
+    if (diffInSeconds < 604800) return t('admin:ui.activity.daysAgo', { n: Math.floor(diffInSeconds / 86400) });
 
     return formatDateTimeTz(date, null);
   };
@@ -233,11 +233,16 @@ const ActivityHistoryPage: React.FC = () => {
   };
 
   const formatEntityType = (type: string) => {
-    return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const fallback = type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const key = type.replace(/_([a-z])/g, (_m, c: string) => c.toUpperCase());
+    return (t(`admin:activityHistoryPage.${key}`, { defaultValue: '' }) as string)
+      || (t(`admin:ui.activityHistory.entity.${key}`, { defaultValue: '' }) as string)
+      || fallback;
   };
 
   const formatActionType = (type: string) => {
-    return type.charAt(0).toUpperCase() + type.slice(1);
+    const fallback = type.charAt(0).toUpperCase() + type.slice(1);
+    return (t(`admin:activityHistoryPage.${type}`, { defaultValue: '' }) as string) || fallback;
   };
 
   const handlePeriodChange = (period: PeriodType) => {
@@ -300,7 +305,7 @@ const ActivityHistoryPage: React.FC = () => {
             </FilterSelect>
             {hasActiveFilters && (
               <BaseButton variant="secondary" size="small" onClick={handleResetFilters}>
-                Reset Filters
+                {t('admin:ui.activityHistory.resetFilters', 'Reset Filters')}
               </BaseButton>
             )}
           </DatePeriodFilter>
@@ -342,10 +347,10 @@ const ActivityHistoryPage: React.FC = () => {
                   onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
                 >
-                  Previous
+                  {t('common:pagination.previous', 'Previous')}
                 </BaseButton>
                 <PageInfo>
-                  Page {currentPage} of {totalPages} ({totalLogs} total logs)
+                  {t('admin:ui.activityHistory.pageInfo', { page: currentPage, pages: totalPages, total: totalLogs, defaultValue: `Page ${currentPage} of ${totalPages} (${totalLogs} total logs)` })}
                 </PageInfo>
                 <BaseButton
                   variant="secondary"
@@ -353,7 +358,7 @@ const ActivityHistoryPage: React.FC = () => {
                   onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                   disabled={currentPage === totalPages}
                 >
-                  Next
+                  {t('common:pagination.next', 'Next')}
                 </BaseButton>
               </PaginationContainer>
             </>

@@ -28,6 +28,8 @@ import SubscriptionFormFields, { SubscriptionValues } from '../../components/Sub
 import { formatAddress, AppLocale, type Address } from '../../utils/formatAddress';
 import { COUNTRIES } from '../../constants/countries';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 import { getAuthToken } from '../../utils/auth';
 // API imports removed - using direct fetch like StaffManagementPage and ManagersPage
 
@@ -1733,7 +1735,7 @@ const RestaurantsPage: React.FC = () => {
           <FilterDropdownContainer>
             <DropdownInput
               type="text"
-              placeholder="Search managers..."
+              placeholder={t('admin:ui.restaurants.searchManagersPh')}
               value={filterManagerSearchQuery}
               onChange={(e) => handleFilterManagerSearch(e.target.value)}
               onFocus={() => {
@@ -1772,7 +1774,7 @@ const RestaurantsPage: React.FC = () => {
           <FilterDropdownContainer>
             <DropdownInput
               type="text"
-              placeholder="Search brands..."
+              placeholder={t('common:ui.managerRestaurants.searchBrandsPh')}
               value={filterBrandSearchQuery}
               onChange={(e) => handleFilterBrandSearch(e.target.value)}
               onFocus={() => {
@@ -1827,7 +1829,7 @@ const RestaurantsPage: React.FC = () => {
             )}
           </PageFilterSelect>
           <PageSearchInput
-            placeholder="Search restaurants..."
+            placeholder={t('common:ui.managerRestaurants.searchRestaurantsPh')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -1868,7 +1870,7 @@ const RestaurantsPage: React.FC = () => {
                   <RestaurantMeta>{restaurant.location} • {restaurant.cuisine}</RestaurantMeta>
                 </RestaurantInfo>
                 <StatusBadge status={restaurant.status}>
-                  {restaurant.status}
+                  {statusLabel(t, restaurant.status)}
                 </StatusBadge>
               </RestaurantHeader>
 
@@ -1896,10 +1898,10 @@ const RestaurantsPage: React.FC = () => {
               
               <div style={{ marginTop: '16px', display: 'flex', gap: '8px', paddingTop: '16px', borderTop: '1px solid #F1F4F8', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
                 <ActionButton onClick={() => handleViewReport(restaurant)}>
-                  Report
+                  {t('common:nav.report')}
                 </ActionButton>
                 <ActionButton onClick={() => handleEditRestaurant(restaurant)}>
-                  Edit
+                  {t('common:button.edit')}
                 </ActionButton>
                 {(restaurant.status === 'suspended' || restaurant.status === 'overdue') && (
                   <ActionButton
@@ -1917,7 +1919,7 @@ const RestaurantsPage: React.FC = () => {
                     border: `1px solid ${restaurant.status === 'active' ? '#FCA5A5' : '#A7F3D0'}`
                   }}
                 >
-                  {restaurant.status === 'active' ? 'Deactivate' : 'Activate'}
+                  {restaurant.status === 'active' ? t('common:ui.action.deactivate') : t('common:ui.action.activate')}
                 </ActionButton>
               </div>
             </RestaurantCard>
@@ -2051,7 +2053,7 @@ const RestaurantsPage: React.FC = () => {
                                 onClick={() => handleAdminSelect(user)}
                               >
                                 <ManagerName>{user.full_name || user.username}</ManagerName>
-                                <ManagerDetails>{user.email} • {user.role}</ManagerDetails>
+                                <ManagerDetails>{user.email} • {getRoleDisplayName(user.role, t)}</ManagerDetails>
                               </DropdownItem>
                             ))
                           )}
@@ -2464,7 +2466,7 @@ const RestaurantsPage: React.FC = () => {
                                 adminCandidates.filter(u => !u.assigned).map(user => (
                                   <DropdownItem key={user.id} onClick={() => handleEditAdminSelect(user)}>
                                     <ManagerName>{user.full_name || user.username}</ManagerName>
-                                    <ManagerDetails>{user.email} • {user.role}</ManagerDetails>
+                                    <ManagerDetails>{user.email} • {getRoleDisplayName(user.role, t)}</ManagerDetails>
                                   </DropdownItem>
                                 ))
                               )}
@@ -2740,7 +2742,7 @@ const RestaurantsPage: React.FC = () => {
               )}
               <DetailRow>
                 <DetailLabel>Status</DetailLabel>
-                <DetailValue><StatusBadge status={selectedRestaurant.status}>{selectedRestaurant.status}</StatusBadge></DetailValue>
+                <DetailValue><StatusBadge status={selectedRestaurant.status}>{statusLabel(t, selectedRestaurant.status)}</StatusBadge></DetailValue>
               </DetailRow>
               <DetailRow>
                 <DetailLabel>Cuisine</DetailLabel>

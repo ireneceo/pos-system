@@ -251,5 +251,8 @@
   "menuManagementPage.keepAsMyMenu": "保留为本店菜单",
   "menuManagement.orderSetByBrand": "品牌设定的顺序",
   "menuManagement.orderLockedTitle": "品牌设定的顺序",
-  "menuManagement.orderLockedMessage": "这些菜单的顺序由品牌设定。如需更改，请联系品牌。"
+  "menuManagement.orderLockedMessage": "这些菜单的顺序由品牌设定。如需更改，请联系品牌。",
+  "ui.menu.setBadge": "套餐",
+  "ui.menu.featuredBadge": "推荐",
+  "ui.menu.searchPh": "按名称、描述、价格或分类搜索菜单..."
 }

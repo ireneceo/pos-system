@@ -897,7 +897,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
       <ListControlsBar>
         <SearchInput
           type="text"
-          placeholder="Search stock items..."
+          placeholder={t('brand:ui.brandIngredients.searchPh')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -915,14 +915,14 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
         <div data-controls-trailing>
           <div style={{ display: 'flex', background: '#F1F4F8', borderRadius: '6px', padding: '2px' }}>
             <button onClick={() => { setViewMode('compact'); localStorage.setItem('brandIngredientsViewMode', 'compact'); }} style={{ padding: '5px 14px', minHeight: '32px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
-              Compact
+              {t('brand:productRecipesTab.viewCompact')}
             </button>
             <button onClick={() => { setViewMode('image'); localStorage.setItem('brandIngredientsViewMode', 'image'); }} style={{ padding: '5px 14px', minHeight: '32px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
-              Image
+              {t('brand:productRecipesTab.viewImage')}
             </button>
           </div>
           <ThemedButton variant="primary" onClick={() => handleOpenModal()}>
-            New Stock Item
+            {t('brand:ui.brandIngredients.newItem')}
           </ThemedButton>
         </div>
       </ListControlsBar>
@@ -969,7 +969,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                     {ingredient.name}
                   </IngredientName>
                   <IngredientCategoryBadge>
-                    {ingredient.category?.emoji} {ingredient.category?.name || 'Uncategorized'}
+                    {ingredient.category?.emoji} {ingredient.category?.name || t('common:statusExtra.uncategorized')}
                   </IngredientCategoryBadge>
                 </div>
               </IngredientHeader>
@@ -1031,7 +1031,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                 })()}
                 {ingredient.code && (
                   <InfoRow>
-                    <InfoLabel>{'Code'}</InfoLabel>
+                    <InfoLabel>{t('brand:productIngredientsTab.code')}</InfoLabel>
                     <InfoValue>{ingredient.code}</InfoValue>
                   </InfoRow>
                 )}
@@ -1076,7 +1076,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                   </InfoRow>
                 )}
                 <InfoRow>
-                  <InfoLabel>{'Stock'}</InfoLabel>
+                  <InfoLabel>{t('brand:productIngredientsTab.stock')}</InfoLabel>
                   <StockBadge status={getStockStatus(ingredient)}>
                     {ingredient.current_stock} {ingredient.unit}
                     {/* 포장 환산은 기준양이 실제로 다를 때만 (1 pack = 1 g 같은 무의미한 괄호를 안 띄운다) */}
@@ -1096,7 +1096,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                     variant="secondary"
                     onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleOpenModal(ingredient); }}
                   >
-                    Edit
+                    {t('common:button.edit')}
                   </ActionButton>
                   {/* 활성/비활성 — 2026-09-04 신설. 그전에는 화면에 이 버튼이 없어
                       **꺼진 재고아이템을 되살릴 방법이 아예 없었다**
@@ -1109,13 +1109,13 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
                   >
                     {togglingId === ingredient.id
                       ? '…'
-                      : (ingredient.is_active === false ? 'Activate' : 'Deactivate')}
+                      : (ingredient.is_active === false ? t('brand:categoryTabCommon.activate') : t('brand:categoryTabCommon.deactivate'))}
                   </ActionButton>
                   <ActionButton
                     variant="danger"
                     onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteClick(ingredient); }}
                   >
-                    Delete
+                    {t('common:button.delete')}
                   </ActionButton>
                 </ActionRow>
                 <ActionRow>
@@ -1546,7 +1546,7 @@ const ProductIngredientsTab: React.FC<ProductIngredientsTabProps> = ({ brandId, 
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '11px', fontWeight: 600, color: '#635BFF', background: '#F0F4FF', padding: '3px 8px', borderRadius: '4px' }}>
-              {detailIngredient.category_name || 'Uncategorized'}
+              {detailIngredient.category_name || t('common:statusExtra.uncategorized')}
             </span>
           </div>
 

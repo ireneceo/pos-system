@@ -110,10 +110,10 @@ const BrandIngredientsPage: React.FC = () => {
       <Content>
         <Tabs>
           <Tab active={activeTab === 'ingredients'} onClick={() => handleTabChange('ingredients')}>
-            Stock Items <Badge count={ingredientsCount} showZero />
+            {t('common:nav.stockItems')} <Badge count={ingredientsCount} showZero />
           </Tab>
           <Tab active={activeTab === 'ingredient-categories'} onClick={() => handleTabChange('ingredient-categories')}>
-            Categories <Badge count={ingredientCategoriesCount} showZero />
+            {t('common:nav.categories')} <Badge count={ingredientCategoriesCount} showZero />
           </Tab>
         </Tabs>
         {selectedBrand && (

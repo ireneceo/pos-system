@@ -40,5 +40,13 @@
   "dashboardContent.order": "订单",
   "dashboardContent.items": "项目",
   "dashboardContent.status": "状态",
-  "dashboardContent.time": "时间"
+  "dashboardContent.time": "时间",
+  "ui.basic.roleSystemAdmin": "您拥有完整的系统权限，可管理所有经理、餐厅和系统设置。",
+  "ui.basic.roleManager": "您可以管理多家餐厅、查看汇总报告并监督运营。",
+  "ui.basic.roleRestaurantAdmin": "您可以管理餐厅、员工、菜单，并使用所有 POS 功能。",
+  "ui.basic.roleStaff": "您可以使用 POS 终端、厨房显示和订单管理功能。",
+  "ui.basic.roleDefault": "欢迎使用 Purple Here POS 系统。",
+  "ui.basic.hello": "{{name}}，您好！",
+  "ui.basic.systemOk": "所有系统运行正常。可通过侧边菜单使用您被允许的功能。",
+  "ui.basic.gettingStarted": "使用左侧导航菜单访问您角色可用的功能。"
 }

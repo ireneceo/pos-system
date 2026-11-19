@@ -868,9 +868,9 @@ const SupplierProductsTab: React.FC<Props> = ({
               setPage(1);
             }}
           >
-            <option value="all">All Status</option>
-            <option value="active">Active Only</option>
-            <option value="inactive">Inactive Only</option>
+            <option value="all">{t('supplier:ui.products.allStatus')}</option>
+            <option value="active">{t('supplier:ui.products.activeOnly')}</option>
+            <option value="inactive">{t('supplier:ui.products.inactiveOnly')}</option>
           </FilterSelect>
           <SortDropdown value={sortKey} onChange={setSortKey} />
         </FilterBar>
@@ -883,12 +883,12 @@ const SupplierProductsTab: React.FC<Props> = ({
         <EmptyState>
           <EmptyTitle>
             {appliedSearch || categoryFilter !== 'all' || activeFilter !== 'all'
-              ? 'No products found'
-              : 'No products yet'}
+              ? t('supplier:ui.products.noProductsFound')
+              : t('supplier:ui.products.noProductsYet')}
           </EmptyTitle>
           <EmptyDescription>
             {appliedSearch || categoryFilter !== 'all' || activeFilter !== 'all'
-              ? 'Try adjusting your search or filter criteria.'
+              ? t('supplier:ui.products.tryAdjusting')
               : t(
                   'products.noProducts',
                   'No products yet. Click "Add Product" to start building your catalog.'
@@ -952,10 +952,10 @@ const SupplierProductsTab: React.FC<Props> = ({
                       {product.current_stock}{' '}
                       <StockBadge status={stockStatus(product)}>
                         {stockStatus(product) === 'out'
-                          ? 'OUT'
+                          ? t('supplier:ui.products.stockOut')
                           : stockStatus(product) === 'low'
-                            ? 'LOW'
-                            : 'OK'}
+                            ? t('supplier:ui.products.stockLow')
+                            : t('supplier:ui.products.stockOk')}
                       </StockBadge>
                     </DetailValue>
                   </DetailRow>
@@ -979,16 +979,16 @@ const SupplierProductsTab: React.FC<Props> = ({
 
                 <CardSpacer />
                 <ProductActions onClick={(e) => e.stopPropagation()}>
-                  <ActionButton onClick={() => handleOpenModal(product)}>Edit</ActionButton>
-                  <ActionButton onClick={(e) => handleCopyProduct(product, e)}>Copy</ActionButton>
+                  <ActionButton onClick={() => handleOpenModal(product)}>{t('common:button.edit')}</ActionButton>
+                  <ActionButton onClick={(e) => handleCopyProduct(product, e)}>{t('common:button.copy')}</ActionButton>
                   <ToggleButton
                     isActive={product.is_active}
                     onClick={(e) => handleToggleActive(product, e)}
                   >
-                    {product.is_active ? 'Active' : 'Inactive'}
+                    {product.is_active ? t('common:status.active') : t('common:status.inactive')}
                   </ToggleButton>
                   <ActionButton variant="danger" onClick={(e) => handleDeleteClick(product, e)}>
-                    Delete
+                    {t('common:button.delete')}
                   </ActionButton>
                 </ProductActions>
               </ProductCard>
@@ -1018,7 +1018,7 @@ const SupplierProductsTab: React.FC<Props> = ({
         <Modal
           isOpen={showModal}
           onClose={handleCloseModal}
-          title={editingProduct ? 'Edit Product' : t('products.addProduct', 'Add Product')}
+          title={editingProduct ? t('supplier:ui.products.editProduct') : t('products.addProduct', 'Add Product')}
           maxWidth="700px"
         >
           <form onSubmit={handleSubmit}>

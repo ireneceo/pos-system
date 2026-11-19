@@ -61,7 +61,7 @@ const JOB_LABELS: Record<string, { label: string; desc: string }> = {
 };
 
 // results 객체 → 사람이 읽을 수 있는 한 줄
-function summarizeResults(results: Record<string, any> | null, error: string | null): string {
+function summarizeResults(results: Record<string, any> | null, error: string | null, labelOf?: (k: string, fallback: string) => string, noResults = 'No results'): string {
   if (error) return error;
   if (!results) return '—';
   const parts: string[] = [];
@@ -69,9 +69,9 @@ function summarizeResults(results: Record<string, any> | null, error: string | n
     if (v === 0 || v == null) continue;
     if (typeof v === 'object') continue;  // 중첩 객체는 카드/모달에서만
     const friendly = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    parts.push(`${friendly}: ${v}`);
+    parts.push(`${labelOf ? labelOf(k, friendly) : friendly}: ${v}`);
   }
-  return parts.length ? parts.join(' · ') : 'No results';
+  return parts.length ? parts.join(' · ') : noResults;
 }
 
 const SchedulerMonitorPage: React.FC = () => {
@@ -118,7 +118,7 @@ const SchedulerMonitorPage: React.FC = () => {
       <Header>
         <PageTitle>{t('schedulerMonitor.title', 'Scheduler Monitor')}</PageTitle>
         <RefreshBtn type="button" onClick={load} disabled={loading}>
-          {loading ? t('common.loading', 'Loading…') : t('common.refresh', 'Refresh')}
+          {loading ? t('common:loading') : t('common:button.refresh')}
         </RefreshBtn>
       </Header>
 
@@ -148,7 +148,7 @@ const SchedulerMonitorPage: React.FC = () => {
                 {meta?.desc && <JobDesc>{t('schedulerJobs.' + j.job_name + '.desc', meta.desc)}</JobDesc>}
                 {!meta && <JobCode>{j.job_name}</JobCode>}
                 <JobMetaRow>
-                  <StatusPill $bg={sc.bg} $fg={sc.fg}>{j.latest_status || '—'}</StatusPill>
+                  <StatusPill $bg={sc.bg} $fg={sc.fg}>{j.latest_status ? t(`schedulerMonitor.statusValue.${j.latest_status}`, j.latest_status) : '—'}</StatusPill>
                   {j.errors_24h > 0 && <ErrorPill>{j.errors_24h} errors / 24h</ErrorPill>}
                 </JobMetaRow>
                 <JobMeta>
@@ -170,7 +170,7 @@ const SchedulerMonitorPage: React.FC = () => {
                       .slice(0, 6)
                       .map(([k, v]) => (
                         <ResultPair key={k}>
-                          <ResultKey>{k.replace(/_/g, ' ')}</ResultKey>
+                          <ResultKey>{t(`schedulerMonitor.resultKey.${k}`, k.replace(/_/g, ' '))}</ResultKey>
                           <ResultVal>{String(v)}</ResultVal>
                         </ResultPair>
                       ))}
@@ -195,10 +195,10 @@ const SchedulerMonitorPage: React.FC = () => {
           </FilterSelect>
           <FilterSelect value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="all">{t('schedulerMonitor.allStatuses', 'All statuses')}</option>
-            <option value="success">success</option>
-            <option value="partial">partial</option>
-            <option value="error">error</option>
-            <option value="running">running</option>
+            <option value="success">{t('schedulerMonitor.statusValue.success', 'success')}</option>
+            <option value="partial">{t('schedulerMonitor.statusValue.partial', 'partial')}</option>
+            <option value="error">{t('schedulerMonitor.statusValue.error', 'error')}</option>
+            <option value="running">{t('schedulerMonitor.statusValue.running', 'running')}</option>
           </FilterSelect>
           <ResultMeta>{filteredRuns.length} {t('schedulerMonitor.results', 'results')}</ResultMeta>
         </FilterRow>
@@ -220,14 +220,14 @@ const SchedulerMonitorPage: React.FC = () => {
             <tbody>
               {filteredRuns.map(r => {
                 const sc = STATUS_COLORS[r.status] || STATUS_COLORS.running;
-                const summary = summarizeResults(r.results, r.error_message);
+                const summary = summarizeResults(r.results, r.error_message, (k, fb) => t(`schedulerMonitor.resultKey.${k}`, fb), t('schedulerMonitor.noResults', 'No results'));
                 const jobMeta = JOB_LABELS[r.job_name];
                 return (
                   <DataTableRow key={r.id}>
                     <DataTableCell data-label={t('schedulerMonitor.job', 'Job')}>{jobMeta ? t('schedulerJobs.' + r.job_name + '.label', jobMeta.label) : r.job_name}</DataTableCell>
                     <DataTableCell data-label={t('schedulerMonitor.startedAt', 'Started')}>{formatTime(r.started_at)}</DataTableCell>
                     <DataTableCell data-label={t('schedulerMonitor.duration', 'Duration')}>{fmtDuration(r.duration_ms)}</DataTableCell>
-                    <DataTableCell data-label={t('schedulerMonitor.status', 'Status')}><StatusPill $bg={sc.bg} $fg={sc.fg}>{r.status}</StatusPill></DataTableCell>
+                    <DataTableCell data-label={t('schedulerMonitor.status', 'Status')}><StatusPill $bg={sc.bg} $fg={sc.fg}>{t(`schedulerMonitor.statusValue.${r.status}`, r.status)}</StatusPill></DataTableCell>
                     <DataTableCell data-label={t('schedulerMonitor.summary', 'Summary')} title={summary}>{summary}</DataTableCell>
                   </DataTableRow>
                 );

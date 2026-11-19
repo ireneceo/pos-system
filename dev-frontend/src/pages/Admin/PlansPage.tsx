@@ -1147,7 +1147,7 @@ const PlansPage: React.FC = () => {
   const totalSubscriptions = plans.reduce((sum, p) => sum + p.subscriptionCount, 0);
   const monthlyRevenue = plans.reduce((sum, p) => sum + (p.monthlyPrice * p.subscriptionCount), 0);
 
-  const formatLimit = (limit: number) => limit === -1 ? 'Unlimited' : limit.toLocaleString();
+  const formatLimit = (limit: number) => limit === -1 ? t('landing:pricingPage.unlimited') : limit.toLocaleString();
 
   // Get price for selected currency
   const getPlanPrice = (plan: Plan, type: 'monthly' | 'annual'): number => {
@@ -1303,7 +1303,7 @@ const PlansPage: React.FC = () => {
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder="Search plans..."
+            placeholder={t('common:ui.plans.searchPh')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -1354,30 +1354,30 @@ const PlansPage: React.FC = () => {
             <PlanCard key={plan.id} isPopular={plan.isPopular} isActive={plan.isActive}>
               <BadgeContainer>
                 <CategoryBadge category={plan.category}>
-                  {plan.category === 'basic' ? 'Basic' : 'Custom'}
+                  {plan.category === 'basic' ? 'Basic' : t('admin:systemProductManagementPage.custom')}
                 </CategoryBadge>
                 <StatusBadge isActive={plan.isActive}>
-                  {plan.isActive ? 'Active' : 'Inactive'}
+                  {plan.isActive ? t('admin:plansPage.active') : t('admin:plansPage.inactive')}
                 </StatusBadge>
               </BadgeContainer>
 
               <PlanHeader>
                 <PlanName>{plan.displayName}</PlanName>
                 <div style={{ fontSize: '14px', fontWeight: 600, color: '#635BFF', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '24px' }}>
-                  {plan.planTarget === 'restaurant' ? 'Restaurant Plan' : plan.planTarget === 'brand' ? 'Brand Plan' : plan.planTarget === 'foodcourt' ? 'Foodcourt Plan' : 'Owner Plan'}
+                  {plan.planTarget === 'restaurant' ? t('admin:plansPage.restaurantPlan') : plan.planTarget === 'brand' ? t('admin:plansPage.brandPlan') : plan.planTarget === 'foodcourt' ? t('admin:plansPage.foodcourtPlan') : t('admin:plansPage.restaurantOwnerPlan')}
                 </div>
 
                 <PlanPricing>
                   {hasCurrencyPrice(plan) ? (
                     <>
                       <MonthlyPrice>
-                        {formatPlanPrice(plan, 'monthly')}<span style={{fontSize: '16px', color: '#4B5563'}}>/month</span>
+                        {formatPlanPrice(plan, 'monthly')}<span style={{fontSize: '16px', color: '#4B5563'}}>{t('landing:pricingPage.perMonth')}</span>
                       </MonthlyPrice>
                       {getPlanPrice(plan, 'annual') > 0 && getPlanPrice(plan, 'monthly') > 0 && (
                         <AnnualPrice>
-                          {formatPlanPrice(plan, 'annual')}/year
+                          {formatPlanPrice(plan, 'annual')}{t('landing:pricingPage.perYear')}
                           {getPlanPrice(plan, 'monthly') * 12 > getPlanPrice(plan, 'annual') && (
-                            <span> (Save {Math.round(((getPlanPrice(plan, 'monthly') * 12 - getPlanPrice(plan, 'annual')) / (getPlanPrice(plan, 'monthly') * 12)) * 100)}%)</span>
+                            <span> ({t('admin:ui.plans.save', { pct: Math.round(((getPlanPrice(plan, 'monthly') * 12 - getPlanPrice(plan, 'annual')) / (getPlanPrice(plan, 'monthly') * 12)) * 100) })})</span>
                           )}
                         </AnnualPrice>
                       )}
@@ -1386,10 +1386,10 @@ const PlansPage: React.FC = () => {
                   ) : (
                     <>
                       <MonthlyPrice style={{color: '#F59E0B'}}>
-                        Price Not Set
+                        {t('brand:brandPlansPage.priceNotSet')}
                       </MonthlyPrice>
                       <PricingNote style={{color: '#F59E0B'}}>
-                        Set {getCurrencySymbol(displayCurrency)} price in "Prices" button
+                        {t('admin:ui.plans.setPriceHint', { symbol: getCurrencySymbol(displayCurrency) })}
                       </PricingNote>
                     </>
                   )}
@@ -1445,20 +1445,20 @@ const PlansPage: React.FC = () => {
                   <>
                     {basicModules.length > 0 && (
                       <ModulesSection>
-                        <ModulesSectionTitle>Basic Modules ({basicModules.length})</ModulesSectionTitle>
+                        <ModulesSectionTitle>{t('admin:addonModulesPage.basicModules')} ({basicModules.length})</ModulesSectionTitle>
                         <ModulesList>
                           {basicModules.map((module, index) => (
-                            <ModuleTag key={index}>{module!.name}</ModuleTag>
+                            <ModuleTag key={index}>{t(`landing:pricingPage.module.${module!.module_code}`, { defaultValue: module!.name })}</ModuleTag>
                           ))}
                         </ModulesList>
                       </ModulesSection>
                     )}
                     {advancedModules.length > 0 && (
                       <ModulesSection>
-                        <ModulesSectionTitle>Advanced Modules ({advancedModules.length})</ModulesSectionTitle>
+                        <ModulesSectionTitle>{t('admin:addonModulesPage.advancedModules')} ({advancedModules.length})</ModulesSectionTitle>
                         <ModulesList>
                           {advancedModules.map((module, index) => (
-                            <ModuleTag key={index}>{module!.name}</ModuleTag>
+                            <ModuleTag key={index}>{t(`landing:pricingPage.module.${module!.module_code}`, { defaultValue: module!.name })}</ModuleTag>
                           ))}
                         </ModulesList>
                       </ModulesSection>
@@ -1489,7 +1489,7 @@ const PlansPage: React.FC = () => {
                   variant="primary"
                   onClick={() => handleEditPlan(plan)}
                 >
-                  Edit
+                  {t('common:button.edit')}
                 </PlanButton>
                 <PlanButton
                   variant="secondary"
@@ -1499,13 +1499,13 @@ const PlansPage: React.FC = () => {
                     setShowPlanPricesModal(true);
                   }}
                 >
-                  Prices
+                  {t('admin:ui.plans.prices')}
                 </PlanButton>
                 <PlanButton
                   variant="secondary"
                   onClick={() => handleViewDetails(plan)}
                 >
-                  View
+                  {t('common:view')}
                 </PlanButton>
               </ActionButtons>
             </PlanCard>
@@ -1702,7 +1702,7 @@ const PlansPage: React.FC = () => {
                     {availableModules.filter(m => m.category === 'basic' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
                     <>
                       <div style={{marginTop: '16px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#3B82F6'}}>
-                        Basic Modules
+                        {t('admin:addonModulesPage.basicModules')}
                       </div>
                       <CheckboxGroup>
                         {availableModules
@@ -1733,7 +1733,7 @@ const PlansPage: React.FC = () => {
                                   }}
                                 />
                                 <label htmlFor={`module-${module.module_code}`}>
-                                  <strong>{module.name}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>{t('admin:plansPage.alwaysIncluded')}</span>}
+                                  <strong>{t(`landing:pricingPage.module.${module.module_code}`, { defaultValue: module.name })}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>{t('admin:plansPage.alwaysIncluded')}</span>}
                                   <br />
                                   <small style={{color: '#4B5563'}}>{module.description}</small>
                                 </label>
@@ -1748,7 +1748,7 @@ const PlansPage: React.FC = () => {
                   {availableModules.filter(m => m.category === 'advanced' && (m.target_user_type === createFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
                     <>
                       <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#8B5CF6'}}>
-                        Advanced Modules
+                        {t('admin:addonModulesPage.advancedModules')}
                       </div>
                       <CheckboxGroup>
                         {availableModules
@@ -1776,7 +1776,7 @@ const PlansPage: React.FC = () => {
                                   }}
                                 />
                                 <label htmlFor={`module-${module.module_code}`}>
-                                  <strong>{module.name}</strong>
+                                  <strong>{t(`landing:pricingPage.module.${module.module_code}`, { defaultValue: module.name })}</strong>
                                   <br />
                                   <small style={{color: '#4B5563'}}>{module.description}</small>
                                 </label>
@@ -1819,7 +1819,7 @@ const PlansPage: React.FC = () => {
                                   }}
                                 />
                                 <label htmlFor={`module-${module.module_code}`}>
-                                  <strong>{module.name}</strong>
+                                  <strong>{t(`landing:pricingPage.module.${module.module_code}`, { defaultValue: module.name })}</strong>
                                   <br />
                                   <small style={{color: '#4B5563'}}>{module.description}</small>
                                 </label>
@@ -1862,7 +1862,7 @@ const PlansPage: React.FC = () => {
                                   }}
                                 />
                                 <label htmlFor={`module-${module.module_code}`}>
-                                  <strong>{module.name}</strong>
+                                  <strong>{t(`landing:pricingPage.module.${module.module_code}`, { defaultValue: module.name })}</strong>
                                   <br />
                                   <small style={{color: '#4B5563'}}>{module.description}</small>
                                 </label>
@@ -1905,7 +1905,7 @@ const PlansPage: React.FC = () => {
                                   }}
                                 />
                                 <label htmlFor={`module-${module.module_code}`}>
-                                  <strong>{module.name}</strong>
+                                  <strong>{t(`landing:pricingPage.module.${module.module_code}`, { defaultValue: module.name })}</strong>
                                   <br />
                                   <small style={{color: '#4B5563'}}>{module.description}</small>
                                 </label>
@@ -2124,7 +2124,7 @@ const PlansPage: React.FC = () => {
                     {availableModules.filter(m => m.category === 'basic' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
                       <>
                         <div style={{marginTop: '16px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#3B82F6'}}>
-                          Basic Modules
+                          {t('admin:addonModulesPage.basicModules')}
                         </div>
                         <CheckboxGroup>
                           {availableModules
@@ -2155,7 +2155,7 @@ const PlansPage: React.FC = () => {
                                     }}
                                   />
                                   <label htmlFor={`edit-module-${module.module_code}`}>
-                                    <strong>{module.name}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>{t('admin:plansPage.alwaysIncluded')}</span>}
+                                    <strong>{t(`landing:pricingPage.module.${module.module_code}`, { defaultValue: module.name })}</strong>{alwaysIncluded && <span style={{color: '#635BFF', fontSize: '12px', marginLeft: '6px'}}>{t('admin:plansPage.alwaysIncluded')}</span>}
                                     <br />
                                     <small style={{color: '#4B5563'}}>{module.description}</small>
                                   </label>
@@ -2170,7 +2170,7 @@ const PlansPage: React.FC = () => {
                     {availableModules.filter(m => m.category === 'advanced' && (m.target_user_type === editFormData.plan_target || m.target_user_type === 'all')).length > 0 && (
                       <>
                         <div style={{marginTop: '24px', marginBottom: '8px', fontSize: '14px', fontWeight: 600, color: '#8B5CF6'}}>
-                          Advanced Modules
+                          {t('admin:addonModulesPage.advancedModules')}
                         </div>
                         <CheckboxGroup>
                           {availableModules
@@ -2198,7 +2198,7 @@ const PlansPage: React.FC = () => {
                                     }}
                                   />
                                   <label htmlFor={`edit-module-${module.module_code}`}>
-                                    <strong>{module.name}</strong>
+                                    <strong>{t(`landing:pricingPage.module.${module.module_code}`, { defaultValue: module.name })}</strong>
                                     <br />
                                     <small style={{color: '#4B5563'}}>{module.description}</small>
                                   </label>
@@ -2241,7 +2241,7 @@ const PlansPage: React.FC = () => {
                                     }}
                                   />
                                   <label htmlFor={`edit-module-${module.module_code}`}>
-                                    <strong>{module.name}</strong>
+                                    <strong>{t(`landing:pricingPage.module.${module.module_code}`, { defaultValue: module.name })}</strong>
                                     <br />
                                     <small style={{color: '#4B5563'}}>{module.description}</small>
                                   </label>
@@ -2284,7 +2284,7 @@ const PlansPage: React.FC = () => {
                                     }}
                                   />
                                   <label htmlFor={`edit-module-${module.module_code}`}>
-                                    <strong>{module.name}</strong>
+                                    <strong>{t(`landing:pricingPage.module.${module.module_code}`, { defaultValue: module.name })}</strong>
                                     <br />
                                     <small style={{color: '#4B5563'}}>{module.description}</small>
                                   </label>
@@ -2327,7 +2327,7 @@ const PlansPage: React.FC = () => {
                                     }}
                                   />
                                   <label htmlFor={`edit-module-${module.module_code}`}>
-                                    <strong>{module.name}</strong>
+                                    <strong>{t(`landing:pricingPage.module.${module.module_code}`, { defaultValue: module.name })}</strong>
                                     <br />
                                     <small style={{color: '#4B5563'}}>{module.description}</small>
                                   </label>

@@ -180,5 +180,15 @@
   "orderCancel.cardVoidFailed": "Bayaran kad tidak dapat dibatalkan di terminal, jadi pesanan tidak dibatalkan.",
   "orderCancel.cardVoidNoBridge": "Kad RM {{amount}} tidak dibatalkan di sini. Batalkan (Void) di terminal kad.",
   "brandMenuUpdatesPage.unlockedReplacedNote": "Medan tidak berkunci yang anda ubah akan diganti apabila jenama menghantar semula.",
-  "brandMenuUpdatesPage.brandPaused": "Jenama telah menjeda kemas kini ke kedai. Tiada apa boleh digunakan di sini sehingga jenama menghidupkannya semula."
+  "brandMenuUpdatesPage.brandPaused": "Jenama telah menjeda kemas kini ke kedai. Tiada apa boleh digunakan di sini sehingga jenama menghidupkannya semula.",
+  "ui.liveOrders.guest": "Tetamu",
+  "ui.liveOrders.allOrders": "Semua pesanan",
+  "ui.liveOrders.startCooking": "Mula memasak",
+  "ui.liveOrders.startPreparing": "Mula menyediakan",
+  "ui.liveOrders.markReady": "Tandakan sedia",
+  "ui.liveOrders.completeOrder": "Selesaikan pesanan",
+  "ui.liveOrders.outForDelivery": "Dalam penghantaran",
+  "ui.liveOrders.markDelivered": "Tandakan dihantar",
+  "ui.liveOrders.continuePayment": "Teruskan bayaran",
+  "ui.liveOrders.verifyingPayment": "Mengesahkan bayaran"
 }

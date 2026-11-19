@@ -29,6 +29,7 @@ import {
 import { getAuthToken } from '../../utils/auth';
 import { formatDate, formatDateTime } from '../../utils/timezone';
 import { formatCurrency } from '../../utils/currency';
+import { statusLabel } from '../../utils/statusLabel';
 
 // ----- Types -----
 
@@ -172,17 +173,6 @@ const TotalRow = styled.div<{ highlight?: boolean }>`
 
 // ----- Helpers -----
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'Draft',
-  sent: 'Sent',
-  pending_payment: 'Pending Payment',
-  pending: 'Pending',
-  payment_submitted: 'Payment Submitted',
-  paid: 'Paid',
-  overdue: 'Overdue',
-  cancelled: 'Cancelled'
-};
-
 const statusVariant = (status: string): 'success' | 'warning' | 'error' | 'info' | 'default' => {
   switch (status) {
     case 'paid':
@@ -300,19 +290,19 @@ const SupplierInvoicesPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#635BFF">
             <StatValue>{totalCount}</StatValue>
-            <StatLabel>Total Invoices</StatLabel>
+            <StatLabel>{t('admin:invoicesPage.totalInvoices')}</StatLabel>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{pendingCount}</StatValue>
-            <StatLabel>Pending</StatLabel>
+            <StatLabel>{t('common:status.pending')}</StatLabel>
           </StatCard>
           <StatCard color="#059669">
             <StatValue>{paidCount}</StatValue>
-            <StatLabel>Paid</StatLabel>
+            <StatLabel>{t('common:status.paid')}</StatLabel>
           </StatCard>
           <StatCard color="#DC2626">
             <StatValue>{overdueCount}</StatValue>
-            <StatLabel>Overdue</StatLabel>
+            <StatLabel>{t('common:status.overdue')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -324,14 +314,14 @@ const SupplierInvoicesPage: React.FC = () => {
               setPage(1);
             }}
           >
-            <option value="">All Statuses</option>
-            <option value="pending_payment">Pending Payment</option>
-            <option value="payment_submitted">Payment Submitted</option>
-            <option value="paid">Paid</option>
-            <option value="overdue">Overdue</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="draft">Draft</option>
-            <option value="sent">Sent</option>
+            <option value="">{t('supplier:ui.invoices.allStatuses')}</option>
+            <option value="pending_payment">{statusLabel(t, 'pending_payment')}</option>
+            <option value="payment_submitted">{t('supplier:status.payment_submitted')}</option>
+            <option value="paid">{t('common:status.paid')}</option>
+            <option value="overdue">{t('common:status.overdue')}</option>
+            <option value="cancelled">{t('common:status.cancelled')}</option>
+            <option value="draft">{t('common:status.draft')}</option>
+            <option value="sent">{statusLabel(t, 'sent')}</option>
           </FilterSelect>
         </FilterBar>
 
@@ -339,41 +329,41 @@ const SupplierInvoicesPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell align="left">Invoice #</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Issue Date</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Period / Plan</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">Total</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Due Date</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">Actions</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:tableCol.invoiceNo')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:tableCol.issueDate')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:tableCol.periodPlan')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('common:label.total')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:label.status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:tableCol.dueDate')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('common:label.actions')}</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>
               {invoices.map(inv => (
                 <DataTableRow key={inv.id} onClick={() => openDetail(inv)} style={{ cursor: 'pointer' }}>
-                  <DataTableCell data-label="Invoice #">
+                  <DataTableCell data-label={t('common:tableCol.invoiceNo')}>
                     <strong>{inv.invoice_number}</strong>
                   </DataTableCell>
-                  <DataTableCell data-label="Issue Date" align="center">
+                  <DataTableCell data-label={t('common:tableCol.issueDate')} align="center">
                     {inv.issue_date ? formatDate(inv.issue_date, null) : '—'}
                   </DataTableCell>
-                  <DataTableCell data-label="Period / Plan" align="center">
+                  <DataTableCell data-label={t('common:tableCol.periodPlan')} align="center">
                     {inv.billing_period || inv.plan_type || inv.service_description || '—'}
                   </DataTableCell>
-                  <DataTableCell data-label="Total" align="right">
+                  <DataTableCell data-label={t('common:label.total')} align="right">
                     <DataTableAmount highlight>
                       {formatCurrency(num(inv.total), inv.currency || 'MYR')}
                     </DataTableAmount>
                   </DataTableCell>
-                  <DataTableCell data-label="Status" align="center">
+                  <DataTableCell data-label={t('common:label.status')} align="center">
                     <DataTableStatus variant={statusVariant(inv.status)}>
-                      {STATUS_LABEL[inv.status] || inv.status}
+                      {statusLabel(t, inv.status)}
                     </DataTableStatus>
                   </DataTableCell>
-                  <DataTableCell data-label="Due Date" align="center">
+                  <DataTableCell data-label={t('common:tableCol.dueDate')} align="center">
                     {inv.due_date ? formatDate(inv.due_date, null) : '—'}
                   </DataTableCell>
-                  <DataTableCell data-label="Actions" align="right" mobileFullWidth>
+                  <DataTableCell data-label={t('common:label.actions')} align="right" mobileFullWidth>
                     <Button
                       type="button"
                       onClick={e => {
@@ -382,7 +372,7 @@ const SupplierInvoicesPage: React.FC = () => {
                       }}
                       style={{ padding: '8px 14px', fontSize: '13px' }}
                     >
-                      View
+                      {t('common:view')}
                     </Button>
                   </DataTableCell>
                 </DataTableRow>
@@ -392,7 +382,7 @@ const SupplierInvoicesPage: React.FC = () => {
           {invoices.length === 0 && (
             <DataTableEmpty>
               {loading
-                ? 'Loading...'
+                ? t('common:status.loading')
                 : t('invoices.noInvoices', 'No invoices yet. Your first invoice will appear after your trial begins.')}
             </DataTableEmpty>
           )}
@@ -401,20 +391,20 @@ const SupplierInvoicesPage: React.FC = () => {
         {pagination.totalPages > 1 && (
           <PaginationBar>
             <span>
-              Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+              {t('supplier:ui.invoices.pageInfo', { current: pagination.page, total: pagination.totalPages, count: pagination.total })}
             </span>
             <PageButtons>
               <PageBtn
                 disabled={page <= 1}
                 onClick={() => setPage(p => Math.max(1, p - 1))}
               >
-                Previous
+                {t('common:pagination.previous')}
               </PageBtn>
               <PageBtn
                 disabled={page >= pagination.totalPages}
                 onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
               >
-                Next
+                {t('common:pagination.next')}
               </PageBtn>
             </PageButtons>
           </PaginationBar>
@@ -429,61 +419,61 @@ const SupplierInvoicesPage: React.FC = () => {
           >
             <DetailGrid>
               <DetailRow>
-                <DetailLabel>Status</DetailLabel>
+                <DetailLabel>{t('common:label.status')}</DetailLabel>
                 <DetailValue>
                   <DataTableStatus variant={statusVariant(selectedInvoice.status)}>
-                    {STATUS_LABEL[selectedInvoice.status] || selectedInvoice.status}
+                    {statusLabel(t, selectedInvoice.status)}
                   </DataTableStatus>
                 </DetailValue>
               </DetailRow>
               <DetailRow>
-                <DetailLabel>Issue Date</DetailLabel>
+                <DetailLabel>{t('common:tableCol.issueDate')}</DetailLabel>
                 <DetailValue>
                   {selectedInvoice.issue_date ? formatDate(selectedInvoice.issue_date, null) : '—'}
                 </DetailValue>
               </DetailRow>
               <DetailRow>
-                <DetailLabel>Due Date</DetailLabel>
+                <DetailLabel>{t('common:tableCol.dueDate')}</DetailLabel>
                 <DetailValue>
                   {selectedInvoice.due_date ? formatDate(selectedInvoice.due_date, null) : '—'}
                 </DetailValue>
               </DetailRow>
               <DetailRow>
-                <DetailLabel>Paid Date</DetailLabel>
+                <DetailLabel>{t('supplier:ui.invoices.paidDate')}</DetailLabel>
                 <DetailValue>
                   {selectedInvoice.paid_date ? formatDateTime(selectedInvoice.paid_date, null) : '—'}
                 </DetailValue>
               </DetailRow>
               <DetailRow>
-                <DetailLabel>Period</DetailLabel>
+                <DetailLabel>{t('admin:invoicesPage.period')}</DetailLabel>
                 <DetailValue>{selectedInvoice.billing_period || '—'}</DetailValue>
               </DetailRow>
               <DetailRow>
-                <DetailLabel>Plan</DetailLabel>
+                <DetailLabel>{t('common:tableCol.plan')}</DetailLabel>
                 <DetailValue>{selectedInvoice.plan_type || '—'}</DetailValue>
               </DetailRow>
             </DetailGrid>
 
             {(selectedInvoice.service_description || selectedInvoice.custom_description) && (
               <DetailRow style={{ marginBottom: 16 }}>
-                <DetailLabel>Description</DetailLabel>
+                <DetailLabel>{t('common:label.description')}</DetailLabel>
                 <DetailValue>
                   {selectedInvoice.service_description || selectedInvoice.custom_description}
                 </DetailValue>
               </DetailRow>
             )}
 
-            <DetailLabel style={{ marginBottom: 8, display: 'block' }}>Line Items</DetailLabel>
+            <DetailLabel style={{ marginBottom: 8, display: 'block' }}>{t('supplier:ui.invoices.lineItems')}</DetailLabel>
             {detailLoading && !selectedInvoice.items?.length ? (
-              <div style={{ padding: 16, color: '#4B5563', fontSize: 13 }}>Loading items...</div>
+              <div style={{ padding: 16, color: '#4B5563', fontSize: 13 }}>{t('supplier:ui.invoices.loadingItems')}</div>
             ) : selectedInvoice.items && selectedInvoice.items.length > 0 ? (
               <ItemsTable>
                 <thead>
                   <tr>
-                    <th>Description</th>
-                    <th className="right">Qty</th>
-                    <th className="right">Unit Price</th>
-                    <th className="right">Total</th>
+                    <th>{t('common:label.description')}</th>
+                    <th className="right">{t('admin:invoicesPage.qty')}</th>
+                    <th className="right">{t('supplier:products.fields.unitPrice')}</th>
+                    <th className="right">{t('common:label.total')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -502,24 +492,24 @@ const SupplierInvoicesPage: React.FC = () => {
                 </tbody>
               </ItemsTable>
             ) : (
-              <div style={{ padding: 12, color: '#4B5563', fontSize: 13 }}>No line items.</div>
+              <div style={{ padding: 12, color: '#4B5563', fontSize: 13 }}>{t('supplier:ui.invoices.noLineItems')}</div>
             )}
 
             <TotalsBlock>
               {selectedInvoice.amount !== undefined && (
                 <TotalRow>
-                  <span>Subtotal</span>
+                  <span>{t('common:label.subtotal')}</span>
                   <span>{formatCurrency(num(selectedInvoice.amount), selectedInvoice.currency || 'MYR')}</span>
                 </TotalRow>
               )}
               {selectedInvoice.tax !== undefined && num(selectedInvoice.tax) > 0 && (
                 <TotalRow>
-                  <span>Tax</span>
+                  <span>{t('common:label.tax')}</span>
                   <span>{formatCurrency(num(selectedInvoice.tax), selectedInvoice.currency || 'MYR')}</span>
                 </TotalRow>
               )}
               <TotalRow highlight>
-                <span>Total</span>
+                <span>{t('common:label.total')}</span>
                 <span>{formatCurrency(num(selectedInvoice.total), selectedInvoice.currency || 'MYR')}</span>
               </TotalRow>
             </TotalsBlock>

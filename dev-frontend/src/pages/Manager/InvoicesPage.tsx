@@ -813,39 +813,39 @@ const ManagerInvoicesPage: React.FC = () => {
               <tbody>
                 {pg.pageItems.map(invoice => (
                   <DataTableRow key={invoice.id}>
-                    <DataTableCell data-label="Invoice" align="left">
+                    <DataTableCell data-label={t('admin:invoicesPage.invoice')} align="left">
                       <InvoiceInfo>
                         <InvoiceNumber>{invoice.invoiceNumber}</InvoiceNumber>
                         <CompanyName>{invoice.planType}</CompanyName>
                       </InvoiceInfo>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Restaurant" align="left">
+                    <DataTableCell data-label={t('admin:invoicesPage.restaurant')} align="left">
                       <InvoiceInfo>
                         <InvoiceNumber>{invoice.restaurantName}</InvoiceNumber>
                         <CompanyName>{invoice.restaurantManager}</CompanyName>
                       </InvoiceInfo>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Issue Date" align="center">
+                    <DataTableCell data-label={t('admin:invoicesPage.issueDate')} align="center">
                       {formatDate(invoice.issueDate)}
                     </DataTableCell>
 
-                    <DataTableCell data-label="Due Date" align="center">
+                    <DataTableCell data-label={t('admin:invoicesPage.dueDate')} align="center">
                       {formatDate(invoice.dueDate)}
                     </DataTableCell>
 
-                    <DataTableCell data-label="Status" align="center">
+                    <DataTableCell data-label={t('admin:invoicesPage.status')} align="center">
                       <StatusBadge status={invoice.status}>
                         {invoice.status}
                       </StatusBadge>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Amount" align="right">
+                    <DataTableCell data-label={t('admin:invoicesPage.amount')} align="right">
                       <DataTableAmount>{formatCurrency(invoice.amount)}</DataTableAmount>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Total" align="right">
+                    <DataTableCell data-label={t('admin:invoicesPage.total')} align="right">
                       <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('admin:invoicesPage.free')}</span> : formatCurrency(invoice.total)}</DataTableAmount>
                     </DataTableCell>
 

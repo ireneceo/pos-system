@@ -10,6 +10,7 @@ import { StatsGrid, StatCard, StatValue, StatLabel, StatTrend , Modal as CommonM
 import PhoneInput from '../../components/Common/PhoneInput';
 import AddressFields from '../../components/Form/AddressFields';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 
 import { getAuthToken } from '../../utils/auth';
 interface Restaurant {
@@ -933,7 +934,7 @@ const OwnerRestaurantsPage: React.FC = () => {
 
           <PageFilterWrapper>
             <PageSearchInput
-              placeholder="Search restaurants..."
+              placeholder={t('common:ui.managerRestaurants.searchRestaurantsPh')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -971,7 +972,7 @@ const OwnerRestaurantsPage: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                       <div>
                         <StatusBadge status={restaurant.status}>
-                          {restaurant.status}
+                          {statusLabel(t, restaurant.status)}
                         </StatusBadge>
                         <PlanBadge plan={restaurant.plan}>
                           {restaurant.plan}

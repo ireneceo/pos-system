@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,6 +27,26 @@ const readGaps = (): PrinterGap[] => {
   } catch { return []; }
 };
 const sigOf = (gaps: PrinterGap[]) => gaps.map((g) => (g.kind === 'station' ? `s${g.stationId}` : 'k')).join(',');
+// 2026-11-18 (Fable 설계 B2): 띠의 왼쪽 기준 = 본문 칸 왼쪽 끝. 사이드바(매장 전환·내 정보)를 덮지 않게
+// 화면 왼쪽에 붙어 세로로 긴 메뉴 칸(nav)의 오른쪽 끝을 찾는다. 못 찾으면 예전처럼 16.
+const contentLeft = (): number => {
+  try {
+    let right = 0;
+    for (const el of Array.from(document.querySelectorAll('nav'))) {
+      const r = el.getBoundingClientRect();
+      if (r.left <= 1 && r.right > 40 && r.height > window.innerHeight * 0.5) right = Math.max(right, r.right);
+    }
+    // 하위 메뉴 창(사이드바 옆에 뜨는 창)이 열려 있으면 그 오른쪽으로 — 창 아래 항목(«프린터» 등)을 덮어
+    // 알림이 대신 눌렸다(2026-11-18 Fable 검증 ①)
+    for (const el of Array.from(document.querySelectorAll('[data-sec-popover]'))) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) right = Math.max(right, r.right);
+    }
+    return Math.round(right) + 16;
+  } catch { return 16; }
+};
+const COMPACT_MAX = 1024; // 이 폭 이하(폰·태블릿)는 한 줄 알약으로 접어 둔다(Fable 설계 B1)
+
 const readDismissed = (): { sig: string; until: number } | null => {
   try { const v = JSON.parse(localStorage.getItem(DISMISS_KEY) || 'null'); return v && typeof v.until === 'number' ? v : null; } catch { return null; }
 };
@@ -38,14 +58,33 @@ const PrinterSetupGapBanner: React.FC = () => {
   const [gaps, setGaps] = useState<PrinterGap[]>(readGaps);
   const [dismissed, setDismissed] = useState(readDismissed);
   const [now, setNow] = useState(() => Date.now());
+  const [left, setLeft] = useState(16);
+  const [vw, setVw] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1440));
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const tick = () => { setGaps(readGaps()); setNow(Date.now()); };
+    const tick = () => { setGaps(readGaps()); setNow(Date.now()); setLeft(contentLeft()); };
+    const onResize = () => { setVw(window.innerWidth); setLeft(contentLeft()); };
     const id = window.setInterval(tick, POLL_MS);
     window.addEventListener('storage', tick);
-    return () => { window.clearInterval(id); window.removeEventListener('storage', tick); };
+    window.addEventListener('resize', onResize);
+    const first = window.setTimeout(() => setLeft(contentLeft()), 300);
+    // 하위 메뉴 창은 누르거나 마우스를 올리는 순간 열리므로 왼쪽 기준을 자주(0.4초) 다시 잰다 — 메뉴 칸 몇 개만 읽어 가볍다
+    const fast = window.setInterval(() => setLeft((prev) => { const v = contentLeft(); return v === prev ? prev : v; }), 400);
+    return () => { window.clearInterval(id); window.clearInterval(fast); window.clearTimeout(first); window.removeEventListener('storage', tick); window.removeEventListener('resize', onResize); };
   }, []);
-  useEffect(() => { setGaps(readGaps()); }, [pathname]);
+  useEffect(() => { setGaps(readGaps()); setOpen(false); setLeft(contentLeft()); }, [pathname]);
+  // 펼친 상자는 바깥을 누르면 다시 알약으로
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('touchstart', onDown); };
+  }, [open]);
 
   const sig = useMemo(() => sigOf(gaps), [gaps]);
   const rid = user?.restaurantId || (user as any)?.restaurant_id;
@@ -61,13 +100,43 @@ const PrinterSetupGapBanner: React.FC = () => {
     setDismissed(v);
   };
 
+  const compact = vw <= COMPACT_MAX && !open;
+  const leftPx = Math.min(left, Math.max(16, vw - 276));
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        role="alert"
+        data-testid="printer-gap-banner"
+        data-compact="1"
+        onClick={() => setOpen(true)}
+        aria-expanded={false}
+        style={{
+          position: 'fixed', left: leftPx, bottom: 16, zIndex: 100010,
+          maxWidth: 260, height: 40, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: '#FFFBEB', color: '#92400E', border: '1px solid #FCD34D', borderRadius: 20,
+          padding: '0 14px', boxShadow: '0 4px 14px rgba(0,0,0,0.16)', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+          whiteSpace: 'nowrap', overflow: 'hidden',
+        }}
+      >
+        <span aria-hidden>●</span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {t('printerGap.pill', { count: gaps.length, defaultValue: 'No printer: {{count}} kitchen(s)' })}
+        </span>
+        <span aria-hidden>›</span>
+      </button>
+    );
+  }
+
   return (
     <div
+      ref={boxRef}
       role="alert"
       data-testid="printer-gap-banner"
       style={{
-        position: 'fixed', left: 16, bottom: 16, zIndex: 100010,
-        width: 'calc(100vw - 32px)', maxWidth: 440, boxSizing: 'border-box',
+        position: 'fixed', left: vw <= COMPACT_MAX ? leftPx : left, bottom: 16, zIndex: 100010,
+        width: `calc(100vw - ${(vw <= COMPACT_MAX ? leftPx : left) + 16}px)`, maxWidth: 440, boxSizing: 'border-box',
         background: '#FFFBEB', color: '#92400E', border: '1px solid #FDE68A', borderRadius: 10,
         padding: '12px 14px', boxShadow: '0 6px 20px rgba(0,0,0,0.18)', fontSize: 14,
       }}

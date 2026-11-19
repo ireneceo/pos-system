@@ -14,6 +14,7 @@ import { formatPhoneForDisplay } from '../../utils/phoneUtils';
 import { formatDateTime } from '../../utils/timezone';
 import PageHeader from '../../components/Common/PageHeader';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 
 import { getAuthToken } from '../../utils/auth';
 // 스타일 컴포넌트
@@ -567,7 +568,7 @@ const CustomersPage: React.FC = () => {
               <SearchIcon>🔍</SearchIcon>
               <SearchInputWithIcon
                 type="text"
-                placeholder="Search customers by name, phone, or email..."
+                placeholder={t('customers:ui.customers.searchPh')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -654,7 +655,7 @@ const CustomersPage: React.FC = () => {
                       </div>
                       
                       <LoyaltyBadge tier={customer.loyaltyTier}>
-                        {customer.loyaltyTier}
+                        {statusLabel(t, customer.loyaltyTier)}
                       </LoyaltyBadge>
                       
                       <div style={{ fontSize: '14px', fontWeight: '600', color: '#1F2937' }}>
@@ -677,10 +678,10 @@ const CustomersPage: React.FC = () => {
 
                       <ActionButtons onClick={(e) => e.stopPropagation()}>
                         <ActionButton onClick={() => handleCustomerClick(customer)}>
-                          View
+                          {t('common:ui.action.view')}
                         </ActionButton>
                         <ActionButton onClick={() => handleToggleStatus(customer)}>
-                          {customer.isActive ? 'Deactivate' : 'Activate'}
+                          {customer.isActive ? t('common:ui.action.deactivate') : t('common:ui.action.activate')}
                         </ActionButton>
                       </ActionButtons>
 
@@ -721,7 +722,7 @@ const CustomersPage: React.FC = () => {
                             <IconSymbol>✕</IconSymbol>
                           </DeleteButton>
                           <LoyaltyBadge tier={customer.loyaltyTier}>
-                            {customer.loyaltyTier}
+                            {statusLabel(t, customer.loyaltyTier)}
                           </LoyaltyBadge>
                           <StatusBadge active={customer.isActive}>
                             {customer.isActive ? 'Active' : 'Inactive'}
@@ -765,7 +766,7 @@ const CustomersPage: React.FC = () => {
                       </CustomerName>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <LoyaltyBadge tier={selectedCustomer.loyaltyTier}>
-                          {selectedCustomer.loyaltyTier}
+                          {statusLabel(t, selectedCustomer.loyaltyTier)}
                         </LoyaltyBadge>
                         <StatusBadge active={selectedCustomer.isActive}>
                           {selectedCustomer.isActive ? 'Active' : 'Inactive'}

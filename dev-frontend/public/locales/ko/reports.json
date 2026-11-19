@@ -206,5 +206,17 @@
     "staffMealSpend": "직원식 비용",
     "regularSpend": "일반 구매",
     "staffMeal": "직원식"
-  }
+  },
+  "ui.reports.salesReport": "매출 리포트",
+  "ui.reports.salesDetails": "매출 상세",
+  "ui.reports.paymentAnalysis": "결제 분석",
+  "ui.reports.menuAnalysis": "메뉴 분석",
+  "ui.reports.customerInsights": "고객 인사이트",
+  "ui.reports.operations": "운영",
+  "reportsPage.customerInsights": "고객 분석",
+  "reportsPage.menuAnalysis": "메뉴 분석",
+  "reportsPage.operations": "운영",
+  "reportsPage.paymentAnalysis": "결제 분석",
+  "reportsPage.salesDetails": "매출 상세",
+  "reportsPage.salesReport": "매출 리포트"
 }

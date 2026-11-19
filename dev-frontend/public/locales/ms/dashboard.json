@@ -40,5 +40,13 @@
   "dashboardContent.order": "Pesanan",
   "dashboardContent.items": "Item",
   "dashboardContent.status": "Status",
-  "dashboardContent.time": "Masa"
+  "dashboardContent.time": "Masa",
+  "ui.basic.roleSystemAdmin": "Anda mempunyai akses penuh sistem dan boleh mengurus semua pengurus, restoran dan tetapan sistem.",
+  "ui.basic.roleManager": "Anda boleh mengurus beberapa restoran, melihat laporan gabungan dan memantau operasi.",
+  "ui.basic.roleRestaurantAdmin": "Anda boleh mengurus restoran, kakitangan, menu dan mengakses semua fungsi POS.",
+  "ui.basic.roleStaff": "Anda boleh mengakses terminal POS, paparan dapur dan fungsi pengurusan pesanan.",
+  "ui.basic.roleDefault": "Selamat datang ke Sistem POS Purple Here.",
+  "ui.basic.hello": "Hai, {{name}}!",
+  "ui.basic.systemOk": "Semua sistem beroperasi. Anda boleh mengakses fungsi yang dibenarkan melalui menu sisi.",
+  "ui.basic.gettingStarted": "Gunakan menu navigasi di sebelah kiri untuk mengakses ciri yang tersedia untuk peranan anda."
 }

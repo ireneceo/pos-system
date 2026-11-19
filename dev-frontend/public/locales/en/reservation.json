@@ -77,5 +77,8 @@
     "graceHint": "Auto-mark as no-show this many minutes after reservation time.",
     "blockAfter": "Block after N no-shows",
     "blockAfterHint": "Customers reaching this no-show count are blocked from new reservations."
-  }
+  },
+  "ui.col.guest": "Guest",
+  "ui.col.source": "Source",
+  "ui.tomorrow": "Tomorrow"
 }

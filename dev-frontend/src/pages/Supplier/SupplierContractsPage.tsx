@@ -585,16 +585,16 @@ const SupplierContractsPage: React.FC = () => {
     <Container>
       <Header>
         <div>
-          <Title>{t('supplierMenu.title', 'Suppliers')}</Title>
+          <Title>{t('supplier:nav.suppliers')}</Title>
         </div>
       </Header>
 
       <PageTabBar>
         <PageTab $active={true} role="tab" aria-selected={true} type="button">
-          {t('supplierMenu.tab.mine', 'My Suppliers')}
+          {t('supplierDirectory:myContracts.title')}
         </PageTab>
         <PageTab $active={false} role="tab" aria-selected={false} type="button" onClick={() => navigate('/pos/suppliers/directory')}>
-          {t('supplierMenu.tab.find', 'Find Suppliers')}
+          {t('supplier:nav.findSuppliers')}
         </PageTab>
       </PageTabBar>
 
@@ -624,10 +624,10 @@ const SupplierContractsPage: React.FC = () => {
           <Empty>
             <h3>{t(`supplierContracts.empty.${activeTab}`)}</h3>
             {activeTab === 'pending' && (
-              <p>{t('supplierContracts.emptyHint.pending', 'When buyers send contract requests, they appear here for your approval.')}</p>
+              <p>{t('supplierDirectory:ui.contracts.emptyHintPending')}</p>
             )}
             {activeTab === 'active' && (
-              <p>{t('supplierContracts.emptyHint.active', 'Active contracts are buyers you currently supply to. Approve pending requests to start.')}</p>
+              <p>{t('supplierDirectory:ui.contracts.emptyHintActive')}</p>
             )}
           </Empty>
         ) : (

@@ -9,6 +9,7 @@ import InvoiceHistoryModal from '../../components/Invoice/InvoiceHistoryModal';
 import ReceiptPreview from '../../components/Invoice/ReceiptPreview';
 import { useStore } from '../../contexts/StoreContext';
 import { formatDateTime } from '../../utils/timezone';
+import { statusLabel } from '../../utils/statusLabel';
 import ConfirmModal from '../../components/ConfirmModal';
 import {
   Container,
@@ -1001,6 +1002,22 @@ const InvoicesPage: React.FC = () => {
     }
   };
 
+  // 화면 표시용(검색은 위 영어 글자 그대로 — 2026-11-18 번역)
+  const statusDisplayLabel = (status: string) => {
+    if (!status || status === 'pending_payment') return t('common:status.pending', 'Pending');
+    if (status === 'payment_submitted') return t('admin:ui.invoices.paymentSubmitted', 'Payment Submitted');
+    return statusLabel(t, status) || getStatusDisplay(status);
+  };
+
+  const payerLabel = (payerType: string) => {
+    switch(payerType) {
+      case 'foodcourt_manager': return t('common:role.foodcourtGeneral', 'Foodcourt General');
+      case 'brand_manager': return t('common:role.brandGeneral', 'Brand General');
+      case 'external': return t('admin:invoicesPage.nonmember', 'Non-Member');
+      default: return t('common:role.restaurantAdmin', 'Restaurant Admin');
+    }
+  };
+
   const filteredInvoices = invoices.filter(invoice => {
     const term = searchTerm.toLowerCase();
     const statusText = getStatusDisplay(invoice.status).toLowerCase();
@@ -1527,7 +1544,7 @@ const InvoicesPage: React.FC = () => {
               disabled={generatingMissing}
               style={{ opacity: generatingMissing ? 0.6 : 1 }}
             >
-              {generatingMissing ? 'Generating...' : 'Generate Missing Invoices'}
+              {generatingMissing ? t('admin:ui.invoices.generating', 'Generating...') : t('admin:ui.invoices.generateMissing', 'Generate Missing Invoices')}
             </Button>
           </ActionSection>
         </Header>
@@ -1575,7 +1592,7 @@ const InvoicesPage: React.FC = () => {
           onCalendarRangeSelect={handleCalendarRangeSelect}
         >
             <SearchInput
-              placeholder="Search invoices..."
+              placeholder={t('admin:ui.invoices.searchPh', 'Search invoices...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -1618,16 +1635,16 @@ const InvoicesPage: React.FC = () => {
         </DatePeriodFilter>
 
         <DataTableContainer>
-          <DataTable>
+          <DataTable data-card-upto="1280">
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell align="left" style={{ cursor: 'pointer' }} onClick={() => handleSort('invoiceNumber')}>Invoice{getSortIndicator('invoiceNumber')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left" style={{ cursor: 'pointer' }} onClick={() => handleSort('companyName')}>Customer{getSortIndicator('companyName')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left" style={{ cursor: 'pointer' }} onClick={() => handleSort('invoiceNumber')}>{t('admin:invoicesPage.invoice')}{getSortIndicator('invoiceNumber')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left" style={{ cursor: 'pointer' }} onClick={() => handleSort('companyName')}>{t('admin:invoicesPage.customer')}{getSortIndicator('companyName')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">{t('admin:invoicesPage.period')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">{t('admin:invoicesPage.issued')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('dueDate')}>Due{getSortIndicator('dueDate')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('status')}>Status{getSortIndicator('status')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right" style={{ cursor: 'pointer' }} onClick={() => handleSort('amount')}>Amount{getSortIndicator('amount')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('dueDate')}>{t('common:tableCol.due')}{getSortIndicator('dueDate')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center" style={{ cursor: 'pointer' }} onClick={() => handleSort('status')}>{t('admin:invoicesPage.status')}{getSortIndicator('status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right" style={{ cursor: 'pointer' }} onClick={() => handleSort('amount')}>{t('admin:invoicesPage.amount')}{getSortIndicator('amount')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="right">{t('admin:invoicesPage.total')}</DataTableHeaderCell>
                 <DataTableHeaderCell isActions>{t('admin:invoicesPage.actions')}</DataTableHeaderCell>
               </tr>
@@ -1635,16 +1652,16 @@ const InvoicesPage: React.FC = () => {
             <tbody>
               {invoicesPg.pageItems.map(invoice => (
                 <DataTableRow key={invoice.id}>
-                  <DataTableCell data-label="Invoice" align="left">
+                  <DataTableCell data-label={t('admin:invoicesPage.invoice')} align="left">
                     <InvoiceInfo>
                       <InvoiceNumber>
                         {invoice.invoiceNumber}
-                        {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('admin:invoicesPage.auto')}</AutoBadge>}
+                        {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('common:statusExtra.auto', 'AUTO')}</AutoBadge>}
                       </InvoiceNumber>
                       <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                     </InvoiceInfo>
                   </DataTableCell>
-                  <DataTableCell data-label="Customer" align="left">
+                  <DataTableCell data-label={t('admin:invoicesPage.customer')} align="left">
                     <InvoiceInfo>
                       <InvoiceNumber>
                         {invoice.customerName || invoice.restaurantName || invoice.externalPayerName || '\u2014'}
@@ -1652,7 +1669,7 @@ const InvoicesPage: React.FC = () => {
                         {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('admin:invoicesPage.nonmember')}</span>}
                       </InvoiceNumber>
                       <CompanyName>
-                        {invoice.payerType === 'external' ? 'Non-Member' : getPayerDisplay(invoice.payerType || 'restaurant')}
+                        {invoice.payerType === 'external' ? t('admin:invoicesPage.nonmember', 'Non-Member') : payerLabel(invoice.payerType || 'restaurant')}
                       </CompanyName>
                       {invoice.hardwareQuoteNumber && (
                         <div>
@@ -1663,12 +1680,12 @@ const InvoicesPage: React.FC = () => {
                       )}
                     </InvoiceInfo>
                   </DataTableCell>
-                  <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
-                  <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
-                  <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
-                  <DataTableCell data-label="Status" align="center">
+                  <DataTableCell data-label={t('admin:invoicesPage.period')} align="center" style={{ fontSize: '12px' }}>{invoice.billingPeriod || '-'}</DataTableCell>
+                  <DataTableCell data-label={t('admin:invoicesPage.issued')} align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</DataTableCell>
+                  <DataTableCell data-label={t('common:tableCol.due')} align="center" style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</DataTableCell>
+                  <DataTableCell data-label={t('admin:invoicesPage.status')} align="center">
                     <StatusBadge status={getEffectiveStatus(invoice)}>
-                      {getStatusDisplay(getEffectiveStatus(invoice))}
+                      {statusDisplayLabel(getEffectiveStatus(invoice))}
                     </StatusBadge>
                     {invoice.isModified && (
                       <button
@@ -1679,8 +1696,8 @@ const InvoicesPage: React.FC = () => {
                       >{t('admin:invoicesPage.modified')}</button>
                     )}
                   </DataTableCell>
-                  <DataTableCell data-label="Amount" align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
-                  <DataTableCell data-label="Total" align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('admin:invoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label={t('admin:invoicesPage.amount')} align="right"><DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
+                  <DataTableCell data-label={t('admin:invoicesPage.total')} align="right"><DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('admin:invoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount></DataTableCell>
                   <DataTableCell data-label="" mobileFullWidth>
                     <ActionButtons>
                       <LocalActionButton onClick={() => handleViewInvoice(invoice)}>{t('admin:invoicesPage.view')}</LocalActionButton>
@@ -1781,28 +1798,28 @@ const InvoicesPage: React.FC = () => {
                 <tbody>
                   {submittedPg.pageItems.map(invoice => (
                     <DataTableRow key={invoice.id}>
-                      <DataTableCell data-label="Invoice" align="left">
+                      <DataTableCell data-label={t('admin:invoicesPage.invoice')} align="left">
                         <InvoiceInfo>
                           <InvoiceNumber>{invoice.invoiceNumber}</InvoiceNumber>
                           <CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName>
                         </InvoiceInfo>
                       </DataTableCell>
-                      <DataTableCell data-label="Customer" align="left">
+                      <DataTableCell data-label={t('admin:invoicesPage.customer')} align="left">
                         <InvoiceInfo>
                           <InvoiceNumber>
                             {invoice.customerName || invoice.restaurantName || invoice.externalPayerName || '\u2014'}
                             {invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('admin:invoicesPage.nonmember')}</span>}
                           </InvoiceNumber>
-                          <CompanyName>{invoice.companyName || getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName>
+                          <CompanyName>{invoice.companyName || payerLabel(invoice.payerType || 'restaurant')}</CompanyName>
                         </InvoiceInfo>
                       </DataTableCell>
-                      <DataTableCell data-label="Payment Method" align="center">
+                      <DataTableCell data-label={t('admin:invoicesPage.paymentMethod')} align="center">
                         {invoice.paymentMethod || '-'}
                       </DataTableCell>
-                      <DataTableCell data-label="Submitted" align="center">
+                      <DataTableCell data-label={t('admin:invoicesPage.submittedDate')} align="center">
                         {invoice.paidDate ? formatDate(invoice.paidDate) : '-'}
                       </DataTableCell>
-                      <DataTableCell data-label="Amount" align="right">
+                      <DataTableCell data-label={t('admin:invoicesPage.amount')} align="right">
                         <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('admin:invoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                       </DataTableCell>
                       <DataTableCell data-label="" mobileFullWidth>

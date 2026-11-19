@@ -59,5 +59,19 @@
   "staffPage.remove": "삭제",
   "staffPage.removeTitle": "직원 삭제",
   "staffPage.removeConfirm": "이 직원 계정을 지웁니다. 더 이상 로그인·PIN 을 쓸 수 없고, 지난 주문에는 이름이 그대로 남습니다. 되돌릴 수 없습니다.",
-  "staffPage.removeFailed": "직원을 삭제하지 못했습니다"
+  "staffPage.removeFailed": "직원을 삭제하지 못했습니다",
+  "ui.perm.access_pos": "POS / 카운터",
+  "ui.perm.access_payment": "결제",
+  "ui.perm.access_void": "취소 / 무효",
+  "ui.perm.access_serving": "서빙",
+  "ui.perm.access_kitchen": "주방",
+  "ui.perm.menu_management": "상품",
+  "ui.perm.inventory": "재고 관리",
+  "ui.perm.purchasing": "발주",
+  "ui.perm.marketing": "마케팅",
+  "ui.perm.reports": "분석",
+  "ui.perm.support": "소통",
+  "ui.perm.settings": "설정",
+  "ui.staff.searchPh": "이름·이메일·부서로 검색...",
+  "ui.staff.resetPw": "비밀번호 초기화"
 }

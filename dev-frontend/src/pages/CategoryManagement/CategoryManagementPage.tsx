@@ -624,7 +624,7 @@ const CategoryManagementPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <HeaderTitle>{'Categories'}</HeaderTitle>
+          <HeaderTitle>{t('menu:categoryManagementPage.categories')}</HeaderTitle>
           <HeaderActions>
           <Button onClick={() => handleOpenModal()}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -683,13 +683,13 @@ const CategoryManagementPage: React.FC = () => {
                 <ToggleSlider />
               </ToggleSwitch>
               <CategoryActions>
-                <IconButton onClick={() => handleOpenModal(category)}>
+                <IconButton onClick={() => handleOpenModal(category)} aria-label={t('common:button.edit')} title={t('common:button.edit')}>
                   <svg viewBox="0 0 24 24" fill="none">
                     <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                     <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   </svg>
                 </IconButton>
-                <IconButton onClick={() => handleDeleteClick(category.id)}>
+                <IconButton onClick={() => handleDeleteClick(category.id)} aria-label={t('common:button.delete')} title={t('common:button.delete')}>
                   <svg viewBox="0 0 24 24" fill="none">
                     <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                   </svg>

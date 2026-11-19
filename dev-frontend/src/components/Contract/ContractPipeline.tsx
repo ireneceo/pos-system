@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { formatDate as formatDateTz } from '../../utils/timezone';
 import { getBillableSummary, getRemainingInfo } from '../../utils/contractBillable';
+import { statusLabel } from '../../utils/statusLabel';
 
 interface Contract {
   id: number;
@@ -265,7 +266,7 @@ const ContractPipeline: React.FC<ContractPipelineProps> = ({ contracts, onCardCl
 
                 <CardMeta>
                   {c.contract_type && (
-                    <CardTag bg="#EEF2FF" color="#4338CA">{c.contract_type}</CardTag>
+                    <CardTag bg="#EEF2FF" color="#4338CA">{t(`ui.contractType.${c.contract_type}`, { defaultValue: '' }) || t(`floorPlan.contractType.${c.contract_type}`, { defaultValue: '' }) || statusLabel(t, c.contract_type)}</CardTag>
                   )}
                   {c.contract_number && (
                     <CardTag>{c.contract_number}</CardTag>

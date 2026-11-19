@@ -303,5 +303,8 @@
   "delivery": {
     "title": "배송",
     "editTitle": "배송 조건"
-  }
+  },
+  "ui.customers.viewPendingContracts": "대기 중인 계약 보기",
+  "ui.contracts.emptyHintPending": "구매처가 계약을 요청하면 여기에 떠요. 보고 승인해 주세요.",
+  "ui.contracts.emptyHintActive": "진행 중인 계약은 지금 물건을 대는 구매처예요. 대기 중인 요청을 승인하면 시작돼요."
 }

@@ -59,5 +59,19 @@
   "staffPage.remove": "Buang",
   "staffPage.removeTitle": "Buang kakitangan",
   "staffPage.removeConfirm": "akaun kakitangan ini akan dipadam dan tidak boleh log masuk atau guna PIN lagi. Pesanan lalu kekal dengan nama mereka. Tindakan ini tidak boleh dibatalkan.",
-  "staffPage.removeFailed": "Gagal membuang kakitangan"
+  "staffPage.removeFailed": "Gagal membuang kakitangan",
+  "ui.perm.access_pos": "POS / Kaunter",
+  "ui.perm.access_payment": "Pembayaran",
+  "ui.perm.access_void": "Batal / Batalkan item",
+  "ui.perm.access_serving": "Hidangan",
+  "ui.perm.access_kitchen": "Dapur",
+  "ui.perm.menu_management": "Produk",
+  "ui.perm.inventory": "Pengurusan stok",
+  "ui.perm.purchasing": "Pesanan belian",
+  "ui.perm.marketing": "Pemasaran",
+  "ui.perm.reports": "Analitik",
+  "ui.perm.support": "Komunikasi",
+  "ui.perm.settings": "Tetapan",
+  "ui.staff.searchPh": "Cari mengikut nama, e-mel, jabatan...",
+  "ui.staff.resetPw": "Set semula kata laluan"
 }

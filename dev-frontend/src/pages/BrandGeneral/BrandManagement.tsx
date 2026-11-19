@@ -443,7 +443,7 @@ const BrandManagement: React.FC = () => {
                     </DataTableCell>
                     <DataTableCell data-label={t('brand:brandManagement.status')}>
                       <StatusBadge status={brand.status}>
-                        {brand.status === 'active' ? 'Active' : 'Inactive'}
+                        {brand.status === 'active' ? t('common:status.active') : t('common:status.inactive')}
                       </StatusBadge>
                     </DataTableCell>
                     <DataTableCell data-label={t('brand:brandManagement.contact')} style={{ fontSize: '13px', color: '#4B5563' }}>
@@ -454,14 +454,14 @@ const BrandManagement: React.FC = () => {
                         <IconButton
                           variant="edit"
                           onClick={() => handleEditBrand(brand)}
-                          title="Edit"
+                          title={t('common:button.edit')}
                         >
-                          Edit
+                          {t('common:button.edit')}
                         </IconButton>
                         <IconButton
                           variant="delete"
                           onClick={() => handleDeleteBrand(brand)}
-                          title="Delete"
+                          title={t('common:button.delete')}
                         >
                           ✕
                         </IconButton>

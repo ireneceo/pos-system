@@ -44,6 +44,7 @@ import ReceiptUploadField from '../../components/Invoice/ReceiptUploadField';
 import ReceiptPreview from '../../components/Invoice/ReceiptPreview';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { statusLabel } from '../../utils/statusLabel';
 
 import {
   Invoice, CurrencyConfig, Manager, Restaurant, Subscription,
@@ -975,6 +976,18 @@ const FoodcourtInvoicesPage: React.FC = () => {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch(status) {
+      case 'draft': return t('common:status.draft');
+      case 'payment_submitted': return t('foodcourt:foodcourtInvoicesPage.paymentSubmitted');
+      case 'paid': return t('common:status.paid');
+      case 'overdue': return t('common:status.overdue');
+      case 'cancelled': return t('common:status.cancelled');
+      case 'pending_payment': case '': case null: case undefined: return t('common:status.pending');
+      default: return statusLabel(t, status);
+    }
+  };
+
   const getPayerDisplay = (payerType: string) => {
     switch(payerType) {
       case 'restaurant': return 'Restaurant Admin';
@@ -1242,16 +1255,16 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         <Tabs>
           <Tab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
-            Invoices to Pay <Badge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length} showZero />
+            {t('foodcourt:ui.invoices.toPayTab')} <Badge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue').length} showZero />
           </Tab>
           <Tab active={activeTab === 'to_confirm'} onClick={() => handleTabChange('to_confirm')}>
             {t('foodcourt:foodcourtInvoicesPage.toConfirmTab', 'To Confirm')} <Badge count={toConfirmInvoices.length} variant="danger" />
           </Tab>
           <Tab active={activeTab === 'paid'} onClick={() => handleTabChange('paid')}>
-            Paid Invoices <Badge count={paidInvoicesList.length} showZero />
+            {t('foodcourt:foodcourtInvoicesPage.paidInvoices')} <Badge count={paidInvoicesList.length} showZero />
           </Tab>
           <Tab active={activeTab === 'issued'} onClick={() => handleTabChange('issued')}>
-            Issued Invoices <Badge count={invoices.length} showZero />
+            {t('foodcourt:ui.invoices.issuedTab')} <Badge count={invoices.length} showZero />
           </Tab>
         </Tabs>
 
@@ -1289,7 +1302,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
 
         <FilterBarWrapper>
           <DatePeriodFilter activePeriod={activePeriod} dateRange={dateRange} isCustomDateRange={isCustomDateRange} onPeriodChange={handlePeriodChange} onCalendarRangeSelect={handleCalendarRangeSelect}>
-            <SearchInput placeholder="Search by invoice #, company, restaurant..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <SearchInput placeholder={t('foodcourt:ui.invoices.searchIssuedPh')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             <FilterSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
               <option value="all">{t('foodcourt:foodcourtInvoicesPage.allStatus')}</option>
               <option value="draft">{t('foodcourt:foodcourtInvoicesPage.draft')}</option>
@@ -1329,16 +1342,16 @@ const FoodcourtInvoicesPage: React.FC = () => {
               <MobileGrid>
                 <MobileValue className="col-invoice">
                   <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</MobileLabel>
-                  <InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('foodcourt:foodcourtInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo>
+                  <InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('common:statusExtra.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || t('foodcourt:foodcourtInvoicesPage.service')}</CompanyName></InvoiceInfo>
                 </MobileValue>
                 <MobileValue className="col-customer">
                   <MobileLabel>{t('foodcourt:foodcourtInvoicesPage.customer')}</MobileLabel>
-                  <InvoiceInfo><InvoiceNumber>{invoice.externalPayerName || invoice.customerName || invoice.restaurantName || 'Unknown'}{invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('foodcourt:foodcourtInvoicesPage.nonmember')}</span>}</InvoiceNumber><CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName></InvoiceInfo>
+                  <InvoiceInfo><InvoiceNumber>{invoice.externalPayerName || invoice.customerName || invoice.restaurantName || t('foodcourt:ui.invoices.unknown')}{invoice.payerType === 'external' && <span style={{ marginLeft: '6px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#7C3AED', background: '#EDE9FE', borderRadius: '4px', verticalAlign: 'middle' }}>{t('foodcourt:foodcourtInvoicesPage.nonmember')}</span>}</InvoiceNumber><CompanyName>{getPayerDisplay(invoice.payerType || 'restaurant')}</CompanyName></InvoiceInfo>
                 </MobileValue>
                 <MobileValue className="col-period"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.period')}</MobileLabel><div style={{ fontSize: '12px' }}>{(invoice as any).invoiceCategory === 'trade' && (invoice as any).purchaseOrderId ? <TradeInvoiceDates variant="cell" orderedAt={(invoice as any).poOrderedAt} receivedAt={(invoice as any).poReceivedAt} formatDate={formatDate} /> : (invoice.billingPeriod || '-')}</div></MobileValue>
                 <MobileValue className="col-issued"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.issued')}</MobileLabel><div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div></MobileValue>
                 <MobileValue className="col-due"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.due')}</MobileLabel><div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div></MobileValue>
-                <MobileValue className="col-status"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel><div><StatusBadge status={invoice.status}>{getStatusDisplay(invoice.status)}</StatusBadge>{invoice.isModified && (<button type="button" onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }} title={t('invoiceHistory.viewTooltip', 'View modification history')} style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</button>)}</div></MobileValue>
+                <MobileValue className="col-status"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel><div><StatusBadge status={invoice.status}>{getStatusLabel(invoice.status)}</StatusBadge>{invoice.isModified && (<button type="button" onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }} title={t('invoiceHistory.viewTooltip', 'View modification history')} style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</button>)}</div></MobileValue>
                 <MobileValue className="col-amount"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.amount')}</MobileLabel><Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount></MobileValue>
                 <MobileValue className="col-total"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel><Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount></MobileValue>
               </MobileGrid>
@@ -1381,7 +1394,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
             </StatsGrid>
 
             <DatePeriodFilter activePeriod={toPayActivePeriod} dateRange={toPayDateRange} isCustomDateRange={toPayIsCustomDateRange} onPeriodChange={handleToPayPeriodChange} onCalendarRangeSelect={handleToPayCalendarRangeSelect}>
-              <SearchInput placeholder="Search by invoice #, restaurant..." value={toPaySearchTerm} onChange={(e) => setToPaySearchTerm(e.target.value)} />
+              <SearchInput placeholder={t('foodcourt:ui.invoices.searchPh')} value={toPaySearchTerm} onChange={(e) => setToPaySearchTerm(e.target.value)} />
             </DatePeriodFilter>
 
             <Table>
@@ -1392,12 +1405,12 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 toPayPg.pageItems.map(invoice => (
                   <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 160px)" key={invoice.id}>
                     <MobileGrid>
-                      <MobileValue className="col-invoice col-info"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</MobileLabel><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('foodcourt:foodcourtInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></MobileValue>
-                      <MobileValue className="col-customer col-info"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.restaurant')}</MobileLabel><InvoiceInfo><InvoiceNumber>{invoice.restaurantName || invoice.customerName || 'Unknown'}</InvoiceNumber></InvoiceInfo></MobileValue>
+                      <MobileValue className="col-invoice col-info"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</MobileLabel><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('common:statusExtra.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || t('foodcourt:foodcourtInvoicesPage.service')}</CompanyName></InvoiceInfo></MobileValue>
+                      <MobileValue className="col-customer col-info"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.restaurant')}</MobileLabel><InvoiceInfo><InvoiceNumber>{invoice.restaurantName || invoice.customerName || t('foodcourt:ui.invoices.unknown')}</InvoiceNumber></InvoiceInfo></MobileValue>
                       <MobileValue className="col-period"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.period')}</MobileLabel><div style={{ fontSize: '12px' }}>{(invoice as any).invoiceCategory === 'trade' && (invoice as any).purchaseOrderId ? <TradeInvoiceDates variant="cell" orderedAt={(invoice as any).poOrderedAt} receivedAt={(invoice as any).poReceivedAt} formatDate={formatDate} /> : (invoice.billingPeriod || '-')}</div></MobileValue>
                       <MobileValue className="col-issued"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.issued')}</MobileLabel><div style={{ fontSize: '13px' }}>{formatDate(invoice.issueDate)}</div></MobileValue>
                       <MobileValue className="col-due"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.due')}</MobileLabel><div style={{ fontSize: '13px' }}>{formatDate(invoice.dueDate)}</div></MobileValue>
-                      <MobileValue className="col-status"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel><StatusBadge status={invoice.status}>{getStatusDisplay(invoice.status)}</StatusBadge>{invoice.isModified && (<button type="button" onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }} title={t('invoiceHistory.viewTooltip', 'View modification history')} style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</button>)}</MobileValue>
+                      <MobileValue className="col-status"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel><StatusBadge status={invoice.status}>{getStatusLabel(invoice.status)}</StatusBadge>{invoice.isModified && (<button type="button" onClick={(e) => { e.stopPropagation(); setHistoryInvoice(invoice); }} title={t('invoiceHistory.viewTooltip', 'View modification history')} style={{ display: 'inline-block', marginLeft: '4px', padding: '2px 6px', fontSize: '10px', fontWeight: 600, color: '#B45309', background: '#FEF3C7', borderRadius: '4px', verticalAlign: 'middle', border: '1px solid #FDE68A', cursor: 'pointer' }}>{t('foodcourt:foodcourtInvoicesPage.modified')}</button>)}</MobileValue>
                       <MobileValue className="col-amount"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.amount')}</MobileLabel><Amount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</Amount></MobileValue>
                       <MobileValue className="col-total"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.total')}</MobileLabel><Amount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('foodcourt:foodcourtInvoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</Amount></MobileValue>
                     </MobileGrid>
@@ -1424,7 +1437,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   </InvoiceTableRow>
                 ))
               ) : (
-                <EmptyState>{toPaySearchTerm || toPayActivePeriod !== 'all' || toPayIsCustomDateRange ? 'No matching invoices found' : 'No invoices to pay'}</EmptyState>
+                <EmptyState>{toPaySearchTerm || toPayActivePeriod !== 'all' || toPayIsCustomDateRange ? t('foodcourt:ui.invoices.noMatching') : t('foodcourt:ui.invoices.noToPay')}</EmptyState>
               )}
             </Table>
             <Pagination page={toPayPg.page} totalPages={toPayPg.totalPages} total={toPayPg.total} pageSize={toPayPg.pageSize} onChange={toPayPg.setPage} label="invoices" />
@@ -1434,7 +1447,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
         {activeTab === 'paid' && (
           <>
             <DatePeriodFilter activePeriod={paidActivePeriod} dateRange={paidDateRange} isCustomDateRange={paidIsCustomDateRange} onPeriodChange={handlePaidPeriodChange} onCalendarRangeSelect={handlePaidCalendarRangeSelect}>
-              <SearchInput placeholder="Search by invoice #, restaurant..." value={paidSearchTerm} onChange={(e) => setPaidSearchTerm(e.target.value)} />
+              <SearchInput placeholder={t('foodcourt:ui.invoices.searchPh')} value={paidSearchTerm} onChange={(e) => setPaidSearchTerm(e.target.value)} />
             </DatePeriodFilter>
 
             <Table>
@@ -1445,8 +1458,8 @@ const FoodcourtInvoicesPage: React.FC = () => {
                 paidPg.pageItems.map(invoice => (
                   <InvoiceTableRow columns="1.5fr 1.2fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr minmax(120px, 140px)" key={invoice.id}>
                     <MobileGrid>
-                      <MobileValue className="col-invoice col-info"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</MobileLabel><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('foodcourt:foodcourtInvoicesPage.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || 'Service'}</CompanyName></InvoiceInfo></MobileValue>
-                      <MobileValue className="col-customer col-info"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.restaurant')}</MobileLabel><InvoiceInfo><InvoiceNumber>{invoice.restaurantName || invoice.customerName || 'Unknown'}</InvoiceNumber></InvoiceInfo></MobileValue>
+                      <MobileValue className="col-invoice col-info"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.invoice')}</MobileLabel><InvoiceInfo><InvoiceNumber>{invoice.invoiceNumber}{invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('common:statusExtra.auto')}</AutoBadge>}</InvoiceNumber><CompanyName>{invoice.categoryDisplayName || invoice.planType || t('foodcourt:foodcourtInvoicesPage.service')}</CompanyName></InvoiceInfo></MobileValue>
+                      <MobileValue className="col-customer col-info"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.restaurant')}</MobileLabel><InvoiceInfo><InvoiceNumber>{invoice.restaurantName || invoice.customerName || t('foodcourt:ui.invoices.unknown')}</InvoiceNumber></InvoiceInfo></MobileValue>
                       <MobileValue className="col-period"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.period')}</MobileLabel><div style={{ fontSize: '12px' }}>{(invoice as any).invoiceCategory === 'trade' && (invoice as any).purchaseOrderId ? <TradeInvoiceDates variant="cell" orderedAt={(invoice as any).poOrderedAt} receivedAt={(invoice as any).poReceivedAt} formatDate={formatDate} /> : (invoice.billingPeriod || '-')}</div></MobileValue>
                       <MobileValue className="col-issued"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.paidDate')}</MobileLabel><div style={{ fontSize: '13px' }}>{invoice.paidDate ? formatDate(invoice.paidDate) : formatDate(invoice.issueDate)}</div></MobileValue>
                       <MobileValue className="col-status"><MobileLabel>{t('foodcourt:foodcourtInvoicesPage.status')}</MobileLabel><StatusBadge status="paid">{t('foodcourt:foodcourtInvoicesPage.paid')}</StatusBadge></MobileValue>
@@ -1461,7 +1474,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
                   </InvoiceTableRow>
                 ))
               ) : (
-                <EmptyState>{paidSearchTerm || paidActivePeriod !== 'all' || paidIsCustomDateRange ? 'No matching invoices found' : 'No paid invoices yet'}</EmptyState>
+                <EmptyState>{paidSearchTerm || paidActivePeriod !== 'all' || paidIsCustomDateRange ? t('foodcourt:ui.invoices.noMatching') : t('foodcourt:ui.invoices.noPaidYet')}</EmptyState>
               )}
             </Table>
             <Pagination page={paidPg.page} totalPages={paidPg.totalPages} total={paidPg.total} pageSize={paidPg.pageSize} onChange={paidPg.setPage} label="invoices" />

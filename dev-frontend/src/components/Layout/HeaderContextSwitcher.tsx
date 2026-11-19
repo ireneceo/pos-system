@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../UI';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 
 /**
  * 헤더 컨텍스트 스위처 — "지금 어느 매장/역할인가 + 바꾸기".
@@ -66,16 +67,30 @@ const Chip = styled(Button)`
   @media (max-width: 768px) {
     max-width: 140px;
   }
+  @media (min-width: 600px) and (max-width: 768px) {
+    max-width: 220px;
+  }
 
-  /* 폰 폭(≤480)에서는 이름이 머리줄 오른쪽 버튼(언어·내 정보)을 화면 밖으로 밀어냈다(375px 실측 93px 넘침).
-     아이콘만 남기고 이름은 title 로 — 접힌 사이드바(rail)와 같은 모양. */
+  /* 폰 폭(≤480): 머리줄 아랫줄 전체를 쓰는 «◐ 매장 이름 ▾» 한 줄 (2026-11-18 · Fable 설계 H1).
+     11-04 에는 이름이 오른쪽 버튼을 화면 밖으로 밀어 아이콘만 남겼는데, 그러면 «지금 어느 매장인지» 가
+     머리줄에서 사라지고 반쪽 원만 남아 무엇인지 알 수 없었다. 머리줄(position:fixed, 높이 80)을 기준으로
+     아래쪽에 붙여 윗줄 버튼과 겹치지 않게 한다 — 윗줄은 MainLayout 이 ≤480 에서 위로 붙인다. */
   @media (max-width: 480px) {
-    width: 36px;
-    min-width: 36px;
-    padding: 0;
-    justify-content: center;
-    gap: 0;
-    & > span:not(:first-child) { display: none; }
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: 3px;
+    width: auto;
+    max-width: none;
+    height: 28px;
+    min-height: 28px;
+    padding: 0 10px;
+    gap: 6px;
+    justify-content: flex-start;
+    border-color: transparent;
+    background: #F6F7FB;
+    font-size: 13px;
+    & > span:nth-child(2) { flex: 1 1 auto; min-width: 0; text-align: left; }
   }
 `;
 
@@ -174,7 +189,9 @@ const HeaderContextSwitcher: React.FC<{ variant?: SwitcherVariant }> = ({ varian
     list.find((c) => c.kind === 'default');
 
   // 목록이 아직 없으면(모자 0개 · 미조회) 프로필 이름으로 폴백한다.
-  const label = current?.label || user?.name || t('context.select.title');
+  // 서버는 이름이 없는 자격에 역할 이름(«Supplier Staff»)을 그대로 넣는다 → 지금 언어의 역할 이름으로
+  const rawLabel = current?.label || user?.name || t('context.select.title');
+  const label = rawLabel === user?.role ? getRoleDisplayName(rawLabel, t) : rawLabel;
   const go = () => navigate('/pos/select-context');
 
   // 접힘 사이드바 — 아이콘만(이름은 tooltip). 44px 터치 타깃 확보.
@@ -198,7 +215,7 @@ const HeaderContextSwitcher: React.FC<{ variant?: SwitcherVariant }> = ({ varian
   }
 
   return (
-    <Chip type="button" onClick={go} title={label} aria-label={t('context.switcher.tooltip')}>
+    <Chip type="button" data-ctx-switcher="mobile" onClick={go} title={label} aria-label={t('context.switcher.tooltip')}>
       <Glyph aria-hidden="true">◐</Glyph>
       <Label>{label}</Label>
       <Caret aria-hidden="true">▾</Caret>

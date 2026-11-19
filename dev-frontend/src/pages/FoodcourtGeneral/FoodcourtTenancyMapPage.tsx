@@ -519,7 +519,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
   // component so they respect i18next language switches.
   const fcCurrencyCode = data?.foodcourt?.currency || 'MYR';
   const popupLabels: PopupLabels = useMemo(() => ({
-    primary: t('map.primary', 'PRIMARY'),
+    primary: t('contract:ui.map.primary', 'PRIMARY'),
     total: t('map.popup.total', 'Total'),
     occupied: t('map.popup.occupied', 'Occupied'),
     vacant: t('map.popup.vacant', 'Vacant'),
@@ -598,7 +598,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                   >
                     <h4>
                       {b.name}
-                      {b.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3 }}>{t('map.primary', 'PRIMARY')}</span>}
+                      {b.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3 }}>{t('contract:ui.map.primary', 'PRIMARY')}</span>}
                       <span className="occupancy" style={{ ['--c' as any]: color, marginLeft: 'auto' }}>{pct}%</span>
                     </h4>
                     <div className="code">{b.code}</div>
@@ -755,7 +755,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
                       {t(`floorPlan.unitStatus.${displayStatus}`, pal.label)}
                     </StatPill>
                   </h3>
-                  <div className="code">{bRef.name}{bRef.is_primary ? ' · PRIMARY' : ''}</div>
+                  <div className="code">{bRef.name}{bRef.is_primary ? ` · ${t('contract:ui.map.primary', 'PRIMARY')}` : ''}</div>
                 </div>
                 <button className="close" onClick={() => setSelectedUnitId(null)} aria-label={t('common.close', 'Close')} type="button">✕</button>
               </DetailHeader>
@@ -897,7 +897,7 @@ const FoodcourtTenancyMapPage: React.FC = () => {
               <div>
                 <h3 className="title">
                   {selectedBranch.name}
-                  {selectedBranch.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3, marginLeft: 8, verticalAlign: 'middle' }}>{t('map.primary', 'PRIMARY')}</span>}
+                  {selectedBranch.is_primary && <span style={{ fontSize: 10, background: '#F0EDFF', color: '#635BFF', padding: '1px 5px', borderRadius: 3, marginLeft: 8, verticalAlign: 'middle' }}>{t('contract:ui.map.primary', 'PRIMARY')}</span>}
                 </h3>
                 <div className="code">{selectedBranch.code}</div>
               </div>

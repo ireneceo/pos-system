@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
+import { statusLabel } from '../../utils/statusLabel';
 import { usePlayApp } from '../../utils/playApp';
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
@@ -651,17 +652,17 @@ const BrandGeneralDashboard: React.FC = () => {
       // Generate alerts
       const alertList: Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }> = [];
       if (overdueInvoices > 0) {
-        alertList.push({ type: 'warning', title: 'Overdue Invoices', message: `${overdueInvoices} invoice(s) need attention`, link: '/pos/brand/invoices' });
+        alertList.push({ type: 'warning', title: t('brand:brandGeneralDashboard.overdueInvoices'), message: t('brand:ui.brandDashboard.overdueMsg', { count: overdueInvoices }), link: '/pos/brand/invoices' });
       }
       if (pendingInvoices > 0) {
-        alertList.push({ type: 'info', title: 'Pending Invoices', message: `${pendingInvoices} invoice(s) pending payment`, link: '/pos/brand/invoices' });
+        alertList.push({ type: 'info', title: t('brand:brandGeneralDashboard.pendingInvoices'), message: t('brand:ui.brandDashboard.pendingMsg', { count: pendingInvoices }), link: '/pos/brand/invoices' });
       }
       const noOrderRestaurants = restaurantRevenues.filter((r: any) => (r.order_count || 0) === 0);
       if (noOrderRestaurants.length > 0) {
-        alertList.push({ type: 'info', title: 'No Orders', message: `${noOrderRestaurants.length} restaurant(s) with no orders this month`, link: '/pos/brand/general/management' });
+        alertList.push({ type: 'info', title: t('brand:ui.brandDashboard.noOrders'), message: t('brand:ui.brandDashboard.noOrdersMsg', { count: noOrderRestaurants.length }), link: '/pos/brand/general/management' });
       }
       if (badgeCounts.notices > 0) {
-        alertList.push({ type: 'info', title: 'Unread Notices', message: `${badgeCounts.notices} unread notice(s)`, link: '/pos/brand/notices' });
+        alertList.push({ type: 'info', title: t('brand:ui.brandDashboard.unreadNotices'), message: t('brand:ui.brandDashboard.unreadNoticesMsg', { count: badgeCounts.notices }), link: '/pos/brand/notices' });
       }
       if (badgeCounts.systemInquiry > 0) {
         alertList.push({ type: 'info', title: 'System Inquiry', message: `${badgeCounts.systemInquiry} inquiry(s) with new replies`, link: '/pos/brand/system-inquiry' });
@@ -750,7 +751,7 @@ const BrandGeneralDashboard: React.FC = () => {
                 if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={goSubscription} style={badgeStyle}>{s.daysLeft} days left</SubscriptionBadge>;
                 return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{s.daysLeft} days left</SubscriptionBadge>;
               }
-              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{s.status}</SubscriptionBadge>;
+              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{statusLabel(t, s.status)}</SubscriptionBadge>;
               return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{t('brand:brandGeneralDashboard.active')}</SubscriptionBadge>;
             })()}
           </Subtitle>
@@ -852,7 +853,7 @@ const BrandGeneralDashboard: React.FC = () => {
                       fontSize: '13px'
                     }}
                   >
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                    {t(`common:time.${p}`)}
                   </button>
                 ))}
               </div>
@@ -862,7 +863,7 @@ const BrandGeneralDashboard: React.FC = () => {
                 <LineChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F4F8" />
                   <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#4B5563' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#4B5563' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                  <YAxis tick={{ fontSize: 12, fill: '#4B5563' }} tickFormatter={(v) => v >= 1000 ? `${Number((v / 1000).toFixed(v % 1000 === 0 ? 0 : 1))}k` : v} />
                   <Tooltip
                     formatter={(value: any) => [formatCurrency(value, currency), 'Revenue']}
                     labelStyle={{ color: '#0A2540', fontWeight: 600 }}
@@ -1172,13 +1173,13 @@ const BrandGeneralDashboard: React.FC = () => {
                     <DataTableCell data-label={t('brand:brandGeneralDashboard.restaurant')} style={{ fontWeight: 600, color: '#0A2540' }}>
                       {sub.restaurant_branch_name ? `${sub.restaurant_name} (${sub.restaurant_branch_name})` : (sub.restaurant_name || '-')}
                     </DataTableCell>
-                    <DataTableCell data-label={t('brand:brandGeneralDashboard.plan')}>{sub.plan?.name || 'No Plan'}</DataTableCell>
+                    <DataTableCell data-label={t('brand:brandGeneralDashboard.plan')}>{sub.plan?.name || t('brand:ui.brandDashboard.noPlan')}</DataTableCell>
                     <DataTableCell align="right" data-label={t('brand:brandGeneralDashboard.monthlyRevenue')}>{formatCurrency(sub.current_month?.revenue || 0, currency)}</DataTableCell>
                     <DataTableCell align="right" data-label={t('brand:brandGeneralDashboard.orders')}>{sub.current_month?.order_count || 0}</DataTableCell>
                     <DataTableCell align="right" data-label={t('brand:brandGeneralDashboard.estimatedCharges')}>{formatCurrency(sub.current_month?.estimated_charges || 0, currency)}</DataTableCell>
                     <DataTableCell data-label={t('brand:brandGeneralDashboard.invoiceStatus')}>
                       <StatusBadge status={sub.latest_invoice?.status || 'none'}>
-                        {(sub.latest_invoice?.status || 'N/A').replace(/_/g, ' ')}
+                        {sub.latest_invoice?.status ? statusLabel(t, sub.latest_invoice.status) : 'N/A'}
                       </StatusBadge>
                     </DataTableCell>
                   </DataTableRow>

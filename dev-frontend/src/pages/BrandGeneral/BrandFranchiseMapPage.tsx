@@ -10,6 +10,7 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { formatAddress, AppLocale } from '../../utils/formatAddress';
+import { statusLabel } from '../../utils/statusLabel';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAllowedRoutes } from '../../hooks/useAllowedRoutes';
 import { getCurrencySymbol } from '../../utils/currency';
@@ -531,14 +532,14 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                   <h4>
                     {typeMark && <span className="type-mark" title={typeTitle}>{typeMark}</span>}
                     {r.name}{r.branch_name ? ` · ${r.branch_name}` : ''}
-                    <span className="status-badge" style={{ ['--c' as any]: color, marginLeft: 'auto' }}>{r.status}</span>
+                    <span className="status-badge" style={{ ['--c' as any]: color, marginLeft: 'auto' }}>{statusLabel(t, r.status)}</span>
                   </h4>
                   {(() => {
                     const line = formatAddress(r as any, 'oneline');
                     return line ? <div className="addr">{line}</div> : null;
                   })()}
                   <div className="stats">
-                    {r.contract_type && <span><b>{r.contract_type}</b></span>}
+                    {r.contract_type && <span><b>{t(`ui.contractType.${r.contract_type}`, { defaultValue: '' }) || statusLabel(t, r.contract_type)}</b></span>}
                     {r.sales_30d != null && <span>{t('map.salesAmount30d', '{{n}} sales 30d', { n: r.sales_30d.toLocaleString('en-US') })}</span>}
                     {!hasCoords && <span style={{ color: '#B45309' }}>{t('map.noLocation', 'No map location — add an address')}</span>}
                   </div>
@@ -669,7 +670,7 @@ const BrandFranchiseMapPage: React.FC<BrandFranchiseMapPageProps> = ({ brandId }
                 <DetailSection>
                   <DetailSectionTitle>{t('map.restaurant', 'Restaurant')}</DetailSectionTitle>
                   <InfoRow><span>{t('map.status', 'Status')}</span>
-                    <b style={{ color: STATUS_COLOR[selected.status] || '#4B5563' }}>{selected.status}</b></InfoRow>
+                    <b style={{ color: STATUS_COLOR[selected.status] || '#4B5563' }}>{statusLabel(t, selected.status)}</b></InfoRow>
                   {selected.phone && <InfoRow><span>{t('map.phone', 'Phone')}</span>
                     <b><a href={`tel:${selected.phone}`} style={{ color: '#635BFF', textDecoration: 'none' }}>{selected.phone}</a></b></InfoRow>}
                   {selected.email && <InfoRow><span>{t('map.email', 'Email')}</span>

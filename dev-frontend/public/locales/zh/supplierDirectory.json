@@ -303,5 +303,8 @@
   "delivery": {
     "title": "配送",
     "editTitle": "配送条件"
-  }
+  },
+  "ui.customers.viewPendingContracts": "查看待处理合同",
+  "ui.contracts.emptyHintPending": "买家发送合同请求后会显示在这里，等待您批准。",
+  "ui.contracts.emptyHintActive": "有效合同是您当前供货的买家。批准待处理请求即可开始。"
 }

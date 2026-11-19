@@ -524,13 +524,13 @@ const ManagerSalesPage: React.FC = () => {
 
                   return (
                     <SalesTableRow key={restaurant.id}>
-                      <SalesTableCell data-label="Restaurant">
+                      <SalesTableCell data-label={t('admin:salesPage.restaurant')}>
                         <RestaurantInfo>
                           <RestaurantName>{getRestaurantDisplayName(restaurant)}</RestaurantName>
                           <RestaurantLocation>{restaurant.location}</RestaurantLocation>
                         </RestaurantInfo>
                       </SalesTableCell>
-                      <SalesTableCell data-label="Today's Sales">
+                      <SalesTableCell data-label={t('admin:salesPage.todaysSales')}>
                         <ValueCell>
                           {formatCurrency(restaurant.todaySales, selectedCurrency)}
                           <ChangeCell positive={change > 0}>
@@ -538,16 +538,16 @@ const ManagerSalesPage: React.FC = () => {
                           </ChangeCell>
                         </ValueCell>
                       </SalesTableCell>
-                      <SalesTableCell data-label="Orders">
+                      <SalesTableCell data-label={t('admin:salesPage.orders')}>
                         <ValueCell>{restaurant.todayOrders}</ValueCell>
                       </SalesTableCell>
-                      <SalesTableCell data-label="Avg Order">
+                      <SalesTableCell data-label={t('admin:salesPage.avgOrder')}>
                         <ValueCell>{formatCurrency(restaurant.averageOrderValue, selectedCurrency)}</ValueCell>
                       </SalesTableCell>
-                      <SalesTableCell data-label="Week Total">
+                      <SalesTableCell data-label={t('admin:salesPage.weekTotal')}>
                         <ValueCell>{formatCurrency(restaurant.weekSales, selectedCurrency)}</ValueCell>
                       </SalesTableCell>
-                      <SalesTableCell data-label="Month Total">
+                      <SalesTableCell data-label={t('admin:salesPage.monthTotal')}>
                         <ValueCell>{formatCurrency(restaurant.monthSales, selectedCurrency)}</ValueCell>
                       </SalesTableCell>
                       <SalesTableCell data-label="">

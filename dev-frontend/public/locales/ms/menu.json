@@ -251,5 +251,8 @@
   "menuManagementPage.keepAsMyMenu": "Simpan sebagai menu saya",
   "menuManagement.orderSetByBrand": "Susunan ditetapkan oleh jenama",
   "menuManagement.orderLockedTitle": "Susunan ditetapkan oleh jenama",
-  "menuManagement.orderLockedMessage": "Jenama menetapkan susunan menunya. Minta jenama untuk mengubahnya."
+  "menuManagement.orderLockedMessage": "Jenama menetapkan susunan menunya. Minta jenama untuk mengubahnya.",
+  "ui.menu.setBadge": "SET",
+  "ui.menu.featuredBadge": "PILIHAN",
+  "ui.menu.searchPh": "Cari menu mengikut nama, penerangan, harga atau kategori..."
 }

@@ -388,28 +388,28 @@ const SupplierPaymentSettingsPage: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <Header><Title>Payment Settings</Title></Header>
-        <Content><LoadingMessage>Loading...</LoadingMessage></Content>
+        <Header><Title>{t('supplier:menu.paymentSettings')}</Title></Header>
+        <Content><LoadingMessage>{t('common:status.loading')}</LoadingMessage></Content>
       </Container>
     );
   }
 
   return (
     <Container>
-      <Header><Title>Payment Settings</Title></Header>
+      <Header><Title>{t('supplier:menu.paymentSettings')}</Title></Header>
       <Content>
         {error && <ErrorBanner>{error}</ErrorBanner>}
 
         {/* Currency Settings */}
         <Section>
-          <SectionTitle>Currency Settings</SectionTitle>
+          <SectionTitle>{t('supplier:ui.paymentSettings.currencySettings')}</SectionTitle>
           <SectionDescription>
-            Configure supported currencies for trade invoices and customer payments.
+            {t('supplier:ui.paymentSettings.currencyDesc')}
           </SectionDescription>
 
           <FormRow>
             <FormGroup>
-              <Label>Default Currency</Label>
+              <Label>{t('supplier:ui.paymentSettings.defaultCurrency')}</Label>
               <AutoSaveField type="select" onSave={() => saveKey('defaultCurrency')}>
                 <Select
                   value={settings.defaultCurrency}
@@ -425,7 +425,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
             </FormGroup>
 
             <FormGroup>
-              <Label>Supported Currencies</Label>
+              <Label>{t('supplier:ui.paymentSettings.supportedCurrencies')}</Label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {SUPPORTED_CURRENCIES.map(code => {
                   const active = settings.currencies.includes(code);
@@ -456,9 +456,9 @@ const SupplierPaymentSettingsPage: React.FC = () => {
 
         {/* Online Payments */}
         <Section>
-          <SectionTitle>Online Payment</SectionTitle>
+          <SectionTitle>{t('supplier:ui.paymentSettings.onlinePayment')}</SectionTitle>
           <SectionDescription>
-            Configure online payment gateways. Applied across all currencies.
+            {t('supplier:ui.paymentSettings.onlineDesc')}
           </SectionDescription>
 
           {/* Stripe */}
@@ -466,7 +466,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
             <MethodHeader>
               <MethodInfo>
                 <MethodLabel>Stripe</MethodLabel>
-                <MethodDescription>Credit/debit card payments</MethodDescription>
+                <MethodDescription>{t('supplier:ui.paymentSettings.stripeDesc')}</MethodDescription>
               </MethodInfo>
               <ToggleSwitch>
                 <ToggleInput
@@ -522,7 +522,7 @@ const SupplierPaymentSettingsPage: React.FC = () => {
             <MethodHeader>
               <MethodInfo>
                 <MethodLabel>PayPal</MethodLabel>
-                <MethodDescription>PayPal account or card</MethodDescription>
+                <MethodDescription>{t('supplier:ui.paymentSettings.paypalDesc')}</MethodDescription>
               </MethodInfo>
               <ToggleSwitch>
                 <ToggleInput
@@ -579,14 +579,14 @@ const SupplierPaymentSettingsPage: React.FC = () => {
 
         {/* Manual Payments per currency */}
         <Section>
-          <SectionTitle>Manual Payment (per currency)</SectionTitle>
+          <SectionTitle>{t('supplier:ui.paymentSettings.manualPayment')}</SectionTitle>
           <SectionDescription>
-            Configure bank transfer and QR payment per currency. Different currencies require different bank accounts and QR codes.
+            {t('supplier:ui.paymentSettings.manualDesc')}
           </SectionDescription>
 
           {settings.currencies.length === 0 ? (
             <NoCurrencyMessage>
-              No currencies configured. Please add supported currencies above first.
+              {t('supplier:ui.paymentSettings.noCurrencies')}
             </NoCurrencyMessage>
           ) : (
             <>
@@ -606,8 +606,8 @@ const SupplierPaymentSettingsPage: React.FC = () => {
               <PaymentMethodCard>
                 <MethodHeader>
                   <MethodInfo>
-                    <MethodLabel>Bank Transfer ({selectedCurrency})</MethodLabel>
-                    <MethodDescription>Manual transfer with receipt upload</MethodDescription>
+                    <MethodLabel>{t('supplier:ui.paymentSettings.bankTransfer', { currency: selectedCurrency })}</MethodLabel>
+                    <MethodDescription>{t('supplier:ui.paymentSettings.bankTransferDesc')}</MethodDescription>
                   </MethodInfo>
                   <ToggleSwitch>
                     <ToggleInput
@@ -621,33 +621,33 @@ const SupplierPaymentSettingsPage: React.FC = () => {
                 {getBank(selectedCurrency).enabled && (
                   <MethodContent>
                     <FormGroup>
-                      <Label>Bank Name</Label>
+                      <Label>{t('common:foodcourtCompanyInfoPage.bankName')}</Label>
                       <AutoSaveField onSave={() => saveKey('bankTransfer')}>
                         <Input
                           type="text"
-                          placeholder="e.g., Maybank, CIMB"
+                          placeholder={t('supplier:ui.paymentSettings.bankNamePh')}
                           value={getBank(selectedCurrency).bankName}
                           onChange={e => handleBankTransferChange(selectedCurrency, 'bankName', e.target.value)}
                         />
                       </AutoSaveField>
                     </FormGroup>
                     <FormGroup>
-                      <Label>Account Number</Label>
+                      <Label>{t('common:foodcourtCompanyInfoPage.accountNumber')}</Label>
                       <AutoSaveField onSave={() => saveKey('bankTransfer')}>
                         <Input
                           type="text"
-                          placeholder="Bank account number"
+                          placeholder={t('supplier:ui.paymentSettings.accountNumberPh')}
                           value={getBank(selectedCurrency).accountNumber}
                           onChange={e => handleBankTransferChange(selectedCurrency, 'accountNumber', e.target.value)}
                         />
                       </AutoSaveField>
                     </FormGroup>
                     <FormGroup>
-                      <Label>Account Name</Label>
+                      <Label>{t('supplier:ui.companyInfo.accountHolder')}</Label>
                       <AutoSaveField onSave={() => saveKey('bankTransfer')}>
                         <Input
                           type="text"
-                          placeholder="Account holder name"
+                          placeholder={t('supplier:ui.paymentSettings.accountNamePh')}
                           value={getBank(selectedCurrency).accountName}
                           onChange={e => handleBankTransferChange(selectedCurrency, 'accountName', e.target.value)}
                         />
@@ -661,8 +661,8 @@ const SupplierPaymentSettingsPage: React.FC = () => {
               <PaymentMethodCard>
                 <MethodHeader>
                   <MethodInfo>
-                    <MethodLabel>QR Payment ({selectedCurrency})</MethodLabel>
-                    <MethodDescription>Scan QR code to pay (DuitNow, KakaoPay, etc.)</MethodDescription>
+                    <MethodLabel>{t('supplier:ui.paymentSettings.qrPayment', { currency: selectedCurrency })}</MethodLabel>
+                    <MethodDescription>{t('supplier:ui.paymentSettings.qrDesc')}</MethodDescription>
                   </MethodInfo>
                   <ToggleSwitch>
                     <ToggleInput
@@ -685,11 +685,11 @@ const SupplierPaymentSettingsPage: React.FC = () => {
                       imageAltText="Payment QR Code"
                     />
                     <FormGroup style={{ marginTop: 16 }}>
-                      <Label>Description</Label>
+                      <Label>{t('common:label.description')}</Label>
                       <AutoSaveField onSave={() => saveKey('qrPayment')}>
                         <Input
                           type="text"
-                          placeholder="e.g., Scan to pay via DuitNow"
+                          placeholder={t('supplier:ui.paymentSettings.qrDescPh')}
                           value={getQR(selectedCurrency).qrDescription}
                           onChange={e => handleQRChange(selectedCurrency, 'qrDescription', e.target.value)}
                         />

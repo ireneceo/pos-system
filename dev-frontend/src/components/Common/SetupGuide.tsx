@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 
 export interface SetupItem {
   key: string;
@@ -24,6 +25,7 @@ interface SetupGuideProps {
 
 const SetupGuide: React.FC<SetupGuideProps> = ({ items, entityId }) => {
   const navigate = useNavigate();
+  const { t } = useTranslation('common');
   const storageKey = `setup_guide_dismissed_${entityId || 'default'}`;
 
   const completedCount = items.filter(i => i.completed).length;
@@ -59,14 +61,14 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ items, entityId }) => {
     <Container>
       <GuideHeader>
         <HeaderLeft>
-          <GuideTitle>Complete Your Setup</GuideTitle>
-          <Progress>{completedCount}/{items.length} completed</Progress>
+          <GuideTitle>{t('common:ui.setupGuide.title')}</GuideTitle>
+          <Progress>{t('common:ui.setupGuide.progress', { done: completedCount, total: items.length })}</Progress>
         </HeaderLeft>
         <DismissButton onClick={() => {
           localStorage.setItem(storageKey, 'true');
           setDismissed(true);
         }}>
-          Dismiss
+          {t('common:button.dismiss')}
         </DismissButton>
       </GuideHeader>
 
@@ -82,7 +84,7 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ items, entityId }) => {
             .filter((i): i is SetupItem => !!i && !i.completed);
           const locked = blockingDeps.length > 0;
           const tooltip = locked
-            ? `Complete first: ${blockingDeps.map(d => d.label).join(', ')}`
+            ? t('common:ui.setupGuide.completeFirst', { items: blockingDeps.map(d => d.label).join(', ') })
             : '';
           const isBlockedFlash = blockedKey === item.key;
           return (
@@ -101,7 +103,7 @@ const SetupGuide: React.FC<SetupGuideProps> = ({ items, entityId }) => {
                 <ItemLabel>{item.label}</ItemLabel>
                 <ItemDesc>
                   {isBlockedFlash
-                    ? `Complete first: ${blockingDeps.map(d => d.label).join(', ')}`
+                    ? t('common:ui.setupGuide.completeFirst', { items: blockingDeps.map(d => d.label).join(', ') })
                     : item.description}
                 </ItemDesc>
               </ItemContent>

@@ -366,5 +366,8 @@
   "categoryTabCommon.placeholderMainDishes": "예: 메인 요리",
   "categoryTabCommon.organizeRecipes": "카테고리를 만들어 레시피를 정리하세요",
   "categoryTabCommon.newIngredientCategory": "새 재료 카테고리",
-  "categoryTabCommon.inactive": "사용 안 함"
+  "categoryTabCommon.inactive": "사용 안 함",
+  "ui.ingredients.searchPh": "재고 품목 검색...",
+  "ui.ingredients.setCost": "원가 정하기",
+  "ui.ingredients.newStockItem": "새 재고 품목"
 }

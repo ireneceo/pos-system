@@ -1117,7 +1117,7 @@ const BrandPlansPage: React.FC = () => {
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder="Search plans..."
+            placeholder={t('common:ui.plans.searchPh')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -1145,7 +1145,7 @@ const BrandPlansPage: React.FC = () => {
           <div style={{ textAlign: 'center', padding: '60px 0', color: '#4B5563' }}>{t('brand:brandPlansPage.loadingPlans')}</div>
         ) : filteredPlans.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: '#4B5563' }}>
-            {plans.length === 0 ? 'No plans created yet. Click "Create Plan" to get started.' : 'No plans match your filters.'}
+            {plans.length === 0 ? t('common:ui.plans.noPlansYet') : t('common:ui.plans.noMatch')}
           </div>
         ) : (
           <PlansGrid>
@@ -1153,21 +1153,21 @@ const BrandPlansPage: React.FC = () => {
               <PlanCard key={plan.id} isPopular={plan.is_popular} isActive={plan.is_active}>
                 <BadgeContainer>
                   <ChargeTypeBadge chargeType={plan.charge_type || 'fixed'}>
-                    {plan.charge_type === 'percentage' ? '% Revenue'
-                      : plan.charge_type === 'additive' ? 'Fixed + %'
-                      : plan.charge_type === 'combined' ? 'Fixed or %'
-                      : 'Fixed'}
+                    {plan.charge_type === 'percentage' ? t('common:ui.plans.percentRevenue')
+                      : plan.charge_type === 'additive' ? t('common:ui.plans.fixedPlusPercent')
+                      : plan.charge_type === 'combined' ? t('common:ui.plans.fixedOrPercent')
+                      : t('common:ui.plans.fixed')}
                   </ChargeTypeBadge>
                   <StatusBadge isActive={plan.is_active}>
-                    {plan.is_active ? 'Active' : 'Inactive'}
+                    {plan.is_active ? t('common:status.active') : t('common:status.inactive')}
                   </StatusBadge>
                   {(plan.contractLinks || []).some(l => !l.end_at) && (
                     <span style={{
                       padding: '4px 10px', borderRadius: 12,
                       background: '#EEF2FF', color: '#4338CA',
                       fontSize: 11, fontWeight: 600, letterSpacing: 0.2
-                    }} title="Created from a contract — see Details">
-                      From contract
+                    }} title={t('common:ui.plans.fromContractTip')}>
+                      {t('common:ui.plans.fromContract')}
                     </span>
                   )}
                 </BadgeContainer>
@@ -1244,7 +1244,7 @@ const BrandPlansPage: React.FC = () => {
                         : `${parseFloat(plan.percentage_value || '0')}% rev`
                       }
                     </StatNumber>
-                    <StatDesc>{plan.charge_type === 'fixed' ? 'Monthly Revenue' : 'Revenue Based'}</StatDesc>
+                    <StatDesc>{plan.charge_type === 'fixed' ? t('common:ui.plans.monthlyRevenue') : t('common:ui.plans.revenueBased')}</StatDesc>
                   </StatItem>
                 </PlanStats>
 
@@ -1268,7 +1268,7 @@ const BrandPlansPage: React.FC = () => {
                   <FormLabel>Plan Name *</FormLabel>
                   <FormInput
                     type="text"
-                    placeholder="e.g., Royalty Fee, Monthly Rent, Management Fee"
+                    placeholder={t('common:ui.plans.brandChargeNamePh')}
                     value={createFormData.name}
                     onChange={(e) => setCreateFormData(prev => ({...prev, name: e.target.value}))}
                   />
@@ -1276,7 +1276,7 @@ const BrandPlansPage: React.FC = () => {
                 <FormGroup>
                   <FormLabel>{t('brand:brandPlansPage.description')}</FormLabel>
                   <FormTextArea
-                    placeholder="Enter plan description..."
+                    placeholder={t('common:ui.plans.descriptionPh')}
                     rows={3}
                     value={createFormData.description}
                     onChange={(e) => setCreateFormData(prev => ({...prev, description: e.target.value}))}
@@ -1288,7 +1288,7 @@ const BrandPlansPage: React.FC = () => {
                 <FormGroup>
                   <FormLabel>{t('brand:brandPlansPage.featuresOnePerLine')}</FormLabel>
                   <FormTextArea
-                    placeholder="Enter features, one per line..."
+                    placeholder={t('common:ui.plans.featuresPh')}
                     rows={4}
                     value={createFormData.features}
                     onChange={(e) => setCreateFormData(prev => ({...prev, features: e.target.value}))}
@@ -1386,13 +1386,13 @@ const BrandPlansPage: React.FC = () => {
                   <DetailRow>
                     <DetailLabel>{t('brand:brandPlansPage.status')}</DetailLabel>
                     <StatusBadge isActive={selectedPlan.is_active}>
-                      {selectedPlan.is_active ? 'Active' : 'Inactive'}
+                      {selectedPlan.is_active ? t('common:status.active') : t('common:status.inactive')}
                     </StatusBadge>
                   </DetailRow>
                   <DetailRow>
                     <DetailLabel>{t('brand:brandPlansPage.chargeType')}</DetailLabel>
                     <ChargeTypeBadge chargeType={selectedPlan.charge_type || 'fixed'}>
-                      {selectedPlan.charge_type === 'percentage' ? '% Revenue' : 'Fixed'}
+                      {selectedPlan.charge_type === 'percentage' ? t('common:ui.plans.percentRevenue') : t('common:ui.plans.fixed')}
                     </ChargeTypeBadge>
                   </DetailRow>
                   <DetailRow>
@@ -1487,7 +1487,7 @@ const BrandPlansPage: React.FC = () => {
                               Since {tzFormatDate(pr.activation_date, null)}
                             </div>
                           </div>
-                          <StatusBadge isActive={pr.is_active}>{pr.is_active ? 'Active' : 'Inactive'}</StatusBadge>
+                          <StatusBadge isActive={pr.is_active}>{pr.is_active ? t('common:status.active') : t('common:status.inactive')}</StatusBadge>
                         </RestaurantItem>
                       ))}
                     </RestaurantList>

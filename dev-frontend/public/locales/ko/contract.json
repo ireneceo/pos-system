@@ -363,5 +363,13 @@
   "newProposal.franchise": "가맹형 새 제안",
   "newProposal.supply": "공급형 새 제안",
   "types.franchise": "가맹형",
-  "types.supply": "공급형 (발주만)"
+  "types.supply": "공급형 (발주만)",
+  "ui.contractType.franchise": "가맹점",
+  "ui.contractType.license": "라이선스",
+  "ui.contractType.master": "마스터 가맹",
+  "ui.contractType.direct": "직영",
+  "ui.contractType.supply": "공급형",
+  "ui.contractType.tenancy": "임대",
+  "ui.contractType.new": "신규",
+  "ui.map.primary": "대표"
 }

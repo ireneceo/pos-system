@@ -1115,7 +1115,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
       <ListControlsBar>
         <SearchInput
           type="text"
-          placeholder="Search stock items..."
+          placeholder={t('recipes:ui.ingredients.searchPh')}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
@@ -1144,14 +1144,14 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
         <div data-controls-trailing>
           <div style={{ display: 'flex', background: '#F1F4F8', borderRadius: '6px', padding: '2px' }}>
             <button onClick={() => { setViewMode('compact'); localStorage.setItem('ingredientsViewMode', 'compact'); }} style={{ padding: '5px 14px', minHeight: '32px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'compact' ? 'white' : 'transparent', color: viewMode === 'compact' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'compact' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
-              Compact
+              {t('recipes:recipesTab.viewCompact')}
             </button>
             <button onClick={() => { setViewMode('image'); localStorage.setItem('ingredientsViewMode', 'image'); }} style={{ padding: '5px 14px', minHeight: '32px', border: 'none', borderRadius: '5px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s', background: viewMode === 'image' ? 'white' : 'transparent', color: viewMode === 'image' ? '#0A2540' : '#4B5563', boxShadow: viewMode === 'image' ? '0 1px 2px rgba(0,0,0,0.08)' : 'none' }}>
-              Image
+              {t('recipes:ingredientsTab.image')}
             </button>
           </div>
           <ThemedButton variant="primary" onClick={() => handleOpenModal(null)}>
-            New Stock Item
+            {t('recipes:ui.ingredients.newStockItem')}
           </ThemedButton>
         </div>
       </ListControlsBar>
@@ -1203,10 +1203,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   </IngredientName>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     {isRestaurantAdmin && ingredient.owner_type === 'brand' && (
-                      <BrandBadge>{'Brand'}</BrandBadge>
+                      <BrandBadge>{t('recipes:ingredientsTab.brand')}</BrandBadge>
                     )}
                     <IngredientCategoryBadge>
-                      {ingredient.ingredientCategory?.emoji} {ingredient.ingredientCategory?.name || 'Uncategorized'}
+                      {ingredient.ingredientCategory?.emoji} {ingredient.ingredientCategory?.name || t('common:statusExtra.uncategorized')}
                     </IngredientCategoryBadge>
                   </div>
                 </div>
@@ -1218,7 +1218,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   <>
                     <CostOverrideSection>
                       <CostRow>
-                        <CostLabel type="brand">{'Brand Cost'}</CostLabel>
+                        <CostLabel type="brand">{t('recipes:ingredientsTab.brandCost')}</CostLabel>
                         {/* 원가 0 = "정말 0원"이 아니라 **안 넣은 것**이다. 숫자로 찍으면 구분이 안 돼
                             그대로 발주·레시피 원가에 들어간다(운영 실측 2026-09-02: 원가 0 인 재료가 99건). */}
                         <CostValue type="brand">
@@ -1230,7 +1230,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                         /* 인라인 편집 모드 */
                         <div style={{ marginTop: 6 }}>
                           <CostRow>
-                            <CostLabel type="my">{'My Cost'}</CostLabel>
+                            <CostLabel type="my">{t('recipes:ingredientsTab.myCost')}</CostLabel>
                             <CostEditInline>
                               <CostInput
                                 type="number"
@@ -1258,7 +1258,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                         /* My Cost 설정됨 */
                         <CostRow style={{ marginTop: 4 }}>
                           <CostLabel type="my">
-                            My Cost
+                            {t('recipes:ingredientsTab.myCost')}
                             <SetCostButton
                               style={{ marginLeft: 6, padding: '2px 6px', fontSize: '10px' }}
                               onClick={(e) => {
@@ -1268,10 +1268,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                                 setEditingCostNotes(ingredient.cost_notes || '');
                               }}
                             >
-                              Edit
+                              {t('common:button.edit')}
                             </SetCostButton>
                             <ResetButton onClick={(e) => { e.stopPropagation(); handleResetMyCost(ingredient); }}>
-                              Reset
+                              {t('common:button.reset')}
                             </ResetButton>
                           </CostLabel>
                           <CostValue type="my">{costText(ingredient.restaurant_cost, ingredient)}</CostValue>
@@ -1279,20 +1279,20 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                       ) : (
                         /* My Cost 미설정 */
                         <CostRow style={{ marginTop: 4 }}>
-                          <CostLabel type="my">{'My Cost'}</CostLabel>
+                          <CostLabel type="my">{t('recipes:ingredientsTab.myCost')}</CostLabel>
                           <SetCostButton onClick={(e) => {
                             e.stopPropagation();
                             setEditingCostId(ingredient.id);
                             setEditingCostValue('');
                             setEditingCostNotes('');
                           }}>
-                            Set Cost
+                            {t('recipes:ui.ingredients.setCost')}
                           </SetCostButton>
                         </CostRow>
                       )}
 
                       <CostRow style={{ marginTop: 6, borderTop: '1px solid #DBEAFE', paddingTop: 6 }}>
-                        <CostLabel type="applied">{'Applied'}</CostLabel>
+                        <CostLabel type="applied">{t('recipes:ingredientsTab.applied')}</CostLabel>
                         <CostValue type="applied">
                           {costText(ingredient.effective_cost ?? ingredient.unit_cost, ingredient)}
                           {Number(ingredient.effective_cost ?? ingredient.unit_cost) > 0 && ingredient.restaurant_cost !== null && ingredient.restaurant_cost !== undefined ? ' ✓' : ''}
@@ -1308,7 +1308,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 ) : (
                   /* 브랜드 관리자 or 레스토랑 자체 재료: 기존 방식 */
                   <InfoRow>
-                    <InfoLabel>{'Unit Cost'}</InfoLabel>
+                    <InfoLabel>{t('recipes:ingredientsTab.unitCost')}</InfoLabel>
                     <InfoValue>
                       {/* 원가가 0이면 "안 넣은 것"인지 "정말 0원"인지 화면에서 구분이 안 됐다.
                           Irene 2026-08-28: "원가 0이고 판매가 0이면 알게 해줄 수 없어? 알기 쉽게 ui에서"
@@ -1320,7 +1320,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                   </InfoRow>
                 )}
                 <InfoRow>
-                  <InfoLabel>{'Base Qty / Unit'}</InfoLabel>
+                  <InfoLabel>{t('recipes:ingredientsTab.baseQtyUnit')}</InfoLabel>
                   {/* 규격 한 줄 «2000 g/pack» — 판매 상품·발주와 같은 함수 (2026-09-11 Irene 「모든 아이템 정보에 다 똑같이」) */}
                   <InfoValue>{stockSpecLabel(ingredient as any)}</InfoValue>
                 </InfoRow>
@@ -1434,7 +1434,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                 })()}
                 {ingredient.code && (
                   <InfoRow>
-                    <InfoLabel>{'Code'}</InfoLabel>
+                    <InfoLabel>{t('recipes:ingredientsTab.code')}</InfoLabel>
                     <InfoValue>{ingredient.code}</InfoValue>
                   </InfoRow>
                 )}
@@ -1453,13 +1453,13 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
                     variant="secondary"
                     onClick={(e) => { e.stopPropagation(); handleOpenModal(ingredient); }}
                   >
-                    Edit
+                    {t('common:button.edit')}
                   </ActionButton>
                   <ActionButton
                     variant="danger"
                     onClick={(e) => { e.stopPropagation(); handleDeleteClick(ingredient); }}
                   >
-                    Delete
+                    {t('common:button.delete')}
                   </ActionButton>
                 </IngredientActions>
               )}
@@ -1509,7 +1509,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
               />
             </UIFormGroup>
             <UIFormGroup>
-              <FormLabel>{'Code'}</FormLabel>
+              <FormLabel>{t('recipes:ingredientsTab.code')}</FormLabel>
               <FormInput
                 type="text"
                 value={formData.code}
@@ -1852,10 +1852,10 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           {/* Badges */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px', flexWrap: 'wrap' }}>
             {isRestaurantAdmin && detailIngredient.owner_type === 'brand' && (
-              <span style={{ fontSize: '11px', fontWeight: 600, color: '#92400E', background: '#FEF3C7', padding: '3px 8px', borderRadius: '4px' }}>{'Brand'}</span>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: '#92400E', background: '#FEF3C7', padding: '3px 8px', borderRadius: '4px' }}>{t('recipes:ingredientsTab.brand')}</span>
             )}
             <span style={{ fontSize: '11px', fontWeight: 600, color: '#635BFF', background: '#F0F4FF', padding: '3px 8px', borderRadius: '4px' }}>
-              {detailIngredient.ingredientCategory?.emoji} {detailIngredient.ingredientCategory?.name || 'Uncategorized'}
+              {detailIngredient.ingredientCategory?.emoji} {detailIngredient.ingredientCategory?.name || t('common:statusExtra.uncategorized')}
             </span>
             {detailIngredient.code && (
               <span style={{ fontSize: '11px', fontWeight: 500, color: '#4B5563', background: '#F1F4F8', padding: '3px 8px', borderRadius: '4px' }}>{detailIngredient.code}</span>
@@ -1867,21 +1867,21 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
             {isRestaurantAdmin && detailIngredient.owner_type === 'brand' ? (
               detailIngredient.restaurant_cost != null ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ fontSize: '13px', color: '#6B7280' }}>Brand Cost: <span style={{ textDecoration: 'line-through' }}>
+                  <div style={{ fontSize: '13px', color: '#6B7280' }}>{t('recipes:ingredientsTab.brandCost')}: <span style={{ textDecoration: 'line-through' }}>
                     {costText(detailIngredient.unit_cost, detailIngredient)}
                   </span></div>
                   <div style={{ fontSize: '16px', fontWeight: 600, color: '#2563EB' }}>
-                    My Cost: {costText(detailIngredient.restaurant_cost, detailIngredient)}
+                    {t('recipes:ingredientsTab.myCost')}: {costText(detailIngredient.restaurant_cost, detailIngredient)}
                   </div>
                 </div>
               ) : (
                 <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540' }}>
-                  Unit Cost: {costText(detailIngredient.unit_cost, detailIngredient)}
+                  {t('recipes:ingredientsTab.unitCost')}: {costText(detailIngredient.unit_cost, detailIngredient)}
                 </div>
               )
             ) : (
               <div style={{ fontSize: '16px', fontWeight: 600, color: '#0A2540' }}>
-                Unit Cost: {costText(detailIngredient.unit_cost, detailIngredient)}
+                {t('recipes:ingredientsTab.unitCost')}: {costText(detailIngredient.unit_cost, detailIngredient)}
               </div>
             )}
           </div>
@@ -1889,7 +1889,7 @@ const IngredientsTab: React.FC<IngredientsTabProps> = ({ brandId, restaurantId: 
           {/* Base Qty / Stock / Min Stock - 3 columns */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '16px' }}>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>
-              <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{'Base Qty'}</div>
+              <div style={{ fontSize: '11px', color: '#4B5563', marginBottom: '3px' }}>{t('recipes:ingredientsTab.baseQty')}</div>
               <div style={{ fontSize: '14px', fontWeight: 600 }}>{stockSpecLabel(detailIngredient as any)}</div>
             </div>
             <div style={{ padding: '10px', background: '#F9FAFB', borderRadius: '8px', textAlign: 'center' }}>

@@ -363,5 +363,13 @@
   "newProposal.franchise": "新增加盟提案",
   "newProposal.supply": "新增供应提案",
   "types.franchise": "加盟型",
-  "types.supply": "供应型（仅订购）"
+  "types.supply": "供应型（仅订购）",
+  "ui.contractType.franchise": "加盟",
+  "ui.contractType.license": "授权",
+  "ui.contractType.master": "主加盟",
+  "ui.contractType.direct": "直营",
+  "ui.contractType.supply": "供应",
+  "ui.contractType.tenancy": "租赁",
+  "ui.contractType.new": "新",
+  "ui.map.primary": "主店"
 }

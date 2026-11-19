@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
+import { statusLabel } from '../../utils/statusLabel';
 import { usePlayApp } from '../../utils/playApp';
 // ============================================================================
 // Styled Components — RestaurantDashboard 기준 통일
@@ -729,26 +730,26 @@ const FoodcourtGeneralDashboard: React.FC = () => {
 
       const alertList: Array<{ type: 'warning' | 'info' | 'success'; title: string; message: string; link?: string }> = [];
       if (overdueInvoices > 0) {
-        alertList.push({ type: 'warning', title: 'Overdue Invoices', message: `${overdueInvoices} invoice(s) need attention`, link: '/pos/foodcourt/invoices' });
+        alertList.push({ type: 'warning', title: t('foodcourt:foodcourtGeneralDashboard.overdueInvoices'), message: t('foodcourt:ui.fcDashboard.overdueMsg', { count: overdueInvoices }), link: '/pos/foodcourt/invoices' });
       }
       if (pendingInvoices > 0) {
-        alertList.push({ type: 'info', title: 'Pending Invoices', message: `${pendingInvoices} invoice(s) pending payment`, link: '/pos/foodcourt/invoices' });
+        alertList.push({ type: 'info', title: t('foodcourt:foodcourtGeneralDashboard.pendingInvoices'), message: t('foodcourt:ui.fcDashboard.pendingMsg', { count: pendingInvoices }), link: '/pos/foodcourt/invoices' });
       }
       const noOrderTenants = restaurantRevenues.filter((r: any) => (r.order_count || 0) === 0);
       if (noOrderTenants.length > 0) {
-        alertList.push({ type: 'info', title: 'No Orders', message: `${noOrderTenants.length} tenant(s) with no orders this month`, link: '/pos/foodcourt/tenancy' });
+        alertList.push({ type: 'info', title: t('foodcourt:ui.fcDashboard.noOrders'), message: t('foodcourt:ui.fcDashboard.noOrdersMsg', { count: noOrderTenants.length }), link: '/pos/foodcourt/tenancy' });
       }
       if (badgeCounts.notices > 0) {
-        alertList.push({ type: 'info', title: 'Unread Notices', message: `${badgeCounts.notices} unread notice(s)`, link: '/pos/foodcourt/notices' });
+        alertList.push({ type: 'info', title: t('foodcourt:ui.fcDashboard.unreadNotices'), message: t('foodcourt:ui.fcDashboard.unreadNoticesMsg', { count: badgeCounts.notices }), link: '/pos/foodcourt/notices' });
       }
       if (badgeCounts.systemInquiry > 0) {
-        alertList.push({ type: 'info', title: 'System Inquiry', message: `${badgeCounts.systemInquiry} inquiry(s) with new replies`, link: '/pos/foodcourt/system-inquiry' });
+        alertList.push({ type: 'info', title: t('common:nav.systemInquiry'), message: t('foodcourt:ui.fcDashboard.systemInquiryMsg', { count: badgeCounts.systemInquiry }), link: '/pos/foodcourt/system-inquiry' });
       }
       if (badgeCounts.operationInquiry > 0) {
-        alertList.push({ type: 'info', title: 'Operation Inquiry', message: `${badgeCounts.operationInquiry} open inquiry(s)`, link: '/pos/foodcourt/operation-inquiry' });
+        alertList.push({ type: 'info', title: t('common:nav.operationInquiry'), message: t('foodcourt:ui.fcDashboard.operationInquiryMsg', { count: badgeCounts.operationInquiry }), link: '/pos/foodcourt/operation-inquiry' });
       }
       if (alertList.length === 0) {
-        alertList.push({ type: 'success', title: 'All Clear', message: 'All systems running smoothly. No issues detected.' });
+        alertList.push({ type: 'success', title: t('foodcourt:ui.fcDashboard.allClear'), message: t('foodcourt:ui.fcDashboard.allClearMsg') });
       }
       setAlerts(alertList);
 
@@ -840,7 +841,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
                 if (s.daysLeft <= 30) return <SubscriptionBadge variant="expiring" onClick={goSubscription} style={badgeStyle}>{s.daysLeft} days left</SubscriptionBadge>;
                 return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{s.daysLeft} days left</SubscriptionBadge>;
               }
-              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{s.status}</SubscriptionBadge>;
+              if (s.status === 'expired' || s.status === 'suspended') return <SubscriptionBadge variant="expired" onClick={goSubscription} style={badgeStyle}>{statusLabel(t, s.status)}</SubscriptionBadge>;
               return <SubscriptionBadge variant="active" onClick={goSubscription} style={badgeStyle}>{t('foodcourt:foodcourtGeneralDashboard.active')}</SubscriptionBadge>;
             })()}
             </Subtitle>
@@ -914,7 +915,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
                       fontSize: '13px'
                     }}
                   >
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
+                    {t(`common:time.${p}`)}
                   </button>
                 ))}
               </div>
@@ -924,7 +925,7 @@ const FoodcourtGeneralDashboard: React.FC = () => {
                 <LineChart data={trendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F1F4F8" />
                   <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#4B5563' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#4B5563' }} tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : v} />
+                  <YAxis tick={{ fontSize: 12, fill: '#4B5563' }} tickFormatter={(v) => v >= 1000 ? `${Number((v / 1000).toFixed(v % 1000 === 0 ? 0 : 1))}k` : v} />
                   <Tooltip
                     formatter={(value: any) => [formatCurrency(value, currency), 'Revenue']}
                     labelStyle={{ color: '#0A2540', fontWeight: 600 }}
@@ -1165,13 +1166,13 @@ const FoodcourtGeneralDashboard: React.FC = () => {
                     <DataTableCell data-label={t('foodcourt:foodcourtGeneralDashboard.tenant')} style={{ fontWeight: 600, color: '#0A2540' }}>
                       {sub.restaurant_branch_name ? `${sub.restaurant_name} (${sub.restaurant_branch_name})` : sub.restaurant_name || '-'}
                     </DataTableCell>
-                    <DataTableCell data-label={t('foodcourt:foodcourtGeneralDashboard.plan')}>{sub.plan?.name || 'No Plan'}</DataTableCell>
+                    <DataTableCell data-label={t('foodcourt:foodcourtGeneralDashboard.plan')}>{sub.plan?.name || t('foodcourt:ui.fcDashboard.noPlan')}</DataTableCell>
                     <DataTableCell align="right" data-label={t('foodcourt:foodcourtGeneralDashboard.monthlyRevenue')}>{formatCurrency(sub.current_month?.revenue || 0, currency)}</DataTableCell>
                     <DataTableCell align="right" data-label={t('foodcourt:foodcourtGeneralDashboard.orders')}>{sub.current_month?.order_count || 0}</DataTableCell>
                     <DataTableCell align="right" data-label={t('foodcourt:foodcourtGeneralDashboard.estimatedCharges')}>{formatCurrency(sub.current_month?.estimated_charges || 0, currency)}</DataTableCell>
                     <DataTableCell data-label={t('foodcourt:foodcourtGeneralDashboard.invoiceStatus')}>
                       <StatusBadge status={sub.latest_invoice?.status || 'none'}>
-                        {(sub.latest_invoice?.status || 'N/A').replace(/_/g, ' ')}
+                        {sub.latest_invoice?.status ? statusLabel(t, sub.latest_invoice.status) : 'N/A'}
                       </StatusBadge>
                     </DataTableCell>
                   </DataTableRow>

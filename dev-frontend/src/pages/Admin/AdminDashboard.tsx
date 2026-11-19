@@ -8,6 +8,7 @@ import { Tabs, Tab } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
+import { statusLabel } from '../../utils/statusLabel';
 import { useStore } from '../../contexts/StoreContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -966,7 +967,7 @@ const AdminDashboard: React.FC = () => {
           {/* Currency Filter - only show supported currencies from payment settings */}
           {supportedCurrencies.length > 0 && (
             <CurrencyFilterBar>
-              <span style={{ fontSize: '13px', color: '#4B5563', fontWeight: 500, marginRight: '4px' }}>Currency:</span>
+              <span style={{ fontSize: '13px', color: '#4B5563', fontWeight: 500, marginRight: '4px' }}>{t('admin:ui.adminDashboard.currency', 'Currency')}:</span>
               {supportedCurrencies.map(cur => (
                 <CurrencyFilterBtn
                   key={cur}
@@ -1116,7 +1117,7 @@ const AdminDashboard: React.FC = () => {
                     fontSize: '13px'
                   }}
                 >
-                  Week
+                  {t('common:time.week', 'Week')}
                 </button>
                 <button
                   onClick={() => setTimePeriod('month')}
@@ -1131,7 +1132,7 @@ const AdminDashboard: React.FC = () => {
                     fontSize: '13px'
                   }}
                 >
-                  Month
+                  {t('common:time.month', 'Month')}
                 </button>
                 <button
                   onClick={() => setTimePeriod('quarter')}
@@ -1146,7 +1147,7 @@ const AdminDashboard: React.FC = () => {
                     fontSize: '13px'
                   }}
                 >
-                  Quarter
+                  {t('admin:ui.adminDashboard.quarter', 'Quarter')}
                 </button>
                 <button
                   onClick={() => setTimePeriod('year')}
@@ -1161,7 +1162,7 @@ const AdminDashboard: React.FC = () => {
                     fontSize: '13px'
                   }}
                 >
-                  Year
+                  {t('common:time.year', 'Year')}
                 </button>
               </div>
             </div>
@@ -1257,13 +1258,13 @@ const AdminDashboard: React.FC = () => {
                 >
                   <AlertContent>
                     <AlertTitle type={systemLogAlerts.criticalCount > 0 ? 'error' : 'warning'}>
-                      {systemLogAlerts.criticalCount > 0 ? 'Critical System Alerts' : 'System Error Alerts'}
+                      {systemLogAlerts.criticalCount > 0 ? t('admin:ui.adminDashboard.criticalAlerts', 'Critical System Alerts') : t('admin:ui.adminDashboard.errorAlerts', 'System Error Alerts')}
                     </AlertTitle>
                     <AlertDescription>
-                      {systemLogAlerts.criticalCount > 0 && `${systemLogAlerts.criticalCount} critical`}
+                      {systemLogAlerts.criticalCount > 0 && `${systemLogAlerts.criticalCount} ${t('admin:ui.adminDashboard.critical', 'critical')}`}
                       {systemLogAlerts.criticalCount > 0 && systemLogAlerts.errorCount > 0 && ', '}
-                      {systemLogAlerts.errorCount > 0 && `${systemLogAlerts.errorCount} error`}
-                      {' '}log(s) in the last 24 hours - Click to investigate
+                      {systemLogAlerts.errorCount > 0 && `${systemLogAlerts.errorCount} ${t('admin:ui.adminDashboard.error', 'error')}`}
+                      {' '}{t('admin:ui.adminDashboard.logs24h', 'log(s) in the last 24 hours - Click to investigate')}
                     </AlertDescription>
                   </AlertContent>
                 </Alert>
@@ -1380,16 +1381,16 @@ const AdminDashboard: React.FC = () => {
 
         <Tabs>
           <Tab active={activeTab === 'overview'} onClick={() => handleTabChange('overview')}>
-            Manager Overview
+            {t('admin:ui.adminDashboard.managerOverview', 'Manager Overview')}
           </Tab>
           <Tab active={activeTab === 'performance'} onClick={() => handleTabChange('performance')}>
-            Performance Analytics
+            {t('admin:adminDashboard.performanceAnalytics', 'Performance Analytics')}
           </Tab>
           <Tab active={activeTab === 'health'} onClick={() => handleTabChange('health')}>
-            Account Health
+            {t('admin:ui.adminDashboard.accountHealth', 'Account Health')}
           </Tab>
           <Tab active={activeTab === 'system'} onClick={() => handleTabChange('system')}>
-            System Operations
+            {t('admin:adminDashboard.systemOperations', 'System Operations')}
           </Tab>
         </Tabs>
 
@@ -1423,7 +1424,7 @@ const AdminDashboard: React.FC = () => {
                       <Badge variant={manager.planType}>{manager.planType}</Badge>
                     </DataTableCell>
                     <DataTableCell data-label={t('admin:adminDashboard.status')}>
-                      <Badge variant={manager.subscriptionStatus}>{manager.subscriptionStatus}</Badge>
+                      <Badge variant={manager.subscriptionStatus}>{statusLabel(t, manager.subscriptionStatus)}</Badge>
                     </DataTableCell>
                     <DataTableCell align="right" data-label={t('admin:adminDashboard.restaurants')}>{manager.restaurantCount}</DataTableCell>
                     <DataTableCell align="right" data-label={t('admin:adminDashboard.monthlyRevenue')}>{formatMultiCurrency(manager.totalRevenueByCurrency)}</DataTableCell>
@@ -1434,7 +1435,7 @@ const AdminDashboard: React.FC = () => {
                       </HealthScore>
                     </DataTableCell>
                     <DataTableCell data-label={t('admin:adminDashboard.riskLevel')}>
-                      <Badge variant={manager.riskLevel}>{manager.riskLevel}</Badge>
+                      <Badge variant={manager.riskLevel}>{statusLabel(t, manager.riskLevel)}</Badge>
                     </DataTableCell>
                   </DataTableRow>
                 ))}
@@ -1449,22 +1450,22 @@ const AdminDashboard: React.FC = () => {
             <h3 style={{ marginBottom: '20px', color: '#0A2540' }}>{t('admin:adminDashboard.performanceAnalytics')}</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: '20px' }}>
               <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
-                <h4 style={{ color: '#059669', marginBottom: '10px' }}>Revenue Insights ({getCurrencySymbol(selectedCurrency)})</h4>
-                <p>• Monthly revenue: {formatCurrency(getCurrencyTotal(metrics.monthlyRevenue, selectedCurrency), selectedCurrency)}</p>
-                <p>• Yearly revenue: {formatCurrency(getCurrencyTotal(metrics.yearlyRevenue, selectedCurrency), selectedCurrency)}</p>
+                <h4 style={{ color: '#059669', marginBottom: '10px' }}>{t('admin:ui.adminDashboard.revenueInsights', 'Revenue Insights')} ({getCurrencySymbol(selectedCurrency)})</h4>
+                <p>• {t('admin:ui.adminDashboard.monthlyRevenue', 'Monthly revenue')}: {formatCurrency(getCurrencyTotal(metrics.monthlyRevenue, selectedCurrency), selectedCurrency)}</p>
+                <p>• {t('admin:ui.adminDashboard.yearlyRevenue', 'Yearly revenue')}: {formatCurrency(getCurrencyTotal(metrics.yearlyRevenue, selectedCurrency), selectedCurrency)}</p>
                 <p>• ARPU: {formatCurrency(metrics.averageRevenuePerUser, operationSettings.currency)}</p>
               </div>
               <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                 <h4 style={{ color: '#2563EB', marginBottom: '10px' }}>{t('admin:adminDashboard.businessOverview')}</h4>
-                <p>• Total managers: {metrics.totalManagers}</p>
-                <p>• Active subscriptions: {metrics.activeSubscriptions}</p>
-                <p>• Open support tickets: {metrics.supportTickets}</p>
+                <p>• {t('admin:adminDashboard.totalManagers', 'Total managers')}: {metrics.totalManagers}</p>
+                <p>• {t('admin:adminDashboard.activeSubscriptions', 'Active subscriptions')}: {metrics.activeSubscriptions}</p>
+                <p>• {t('admin:ui.adminDashboard.openTickets', 'Open support tickets')}: {metrics.supportTickets}</p>
               </div>
               <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                 <h4 style={{ color: '#7C3AED', marginBottom: '10px' }}>{t('admin:adminDashboard.restaurantMetrics')}</h4>
-                <p>• Total restaurants: {metrics.totalRestaurants}</p>
-                <p>• This month activities: {metrics.totalTransactions}</p>
-                <p>• Cumulative revenue: {formatCurrency(getCurrencyTotal(metrics.cumulativeRevenue, selectedCurrency), selectedCurrency)}</p>
+                <p>• {t('admin:adminDashboard.totalRestaurants', 'Total restaurants')}: {metrics.totalRestaurants}</p>
+                <p>• {t('admin:ui.adminDashboard.monthActivities', 'This month activities')}: {metrics.totalTransactions}</p>
+                <p>• {t('admin:adminDashboard.cumulativeRevenue', 'Cumulative revenue')}: {formatCurrency(getCurrencyTotal(metrics.cumulativeRevenue, selectedCurrency), selectedCurrency)}</p>
               </div>
             </div>
           </TableContainer>
@@ -1477,18 +1478,18 @@ const AdminDashboard: React.FC = () => {
               <div>
                 <h4>{t('admin:adminDashboard.healthScoreDistribution')}</h4>
                 <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
-                  <p><span style={{ color: '#10B981' }}>●</span> Healthy (80-100): {managers.filter(m => m.healthScore >= 80).length} accounts</p>
-                  <p><span style={{ color: '#F59E0B' }}>●</span> At Risk (60-79): {managers.filter(m => m.healthScore >= 60 && m.healthScore < 80).length} accounts</p>
-                  <p><span style={{ color: '#FF6B6B' }}>●</span> Critical (&lt;60): {managers.filter(m => m.healthScore < 60).length} accounts</p>
+                  <p><span style={{ color: '#10B981' }}>●</span> {t('admin:ui.adminDashboard.healthy', 'Healthy')} (80-100): {managers.filter(m => m.healthScore >= 80).length} {t('admin:ui.adminDashboard.accounts', 'accounts')}</p>
+                  <p><span style={{ color: '#F59E0B' }}>●</span> {t('admin:ui.adminDashboard.atRisk', 'At Risk')} (60-79): {managers.filter(m => m.healthScore >= 60 && m.healthScore < 80).length} {t('admin:ui.adminDashboard.accounts', 'accounts')}</p>
+                  <p><span style={{ color: '#FF6B6B' }}>●</span> {t('admin:ui.adminDashboard.criticalHealth', 'Critical')} (&lt;60): {managers.filter(m => m.healthScore < 60).length} {t('admin:ui.adminDashboard.accounts', 'accounts')}</p>
                 </div>
               </div>
               <div>
                 <h4>{t('admin:adminDashboard.riskFactors')}</h4>
                 <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
-                  <p>• Payment delays: Monitor automated</p>
-                  <p>• Usage decline: Real-time alerts</p>
-                  <p>• Support escalations: Tracked</p>
-                  <p>• Contract renewals: 45-day alerts</p>
+                  <p>• {t('admin:ui.adminDashboard.riskPayment', 'Payment delays: Monitor automated')}</p>
+                  <p>• {t('admin:ui.adminDashboard.riskUsage', 'Usage decline: Real-time alerts')}</p>
+                  <p>• {t('admin:ui.adminDashboard.riskSupport', 'Support escalations: Tracked')}</p>
+                  <p>• {t('admin:ui.adminDashboard.riskContract', 'Contract renewals: 45-day alerts')}</p>
                 </div>
               </div>
             </div>
@@ -1501,17 +1502,17 @@ const AdminDashboard: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
               <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                 <h4 style={{ color: '#059669' }}>{t('admin:adminDashboard.invoiceSummary')}</h4>
-                <p>• Total invoices: {invoicesData.length}</p>
-                <p>• Paid: {invoicesData.filter((i: any) => i.status === 'paid' || i.status === 'completed').length}</p>
-                <p>• Pending: {invoicesData.filter((i: any) => i.status === 'pending_payment').length}</p>
-                <p>• Overdue: {invoicesData.filter((i: any) => i.status === 'overdue').length}</p>
+                <p>• {t('admin:ui.adminDashboard.totalInvoices', 'Total invoices')}: {invoicesData.length}</p>
+                <p>• {t('common:status.paid', 'Paid')}: {invoicesData.filter((i: any) => i.status === 'paid' || i.status === 'completed').length}</p>
+                <p>• {t('common:status.pending', 'Pending')}: {invoicesData.filter((i: any) => i.status === 'pending_payment').length}</p>
+                <p>• {t('common:status.overdue', 'Overdue')}: {invoicesData.filter((i: any) => i.status === 'overdue').length}</p>
               </div>
               <div style={{ padding: '20px', background: '#F1F4F8', borderRadius: '12px' }}>
                 <h4 style={{ color: '#2563EB' }}>{t('admin:adminDashboard.userActivity')}</h4>
-                <p>• Total managers: {metrics.totalManagers}</p>
-                <p>• Active users: {metrics.activeUsers}</p>
-                <p>• Total restaurants: {metrics.totalRestaurants}</p>
-                <p>• Active subscriptions: {metrics.activeSubscriptions}</p>
+                <p>• {t('admin:adminDashboard.totalManagers', 'Total managers')}: {metrics.totalManagers}</p>
+                <p>• {t('admin:adminDashboard.activeUsers', 'Active users')}: {metrics.activeUsers}</p>
+                <p>• {t('admin:adminDashboard.totalRestaurants', 'Total restaurants')}: {metrics.totalRestaurants}</p>
+                <p>• {t('admin:adminDashboard.activeSubscriptions', 'Active subscriptions')}: {metrics.activeSubscriptions}</p>
               </div>
             </div>
           </TableContainer>

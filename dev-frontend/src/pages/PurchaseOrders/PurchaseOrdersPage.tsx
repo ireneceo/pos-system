@@ -821,7 +821,7 @@ const PurchaseOrdersPage: React.FC = () => {
         </FilterToolbar>
 
         <DataTableContainer>
-          <DataTable>
+          <DataTable data-card-upto="1280">
             <DataTableHead>
               <tr>
                 <DataTableHeaderCell align="left">{t('list.table.poNumber')}</DataTableHeaderCell>

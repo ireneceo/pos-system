@@ -77,5 +77,8 @@
     "graceHint": "预约时间后此分钟数自动标记为未到。",
     "blockAfter": "N次未到后封锁",
     "blockAfterHint": "达到此未到次数的顾客将被禁止新的预约。"
-  }
+  },
+  "ui.col.guest": "客人",
+  "ui.col.source": "来源",
+  "ui.tomorrow": "明天"
 }

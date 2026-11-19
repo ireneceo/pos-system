@@ -366,5 +366,8 @@
   "categoryTabCommon.placeholderMainDishes": "cth., Hidangan Utama",
   "categoryTabCommon.organizeRecipes": "Cipta kategori untuk menyusun resipi anda",
   "categoryTabCommon.newIngredientCategory": "Kategori Bahan Baharu",
-  "categoryTabCommon.inactive": "Tidak Aktif"
+  "categoryTabCommon.inactive": "Tidak Aktif",
+  "ui.ingredients.searchPh": "Cari item stok...",
+  "ui.ingredients.setCost": "Tetapkan kos",
+  "ui.ingredients.newStockItem": "Item stok baharu"
 }

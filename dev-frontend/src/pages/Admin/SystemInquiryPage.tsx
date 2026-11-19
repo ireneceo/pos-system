@@ -10,6 +10,8 @@ import AttachmentList from '../../components/Common/AttachmentList';
 import { Modal as CommonModal } from '../../components/UI';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
 import {
@@ -724,7 +726,7 @@ const SystemInquiryPage: React.FC = () => {
 
         <FilterBar>
             <SearchInput
-              placeholder="Search tickets..."
+              placeholder={t('common:ui.search.tickets')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -761,8 +763,8 @@ const SystemInquiryPage: React.FC = () => {
                   <CustomerInfo>{ticket.customerName} • {ticket.customerEmail}</CustomerInfo>
                 </TicketInfo>
                 <TicketBadges>
-                  <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
-                  <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
+                  <StatusBadge status={ticket.status}>{statusLabel(t, ticket.status)}</StatusBadge>
+                  <PriorityBadge priority={ticket.priority}>{statusLabel(t, ticket.priority)}</PriorityBadge>
                 </TicketBadges>
               </TicketHeader>
 
@@ -781,7 +783,7 @@ const SystemInquiryPage: React.FC = () => {
                 </MetaItem>
                 <MetaItem>
                   <MetaLabel>{t('admin:systemInquiryPage.category')}</MetaLabel>
-                  <MetaValue style={{textTransform: 'capitalize'}}>{ticket.category.replace('-', ' ')}</MetaValue>
+                  <MetaValue style={{textTransform: 'capitalize'}}>{statusLabel(t, ticket.category)}</MetaValue>
                 </MetaItem>
                 {unreadCounts[ticket.id] && (
                   <MetaItem>
@@ -816,7 +818,7 @@ const SystemInquiryPage: React.FC = () => {
                         })();
                       }}
                     >
-                      Close
+                      {t('common:button.close')}
                     </CloseTicketButton>
                   </MetaItem>
                 )}
@@ -882,7 +884,7 @@ const SystemInquiryPage: React.FC = () => {
                         >
                           <DropdownItemTitle>{user.full_name || user.username}</DropdownItemTitle>
                           <DropdownItemSubtitle>
-                            {user.email} • {user.role}
+                            {user.email} • {getRoleDisplayName(user.role, t)}
                           </DropdownItemSubtitle>
                         </DropdownItem>
                       ))}
@@ -990,14 +992,14 @@ const SystemInquiryPage: React.FC = () => {
                       <FormLabel>{t('admin:systemInquiryPage.priority')}</FormLabel>
                       <div style={{ padding: '8px 0' }}>
                         <PriorityBadge priority={selectedTicket.priority}>
-                          {selectedTicket.priority}
+                          {statusLabel(t, selectedTicket.priority)}
                         </PriorityBadge>
                       </div>
                     </div>
                     <div>
                       <FormLabel>{t('admin:systemInquiryPage.category')}</FormLabel>
                       <div style={{ padding: '8px 0', color: '#1F2937', textTransform: 'capitalize' }}>
-                        {selectedTicket.category.replace('-', ' ')}
+                        {statusLabel(t, selectedTicket.category)}
                       </div>
                     </div>
                   </div>

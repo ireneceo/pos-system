@@ -393,8 +393,8 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
     if (submitting) return;
     setFormError(null);
 
-    if (!formData.name.trim()) { setFormError(t('common:required', 'Name is required')); return; }
-    if (!formData.unit) { setFormError(t('common:required', 'Unit is required')); return; }
+    if (!formData.name.trim()) { setFormError(t('foodcourt:ui.fcProducts.nameRequired', 'Name is required')); return; }
+    if (!formData.unit) { setFormError(t('foodcourt:ui.fcProducts.unitRequired', 'Unit is required')); return; }
 
     setSubmitting(true);
     try {
@@ -507,12 +507,12 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
         <FilterBar style={{ marginBottom: 0 }}>
           <SearchInput
             type="text"
-            placeholder={t('common:search', 'Search') as string}
+            placeholder={t('common:button.search', 'Search') as string}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
           <FilterSelect value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
-            <option value="all">{t('common:allCategories', 'All Categories')}</option>
+            <option value="all">{t('foodcourt:ui.inventory.allCategories', 'All Categories')}</option>
             {categories.map(c => (
               <option key={c.id} value={c.id.toString()}>
                 {c.emoji ? `${c.emoji} ` : ''}{c.name}
@@ -522,7 +522,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
           <SortDropdown value={sortKey} onChange={setSortKey} />
         </FilterBar>
         <ThemedButton onClick={() => openModal()} style={{ flexShrink: 0 }}>
-          {t('foodcourt:products.addProduct', 'Add Product')}
+          {t('foodcourt:ui.fcProducts.addProduct', 'Add Product')}
         </ThemedButton>
       </div>
 
@@ -530,17 +530,17 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
         <EmptyState>
           <h4 style={{ fontSize: 18, fontWeight: 600, color: '#1F2937', margin: '0 0 8px 0' }}>
             {searchTerm || categoryFilter !== 'all'
-              ? t('common:noResults', 'No products found')
-              : t('foodcourt:products.noProducts', 'No products yet')}
+              ? t('foodcourt:ui.fcProducts.noResults', 'No products found')
+              : t('foodcourt:ui.fcProducts.noProducts', 'No products yet')}
           </h4>
           <p style={{ fontSize: 14, color: '#4B5563', margin: '0 0 20px 0' }}>
             {searchTerm || categoryFilter !== 'all'
-              ? t('common:adjustFilters', 'Try adjusting your search or filter criteria.')
-              : t('foodcourt:products.startAdding', 'Start by adding your first product.')}
+              ? t('foodcourt:ui.fcProducts.adjustFilters', 'Try adjusting your search or filter criteria.')
+              : t('foodcourt:ui.fcProducts.startAdding', 'Start by adding your first product.')}
           </p>
           {!searchTerm && categoryFilter === 'all' && (
             <ThemedButton onClick={() => openModal()}>
-              {t('foodcourt:products.addProduct', 'Add Product')}
+              {t('foodcourt:ui.fcProducts.addProduct', 'Add Product')}
             </ThemedButton>
           )}
         </EmptyState>
@@ -565,18 +565,18 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
 
               <ProductDetails>
                 <DetailRow>
-                  <DetailLabel>{t('common:price', 'Unit Price')}</DetailLabel>
+                  <DetailLabel>{t('foodcourt:ui.inventory.unitPrice', 'Unit Price')}</DetailLabel>
                   <PriceValue>RM {(Number(product.unit_price) || 0).toFixed(2)}</PriceValue>
                 </DetailRow>
                 {product.unit && (
                   <DetailRow>
-                    <DetailLabel>{t('common:unit', 'Unit')}</DetailLabel>
+                    <DetailLabel>{t('foodcourt:ui.inventory.unit', 'Unit')}</DetailLabel>
                     {/* 규격 한 줄 «10 kg/pack» (2026-09-11 Irene 「1kg/pack 이런식으로」) */}
                     <DetailValue>{sellerSpecLabel({ seller_unit: product.unit, base_quantity: product.base_quantity })}</DetailValue>
                   </DetailRow>
                 )}
                 <DetailRow>
-                  <DetailLabel>{t('common:stock', 'Stock')}</DetailLabel>
+                  <DetailLabel>{t('foodcourt:ui.inventory.stock', 'Stock')}</DetailLabel>
                   <DetailValue>{Number(product.current_stock || 0).toFixed(2)}</DetailValue>
                 </DetailRow>
               </ProductDetails>
@@ -584,9 +584,9 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
               <CardSpacer />
               <ProductActions onClick={(e) => e.stopPropagation()}>
                 <ActionBtn onClick={() => openModal(product)}>{t('common:edit', 'Edit')}</ActionBtn>
-                <ActionBtn onClick={(e) => handleCopy(product, e)}>{t('common:copy', 'Copy')}</ActionBtn>
+                <ActionBtn onClick={(e) => handleCopy(product, e)}>{t('common:button.copy', 'Copy')}</ActionBtn>
                 <ToggleBtn isActive={product.is_active} onClick={(e) => handleToggle(product, e)}>
-                  {product.is_active ? t('common:active', 'Active') : t('common:inactive', 'Inactive')}
+                  {product.is_active ? t('common:status.active', 'Active') : t('common:status.inactive', 'Inactive')}
                 </ToggleBtn>
                 <ActionBtn variant="danger" onClick={(e) => handleDeleteClick(product, e)}>
                   {t('common:delete', 'Delete')}
@@ -602,8 +602,8 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
           isOpen={showModal}
           onClose={closeModal}
           title={editing
-            ? t('foodcourt:products.editProduct', 'Edit Product') as string
-            : t('foodcourt:products.addProduct', 'Add Product') as string}
+            ? t('foodcourt:ui.fcProducts.editProduct', 'Edit Product') as string
+            : t('foodcourt:ui.fcProducts.addProduct', 'Add Product') as string}
           maxWidth="700px"
           footer={
             <>
@@ -611,7 +611,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
                 {t('common:cancel', 'Cancel')}
               </ModalButton>
               <ModalButton type="submit" form="fc-prod-form" variant="primary" disabled={submitting}>
-                {submitting ? t('common:saving', 'Saving...') : (editing ? t('common:update', 'Update') : t('common:create', 'Create'))}
+                {submitting ? t('common:saving', 'Saving...') : (editing ? t('common:button.update', 'Update') : t('common:button.create', 'Create'))}
               </ModalButton>
             </>
           }
@@ -619,7 +619,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
           <form id="fc-prod-form" onSubmit={handleSubmit}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <UIFormGroup>
-                <FormLabel>{t('common:name', 'Name')} *</FormLabel>
+                <FormLabel>{t('common:label.name', 'Name')} *</FormLabel>
                 <FormInput type="text" value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
               </UIFormGroup>
@@ -631,10 +631,10 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
             </div>
 
             <UIFormGroup>
-              <FormLabel>{t('common:category', 'Category')}</FormLabel>
+              <FormLabel>{t('common:label.category', 'Category')}</FormLabel>
               <FormSelect value={formData.category_id}
                 onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}>
-                <option value="">{t('common:noCategory', 'No category')}</option>
+                <option value="">{t('foodcourt:ui.fcProducts.noCategory', 'No category')}</option>
                 {categories.map(c => (
                   <option key={c.id} value={c.id.toString()}>{c.emoji} {c.name}</option>
                 ))}
@@ -642,32 +642,32 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>{t('common:description', 'Description')}</FormLabel>
+              <FormLabel>{t('common:label.description', 'Description')}</FormLabel>
               <FormTextArea value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={2} />
             </UIFormGroup>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16 }}>
               <UIFormGroup>
-                <FormLabel>{t('common:price', 'Unit Price')} (RM) *</FormLabel>
+                <FormLabel>{t('foodcourt:ui.inventory.unitPrice', 'Unit Price')} (RM) *</FormLabel>
                 <FormInput type="number" step="0.01" min="0" value={formData.unit_price}
                   onChange={(e) => setFormData({ ...formData, unit_price: e.target.value })} required />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>{t('common:baseQty', 'Base Qty')} *</FormLabel>
+                <FormLabel>{t('foodcourt:ui.fcProducts.baseQty', 'Base Qty')} *</FormLabel>
                 <FormInput type="number" step="0.01" min="0.01" value={formData.base_quantity}
                   onChange={(e) => setFormData({ ...formData, base_quantity: e.target.value })} required />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>{t('common:unit', 'Unit')} *</FormLabel>
+                <FormLabel>{t('foodcourt:ui.inventory.unit', 'Unit')} *</FormLabel>
                 <FormSelect value={formData.unit}
                   onChange={(e) => setFormData({ ...formData, unit: e.target.value })} required>
-                  <option value="">{t('common:selectUnit', 'Select unit')}</option>
+                  <option value="">{t('foodcourt:ui.fcProducts.selectUnit', 'Select unit')}</option>
                   {UNIT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </FormSelect>
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>{t('common:minOrderQty', 'Min Order Qty')}</FormLabel>
+                <FormLabel>{t('foodcourt:ui.fcProducts.minOrderQty', 'Min Order Qty')}</FormLabel>
                 <FormInput type="number" min="1" value={formData.min_order_quantity}
                   onChange={(e) => setFormData({ ...formData, min_order_quantity: e.target.value })} />
               </UIFormGroup>
@@ -675,24 +675,24 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
               <UIFormGroup>
-                <FormLabel>{t('common:currentStock', 'Current Stock')}</FormLabel>
+                <FormLabel>{t('foodcourt:ui.inventory.currentStock', 'Current Stock')}</FormLabel>
                 <FormInput type="number" step="0.01" min="0" value={formData.current_stock}
                   onChange={(e) => setFormData({ ...formData, current_stock: e.target.value })} />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>{t('common:lowStockThreshold', 'Low Stock Threshold')}</FormLabel>
+                <FormLabel>{t('foodcourt:ui.fcProducts.lowStockThreshold', 'Low Stock Threshold')}</FormLabel>
                 <FormInput type="number" step="0.01" min="0" value={formData.low_stock_threshold}
                   onChange={(e) => setFormData({ ...formData, low_stock_threshold: e.target.value })} />
               </UIFormGroup>
               <UIFormGroup>
-                <FormLabel>{t('common:leadTimeDays', 'Lead Time (days)')}</FormLabel>
+                <FormLabel>{t('foodcourt:ui.fcProducts.leadTimeDays', 'Lead Time (days)')}</FormLabel>
                 <FormInput type="number" min="0" value={formData.lead_time_days}
                   onChange={(e) => setFormData({ ...formData, lead_time_days: e.target.value })} />
               </UIFormGroup>
             </div>
 
             <UIFormGroup>
-              <FormLabel>{t('common:emoji', 'Emoji')}</FormLabel>
+              <FormLabel>{t('foodcourt:ui.fcProducts.emoji', 'Emoji')}</FormLabel>
               <EmojiPicker>
                 {EMOJI_OPTIONS.map(em => (
                   <EmojiOption key={em} type="button" selected={formData.emoji === em}
@@ -704,7 +704,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
             </UIFormGroup>
 
             <UIFormGroup>
-              <FormLabel>{t('foodcourt:products.optionGroups', 'Option Groups')}</FormLabel>
+              <FormLabel>{t('foodcourt:ui.fcProducts.optionGroups', 'Option Groups')}</FormLabel>
               {optionGroups.length > 0 ? (
                 <CheckboxGroup>
                   {optionGroups.map(og => (
@@ -718,7 +718,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
                 </CheckboxGroup>
               ) : (
                 <div style={{ padding: 12, background: '#F9FAFB', borderRadius: 8, color: '#4B5563', fontSize: 13 }}>
-                  {t('foodcourt:products.noOptionGroups', 'No option groups available. Create option groups in the Option Groups tab first.')}
+                  {t('foodcourt:ui.fcProducts.noOptionGroups', 'No option groups available. Create option groups in the Option Groups tab first.')}
                 </div>
               )}
             </UIFormGroup>
@@ -727,7 +727,7 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
               <CheckboxLabel>
                 <input type="checkbox" checked={formData.is_active}
                   onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })} />
-                {t('common:active', 'Active')}
+                {t('common:status.active', 'Active')}
               </CheckboxLabel>
             </UIFormGroup>
 
@@ -742,8 +742,8 @@ const FoodcourtProductsTab: React.FC<FoodcourtProductsTabProps> = ({
         isOpen={deleteOpen}
         onCancel={() => { setDeleteOpen(false); setToDelete(null); }}
         onConfirm={handleDeleteConfirm}
-        title={t('foodcourt:products.deleteProduct', 'Delete Product') as string}
-        message={`${t('common:deleteConfirm', 'Are you sure you want to delete')} "${toDelete?.name}"?`}
+        title={t('foodcourt:ui.fcProducts.deleteProduct', 'Delete Product') as string}
+        message={`${t('foodcourt:ui.fcProducts.deleteConfirm', 'Are you sure you want to delete')} "${toDelete?.name}"?`}
         confirmText={t('common:delete', 'Delete') as string}
         cancelText={t('common:cancel', 'Cancel') as string}
       />

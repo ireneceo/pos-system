@@ -1607,7 +1607,7 @@ const MenuManagementPage: React.FC = () => {
               <SearchIcon>🔍</SearchIcon>
               <SearchInput
                 type="text"
-                placeholder="Search menu items by name, description, price, or category..."
+                placeholder={t('menu:ui.menu.searchPh')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -1724,9 +1724,9 @@ const MenuManagementPage: React.FC = () => {
               {(useProgressive ? visibleItems.slice(0, visibleCount) : visibleItems).map(item => (
               <MenuCard key={item.id} soldOut={item.soldOut} inactive={item.is_active === false}>
                 <MenuImage>
-                  {item.is_set_menu && <SetBadge>{t('menu:menuManagementPage.set')}</SetBadge>}
+                  {item.is_set_menu && <SetBadge>{t('menu:ui.menu.setBadge')}</SetBadge>}
                   {(item as any).set_only && <SetBadge style={{ background: '#7C3AED' }}>{t('menu:menuManagementPage.setOnlyBadge', { defaultValue: 'SET ONLY' })}</SetBadge>}
-                  {item.is_featured && <SetBadge style={{ background: '#635BFF', left: item.is_set_menu ? '52px' : '8px' }}>{t('menu:menuManagementPage.featured')}</SetBadge>}
+                  {item.is_featured && <SetBadge style={{ background: '#635BFF', left: item.is_set_menu ? '52px' : '8px' }}>{t('menu:ui.menu.featuredBadge')}</SetBadge>}
                   {item.brand_menu_id && (() => {
                     const locks = item.brand_menu_locks_snapshot || {};
                     const lockCount = Object.values(locks).filter(Boolean).length;
@@ -1877,7 +1877,7 @@ const MenuManagementPage: React.FC = () => {
                       const fullyLocked = !!item.brand_menu_id && lockedKeys.length >= 4;
                       return (
                         <ActionButton onClick={() => handleEditItem(item)}>
-                          {fullyLocked ? (t('common:button.view', 'View') as string) : 'Edit'}
+                          {fullyLocked ? (t('common:ui.action.view') as string) : (t('common:button.edit') as string)}
                         </ActionButton>
                       );
                     })()}

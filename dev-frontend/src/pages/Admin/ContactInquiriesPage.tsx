@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
+import { statusLabel } from '../../utils/statusLabel';
 interface ContactInquiry {
   id: number;
   name: string;
@@ -627,13 +628,13 @@ const ContactInquiriesPage: React.FC = () => {
 
   const formatInquiryType = (type: string) => {
     const labels: Record<string, string> = {
-      free_trial: 'Free Trial',
-      pricing: 'Pricing',
-      demo: 'Demo',
-      support: 'Support',
-      partnership: 'Partnership',
-      card_terminal: 'Card terminal',
-      other: 'Other'
+      free_trial: t('admin:ui.contactInquiries.typeFreeTrial', 'Free Trial'),
+      pricing: t('admin:ui.contactInquiries.typePricing', 'Pricing'),
+      demo: t('admin:ui.contactInquiries.typeDemo', 'Demo'),
+      support: t('admin:ui.contactInquiries.typeSupport', 'Support'),
+      partnership: t('admin:ui.contactInquiries.typePartnership', 'Partnership'),
+      card_terminal: t('admin:ui.contactInquiries.typeCardTerminal', 'Card terminal'),
+      other: t('admin:ui.contactInquiries.typeOther', 'Other')
     };
     return labels[type] || type;
   };
@@ -667,10 +668,10 @@ const ContactInquiriesPage: React.FC = () => {
 
           <Tabs>
             <Tab active={activeTab === 'active'} onClick={() => { handleTabChange('active'); setStatusFilter('all'); }}>
-              Active ({activeCount})
+              {t('admin:ui.contactInquiries.tabActive', 'Active')} ({activeCount})
             </Tab>
             <Tab active={activeTab === 'closed'} onClick={() => { handleTabChange('closed'); setStatusFilter('all'); }}>
-              Closed ({closedCount})
+              {t('admin:contactInquiriesPage.closed', 'Closed')} ({closedCount})
             </Tab>
           </Tabs>
 
@@ -694,7 +695,7 @@ const ContactInquiriesPage: React.FC = () => {
               )}
             </FilterSelect>
             <SearchInput
-              placeholder="Search by name, email, company..."
+              placeholder={t('admin:ui.contactInquiries.searchPh', 'Search by name, email, company...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -703,7 +704,7 @@ const ContactInquiriesPage: React.FC = () => {
           {loading && filteredInquiries.length === 0 ? (
             <EmptyState>{t('admin:contactInquiriesPage.loading')}</EmptyState>
           ) : filteredInquiries.length === 0 ? (
-            <EmptyState>{t('admin:contactInquiriesPage.noInquiriesFound')}</EmptyState>
+            <EmptyState>{t('admin:ui.contactInquiries.noneFound', 'No inquiries found')}</EmptyState>
           ) : (
             <InquiryGrid>
               {filteredInquiries.map((inquiry) => (
@@ -719,7 +720,7 @@ const ContactInquiriesPage: React.FC = () => {
                       )}
                     </InquiryInfo>
                     <StatusBadge status={inquiry.status}>
-                      {inquiry.status.replace('_', ' ')}
+                      {statusLabel(t, inquiry.status)}
                     </StatusBadge>
                   </InquiryHeader>
 
@@ -739,7 +740,7 @@ const ContactInquiriesPage: React.FC = () => {
                       )}
                       {activeTab === 'active' && (
                         <CloseInquiryButton onClick={(e) => handleCloseInquiry(inquiry.id, e)}>
-                          Close
+                          {t('common:button.close', 'Close')}
                         </CloseInquiryButton>
                       )}
                     </div>
@@ -752,7 +753,7 @@ const ContactInquiriesPage: React.FC = () => {
 
         {/* Detail Modal */}
         {showDetailModal && selectedInquiry && (
-                    <CommonModal isOpen={true} onClose={() => setShowDetailModal(false)} title="Inquiry Details" footer={<><ActionButton variant="danger" onClick={() => setShowDeleteConfirm(true)}> Delete </ActionButton><div style={{ flex: 1 }} /> {!selectedInquiry.reply_message && ( <ActionButton variant="primary" onClick={openReplyModal}> Reply </ActionButton> )} <ActionButton onClick={() => setShowDetailModal(false)}> Close </ActionButton></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowDetailModal(false)} title={t('admin:ui.contactInquiries.detailTitle', 'Inquiry Details')} footer={<><ActionButton variant="danger" onClick={() => setShowDeleteConfirm(true)}> {t('common:button.delete', 'Delete')} </ActionButton><div style={{ flex: 1 }} /> {!selectedInquiry.reply_message && ( <ActionButton variant="primary" onClick={openReplyModal}> {t('admin:ui.contactInquiries.reply', 'Reply')} </ActionButton> )} <ActionButton onClick={() => setShowDetailModal(false)}> {t('common:button.close', 'Close')} </ActionButton></>}>
 
                 <DetailGrid>
                   <DetailItem>
@@ -829,11 +830,11 @@ const ContactInquiriesPage: React.FC = () => {
                 {selectedInquiry.reply_message && (
                   <ReplySection>
                     <ReplyLabel>
-                      Reply {selectedInquiry.email_sent && '(Email Sent)'}
+                      {t('admin:ui.contactInquiries.reply', 'Reply')} {selectedInquiry.email_sent && t('admin:ui.contactInquiries.emailSent', '(Email Sent)')}
                     </ReplyLabel>
                     <ReplyContent>{selectedInquiry.reply_message}</ReplyContent>
                     <ReplyMeta>
-                      Replied by {selectedInquiry.replied_by_name} on {formatDate(selectedInquiry.replied_at!)}
+                      {t('admin:ui.contactInquiries.repliedBy', { name: selectedInquiry.replied_by_name, date: formatDate(selectedInquiry.replied_at!), defaultValue: `Replied by ${selectedInquiry.replied_by_name} on ${formatDate(selectedInquiry.replied_at!)}` })}
                     </ReplyMeta>
                   </ReplySection>
                 )}
@@ -843,7 +844,7 @@ const ContactInquiriesPage: React.FC = () => {
 
         {/* Reply Modal */}
         {showReplyModal && selectedInquiry && (
-                    <CommonModal isOpen={true} onClose={() => setShowReplyModal(false)} title={`Reply to ${selectedInquiry.name}`} footer={<><ActionButton onClick={() => setShowReplyModal(false)}> Cancel </ActionButton><ActionButton variant="primary" onClick={submitReply} disabled={submitting || !replyMessage.trim()} > {submitting ? 'Sending...' : (sendEmail ? 'Send Reply & Email' : 'Save Reply')} </ActionButton></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowReplyModal(false)} title={t('admin:ui.contactInquiries.replyTo', { name: selectedInquiry.name, defaultValue: `Reply to ${selectedInquiry.name}` })} footer={<><ActionButton onClick={() => setShowReplyModal(false)}> {t('common:button.cancel', 'Cancel')} </ActionButton><ActionButton variant="primary" onClick={submitReply} disabled={submitting || !replyMessage.trim()} > {submitting ? t('admin:ui.contactInquiries.sending', 'Sending...') : (sendEmail ? t('admin:ui.contactInquiries.sendReplyEmail', 'Send Reply & Email') : t('admin:ui.contactInquiries.saveReply', 'Save Reply'))} </ActionButton></>}>
 
                 <FormGroup>
                   <FormLabel>{t('admin:contactInquiriesPage.originalMessage')}</FormLabel>
@@ -857,7 +858,7 @@ const ContactInquiriesPage: React.FC = () => {
                   <FormTextArea
                     value={replyMessage}
                     onChange={(e) => setReplyMessage(e.target.value)}
-                    placeholder="Type your reply here..."
+                    placeholder={t('admin:ui.contactInquiries.replyPh', 'Type your reply here...')}
                   />
                 </FormGroup>
 
@@ -867,7 +868,7 @@ const ContactInquiriesPage: React.FC = () => {
                     checked={sendEmail}
                     onChange={(e) => setSendEmail(e.target.checked)}
                   />
-                  Send reply via email to {selectedInquiry.email}
+                  {t('admin:ui.contactInquiries.sendViaEmail', { email: selectedInquiry.email, defaultValue: `Send reply via email to ${selectedInquiry.email}` })}
                 </Checkbox>
               
           </CommonModal>
@@ -875,10 +876,10 @@ const ContactInquiriesPage: React.FC = () => {
 
         {/* Delete Confirm Modal */}
         {showDeleteConfirm && (
-                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirm(false)} title="Confirm Delete" footer={<><ActionButton onClick={() => setShowDeleteConfirm(false)}> Cancel </ActionButton><ActionButton variant="danger" onClick={deleteInquiry}> Delete </ActionButton></>}>
+                    <CommonModal isOpen={true} onClose={() => setShowDeleteConfirm(false)} title={t('admin:ui.contactInquiries.confirmDelete', 'Confirm Delete')} footer={<><ActionButton onClick={() => setShowDeleteConfirm(false)}> {t('common:button.cancel', 'Cancel')} </ActionButton><ActionButton variant="danger" onClick={deleteInquiry}> {t('common:button.delete', 'Delete')} </ActionButton></>}>
 
                 <p style={{ margin: 0, color: '#1F2937', fontSize: '14px' }}>
-                  Are you sure you want to delete this inquiry from <strong>{selectedInquiry?.name}</strong>? This action cannot be undone.
+                  {t('admin:ui.contactInquiries.deleteQ1', 'Are you sure you want to delete this inquiry from')} <strong>{selectedInquiry?.name}</strong>{t('admin:ui.contactInquiries.deleteQ2', '? This action cannot be undone.')}
                 </p>
               
           </CommonModal>

@@ -12,6 +12,7 @@ import ImageUploadDropzone from '../../components/Common/ImageUploadDropzone';
 import ConfirmModal from '../../components/ConfirmModal';
 
 import { getAuthToken } from '../../utils/auth';
+import { useTranslation } from 'react-i18next';
 import { getErrorMessage } from '../../utils/apiError';
 import { getCurrencySymbol } from '../../utils/currency';
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -768,6 +769,7 @@ const getToken = () => getAuthToken();
 // ─── Main Page Component ─────────────────────────────────────────────────────
 
 const SystemProductManagementPage: React.FC = () => {
+  const { t } = useTranslation('admin');
   const [activeTab, handleTabChange] = useTabParam<TabType>('products');
   const [productsCount, setProductsCount] = useState(0);
   const [categoriesCount, setCategoriesCount] = useState(0);
@@ -777,21 +779,21 @@ const SystemProductManagementPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>{'System Products'}</Title>
+        <Title>{t('admin:systemProductManagementPage.systemProducts')}</Title>
       </Header>
 
       <Content>
         <Tabs>
           <Tab active={activeTab === 'products'} onClick={() => handleTabChange('products')}>
-            Products
+            {t('common:nav.products')}
             <Badge count={productsCount} showZero />
           </Tab>
           <Tab active={activeTab === 'categories'} onClick={() => handleTabChange('categories')}>
-            Categories
+            {t('common:nav.categories')}
             <Badge count={categoriesCount} showZero />
           </Tab>
           <Tab active={activeTab === 'options'} onClick={() => handleTabChange('options')}>
-            Options
+            {t('admin:systemProductManagementPage.options')}
             <Badge count={optionsCount} showZero />
           </Tab>
         </Tabs>
@@ -871,6 +873,7 @@ const getDefaultFormData = (): ProductFormData => ({
 });
 
 const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefreshKey, optionRefreshKey }) => {
+  const { t } = useTranslation('admin');
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [infoModal, setInfoModal] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
@@ -1355,7 +1358,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
         <FilterBar style={{ marginBottom: 0 }}>
           <SearchInput
             type="text"
-            placeholder="Search products..."
+            placeholder={t('supplier:products.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -1363,7 +1366,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="all">{'All Categories'}</option>
+            <option value="all">{t('admin:systemProductManagementPage.allCategories')}</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id.toString()}>
                 {cat.emoji} {cat.name}
@@ -1385,7 +1388,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
           <SortDropdown value={sortKey} onChange={setSortKey} />
         </FilterBar>
         <ThemedButton onClick={() => handleOpenModal()} style={{ flexShrink: 0 }}>
-          Add Product
+          {t('supplier:products.addProduct')}
         </ThemedButton>
       </div>
 
@@ -1400,7 +1403,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
               : 'Start by adding your first system product.'}
           </EmptyDescription>
           {!searchTerm && categoryFilter === 'all' && (
-            <ThemedButton onClick={() => handleOpenModal()}>{'Add Product'}</ThemedButton>
+            <ThemedButton onClick={() => handleOpenModal()}>{t('supplier:products.addProduct')}</ThemedButton>
           )}
         </EmptyState>
       ) : (
@@ -1419,13 +1422,13 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
                 <ProductInfo>
                   <ProductName>
                     {product.name}
-                    {product.is_set && <SetBadge>{'SET'}</SetBadge>}
-                    {product.is_recommended && <RecommendedBadge>{'Recommended'}</RecommendedBadge>}
+                    {product.is_set && <SetBadge>{t('menu:ui.menu.setBadge')}</SetBadge>}
+                    {product.is_recommended && <RecommendedBadge>{t('admin:systemProductManagementPage.recommended')}</RecommendedBadge>}
                   </ProductName>
                   {product.sku && <ProductSku>SKU: {product.sku}</ProductSku>}
                   {product.category && (
                     <ProductCategory>
-                      {product.category.emoji} {product.category.name}
+                      {(product.category as any).emoji} {(product.category as any).name}
                     </ProductCategory>
                   )}
                   {product.is_set && product.set_items && product.set_items.length > 0 && (
@@ -1438,24 +1441,24 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
 
               <ProductDetails>
                 <DetailRow>
-                  <DetailLabel>{'Price'}</DetailLabel>
+                  <DetailLabel>{t('admin:systemProductManagementPage.price')}</DetailLabel>
                   <PriceValue>{getDisplayPrice(product)}</PriceValue>
                 </DetailRow>
                 {product.is_set && product.set_group && (
                   <DetailRow>
-                    <DetailLabel>{'Group'}</DetailLabel>
-                    <span style={{ color: '#0A2540', fontWeight: 500 }}>{product.set_group}</span>
+                    <DetailLabel>{t('admin:systemProductManagementPage.group')}</DetailLabel>
+                    <span style={{ color: '#0A2540', fontWeight: 500 }}>{t(`admin:systemProductManagementPage.${product.set_group}`, String(product.set_group ?? ""))}</span>
                   </DetailRow>
                 )}
                 {product.is_set && product.set_tier && (
                   <DetailRow>
-                    <DetailLabel>{'Tier'}</DetailLabel>
-                    <span style={{ color: '#0A2540', fontWeight: 500 }}>{product.set_tier}</span>
+                    <DetailLabel>{t('admin:systemProductManagementPage.tier')}</DetailLabel>
+                    <span style={{ color: '#0A2540', fontWeight: 500 }}>{t(`admin:systemProductManagementPage.${product.set_tier}`, String(product.set_tier ?? ""))}</span>
                   </DetailRow>
                 )}
                 {product.shipping_countries && product.shipping_countries.length > 0 && (
                   <DetailRow>
-                    <DetailLabel>{'Ships to'}</DetailLabel>
+                    <DetailLabel>{t('admin:systemProductManagementPage.shipsTo')}</DetailLabel>
                     <span style={{ color: '#0A2540', fontWeight: 500 }}>
                       {product.shipping_countries.join(', ')}
                     </span>
@@ -1466,16 +1469,16 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
               <CardSpacer />
               <ProductActions onClick={(e) => e.stopPropagation()}>
                 <ActionButton onClick={() => handleOpenModal(product)}>
-                  Edit
+                  {t('common:button.edit')}
                 </ActionButton>
                 <CopyButton onClick={(e) => handleCopyProduct(product, e)}>
-                  Copy
+                  {t('common:button.copy')}
                 </CopyButton>
                 <ToggleButton isActive={product.is_active} onClick={(e) => handleToggleActive(product, e)}>
-                  {product.is_active ? 'Active' : 'Inactive'}
+                  {product.is_active ? t('common:status.active') : t('common:status.inactive')}
                 </ToggleButton>
                 <ActionButton variant="danger" onClick={(e) => handleDeleteClick(product, e)}>
-                  Delete
+                  {t('common:button.delete')}
                 </ActionButton>
               </ProductActions>
             </ProductCard>
@@ -1613,28 +1616,28 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ onCountChange, categoryRefres
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <UIFormGroup>
-                    <FormLabel>{'Set Group'}</FormLabel>
+                    <FormLabel>{t('admin:systemProductManagementPage.setGroup')}</FormLabel>
                     <FormSelect
                       value={formData.set_group}
                       onChange={(e) => setFormData({ ...formData, set_group: e.target.value })}
                     >
-                      <option value="">{'Select group'}</option>
-                      <option value="tablet">{'Tablet'}</option>
-                      <option value="monitor">{'Monitor'}</option>
-                      <option value="custom">{'Custom'}</option>
+                      <option value="">{t('admin:systemProductManagementPage.selectGroup')}</option>
+                      <option value="tablet">{t('admin:systemProductManagementPage.tablet')}</option>
+                      <option value="monitor">{t('admin:systemProductManagementPage.monitor')}</option>
+                      <option value="custom">{t('admin:systemProductManagementPage.custom')}</option>
                     </FormSelect>
                   </UIFormGroup>
                   <UIFormGroup>
-                    <FormLabel>{'Set Tier'}</FormLabel>
+                    <FormLabel>{t('admin:systemProductManagementPage.setTier')}</FormLabel>
                     <FormSelect
                       value={formData.set_tier}
                       onChange={(e) => setFormData({ ...formData, set_tier: e.target.value })}
                     >
-                      <option value="">{'Select tier'}</option>
-                      <option value="standard">{'Standard'}</option>
-                      <option value="hybrid">{'Hybrid'}</option>
-                      <option value="premium">{'Premium'}</option>
-                      <option value="custom">{'Custom'}</option>
+                      <option value="">{t('admin:systemProductManagementPage.selectTier')}</option>
+                      <option value="standard">{t('admin:systemProductManagementPage.standard')}</option>
+                      <option value="hybrid">{t('admin:systemProductManagementPage.hybrid')}</option>
+                      <option value="premium">{t('admin:systemProductManagementPage.premium')}</option>
+                      <option value="custom">{t('admin:systemProductManagementPage.custom')}</option>
                     </FormSelect>
                   </UIFormGroup>
                 </div>

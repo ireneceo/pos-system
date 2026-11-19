@@ -2692,13 +2692,13 @@ const SettingsPage: React.FC = () => {
                 {(
                   <>
                     <Tab active={activeTab === 'store'} onClick={() => handleTabChange('store')}>
-                      Store Info
+                      {t('settings:ui.settings.tabStore')}
                     </Tab>
                     <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>
-                      Operations
+                      {t('settings:ui.settings.tabOperations')}
                     </Tab>
                     <Tab active={activeTab === 'managers'} onClick={() => handleTabChange('managers')}>
-                      Managers
+                      {t('settings:ui.settings.tabManagers')}
                     </Tab>
                   </>
                 )}
@@ -3216,9 +3216,9 @@ const SettingsPage: React.FC = () => {
                 <AutoSaveField ref={storeLogoRef} onSave={handleSave} type="image">
                   <ImageUploadDropzone value={storeSettings.logo}
                     onChange={(base64) => { setStoreSettings(prev => ({ ...prev, logo: base64 })); storeLogoRef.current?.triggerSave(); }}
-                    label="Brand Logo"
-                    helpText="Upload your restaurant's brand logo for use in mobile orders and customer displays"
-                    changeButtonText="Change Logo" removeButtonText="Remove Logo" imageAltText="Brand Logo" />
+                    label={t('settings:ui.settings.brandLogo')}
+                    helpText={t('settings:ui.settings.brandLogoHelp')}
+                    changeButtonText={t('settings:ui.settings.changeLogo')} removeButtonText={t('settings:ui.settings.removeLogo')} imageAltText={t('settings:ui.settings.brandLogo')} />
                 </AutoSaveField>
               </SettingsCard>
 

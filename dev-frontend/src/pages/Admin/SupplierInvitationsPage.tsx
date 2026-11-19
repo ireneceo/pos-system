@@ -363,19 +363,19 @@ const SupplierInvitationsPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#635BFF">
             <StatValue>{totalCount}</StatValue>
-            <StatLabel>Total</StatLabel>
+            <StatLabel>{t('common:label.total')}</StatLabel>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{pendingCount}</StatValue>
-            <StatLabel>Pending</StatLabel>
+            <StatLabel>{t('supplierInvitations.status.pending')}</StatLabel>
           </StatCard>
           <StatCard color="#059669">
             <StatValue>{usedCount}</StatValue>
-            <StatLabel>Used</StatLabel>
+            <StatLabel>{t('supplierInvitations.status.used')}</StatLabel>
           </StatCard>
           <StatCard color="#6B7280">
             <StatValue>{inactiveCount}</StatValue>
-            <StatLabel>Expired / Revoked</StatLabel>
+            <StatLabel>{t('admin:ui.supplierInvitations.expiredRevoked')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -384,9 +384,9 @@ const SupplierInvitationsPage: React.FC = () => {
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
           >
-            <option value="">All Status</option>
+            <option value="">{t('admin:plansPage.allStatus')}</option>
             {STATUS_OPTIONS.map(o => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>{t(`supplierInvitations.status.${o.value}`, o.label)}</option>
             ))}
           </FilterSelect>
         </FiltersContainer>
@@ -395,14 +395,14 @@ const SupplierInvitationsPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell align="left">Email</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">Suggested Name</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">Inviter</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">Plan</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Status</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">Expires</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">Used By</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">Actions</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:label.email')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:tableCol.suggestedName')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:tableCol.inviter')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:tableCol.plan')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:label.status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:tableCol.expires')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:tableCol.usedBy')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('common:label.actions')}</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>
@@ -412,30 +412,30 @@ const SupplierInvitationsPage: React.FC = () => {
                 const isCopied = copiedKey === copyKey;
                 return (
                   <DataTableRow key={inv.id}>
-                    <DataTableCell data-label="Email">
+                    <DataTableCell data-label={t('supplierInvitations.fields.email')}>
                       <strong>{inv.email}</strong>
                     </DataTableCell>
-                    <DataTableCell data-label="Suggested Name">
+                    <DataTableCell data-label={t('common:tableCol.suggestedName')}>
                       {inv.supplier_name || <span style={{ color: '#6B7280' }}>—</span>}
                     </DataTableCell>
-                    <DataTableCell data-label="Inviter">
+                    <DataTableCell data-label={t('common:tableCol.inviter')}>
                       {inv.inviter ? (inv.inviter.full_name || inv.inviter.email) : '—'}
                     </DataTableCell>
-                    <DataTableCell data-label="Plan">
+                    <DataTableCell data-label={t('common:tableCol.plan')}>
                       {inv.plan ? (inv.plan.display_name || inv.plan.name) : '—'}
                     </DataTableCell>
-                    <DataTableCell data-label="Status" align="center">
+                    <DataTableCell data-label={t('common:label.status')} align="center">
                       <DataTableStatus variant={statusVariant(inv.status)}>
-                        {STATUS_OPTIONS.find(o => o.value === inv.status)?.label || inv.status}
+                        {t(`supplierInvitations.status.${inv.status}`, STATUS_OPTIONS.find(o => o.value === inv.status)?.label || inv.status)}
                       </DataTableStatus>
                     </DataTableCell>
-                    <DataTableCell data-label="Expires" align="center">
+                    <DataTableCell data-label={t('common:tableCol.expires')} align="center">
                       {inv.expires_at ? formatDateTime(inv.expires_at, null) : '—'}
                     </DataTableCell>
-                    <DataTableCell data-label="Used By">
+                    <DataTableCell data-label={t('common:tableCol.usedBy')}>
                       {inv.usedBy ? (inv.usedBy.full_name || inv.usedBy.email) : '—'}
                     </DataTableCell>
-                    <DataTableCell data-label="Actions" align="right" mobileFullWidth>
+                    <DataTableCell data-label={t('common:label.actions')} align="right" mobileFullWidth>
                       <DataTableActions>
                         {inv.status === 'pending' && link && (
                           <InlineCopyBtn
@@ -562,7 +562,7 @@ const SupplierInvitationsPage: React.FC = () => {
             size="small"
             footer={
               <>
-                <ModalButton onClick={() => setConfirmRevokeId(null)}>Cancel</ModalButton>
+                <ModalButton onClick={() => setConfirmRevokeId(null)}>{t('common:button.cancel')}</ModalButton>
                 <ModalButton variant="danger" onClick={handleRevoke}>Revoke</ModalButton>
               </>
             }

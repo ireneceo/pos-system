@@ -40,6 +40,7 @@ import ApplyCreditModal from '../../components/Referral/ApplyCreditModal';
 import { renderIframeToPdf, renderHtmlDocumentsToPdf, INVOICE_PRINT_CSS } from '../../utils/invoicePdf';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 
 import { getAuthToken } from '../../utils/auth';
 import AlertDialog from '../../components/Common/AlertDialog';
@@ -240,6 +241,7 @@ const AutoBadge = styled.span`
 const StatusBadge = styled(CommonStatusBadge)`
   max-width: 100px;
   white-space: normal;
+  word-break: keep-all; /* 한국어 «대기중» 이 한 글자씩 세로로 쪼개지지 않게 — 띄어쓰기에서만 줄바꿈 */
   line-height: 1.3;
   text-align: center;
 `;
@@ -721,14 +723,14 @@ const RestaurantInvoicesPage: React.FC = () => {
 
   const getStatusDisplay = (status: string) => {
     const statusMap: { [key: string]: string } = {
-      'draft': 'Draft',
-      'pending_payment': 'Pending',
-      'payment_submitted': 'Confirming',
-      'paid': 'Paid',
-      'overdue': 'Overdue',
-      'cancelled': 'Cancelled'
+      'draft': statusLabel(t, 'draft'),
+      'pending_payment': statusLabel(t, 'pending'),
+      'payment_submitted': statusLabel(t, 'confirming'),
+      'paid': statusLabel(t, 'paid'),
+      'overdue': statusLabel(t, 'overdue'),
+      'cancelled': statusLabel(t, 'cancelled')
     };
-    return statusMap[status] || status;
+    return statusMap[status] || statusLabel(t, status);
   };
 
   // Filter invoices based on search and date
@@ -1202,7 +1204,7 @@ const RestaurantInvoicesPage: React.FC = () => {
   // Render table
   const renderInvoiceTable = (invoices: Invoice[], showPayButton: boolean = false) => (
     <DataTableContainer>
-      <DataTable>
+      <DataTable data-card-upto="1280">
         <DataTableHead>
           <tr>
             <DataTableHeaderCell align="left">{t('settings:invoicesPage.invoice')}</DataTableHeaderCell>
@@ -1220,7 +1222,7 @@ const RestaurantInvoicesPage: React.FC = () => {
           {invoices.length > 0 ? (
             invoices.map(invoice => (
               <DataTableRow key={invoice.id}>
-                <DataTableCell data-label="Invoice" align="left">
+                <DataTableCell data-label={t('settings:invoicesPage.invoice')} align="left">
                   <InvoiceInfo>
                     <InvoiceNumber>
                       {invoice.invoiceCategory === 'soa' && (
@@ -1232,7 +1234,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                         }}>SOA</span>
                       )}
                       {invoice.invoiceNumber}
-                      {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{t('settings:invoicesPage.auto')}</AutoBadge>}
+                      {invoice.type === 'automatic' && <AutoBadge style={{ marginLeft: '6px' }}>{statusLabel(t, 'auto')}</AutoBadge>}
                     </InvoiceNumber>
                     <CompanyName>
                       {invoice.invoiceCategory === 'soa'
@@ -1241,7 +1243,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                     </CompanyName>
                   </InvoiceInfo>
                 </DataTableCell>
-                <DataTableCell data-label="Issuer" align="left">
+                <DataTableCell data-label={t('settings:invoicesPage.issuer')} align="left">
                   <InvoiceInfo>
                     <InvoiceNumber>
                       {invoice.issuerName || (invoice.issuerType === 'system_admin' ? 'System Admin' : invoice.issuerType === 'brand' ? 'Brand' : invoice.issuerType === 'supplier' ? 'Supplier' : 'Foodcourt')}
@@ -1286,33 +1288,33 @@ const RestaurantInvoicesPage: React.FC = () => {
                     )}
                   </InvoiceInfo>
                 </DataTableCell>
-                <DataTableCell data-label="Period" align="center" style={{ fontSize: '12px' }}>
+                <DataTableCell data-label={t('settings:invoicesPage.period')} align="center" style={{ fontSize: '12px' }}>
                   {/* 구입 청구서에는 «기간» 이 없다 — 발주일 / 수령일 (2026-09-11 §8-3 C-4 · Irene 「발주한 날자랑 받은 날짜」) */}
                   {invoice.invoiceCategory === 'trade' && invoice.purchaseOrderId ? (
                     <TradeInvoiceDates variant="cell" orderedAt={invoice.poOrderedAt} receivedAt={invoice.poReceivedAt} formatDate={formatDate} />
                   ) : (invoice.billingPeriod || '-')}
                 </DataTableCell>
-                <DataTableCell data-label="Issued" align="center" style={{ fontSize: '13px' }}>
+                <DataTableCell data-label={t('settings:invoicesPage.issued')} align="center" style={{ fontSize: '13px' }}>
                   {formatDate(invoice.issueDate)}
                 </DataTableCell>
-                <DataTableCell data-label="Due" align="center" style={{ fontSize: '13px' }}>
+                <DataTableCell data-label={t('settings:invoicesPage.due')} align="center" style={{ fontSize: '13px' }}>
                   {formatDate(invoice.dueDate)}
                 </DataTableCell>
-                <DataTableCell data-label="Status" align="center">
+                <DataTableCell data-label={t('settings:invoicesPage.status')} align="center">
                   <StatusBadge status={getEffectiveStatus(invoice)}>
                     {getStatusDisplay(getEffectiveStatus(invoice))}
                   </StatusBadge>
                 </DataTableCell>
-                <DataTableCell data-label="Amount" align="right">
+                <DataTableCell data-label={t('settings:invoicesPage.amount')} align="right">
                   <DataTableAmount>{formatCurrency(invoice.amount, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
-                <DataTableCell data-label="Total" align="right">
+                <DataTableCell data-label={t('settings:invoicesPage.total')} align="right">
                   <DataTableAmount highlight>{Number(invoice.total) === 0 ? <span style={{ color: '#10B981', fontWeight: 600 }}>{t('settings:invoicesPage.free')}</span> : formatCurrency(invoice.total, invoice.currency || 'MYR')}</DataTableAmount>
                 </DataTableCell>
                 <DataTableCell data-label="" mobileFullWidth>
                   <InvoiceActionButtons>
                     <LocalActionButton variant="primary" onClick={() => handleViewInvoice(invoice)}>
-                      View
+                      {t('common:ui.action.view')}
                     </LocalActionButton>
 
                     {/* Pay button — hidden if invoice is bundled into a SOA (parent_soa_invoice_id) → pay via SOA only */}
@@ -1331,7 +1333,7 @@ const RestaurantInvoicesPage: React.FC = () => {
                         />
                       ) : (
                         <LocalActionButton variant="success" onClick={() => handlePayInvoice(invoice)}>
-                          {invoice.invoiceCategory === 'soa' ? 'Pay All' : 'Pay'}
+                          {invoice.invoiceCategory === 'soa' ? t('common:ui.action.payAll') : t('common:ui.action.pay')}
                         </LocalActionButton>
                       )
                     )}
@@ -1441,10 +1443,10 @@ const RestaurantInvoicesPage: React.FC = () => {
           {/* Tabs */}
           <Tabs>
             <CommonTab active={activeTab === 'to_pay'} onClick={() => handleTabChange('to_pay')}>
-              Invoices to Pay<TabBadge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue' || i.status === 'payment_submitted').length} variant="warning" />
+              {t('settings:ui.invoices.toPayTab')}<TabBadge count={invoicesToPay.filter(i => i.status === 'pending_payment' || i.status === 'overdue' || i.status === 'payment_submitted').length} variant="warning" />
             </CommonTab>
             <CommonTab active={activeTab === 'all'} onClick={() => handleTabChange('all')}>
-              All Invoices<TabBadge count={allInvoices.length} />
+              {t('settings:ui.invoices.allTab')}<TabBadge count={allInvoices.length} />
             </CommonTab>
           </Tabs>
 
@@ -1457,7 +1459,7 @@ const RestaurantInvoicesPage: React.FC = () => {
             onCalendarRangeSelect={handleCalendarRangeSelect}
           >
             <SearchInput
-              placeholder="Search invoice, issuer, status..."
+              placeholder={t('settings:ui.invoices.searchPh')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />

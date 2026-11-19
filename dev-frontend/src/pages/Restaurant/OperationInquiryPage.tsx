@@ -10,6 +10,7 @@ import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 import { FilterBar, FilterSelect, SearchInput } from '../../components/Common/FilterComponents';
 
 
@@ -523,7 +524,7 @@ const OperationInquiryPage: React.FC = () => {
           </Tabs>
           <FilterBar>
             <SearchInput
-              placeholder="Search inquiries..."
+              placeholder={t('common:ui.search.inquiries')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -555,8 +556,8 @@ const OperationInquiryPage: React.FC = () => {
                     <ManagerInfo>Manager: {ticket.managerName}</ManagerInfo>
                   </TicketInfo>
                   <TicketBadges>
-                    <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
-                    <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
+                    <StatusBadge status={ticket.status}>{statusLabel(t, ticket.status)}</StatusBadge>
+                    <PriorityBadge priority={ticket.priority}>{statusLabel(t, ticket.priority)}</PriorityBadge>
                     {unreadCounts[ticket.id]?.unread_count > 0 ? (
                       <span style={{ background: '#EF4444', color: 'white', borderRadius: '6px', padding: '3px 10px', fontSize: '11px', fontWeight: 700, animation: 'pulse 1.5s infinite' }}>
                         New Reply
@@ -578,7 +579,7 @@ const OperationInquiryPage: React.FC = () => {
                   </MetaItem>
                   <MetaItem>
                     <MetaLabel>{t('settings:operationInquiryPage.category')}</MetaLabel>
-                    <MetaValue>{ticket.category}</MetaValue>
+                    <MetaValue>{statusLabel(t, ticket.category)}</MetaValue>
                   </MetaItem>
                   {unreadCounts[ticket.id]?.total_comments > 0 && (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -618,9 +619,9 @@ const OperationInquiryPage: React.FC = () => {
                   <div style={{ marginBottom: '16px' }}>
                     <div style={{ fontSize: '18px', fontWeight: 600, color: '#0A2540', marginBottom: '8px', wordBreak: 'break-word' }}>{selectedTicket.subject}</div>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
-                      <StatusBadge status={selectedTicket.status}>{selectedTicket.status}</StatusBadge>
-                      <PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge>
-                      <span style={{ fontSize: '12px', color: '#4B5563', padding: '4px 12px', background: '#F1F4F8', borderRadius: '6px' }}>{selectedTicket.category}</span>
+                      <StatusBadge status={selectedTicket.status}>{statusLabel(t, selectedTicket.status)}</StatusBadge>
+                      <PriorityBadge priority={selectedTicket.priority}>{statusLabel(t, selectedTicket.priority)}</PriorityBadge>
+                      <span style={{ fontSize: '12px', color: '#4B5563', padding: '4px 12px', background: '#F1F4F8', borderRadius: '6px' }}>{statusLabel(t, selectedTicket.category)}</span>
                     </div>
                     <div style={{ fontSize: '13px', color: '#4B5563' }}>
                       To: {selectedTicket.managerName} · {formatDateTime(selectedTicket.createdAt)}
@@ -687,7 +688,7 @@ const OperationInquiryPage: React.FC = () => {
                       type="text"
                       value={newTicket.subject}
                       onChange={(e) => setNewTicket({...newTicket, subject: e.target.value})}
-                      placeholder="Brief description of your inquiry"
+                      placeholder={t('common:ui.inquiry.subjectPh')}
                       required
                     />
                   </FormGroup>
@@ -696,7 +697,7 @@ const OperationInquiryPage: React.FC = () => {
                     <FormTextArea
                       value={newTicket.description}
                       onChange={(e) => setNewTicket({...newTicket, description: e.target.value})}
-                      placeholder="Detailed description of your inquiry..."
+                      placeholder={t('common:ui.inquiry.detailPh')}
                       rows={4}
                       required
                     />

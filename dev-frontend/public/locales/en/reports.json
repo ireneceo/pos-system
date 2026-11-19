@@ -206,5 +206,17 @@
     "staffMealSpend": "Staff meal cost",
     "regularSpend": "Regular purchases",
     "staffMeal": "Staff meal"
-  }
+  },
+  "ui.reports.salesReport": "Sales Report",
+  "ui.reports.salesDetails": "Sales Details",
+  "ui.reports.paymentAnalysis": "Payment Analysis",
+  "ui.reports.menuAnalysis": "Menu Analysis",
+  "ui.reports.customerInsights": "Customer Insights",
+  "ui.reports.operations": "Operations",
+  "reportsPage.customerInsights": "Customer Insights",
+  "reportsPage.menuAnalysis": "Menu Analysis",
+  "reportsPage.operations": "Operations",
+  "reportsPage.paymentAnalysis": "Payment Analysis",
+  "reportsPage.salesDetails": "Sales Details",
+  "reportsPage.salesReport": "Sales Report"
 }

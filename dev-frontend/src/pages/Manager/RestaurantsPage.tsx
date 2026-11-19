@@ -15,6 +15,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import DateRangeField from '../../components/Common/DateRangeField';
 import { AddressFields } from '../../components/Form';
 import type { Address } from '../../utils/formatAddress';
+import { statusLabel } from '../../utils/statusLabel';
 import { useTranslation } from 'react-i18next';
 import BillingTermsModal, { formatTermsSummary } from '../../components/Billing/BillingTermsModal';
 import type { PaymentTerms } from '../../components/Billing/BillingTermsModal';
@@ -1696,7 +1697,7 @@ const ManagerRestaurantsPage: React.FC = () => {
             <DropdownContainer>
               <DropdownInput
                 type="text"
-                placeholder="Search brands..."
+                placeholder={t('common:ui.managerRestaurants.searchBrandsPh')}
                 value={filterBrandSearchQuery}
                 onChange={(e) => handleFilterBrandSearch(e.target.value)}
                 onFocus={() => {
@@ -1742,7 +1743,7 @@ const ManagerRestaurantsPage: React.FC = () => {
               <option value="cancelled">{t('admin:restaurantsPage.cancelled')}</option>
             </PageFilterSelect>
             <PageSearchInput
-              placeholder="Search restaurants..."
+              placeholder={t('common:ui.managerRestaurants.searchRestaurantsPh')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -1756,7 +1757,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                     <RestaurantName>{restaurant.name} {restaurant.branchName && <BranchBadge>{restaurant.branchName}</BranchBadge>}{restaurant.currency && <span style={{ fontSize: '11px', fontWeight: 500, color: '#635BFF', background: '#F0EDFF', padding: '1px 6px', borderRadius: '4px', marginLeft: '6px', verticalAlign: 'middle' }}>{getCurrencySymbol(restaurant.currency)}</span>}</RestaurantName>
                     {restaurant.brand_id && (
                       <RestaurantMeta style={{ fontWeight: '600', color: '#635BFF' }}>
-                        {brands.find(b => b.id === restaurant.brand_id)?.name || 'Brand'}
+                        {brands.find(b => b.id === restaurant.brand_id)?.name || t('common:label.brand')}
                       </RestaurantMeta>
                     )}
                     <RestaurantMeta>{restaurant.location} • {restaurant.cuisine}</RestaurantMeta>
@@ -1764,7 +1765,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                     <div>
                       <StatusBadge status={restaurant.status}>
-                        {restaurant.status}
+                        {statusLabel(t, restaurant.status)}
                       </StatusBadge>
                       <PlanBadge plan={restaurant.plan}>
                         {restaurant.plan}
@@ -1774,7 +1775,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                           $bg={CONTRACT_STAGE_PALETTE[(restaurant as any).contract_summary.stage].bg}
                           $text={CONTRACT_STAGE_PALETTE[(restaurant as any).contract_summary.stage].text}
                         >
-                          {CONTRACT_STAGE_PALETTE[(restaurant as any).contract_summary.stage].label}
+                          {t(`contract:stages.${(restaurant as any).contract_summary.stage}`, { defaultValue: CONTRACT_STAGE_PALETTE[(restaurant as any).contract_summary.stage].label })}
                         </ContractBadge>
                       )}
                     </div>
@@ -1881,7 +1882,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   <FormLabel>Restaurant Name *</FormLabel>
                   <FormInput
                     type="text"
-                    placeholder="Enter restaurant name"
+                    placeholder={t('common:ui.managerRestaurants.namePh')}
                     value={newRestaurant.name}
                     onChange={(e) => setNewRestaurant({...newRestaurant, name: e.target.value})}
                   />
@@ -2236,7 +2237,7 @@ const ManagerRestaurantsPage: React.FC = () => {
                   <FormLabel>Restaurant Name *</FormLabel>
                   <FormInput
                     type="text"
-                    placeholder="Enter restaurant name"
+                    placeholder={t('common:ui.managerRestaurants.namePh')}
                     value={newRestaurant.name}
                     onChange={(e) => setNewRestaurant({...newRestaurant, name: e.target.value})}
                   />

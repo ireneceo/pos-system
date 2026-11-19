@@ -126,9 +126,9 @@ const PushPreferencesCard: React.FC = () => {
 
   return (
     <div style={{ background: '#fff', border: '1px solid #C7CED6', borderRadius: 12, padding: 24 }}>
-      <Section title="Push notifications">
+      <Section title={t('notifications:ui.push.title')}>
         <Row
-          label="Enable push notifications on this device"
+          label={t('notifications:ui.push.enable')}
           desc={permission === 'denied'
             ? 'Browser permission is blocked. Re-enable in your browser settings, then toggle this on.'
             : 'Receive OS-level alerts when you are not actively viewing the app.'}
@@ -195,9 +195,9 @@ const PushPreferencesCard: React.FC = () => {
         </Section>
       )}
 
-      <Section title="Muted hours">
+      <Section title={t('notifications:ui.push.muted')}>
         <Row
-          label="Suppress push during quiet hours"
+          label={t('notifications:ui.push.suppress')}
           desc="In-app alerts and sound continue; only OS-level push is paused."
           right={
             <input
@@ -211,7 +211,7 @@ const PushPreferencesCard: React.FC = () => {
         />
         {prefs?.muted_hours?.enabled && (
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 12 }}>
-            <label style={{ fontSize: 13, color: '#4B5563' }}>From</label>
+            <label style={{ fontSize: 13, color: '#4B5563' }}>{t('common:time.from')}</label>
             <select
               value={prefs.muted_hours.start}
               onChange={(e) => handleMutedChange({ start: parseInt(e.target.value, 10) })}
@@ -219,7 +219,7 @@ const PushPreferencesCard: React.FC = () => {
             >
               {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{String(h).padStart(2, '0')}:00</option>)}
             </select>
-            <label style={{ fontSize: 13, color: '#4B5563' }}>To</label>
+            <label style={{ fontSize: 13, color: '#4B5563' }}>{t('common:time.to')}</label>
             <select
               value={prefs.muted_hours.end}
               onChange={(e) => handleMutedChange({ end: parseInt(e.target.value, 10) })}

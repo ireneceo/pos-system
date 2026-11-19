@@ -30,6 +30,8 @@ import DateRangeField from '../../components/Common/DateRangeField';
 import SubscriptionFormFields, { type SubscriptionValues, type UserType as SubUserType, type BillingCycle, type PaymentModel, type DiscountType } from '../../components/Subscription/SubscriptionFormFields';
 import { getPlanPrice, formatPlanPrice, normalizeCurrencyCode, formatCurrency, getActivePlanCurrencies, getCurrencySymbol } from '../../utils/currency';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
 interface RestaurantSubscription {
@@ -1143,7 +1145,7 @@ const SubscriptionsPage: React.FC = () => {
           <FilterBar>
 
             <SearchInput
-              placeholder="Search subscriptions..."
+              placeholder={t('admin:ui.subscriptions.searchPh')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -1200,13 +1202,13 @@ const SubscriptionsPage: React.FC = () => {
                             color: (subscription as any).entityType === 'brand' ? '#7C3AED' : (subscription as any).entityType === 'foodcourt' ? '#059669' : '#D97706',
                             background: (subscription as any).entityType === 'brand' ? '#EDE9FE' : (subscription as any).entityType === 'foodcourt' ? '#D1FAE5' : '#FEF3C7'
                           }}>
-                            {(subscription as any).entityType === 'brand' ? 'Brand' : (subscription as any).entityType === 'foodcourt' ? 'Foodcourt' : 'Owner'}
+                            {(subscription as any).entityType === 'brand' ? t('common:label.brand') : (subscription as any).entityType === 'foodcourt' ? t('common:label.foodcourt') : t('common:label.owner')}
                           </span>
                         )}
                       </RestaurantName>
                       <RestaurantMeta>
                         {(subscription as any).userRole
-                          ? `${(subscription as any).userRole} • ${subscription.managerName}`
+                          ? `${getRoleDisplayName((subscription as any).userRole, t)} • ${subscription.managerName}`
                           : subscription.managerName}
                         {subscription.location ? ` • ${subscription.location}` : ''}
                       </RestaurantMeta>
@@ -1216,14 +1218,14 @@ const SubscriptionsPage: React.FC = () => {
                   <MobileValue>
                     <MobileLabel>{t('admin:subscriptionsPage.plan')}</MobileLabel>
                     <PlanBadge planType={subscription.planType}>
-                      {subscription.planType.charAt(0).toUpperCase() + subscription.planType.slice(1)}
+                      {subscription.planType === 'custom' ? t('admin:systemProductManagementPage.custom') : subscription.planType.charAt(0).toUpperCase() + subscription.planType.slice(1)}
                     </PlanBadge>
                   </MobileValue>
 
                   <MobileValue>
                     <MobileLabel>{t('admin:subscriptionsPage.status')}</MobileLabel>
                     <StatusBadge status={subscription.status}>
-                      {subscription.status.charAt(0).toUpperCase() + subscription.status.slice(1)}
+                      {statusLabel(t, subscription.status)}
                     </StatusBadge>
                   </MobileValue>
 
@@ -1754,7 +1756,7 @@ const SubscriptionsPage: React.FC = () => {
                         <div style={{marginBottom: '12px'}}>
                           <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('admin:subscriptionsPage.planType')}</div>
                           <div style={{fontSize: '14px', fontWeight: '500', color: '#0A2540'}}>
-                            {viewingSubscription.planType.charAt(0).toUpperCase() + viewingSubscription.planType.slice(1)}
+                            {viewingSubscription.planType === 'custom' ? t('admin:systemProductManagementPage.custom') : viewingSubscription.planType.charAt(0).toUpperCase() + viewingSubscription.planType.slice(1)}
                           </div>
                         </div>
                         <div style={{marginBottom: '12px'}}>
@@ -1769,7 +1771,7 @@ const SubscriptionsPage: React.FC = () => {
                               background: viewingSubscription.status === 'active' ? '#DCFCE7' : '#FEF3C7',
                               color: viewingSubscription.status === 'active' ? '#15803D' : '#92400E'
                             }}>
-                              {viewingSubscription.status.charAt(0).toUpperCase() + viewingSubscription.status.slice(1)}
+                              {statusLabel(t, viewingSubscription.status)}
                             </span>
                           </div>
                         </div>

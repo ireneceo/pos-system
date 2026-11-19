@@ -10,6 +10,7 @@ import { useTabParam } from '../../hooks/useTabParam';
 import CommentSection from '../../components/Common/CommentSection';
 import AttachmentList from '../../components/Common/AttachmentList';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
@@ -502,7 +503,7 @@ const OperationInquiryPage: React.FC = () => {
 
           <FilterBar>
             <SearchInput
-              placeholder="Search inquiries..."
+              placeholder={t('common:ui.search.inquiries')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -525,12 +526,12 @@ const OperationInquiryPage: React.FC = () => {
                     <TicketMeta>
                       <span>Restaurant: {ticket.restaurantName}</span>
                       <span>From: {ticket.requesterName}</span>
-                      <span>Category: {ticket.category}</span>
+                      <span>{t('common:ui.inquiry.categoryPrefix')} {statusLabel(t, ticket.category)}</span>
                     </TicketMeta>
                   </TicketInfo>
                   <BadgeContainer>
-                    <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
-                    <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
+                    <StatusBadge status={ticket.status}>{statusLabel(t, ticket.status)}</StatusBadge>
+                    <PriorityBadge priority={ticket.priority}>{statusLabel(t, ticket.priority)}</PriorityBadge>
                   </BadgeContainer>
                 </TicketHeader>
 
@@ -572,7 +573,7 @@ const OperationInquiryPage: React.FC = () => {
                       }}
                       style={{ marginLeft: 'auto' }}
                     >
-                      Close
+                      {t('common:button.close')}
                     </CloseTicketButton>
                   )}
                 </TicketFooter>
@@ -610,11 +611,11 @@ const OperationInquiryPage: React.FC = () => {
                     </InfoRow>
                     <InfoRow>
                       <InfoLabel>Priority:</InfoLabel>
-                      <InfoValue><PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge></InfoValue>
+                      <InfoValue><PriorityBadge priority={selectedTicket.priority}>{statusLabel(t, selectedTicket.priority)}</PriorityBadge></InfoValue>
                     </InfoRow>
                     <InfoRow>
                       <InfoLabel>Category:</InfoLabel>
-                      <InfoValue>{selectedTicket.category}</InfoValue>
+                      <InfoValue>{statusLabel(t, selectedTicket.category)}</InfoValue>
                     </InfoRow>
                     <InfoRow>
                       <InfoLabel>Created:</InfoLabel>

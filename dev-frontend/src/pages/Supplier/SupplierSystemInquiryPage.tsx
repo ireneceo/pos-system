@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { Tabs, Tab, Badge } from '../../components/Common/TabComponents';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
@@ -448,7 +449,7 @@ const SupplierSystemInquiryPage: React.FC = () => {
         <Title>{t('menu.systemInquiry', 'System Inquiry')}</Title>
         <ActionSection>
           <Button variant="primary" onClick={() => setShowCreateModal(true)}>
-            Create Ticket
+            {t('common:ui.inquiry.createTicket')}
           </Button>
         </ActionSection>
       </Header>
@@ -456,19 +457,19 @@ const SupplierSystemInquiryPage: React.FC = () => {
         <StatsGrid>
           <StatCard color="#059669">
             <StatValue>{totalTickets}</StatValue>
-            <StatLabel>Total Tickets</StatLabel>
+            <StatLabel>{t('common:systemInquiryPage.totalTickets')}</StatLabel>
           </StatCard>
           <StatCard color="#D97706">
             <StatValue>{openTickets}</StatValue>
-            <StatLabel>Open</StatLabel>
+            <StatLabel>{t('common:systemInquiryPage.open')}</StatLabel>
           </StatCard>
           <StatCard color="#2563EB">
             <StatValue>{inProgressTickets}</StatValue>
-            <StatLabel>In Progress</StatLabel>
+            <StatLabel>{t('common:systemInquiryPage.inProgress')}</StatLabel>
           </StatCard>
           <StatCard color="#7C3AED">
             <StatValue>{resolvedTickets}</StatValue>
-            <StatLabel>Resolved</StatLabel>
+            <StatLabel>{t('common:systemInquiryPage.resolved')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -482,24 +483,24 @@ const SupplierSystemInquiryPage: React.FC = () => {
         </Tabs>
         <FilterBar>
           <SearchInput
-            placeholder="Search tickets..."
+            placeholder={t('common:ui.search.tickets')}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
           />
           <FilterSelect value={filterPriority} onChange={e => setFilterPriority(e.target.value)}>
-            <option value="all">All Priority</option>
-            <option value="urgent">Urgent</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
+            <option value="all">{t('common:systemInquiryPage.allPriority')}</option>
+            <option value="urgent">{statusLabel(t, 'urgent')}</option>
+            <option value="high">{statusLabel(t, 'high')}</option>
+            <option value="medium">{statusLabel(t, 'medium')}</option>
+            <option value="low">{statusLabel(t, 'low')}</option>
           </FilterSelect>
           <FilterSelect value={filterCategory} onChange={e => setFilterCategory(e.target.value)}>
-            <option value="all">All Categories</option>
-            <option value="technical">Technical</option>
-            <option value="billing">Billing</option>
-            <option value="feature-request">Feature Request</option>
-            <option value="bug-report">Bug Report</option>
-            <option value="general">General</option>
+            <option value="all">{t('common:systemInquiryPage.allCategories')}</option>
+            <option value="technical">{statusLabel(t, 'technical')}</option>
+            <option value="billing">{statusLabel(t, 'billing')}</option>
+            <option value="feature-request">{statusLabel(t, 'feature-request')}</option>
+            <option value="bug-report">{statusLabel(t, 'bug-report')}</option>
+            <option value="general">{statusLabel(t, 'general')}</option>
           </FilterSelect>
         </FilterBar>
 
@@ -512,8 +513,8 @@ const SupplierSystemInquiryPage: React.FC = () => {
                   <TicketSubject>{ticket.subject}</TicketSubject>
                 </TicketInfo>
                 <TicketBadges>
-                  <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
-                  <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
+                  <StatusBadge status={ticket.status}>{statusLabel(t, ticket.status)}</StatusBadge>
+                  <PriorityBadge priority={ticket.priority}>{statusLabel(t, ticket.priority)}</PriorityBadge>
                 </TicketBadges>
               </TicketHeader>
 
@@ -521,13 +522,13 @@ const SupplierSystemInquiryPage: React.FC = () => {
 
               <TicketMeta>
                 <MetaItem>
-                  <MetaLabel>Created</MetaLabel>
+                  <MetaLabel>{t('common:systemInquiryPage.created')}</MetaLabel>
                   <MetaValue>{formatDateTime(ticket.createdAt)}</MetaValue>
                 </MetaItem>
                 <MetaItem>
-                  <MetaLabel>Category</MetaLabel>
+                  <MetaLabel>{t('common:systemInquiryPage.category')}</MetaLabel>
                   <MetaValue style={{ textTransform: 'capitalize' }}>
-                    {ticket.category.replace('-', ' ')}
+                    {statusLabel(t, ticket.category)}
                   </MetaValue>
                 </MetaItem>
                 {unreadCounts[ticket.id] && (
@@ -560,7 +561,7 @@ const SupplierSystemInquiryPage: React.FC = () => {
               color: '#4B5563',
               gridColumn: '1 / -1'
             }}>
-              <h3 style={{ color: '#1F2937', margin: '0 0 4px', fontSize: 14, fontWeight: 600 }}>No tickets yet</h3>
+              <h3 style={{ color: '#1F2937', margin: '0 0 4px', fontSize: 14, fontWeight: 600 }}>{t('common:systemInquiryPage.noTicketsYet')}</h3>
               <p style={{ margin: 0, fontSize: 14 }}>Click "Create Ticket" to submit your first support inquiry.</p>
             </div>
           )}
@@ -571,18 +572,18 @@ const SupplierSystemInquiryPage: React.FC = () => {
           <CommonModal
             isOpen={true}
             onClose={() => setShowCreateModal(false)}
-            title="Create System Inquiry"
+            title={t('common:ui.inquiry.newSystemInquiry')}
             footer={
               <>
                 <Button variant="secondary" onClick={() => setShowCreateModal(false)}>
-                  Cancel
+                  {t('common:button.cancel')}
                 </Button>
                 <Button
                   variant="primary"
                   onClick={handleSubmitTicket}
                   disabled={!newTicket.subject || !newTicket.description}
                 >
-                  Create Ticket
+                  {t('common:ui.inquiry.createTicket')}
                 </Button>
               </>
             }
@@ -593,7 +594,7 @@ const SupplierSystemInquiryPage: React.FC = () => {
                 type="text"
                 value={newTicket.subject}
                 onChange={e => setNewTicket({ ...newTicket, subject: e.target.value })}
-                placeholder="Enter ticket subject"
+                placeholder={t('common:ui.inquiry.ticketSubjectPh')}
               />
             </FormGroup>
             <FormGroup>
@@ -601,42 +602,42 @@ const SupplierSystemInquiryPage: React.FC = () => {
               <FormTextArea
                 value={newTicket.description}
                 onChange={e => setNewTicket({ ...newTicket, description: e.target.value })}
-                placeholder="Describe the issue or request in detail..."
+                placeholder={t('common:ui.inquiry.ticketDetailPh')}
                 rows={4}
               />
             </FormGroup>
             <FormGroup>
-              <FormLabel>Attachments</FormLabel>
+              <FormLabel>{t('common:systemInquiryPage.attachments')}</FormLabel>
               <FileUpload files={newAttachments} onChange={setNewAttachments} maxFiles={5} />
             </FormGroup>
             <FormRow>
               <FormGroup>
-                <FormLabel>Priority</FormLabel>
+                <FormLabel>{t('common:systemInquiryPage.priority')}</FormLabel>
                 <FormSelect
                   value={newTicket.priority}
                   onChange={e =>
                     setNewTicket({ ...newTicket, priority: e.target.value as SupportTicket['priority'] })
                   }
                 >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="low">{statusLabel(t, 'low')}</option>
+                  <option value="medium">{statusLabel(t, 'medium')}</option>
+                  <option value="high">{statusLabel(t, 'high')}</option>
+                  <option value="urgent">{statusLabel(t, 'urgent')}</option>
                 </FormSelect>
               </FormGroup>
               <FormGroup>
-                <FormLabel>Category</FormLabel>
+                <FormLabel>{t('common:systemInquiryPage.category')}</FormLabel>
                 <FormSelect
                   value={newTicket.category}
                   onChange={e =>
                     setNewTicket({ ...newTicket, category: e.target.value as SupportTicket['category'] })
                   }
                 >
-                  <option value="general">General</option>
-                  <option value="technical">Technical</option>
-                  <option value="billing">Billing</option>
-                  <option value="feature-request">Feature Request</option>
-                  <option value="bug-report">Bug Report</option>
+                  <option value="general">{statusLabel(t, 'general')}</option>
+                  <option value="technical">{statusLabel(t, 'technical')}</option>
+                  <option value="billing">{statusLabel(t, 'billing')}</option>
+                  <option value="feature-request">{statusLabel(t, 'feature-request')}</option>
+                  <option value="bug-report">{statusLabel(t, 'bug-report')}</option>
                 </FormSelect>
               </FormGroup>
             </FormRow>
@@ -648,12 +649,12 @@ const SupplierSystemInquiryPage: React.FC = () => {
           <CommonModal
             isOpen={true}
             onClose={() => setShowViewModal(false)}
-            title="Inquiry Details"
+            title={t('common:ui.inquiry.inquiryDetails')}
             size="large"
             footer={
               selectedTicket.status !== 'closed' ? (
                 <Button variant="primary" onClick={handleCloseTicketFromModal}>
-                  Close Ticket
+                  {t('common:ui.inquiry.closeTicket')}
                 </Button>
               ) : undefined
             }
@@ -661,45 +662,45 @@ const SupplierSystemInquiryPage: React.FC = () => {
             <div style={{ display: 'grid', gap: '20px' }}>
               <FormGrid2>
                 <div>
-                  <FormLabel>Ticket Number</FormLabel>
+                  <FormLabel>{t('common:systemInquiryPage.ticketNumber')}</FormLabel>
                   <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: 600 }}>
                     {selectedTicket.ticketNumber}
                   </div>
                 </div>
                 <div>
-                  <FormLabel>Status</FormLabel>
+                  <FormLabel>{t('common:systemInquiryPage.status')}</FormLabel>
                   <div style={{ padding: '8px 0' }}>
-                    <StatusBadge status={selectedTicket.status}>{selectedTicket.status}</StatusBadge>
+                    <StatusBadge status={selectedTicket.status}>{statusLabel(t, selectedTicket.status)}</StatusBadge>
                   </div>
                 </div>
               </FormGrid2>
 
               <FormGrid2>
                 <div>
-                  <FormLabel>Priority</FormLabel>
+                  <FormLabel>{t('common:systemInquiryPage.priority')}</FormLabel>
                   <div style={{ padding: '8px 0' }}>
                     <PriorityBadge priority={selectedTicket.priority}>
-                      {selectedTicket.priority}
+                      {statusLabel(t, selectedTicket.priority)}
                     </PriorityBadge>
                   </div>
                 </div>
                 <div>
-                  <FormLabel>Category</FormLabel>
+                  <FormLabel>{t('common:systemInquiryPage.category')}</FormLabel>
                   <div style={{ padding: '8px 0', color: '#1F2937', textTransform: 'capitalize' }}>
-                    {selectedTicket.category.replace('-', ' ')}
+                    {statusLabel(t, selectedTicket.category)}
                   </div>
                 </div>
               </FormGrid2>
 
               <div>
-                <FormLabel>Subject</FormLabel>
+                <FormLabel>{t('common:systemInquiryPage.subject')}</FormLabel>
                 <div style={{ padding: '8px 0', color: '#0A2540', fontWeight: 600 }}>
                   {selectedTicket.subject}
                 </div>
               </div>
 
               <div>
-                <FormLabel>Description</FormLabel>
+                <FormLabel>{t('common:systemInquiryPage.description')}</FormLabel>
                 <div style={{
                   padding: '12px',
                   backgroundColor: '#F1F4F8',
@@ -720,13 +721,13 @@ const SupplierSystemInquiryPage: React.FC = () => {
 
               <FormGrid2>
                 <div>
-                  <FormLabel>Created At</FormLabel>
+                  <FormLabel>{t('common:ui.inquiry.createdAt')}</FormLabel>
                   <div style={{ padding: '8px 0', color: '#4B5563' }}>
                     {formatDateTime(selectedTicket.createdAt)}
                   </div>
                 </div>
                 <div>
-                  <FormLabel>Last Updated</FormLabel>
+                  <FormLabel>{t('common:ui.inquiry.lastUpdated')}</FormLabel>
                   <div style={{ padding: '8px 0', color: '#4B5563' }}>
                     {formatDateTime(selectedTicket.updatedAt)}
                   </div>

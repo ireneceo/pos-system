@@ -303,5 +303,8 @@
   "delivery": {
     "title": "Delivery",
     "editTitle": "Delivery terms"
-  }
+  },
+  "ui.customers.viewPendingContracts": "View Pending Contracts",
+  "ui.contracts.emptyHintPending": "When buyers send contract requests, they appear here for your approval.",
+  "ui.contracts.emptyHintActive": "Active contracts are buyers you currently supply to. Approve pending requests to start."
 }

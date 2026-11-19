@@ -13,6 +13,7 @@ import { usePlayApp } from '../../utils/playApp';
 import AutoSaveField from '../../components/Common/AutoSaveField';
 import EmailVerificationNotice from '../../components/Common/EmailVerificationNotice';
 import { useTranslation } from 'react-i18next';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDate as formatDateTz } from '../../utils/timezone';
@@ -755,7 +756,7 @@ const ProfilePage: React.FC = () => {
               <ProfileName>{currentUser.name} {dbUser && <span style={{fontSize: '12px', color: '#10B981', fontWeight: 'normal'}}>✓ DB</span>}</ProfileName>
               <ProfileRole>
                 <RoleBadge role={currentUser.role}>
-                  {currentUser.role}
+                  {getRoleDisplayName(currentUser.role, t)}
                 </RoleBadge>
                 <span style={{ fontSize: '14px', color: '#4B5563', textTransform: 'capitalize' }}>
                   {currentUser.department}
@@ -770,18 +771,18 @@ const ProfilePage: React.FC = () => {
 
           <Tabs>
             <Tab active={activeTab === 'profile'} onClick={() => handleTabChange('profile')}>
-              Personal Information
+              {t('admin:signupPage.personalInformation')}
             </Tab>
             {!playApp && ['Restaurant Admin', 'Brand General', 'Foodcourt General', 'Restaurant Owner'].includes(currentUser.role) && !dbUser?.is_demo && (
               <Tab active={activeTab === 'subscription'} onClick={() => handleTabChange('subscription')}>
-                Subscription
+                {t('supplier:dashboard.subscription')}
               </Tab>
             )}
             <Tab active={activeTab === 'schedule'} onClick={() => handleTabChange('schedule')}>
-              Work Schedule
+              {t('settings:ui.profile.workSchedule')}
             </Tab>
             <Tab active={activeTab === 'security'} onClick={() => handleTabChange('security')}>
-              Change Password
+              {t('settings:ui.profile.changePassword')}
             </Tab>
           </Tabs>
 
@@ -798,7 +799,7 @@ const ProfilePage: React.FC = () => {
                         onChange={(e) => {
                           handleInputChange('name', e.target.value);
                         }}
-                        placeholder="Enter full name"
+                        placeholder={t('settings:ui.profile.fullNamePh')}
                       />
                     </AutoSaveField>
                   </FormGroup>
@@ -806,7 +807,7 @@ const ProfilePage: React.FC = () => {
                     <Label>{t('settings:profilePage.role')}</Label>
                     <Input
                       type="text"
-                      value={currentUser.role}
+                      value={getRoleDisplayName(currentUser.role, t)}
                       disabled
                     />
                   </FormGroup>
@@ -817,7 +818,7 @@ const ProfilePage: React.FC = () => {
                         type="email"
                         value={formData.email || ''}
                         onChange={(e) => handleInputChange('email', e.target.value)}
-                        placeholder="Enter email address"
+                        placeholder={t('settings:ui.profile.emailPh')}
                       />
                     </AutoSaveField>
                     {/* 이 칸에서 주소를 바꾸면 서버가 email_verified 를 내리고 인증메일을 보낸다
@@ -860,7 +861,7 @@ const ProfilePage: React.FC = () => {
                           type="text"
                           value={formData.company_name || ''}
                           onChange={(e) => handleInputChange('company_name', e.target.value)}
-                          placeholder="Enter company name"
+                          placeholder={t('settings:ui.profile.companyPh')}
                         />
                       </AutoSaveField>
                     </FormGroup>
@@ -873,7 +874,7 @@ const ProfilePage: React.FC = () => {
                         type="text"
                         value={formData.department || ''}
                         onChange={(e) => handleInputChange('department', e.target.value)}
-                        placeholder="Enter department"
+                        placeholder={t('settings:ui.profile.departmentPh')}
                       />
                     </AutoSaveField>
                   </FormGroup>
@@ -963,7 +964,7 @@ const ProfilePage: React.FC = () => {
                         type={showCurrentPassword ? 'text' : 'password'}
                         value={passwordData.currentPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                        placeholder="Enter current password"
+                        placeholder={t('settings:ui.profile.currentPasswordPh')}
                         style={{ paddingRight: '42px' }}
                       />
                       <button type="button" onClick={() => setShowCurrentPassword(!showCurrentPassword)} tabIndex={-1}
@@ -981,7 +982,7 @@ const ProfilePage: React.FC = () => {
                         type={showNewPassword ? 'text' : 'password'}
                         value={passwordData.newPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                        placeholder="Min 8 chars, uppercase + lowercase + number"
+                        placeholder={t('settings:ui.profile.newPasswordPh')}
                         style={{ paddingRight: '42px' }}
                       />
                       <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} tabIndex={-1}
@@ -999,7 +1000,7 @@ const ProfilePage: React.FC = () => {
                         type={showConfirmPassword ? 'text' : 'password'}
                         value={passwordData.confirmPassword}
                         onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                        placeholder="Confirm new password"
+                        placeholder={t('settings:ui.profile.confirmPasswordPh')}
                         style={{ paddingRight: '42px' }}
                       />
                       <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} tabIndex={-1}
@@ -1042,7 +1043,7 @@ const ProfilePage: React.FC = () => {
 
                 <ButtonContainer>
                   <Button variant="primary" onClick={handlePasswordChange}>
-                    Change Password
+                    {t('settings:ui.profile.changePassword')}
                   </Button>
                 </ButtonContainer>
               </div>

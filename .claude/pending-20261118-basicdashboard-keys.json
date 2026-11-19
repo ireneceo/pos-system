@@ -1,0 +1,10 @@
+{"dashboard":{
+ "ui.basic.roleSystemAdmin":{"en":"You have full system access and can manage all managers, restaurants, and system settings.","ko":"시스템 전체에 접근해 모든 매니저·레스토랑·시스템 설정을 관리할 수 있습니다.","zh":"您拥有完整的系统权限，可管理所有经理、餐厅和系统设置。","ms":"Anda mempunyai akses penuh sistem dan boleh mengurus semua pengurus, restoran dan tetapan sistem."},
+ "ui.basic.roleManager":{"en":"You can manage multiple restaurants, view consolidated reports, and oversee operations.","ko":"여러 레스토랑을 관리하고 묶음 리포트를 보며 운영을 살필 수 있습니다.","zh":"您可以管理多家餐厅、查看汇总报告并监督运营。","ms":"Anda boleh mengurus beberapa restoran, melihat laporan gabungan dan memantau operasi."},
+ "ui.basic.roleRestaurantAdmin":{"en":"You can manage your restaurant, staff, menu, and access all POS functions.","ko":"레스토랑·직원·메뉴를 관리하고 POS 기능을 모두 쓸 수 있습니다.","zh":"您可以管理餐厅、员工、菜单，并使用所有 POS 功能。","ms":"Anda boleh mengurus restoran, kakitangan, menu dan mengakses semua fungsi POS."},
+ "ui.basic.roleStaff":{"en":"You have access to POS terminal, kitchen display, and order management functions.","ko":"POS 단말·주방 화면·주문 관리 기능을 쓸 수 있습니다.","zh":"您可以使用 POS 终端、厨房显示和订单管理功能。","ms":"Anda boleh mengakses terminal POS, paparan dapur dan fungsi pengurusan pesanan."},
+ "ui.basic.roleDefault":{"en":"Welcome to the Purple Here POS System.","ko":"Purple Here POS 에 오신 것을 환영합니다.","zh":"欢迎使用 Purple Here POS 系统。","ms":"Selamat datang ke Sistem POS Purple Here."},
+ "ui.basic.hello":{"en":"Hello, {{name}}!","ko":"{{name}} 님, 안녕하세요!","zh":"{{name}}，您好！","ms":"Hai, {{name}}!"},
+ "ui.basic.systemOk":{"en":"All systems operational. You can access your permitted functions through the sidebar menu.","ko":"모든 시스템이 정상입니다. 왼쪽 메뉴에서 쓸 수 있는 기능을 여세요.","zh":"所有系统运行正常。可通过侧边菜单使用您被允许的功能。","ms":"Semua sistem beroperasi. Anda boleh mengakses fungsi yang dibenarkan melalui menu sisi."},
+ "ui.basic.gettingStarted":{"en":"Use the navigation menu on the left to access available features for your role.","ko":"왼쪽 메뉴에서 내 역할로 쓸 수 있는 기능을 고르세요.","zh":"使用左侧导航菜单访问您角色可用的功能。","ms":"Gunakan menu navigasi di sebelah kiri untuk mengakses ciri yang tersedia untuk peranan anda."}
+}}

@@ -657,7 +657,7 @@ const BrandPerformance: React.FC = () => {
             <DropdownContainer>
               <DropdownInput
                 type="text"
-                placeholder="All Brands"
+                placeholder={t('brand:brandPerformance.allBrands')}
                 value={brandSearchQuery}
                 onChange={(e) => handleBrandSearch(e.target.value)}
                 onFocus={() => {
@@ -686,7 +686,7 @@ const BrandPerformance: React.FC = () => {
             <DropdownContainer>
               <DropdownInput
                 type="text"
-                placeholder="All Restaurants"
+                placeholder={t('brand:brandPerformance.allRestaurants')}
                 value={restaurantSearchQuery}
                 onChange={(e) => handleRestaurantSearch(e.target.value)}
                 onFocus={() => {
@@ -787,7 +787,7 @@ const BrandPerformance: React.FC = () => {
             <StatCard color="#14B8A6">
               <StatValue>{stats.totalRestaurants}</StatValue>
               <StatLabel>{t('brand:brandPerformance.restaurants')}</StatLabel>
-              <StatDescription>{selectedBrandId === 'all' ? 'All brands' : 'Selected brand'}</StatDescription>
+              <StatDescription>{selectedBrandId === 'all' ? t('brand:brandPerformance.allBrands') : t('brand:ui.brandPerformance.selectedBrand')}</StatDescription>
             </StatCard>
           </StatsGrid>
 

@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 
 const Container = styled.div`
   padding: 32px;
@@ -109,15 +110,15 @@ const BasicDashboard: React.FC = () => {
   const getRoleDescription = (role: string) => {
     switch(role) {
       case 'System Admin':
-        return 'You have full system access and can manage all managers, restaurants, and system settings.';
+        return t('dashboard:ui.basic.roleSystemAdmin');
       case 'Manager':
-        return 'You can manage multiple restaurants, view consolidated reports, and oversee operations.';
+        return t('dashboard:ui.basic.roleManager');
       case 'Restaurant Admin':
-        return 'You can manage your restaurant, staff, menu, and access all POS functions.';
+        return t('dashboard:ui.basic.roleRestaurantAdmin');
       case 'Staff':
-        return 'You have access to POS terminal, kitchen display, and order management functions.';
+        return t('dashboard:ui.basic.roleStaff');
       default:
-        return 'Welcome to the Purple Here POS System.';
+        return t('dashboard:ui.basic.roleDefault');
     }
   };
 
@@ -127,9 +128,9 @@ const BasicDashboard: React.FC = () => {
         <WelcomeCard>
           <Title>{t('dashboard:basicDashboard.welcomeToPurpleHerePos')}</Title>
           <RoleBadge role={user?.role || 'User'}>
-            {user?.role}
+            {getRoleDisplayName(user?.role, t)}
           </RoleBadge>
-          <Subtitle>Hello, {user?.name}!</Subtitle>
+          <Subtitle>{t('dashboard:ui.basic.hello', { name: user?.name || '' })}</Subtitle>
           
           <InfoGrid>
             <InfoCard>
@@ -142,14 +143,14 @@ const BasicDashboard: React.FC = () => {
             <InfoCard>
               <InfoTitle>{t('dashboard:basicDashboard.systemStatus')}</InfoTitle>
               <InfoText>
-                All systems operational. You can access your permitted functions through the sidebar menu.
+                {t('dashboard:ui.basic.systemOk')}
               </InfoText>
             </InfoCard>
             
             <InfoCard>
               <InfoTitle>{t('dashboard:basicDashboard.gettingStarted')}</InfoTitle>
               <InfoText>
-                Use the navigation menu on the left to access available features for your role.
+                {t('dashboard:ui.basic.gettingStarted')}
               </InfoText>
             </InfoCard>
           </InfoGrid>

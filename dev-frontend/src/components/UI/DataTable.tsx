@@ -10,6 +10,11 @@ import styled from 'styled-components';
 // - 가격/금액: 우측 정렬
 // ============================================================================
 
+// 2026-11-18 (Fable 설계 T3-4): 칸이 많은 표는 태블릿 가로(1025~1280)에서도 카드로 — 표마다 켜는 선택 값.
+//   <DataTable data-card-upto="1280"> 를 붙인 표만. 전체 기준점 1024 는 그대로(칸이 적은 표는 표가 낫다).
+const CARD_WIDE = '(min-width: 1025px) and (max-width: 1280px)';
+const CARD_TBL = "table[data-card-upto='1280']";
+
 // 테이블 외부 래퍼 (border, shadow 등)
 export const DataTableContainer = styled.div`
   background: white;
@@ -35,6 +40,9 @@ export const DataTableContainer = styled.div`
     border-radius: 0;
     /* 모바일은 행이 카드로 바뀌어 box-shadow/hover translateY 가 잘리면 안 됨 */
     overflow: visible;
+  }
+  @media ${CARD_WIDE} {
+    &:has(> ${CARD_TBL}) { background: transparent; border: none; border-radius: 0; overflow: visible; }
   }
 `;
 
@@ -68,6 +76,13 @@ export const DataTable = styled.table`
     }
   }
 
+  @media ${CARD_WIDE} {
+    &[data-card-upto='1280'] { display: block; }
+    &[data-card-upto='1280'] tbody { display: block; }
+    &[data-card-upto='1280'] tr:has(> td[colspan]) { display: block; }
+    &[data-card-upto='1280'] td[colspan] { display: block; width: 100%; }
+  }
+
   /* 2026-11-10 전수 점검(R7): 카드 상태에서 «colspan 칸 하나짜리 줄»(빈 상태·불러오는 중)이
      표 칸처럼 내용 폭만큼 줄어 왼쪽 작은 상자가 됐다(예약 «No reservations») → 전폭 */
   @media (max-width: 1024px) {
@@ -87,6 +102,10 @@ export const DataTableHead = styled.thead`
   background: #F1F4F8;
   border-bottom: 1px solid #C7CED6;
 
+  @media ${CARD_WIDE} {
+    ${CARD_TBL} > & { display: none; }
+  }
+
   @media (max-width: 1024px) {
     display: none;
   }
@@ -103,6 +122,20 @@ export const DataTableRow = styled.tr`
 
   &:last-child {
     border-bottom: none;
+  }
+
+  @media ${CARD_WIDE} {
+    ${CARD_TBL} tbody > & {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #C7CED6;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
   }
 
   @media (max-width: 1024px) {
@@ -139,9 +172,45 @@ export const DataTableCell = styled.td<{
   text-align: ${props => props.align || 'left'};
   word-wrap: break-word;
 
+  /* 2026-11-18 (Fable 설계 T1 · 태블릿 가로·작은 PC): 오른쪽 정렬(금액) 칸은 줄바꿈하지 않는다 —
+     1180px 에서 «RM 500.00» 이 «RM / 500.00» 2줄로 쪼개졌다. 가운데(날짜·상태) 칸까지 막았더니 날짜 칸이
+     넓어져 상태 꼬리표가 «대/기/중» 세 줄로 쪼개지고 1366 에서 표가 칸을 넘어 되돌렸다(측정 t2). */
+  @media (min-width: 1025px) {
+    ${props => (props.align === 'right') ? 'white-space: nowrap;' : ''}
+  }
+  @media (min-width: 1025px) and (max-width: 1440px) {
+    padding: 12px 10px;
+  }
+
   /* 내부 콘텐츠도 정렬 */
   > * {
     text-align: inherit;
+  }
+
+  @media ${CARD_WIDE} {
+    ${CARD_TBL} tbody & {
+      flex: ${props => props.mobileFullWidth ? '1 1 100%' : '1 1 calc(25% - 8px)'};
+      min-width: ${props => props.mobileFullWidth ? '100%' : '150px'};
+      padding: 0;
+      text-align: left !important;
+      white-space: normal;
+      > * { text-align: left !important; justify-content: flex-start; margin-left: 0; }
+      &:before {
+        content: attr(data-label);
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: #6B7280;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+      ${props => props.mobileFullWidth ? `
+        padding-top: 10px;
+        margin-top: 4px;
+        border-top: 1px solid #F1F4F8;
+        &:before { display: none; }
+      ` : ''}
+    }
   }
 
   @media (max-width: 1024px) {
@@ -160,7 +229,7 @@ export const DataTableCell = styled.td<{
     &:before {
       content: attr(data-label);
       display: block;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 600;
       color: #6B7280;
       text-transform: uppercase;
@@ -192,6 +261,10 @@ export const DataTableHeaderCell = styled.th<{
   letter-spacing: 0.5px;
   white-space: nowrap;
   ${props => props.width ? `width: ${props.width};` : ''}
+
+  @media (min-width: 1025px) and (max-width: 1440px) {
+    padding: 12px 10px;
+  }
 `;
 
 // 액션 버튼 그룹 (테이블 셀 내부용)
@@ -203,6 +276,9 @@ export const DataTableActions = styled.div`
   justify-content: flex-start;
   align-items: flex-start;
   align-content: flex-start;
+
+  /* (2026-11-18 측정: 표 상태에서 행 버튼을 한 줄로 고정하면 1366·2단 사이드바에서 오른쪽 버튼이
+     칸 밖으로 밀려 되돌림 — 11-10 과 같은 결과. 버튼은 지금처럼 줄바꿈 허용) */
 
   @media (max-width: 1024px) {
     gap: 8px;
@@ -239,6 +315,7 @@ export const DataTableStatus = styled.span<{
   font-size: 12px;
   font-weight: 500;
   white-space: normal;
+  word-break: keep-all; /* 한국어 상태 낱말이 한 글자씩 쪼개지지 않게 */
   line-height: 1.3;
   text-align: center;
 

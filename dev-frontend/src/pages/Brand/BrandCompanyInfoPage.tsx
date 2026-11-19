@@ -297,7 +297,7 @@ const BrandCompanyInfoPage: React.FC = () => {
                     type="text"
                     value={companyInfo.companyName}
                     onChange={(e) => handleInputChange('companyName', e.target.value)}
-                    placeholder="Enter company name"
+                    placeholder={t('common:ui.companyInfo.companyNamePh')}
                   />
                 </AutoSaveField>
               </FormGroup>
@@ -321,7 +321,7 @@ const BrandCompanyInfoPage: React.FC = () => {
                     type="text"
                     value={companyInfo.tradeName}
                     onChange={(e) => handleInputChange('tradeName', e.target.value)}
-                    placeholder="Trading as..."
+                    placeholder={t('common:ui.companyInfo.tradingAsPh')}
                   />
                 </AutoSaveField>
               </FormGroup>

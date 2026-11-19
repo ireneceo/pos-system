@@ -40,5 +40,13 @@
   "dashboardContent.order": "Order",
   "dashboardContent.items": "Items",
   "dashboardContent.status": "Status",
-  "dashboardContent.time": "Time"
+  "dashboardContent.time": "Time",
+  "ui.basic.roleSystemAdmin": "You have full system access and can manage all managers, restaurants, and system settings.",
+  "ui.basic.roleManager": "You can manage multiple restaurants, view consolidated reports, and oversee operations.",
+  "ui.basic.roleRestaurantAdmin": "You can manage your restaurant, staff, menu, and access all POS functions.",
+  "ui.basic.roleStaff": "You have access to POS terminal, kitchen display, and order management functions.",
+  "ui.basic.roleDefault": "Welcome to the Purple Here POS System.",
+  "ui.basic.hello": "Hello, {{name}}!",
+  "ui.basic.systemOk": "All systems operational. You can access your permitted functions through the sidebar menu.",
+  "ui.basic.gettingStarted": "Use the navigation menu on the left to access available features for your role."
 }

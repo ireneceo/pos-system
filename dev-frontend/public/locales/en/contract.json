@@ -363,5 +363,13 @@
   "newProposal.franchise": "New Franchise Proposal",
   "newProposal.supply": "New Supply Proposal",
   "types.franchise": "Franchise",
-  "types.supply": "Supply (ordering only)"
+  "types.supply": "Supply (ordering only)",
+  "ui.contractType.franchise": "Franchise",
+  "ui.contractType.license": "License",
+  "ui.contractType.master": "Master franchise",
+  "ui.contractType.direct": "Direct",
+  "ui.contractType.supply": "Supply",
+  "ui.contractType.tenancy": "Tenancy",
+  "ui.contractType.new": "New",
+  "ui.map.primary": "PRIMARY"
 }

@@ -38,5 +38,6 @@
   "customersPage.noCouponsAvailableOrUsed": "无可用或已使用的优惠券",
   "customersPage.noCouponData": "否 优惠券 数据",
   "customersPage.deleteFailedTitle": "删除失败",
-  "customersPage.deleteFailedMessage": "删除客户失败。请重试。"
+  "customersPage.deleteFailedMessage": "删除客户失败。请重试。",
+  "ui.customers.searchPh": "按姓名、电话或邮箱搜索顾客..."
 }

@@ -116,21 +116,24 @@ const BellIcon = styled.span<{ $shake: boolean }>`
   ${p => p.$shake && css`animation: ${shakeKf} 0.6s ease-in-out;`}
 `;
 
+/* 숫자는 종 오른쪽 위 모서리에 걸친다 — 예전(top/right 2px · 18px+여백)엔 36px 버튼 안에서
+   숫자 상자가 종 그림을 통째로 덮어 폰 머리줄에 «빨간 4» 만 보이고 종이 안 보였다(2026-11-18 375px 실측). */
 const Badge = styled.span`
   position: absolute;
-  top: 2px;
-  right: 2px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
+  top: 0;
+  left: 19px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
   background: #DC2626;
   color: white;
-  border-radius: 9px;
-  font-size: 11px;
+  border-radius: 8px;
+  font-size: 10px;
   font-weight: 700;
-  line-height: 18px;
+  line-height: 16px;
+  pointer-events: none;
   text-align: center;
-  border: 2px solid white;
+  border: 1.5px solid white;
   box-sizing: content-box;
   animation: ${popKf} 0.25s ease;
 `;

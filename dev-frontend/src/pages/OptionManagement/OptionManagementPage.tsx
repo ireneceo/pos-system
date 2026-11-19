@@ -536,7 +536,7 @@ const OptionManagementPage: React.FC = () => {
                       <OptionGroupName>{group.name}</OptionGroupName>
                       <OptionGroupMeta>
                         <OptionGroupBadge type={group.required ? 'required' : 'optional'}>
-                          {group.required ? 'Required' : 'Optional'}
+                          {group.required ? t('menu:itemDetail.required') : t('menu:setOrder.pickOptional')}
                         </OptionGroupBadge>
                         <OptionGroupBadge type={group.multiple ? 'multiple' : 'single'}>
                           {group.multiple ? 'Multiple Selection' : 'Single Selection'}
@@ -545,13 +545,13 @@ const OptionManagementPage: React.FC = () => {
                       </OptionGroupMeta>
                     </OptionGroupInfo>
                     <OptionGroupActions>
-                      <IconButton onClick={() => handleOpenModal(group)}>
+                      <IconButton onClick={() => handleOpenModal(group)} aria-label={t('common:button.edit')} title={t('common:button.edit')}>
                         <svg viewBox="0 0 24 24" fill="none">
                           <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                           <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                         </svg>
                       </IconButton>
-                      <IconButton onClick={() => handleDeleteClick(group.id)}>
+                      <IconButton onClick={() => handleDeleteClick(group.id)} aria-label={t('common:button.delete')} title={t('common:button.delete')}>
                         <svg viewBox="0 0 24 24" fill="none">
                           <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                         </svg>
@@ -634,7 +634,7 @@ const OptionManagementPage: React.FC = () => {
                   checked={formData.required}
                   onChange={(e) => setFormData({ ...formData, required: e.target.checked })}
                 />
-                Required
+                {t('menu:itemDetail.required')}
               </CheckboxLabel>
               <CheckboxLabel>
                 <Checkbox

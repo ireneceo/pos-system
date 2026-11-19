@@ -201,7 +201,7 @@ const ManagerPromotionsPage: React.FC = () => {
           <DataTableEmpty>{t('noOwnerLinked')}</DataTableEmpty>
         ) : (
           <DataTableScroll>
-          <DataTable>
+          <DataTable data-card-upto="1280">
             <DataTableHead>
               <tr>
                 <DataTableHeaderCell>{t('table.code')}</DataTableHeaderCell>

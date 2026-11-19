@@ -448,9 +448,11 @@ function timeAgo(iso: string | null | undefined, tf: TimeAgoT): string {
 
 // 단계별 색상 — Restaurant LiveOrders / Reservation 패턴과 일치.
 // 대기(주황) → 진행(파랑) → 완료(녹색) / 취소(빨강).
-const StatusVariantMap: Record<string, 'success' | 'warning' | 'error' | 'info'> = {
+const StatusVariantMap: Record<string, 'success' | 'warning' | 'error' | 'info' | 'default'> = {
   submitted: 'warning',      // 대기 — seller 가 confirm 해야
-  confirmed: 'info',         // seller 수락 — 진행 시작
+  // 2026-11-19 Irene «컨펌만 하고 배송전인데 상태 색상이 배송완료랑 같아서 헷갈려» —
+  //   확정(아직 안 보냄)은 회색 + «아직 안 보냄» 한 줄. 파랑은 보낸 뒤(배송 중·배송 완료)만.
+  confirmed: 'default',      // seller 수락 — 아직 출고 전
   shipped: 'info',           // 배송 중 — 진행
   delivered: 'info',         // 도착 — buyer 가 received 마크 대기
   received: 'success',       // 완료
@@ -1519,7 +1521,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         </StatisticsBar>
 
         <DataTableContainer>
-          <DataTable>
+          <DataTable data-card-upto="1280">
             <DataTableHead>
               <tr>
                 <DataTableHeaderCell align="left">{tNs('orders.table.poNumber', 'PO #')}</DataTableHeaderCell>
@@ -1615,6 +1617,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                           {!!row.seller_hold && (
                             <div style={{ fontSize: '11px', fontWeight: 600, color: '#B45309', marginTop: 2 }}>
                               {holdLine(row.seller_hold, row.currency)}
+                            </div>
+                          )}
+                          {row.status === 'confirmed' && !row.shipped_at && !row.is_service_only && (
+                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#B45309', marginTop: 2 }}>
+                              {tNs('orders.badge.notShippedYet', 'Not shipped yet')}
                             </div>
                           )}
                           {/* 구매자가 먼저 받은 발주 — 출고를 안 누르면 우리 재고가 안 빠진다(2026-09-01 Q6) */}
@@ -2562,6 +2569,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 <DataTableStatus variant={StatusVariantMap[detailFull.status] || 'info'}>
                   {tNs(`status.${sellerStatusKey(detailFull.status)}`, sellerStatusKey(detailFull.status))}
                 </DataTableStatus>
+                {detailFull.status === 'confirmed' && !detailFull.shipped_at && !(detailRow?.is_service_only ?? detailFull.is_service_only) && (
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#B45309', marginTop: 4 }}>
+                    {tNs('orders.badge.notShippedYet', 'Not shipped yet')}
+                  </div>
+                )}
                 {!!detailFull.seller_hold && (
                   <div style={{ fontSize: 11, fontWeight: 600, color: '#B45309', marginTop: 4 }}>
                     {holdLine(detailFull.seller_hold, detailFull.currency)}

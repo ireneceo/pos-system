@@ -1003,22 +1003,22 @@ const ReportsPage: React.FC = () => {
         <Content>
           <Tabs>
             <Tab active={activeTab === 'sales'} onClick={() => handleTabChange('sales')}>
-              Sales Report
+              {t('reports:ui.reports.salesReport')}
             </Tab>
             <Tab active={activeTab === 'details'} onClick={() => handleTabChange('details')}>
-              Sales Details
+              {t('reports:ui.reports.salesDetails')}
             </Tab>
             <Tab active={activeTab === 'payment'} onClick={() => handleTabChange('payment')}>
-              Payment Analysis
+              {t('reports:ui.reports.paymentAnalysis')}
             </Tab>
             <Tab active={activeTab === 'menu'} onClick={() => handleTabChange('menu')}>
-              Menu Analysis
+              {t('reports:ui.reports.menuAnalysis')}
             </Tab>
             <Tab active={activeTab === 'customers'} onClick={() => handleTabChange('customers')}>
-              Customer Insights
+              {t('reports:ui.reports.customerInsights')}
             </Tab>
             <Tab active={activeTab === 'operations'} onClick={() => handleTabChange('operations')}>
-              Operations
+              {t('reports:ui.reports.operations')}
             </Tab>
             {canViewVoidLog && (
               <Tab active={activeTab === 'void-log'} onClick={() => handleTabChange('void-log')}>

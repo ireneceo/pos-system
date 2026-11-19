@@ -259,17 +259,17 @@ const CarriersPage: React.FC = () => {
                 <DataTableHeaderCell align="center">{t('admin:carriers.fields.country', 'Country')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">{t('admin:carriers.fields.sortOrder', 'Sort')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="center">{t('admin:carriers.fields.status', 'Status')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">{t('common:actions', 'Actions')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('common:label.actions', 'Actions')}</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>
               {loading && items.length === 0 ? (
-                <tr><td colSpan={7}><DataTableEmpty>Loading…</DataTableEmpty></td></tr>
+                <tr><td colSpan={7}><DataTableEmpty>{t('common:status.loading', 'Loading…')}</DataTableEmpty></td></tr>
               ) : items.length === 0 ? (
                 <tr><td colSpan={7}><DataTableEmpty>{t('admin:carriers.empty', 'No carriers yet')}</DataTableEmpty></td></tr>
               ) : items.map(c => (
                 <DataTableRow key={c.id}>
-                  <DataTableCell data-label="Name">
+                  <DataTableCell data-label={t('admin:carriers.fields.name')}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       {c.logo_url && (
                         <img src={c.logo_url} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover' }} />
@@ -277,22 +277,22 @@ const CarriersPage: React.FC = () => {
                       <strong style={{ color: '#0A2540' }}>{c.name}</strong>
                     </div>
                   </DataTableCell>
-                  <DataTableCell data-label="Code">
+                  <DataTableCell data-label={t('admin:carriers.fields.code')}>
                     <code style={{ fontSize: 12, background: '#F1F4F8', padding: '2px 6px', borderRadius: 4, color: '#0A2540' }}>{c.code}</code>
                   </DataTableCell>
-                  <DataTableCell data-label="Template">
+                  <DataTableCell data-label={t('admin:carriers.fields.template', 'Tracking URL Template')}>
                     {c.tracking_url_template ? (
                       <span style={{ fontSize: 12, color: '#4B5563', fontFamily: 'monospace' }}>{c.tracking_url_template}</span>
                     ) : (
                       <span style={{ color: '#6B7280', fontSize: 12 }}>—</span>
                     )}
                   </DataTableCell>
-                  <DataTableCell data-label="Country" align="center">
+                  <DataTableCell data-label={t('admin:carriers.fields.country')} align="center">
                     {c.country || '—'}
                   </DataTableCell>
-                  <DataTableCell data-label="Sort" align="center">{c.sort_order ?? 0}</DataTableCell>
-                  <DataTableCell data-label="Status" align="center">
-                    <StatusBadge active={c.is_active}>{c.is_active ? 'Active' : 'Inactive'}</StatusBadge>
+                  <DataTableCell data-label={t('admin:carriers.fields.sortOrder')} align="center">{c.sort_order ?? 0}</DataTableCell>
+                  <DataTableCell data-label={t('admin:carriers.fields.status')} align="center">
+                    <StatusBadge active={c.is_active}>{c.is_active ? t('common:status.active', 'Active') : t('common:status.inactive', 'Inactive')}</StatusBadge>
                   </DataTableCell>
                   <DataTableCell align="right">
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -301,7 +301,7 @@ const CarriersPage: React.FC = () => {
                       </ThemedButton>
                       {c.is_active && (
                         <ThemedButton size="small" variant="danger-outline" onClick={() => onSoftDelete(c)}>
-                          {t('common:deactivate', 'Deactivate')}
+                          {t('admin:ui.carriers.deactivate', 'Deactivate')}
                         </ThemedButton>
                       )}
                     </div>
@@ -447,10 +447,10 @@ const CarriersPage: React.FC = () => {
                       {revealedSecret}
                     </code>
                     <ThemedButton size="small" variant="outline" style={{ marginTop: 8 }} onClick={() => { navigator.clipboard.writeText(revealedSecret); }}>
-                      {t('common:copy', 'Copy')}
+                      {t('admin:ui.carriers.copy', 'Copy')}
                     </ThemedButton>
                     <ThemedButton size="small" variant="ghost" style={{ marginTop: 8, marginLeft: 8 }} onClick={() => setRevealedSecret(null)}>
-                      {t('common:dismiss', 'I have saved this')}
+                      {t('admin:ui.carriers.savedIt', 'I have saved this')}
                     </ThemedButton>
                   </div>
                 )}

@@ -24,6 +24,8 @@ import {
 } from '../../components/UI/StatCard';
 import { Modal as CommonModal } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as tzFormatDateTime, formatDate as tzFormatDate } from '../../utils/timezone';
@@ -598,9 +600,9 @@ const NoticesPage: React.FC = () => {
   const getTargetDisplay = (notice: Notice): string => {
     switch (notice.target_type) {
       case 'all':
-        return 'All Users';
+        return t('admin:noticesPage.allUsers');
       case 'role':
-        return notice.target_roles ? notice.target_roles.join(', ') : 'By Role';
+        return notice.target_roles ? notice.target_roles.map(r => getRoleDisplayName(r, t)).join(', ') : t('admin:noticesPage.byRole');
       case 'brand':
         return notice.brand ? `Brand: ${notice.brand.name}` : 'Brand';
       case 'foodcourt':
@@ -743,7 +745,7 @@ const NoticesPage: React.FC = () => {
         <Title>{t('admin:noticesPage.notices')}</Title>
         <ActionSection>
           <Button variant="primary" onClick={() => setShowSendModal(true)}>
-            New Notice
+            {t('common:noticesPage.newNotice')}
           </Button>
         </ActionSection>
       </Header>
@@ -788,7 +790,7 @@ const NoticesPage: React.FC = () => {
                 transition: 'all 0.15s'
               }}
             >
-              {cat === 'all' ? 'All' : cat === 'general' ? 'General' : cat === 'guide' ? 'Guide' : 'Updates'}
+              {cat === 'all' ? t('common:label.all') : cat === 'general' ? t('admin:noticesPage.general') : cat === 'guide' ? t('admin:noticesPage.guide') : t('common:statusExtra.updates')}
             </button>
           ))}
         </div>
@@ -797,7 +799,7 @@ const NoticesPage: React.FC = () => {
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder="Search notices..."
+            placeholder={t('common:ui.search.notices')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -842,10 +844,10 @@ const NoticesPage: React.FC = () => {
                       <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>{t('admin:noticesPage.guide')}</span>
                     )}
                     {notice.category === 'updates' && (
-                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6' }}>Updates</span>
+                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6' }}>{t('common:statusExtra.updates')}</span>
                     )}
                     <PriorityBadge priority={notice.priority}>
-                      {notice.priority}
+                      {statusLabel(t, notice.priority)}
                     </PriorityBadge>
                   </NoticeCardBadges>
                 </NoticeCardHeader>
@@ -886,7 +888,7 @@ const NoticesPage: React.FC = () => {
       {/* Send Notice Modal */}
       {/* ====================================================================== */}
       {showSendModal && (
-        <CommonModal isOpen={true} onClose={() => { setShowSendModal(false); resetNewNoticeForm(); }} title="New Notice" maxWidth="720px" footer={<><Button variant="secondary" onClick={() => { setShowSendModal(false); resetNewNoticeForm(); }}>{t('admin:noticesPage.cancel')}</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim()}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => { setShowSendModal(false); resetNewNoticeForm(); }} title={t('common:noticesPage.newNotice')} maxWidth="720px" footer={<><Button variant="secondary" onClick={() => { setShowSendModal(false); resetNewNoticeForm(); }}>{t('admin:noticesPage.cancel')}</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim()}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
               <FormGroup>
                 <FormLabel>{t('admin:noticesPage.targetType')}</FormLabel>
                 <FormSelect
@@ -916,7 +918,7 @@ const NoticesPage: React.FC = () => {
                           checked={newNotice.target_roles.includes(role)}
                           onChange={() => handleRoleToggle(role)}
                         />
-                        {role}
+                        {getRoleDisplayName(role, t)}
                       </CheckboxLabel>
                     ))}
                   </CheckboxGroup>
@@ -1110,7 +1112,7 @@ const NoticesPage: React.FC = () => {
                 <ViewNoticeTitle>{selectedNotice.title}</ViewNoticeTitle>
                 <ViewNoticeMeta>
                   <PriorityBadge priority={selectedNotice.priority}>
-                    {selectedNotice.priority}
+                    {statusLabel(t, selectedNotice.priority)}
                   </PriorityBadge>
                   <TargetBadge>{getTargetDisplay(selectedNotice)}</TargetBadge>
                   <span>{formatDateTime(selectedNotice.createdAt)}</span>
@@ -1140,7 +1142,7 @@ const NoticesPage: React.FC = () => {
                             ? (recipient.user.full_name || recipient.user.name)
                             : `#${recipient.id}`}
                         {recipient.user && recipient.user.role && (
-                          <RecipientRole>{recipient.user.role}</RecipientRole>
+                          <RecipientRole>{getRoleDisplayName(recipient.user.role, t)}</RecipientRole>
                         )}
                       </RecipientBadge>
                     ))}

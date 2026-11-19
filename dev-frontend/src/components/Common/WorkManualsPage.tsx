@@ -627,13 +627,13 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
         <Title>{pageTitle}</Title>
         <ActionSection>
           <Button variant="secondary" onClick={() => setShowCategoryManager(!showCategoryManager)}>
-            {t('workManuals.manageCategories', 'Manage Categories')}
+            {t('common:ui.workManuals.manageCategories', 'Manage Categories')}
           </Button>
           <Button variant="primary" onClick={() => {
             if (isOwner && selectedRestaurantId) setCreateRestaurantId(selectedRestaurantId);
             setShowCreateModal(true);
           }}>
-            {t('workManuals.newManual', 'New Manual')}
+            {t('common:ui.workManuals.newManual', 'New Manual')}
           </Button>
         </ActionSection>
       </Header>
@@ -642,7 +642,7 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
         {/* Owner: Restaurant Selector */}
         {isOwner && ownerRestaurants.length > 0 && (
           <RestaurantSelector>
-            <FormLabel style={{ marginBottom: 0 }}>{t('workManuals.restaurant', 'Restaurant')}:</FormLabel>
+            <FormLabel style={{ marginBottom: 0 }}>{t('common:ui.workManuals.restaurant', 'Restaurant')}:</FormLabel>
             <FilterSelect
               value={selectedRestaurantId || ''}
               onChange={(e) => setSelectedRestaurantId(parseInt(e.target.value))}
@@ -659,19 +659,19 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
         <StatsGrid>
           <StatCard color="#635BFF">
             <StatValue>{totalManuals}</StatValue>
-            <StatLabel>{t('workManuals.totalManuals', 'Total Manuals')}</StatLabel>
+            <StatLabel>{t('common:ui.workManuals.totalManuals', 'Total Manuals')}</StatLabel>
           </StatCard>
           <StatCard color="#10B981">
             <StatValue>{thisMonth}</StatValue>
-            <StatLabel>{t('workManuals.thisMonth', 'This Month')}</StatLabel>
+            <StatLabel>{t('common:ui.workManuals.thisMonth', 'This Month')}</StatLabel>
           </StatCard>
           <StatCard color="#F59E0B">
             <StatValue>{categorizedCount}</StatValue>
-            <StatLabel>{t('workManuals.categorized', 'Categorized')}</StatLabel>
+            <StatLabel>{t('common:ui.workManuals.categorized', 'Categorized')}</StatLabel>
           </StatCard>
           <StatCard color="#4B5563">
             <StatValue>{uncategorizedCount}</StatValue>
-            <StatLabel>{t('workManuals.uncategorized', 'Uncategorized')}</StatLabel>
+            <StatLabel>{t('common:ui.workManuals.uncategorized', 'Uncategorized')}</StatLabel>
           </StatCard>
         </StatsGrid>
 
@@ -683,12 +683,12 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
               style={{ position: 'absolute', top: '12px', right: '12px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#6B7280', padding: '4px 8px', lineHeight: 1 }}
               title="Close"
             >&times;</button>
-            <ViewSectionTitle>{t('workManuals.categories', 'Categories')}</ViewSectionTitle>
+            <ViewSectionTitle>{t('common:ui.workManuals.categories', 'Categories')}</ViewSectionTitle>
             {categories.map(cat => (
               <CategoryManageRow key={cat.id}>
                 <span style={{ flex: 1, fontSize: '14px' }}>{cat.name}</span>
                 <SmallButton variant="danger" onClick={() => handleDeleteCategory(cat.id)}>
-                  {t('workManuals.delete', 'Delete')}
+                  {t('common:ui.workManuals.delete', 'Delete')}
                 </SmallButton>
               </CategoryManageRow>
             ))}
@@ -696,10 +696,10 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
               <CategoryInput
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder={t('workManuals.newCategoryPlaceholder', 'New category name...')}
+                placeholder={t('common:ui.workManuals.newCategoryPlaceholder', 'New category name...')}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
               />
-              <SmallButton onClick={handleAddCategory}>{t('workManuals.add', 'Add')}</SmallButton>
+              <SmallButton onClick={handleAddCategory}>{t('common:ui.workManuals.add', 'Add')}</SmallButton>
             </CategoryManageRow>
           </div>
         )}
@@ -707,7 +707,7 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
         {/* Category Filter Pills */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
           <CategoryPill active={categoryFilter === 'all'} onClick={() => setCategoryFilter('all')}>
-            {t('workManuals.all', 'All')}
+            {t('common:ui.workManuals.all', 'All')}
           </CategoryPill>
           {categories.map(cat => (
             <CategoryPill key={cat.id} active={categoryFilter === cat.id} onClick={() => setCategoryFilter(cat.id)}>
@@ -715,7 +715,7 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
             </CategoryPill>
           ))}
           <CategoryPill active={categoryFilter === 0} onClick={() => setCategoryFilter(0)}>
-            {t('workManuals.uncategorized', 'Uncategorized')}
+            {t('common:ui.workManuals.uncategorized', 'Uncategorized')}
           </CategoryPill>
         </div>
 
@@ -723,7 +723,7 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder={t('workManuals.searchPlaceholder', 'Search manuals...')}
+            placeholder={t('common:ui.workManuals.searchPlaceholder', 'Search manuals...')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -732,11 +732,11 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
         {/* Manuals Grid */}
         {filteredManuals.length === 0 ? (
           <EmptyState>
-            <h3>{t('workManuals.noManualsFound', 'No manuals found')}</h3>
+            <h3>{t('common:ui.workManuals.noManualsFound', 'No manuals found')}</h3>
             <p>
               {manuals.length === 0
-                ? t('workManuals.createFirst', 'Create your first work manual by clicking "New Manual" above.')
-                : t('workManuals.noMatchFilters', 'No manuals match your current filters.')}
+                ? t('common:ui.workManuals.createFirst', 'Create your first work manual by clicking "New Manual" above.')
+                : t('common:ui.workManuals.noMatchFilters', 'No manuals match your current filters.')}
             </p>
           </EmptyState>
         ) : (
@@ -787,22 +787,22 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
         <CommonModal
           isOpen={true}
           onClose={() => { setShowCreateModal(false); setNewManual({ title: '', content: '', category_id: null }); setNewAttachments([]); }}
-          title={t('workManuals.newManual', 'New Manual')}
+          title={t('common:ui.workManuals.newManual', 'New Manual')}
           maxWidth="720px"
           footer={
             <>
               <Button variant="secondary" onClick={() => { setShowCreateModal(false); setNewManual({ title: '', content: '', category_id: null }); setNewAttachments([]); }}>
-                {t('workManuals.cancel', 'Cancel')}
+                {t('common:ui.workManuals.cancel', 'Cancel')}
               </Button>
               <Button variant="primary" onClick={handleCreate} disabled={saving || !newManual.title.trim() || !newManual.content.trim()}>
-                {saving ? t('workManuals.saving', 'Saving...') : t('workManuals.create', 'Create')}
+                {saving ? t('common:ui.workManuals.saving', 'Saving...') : t('common:ui.workManuals.create', 'Create')}
               </Button>
             </>
           }
         >
           {isOwner && ownerRestaurants.length > 0 && (
             <FormGroup>
-              <FormLabel>{t('workManuals.restaurant', 'Restaurant')}</FormLabel>
+              <FormLabel>{t('common:ui.workManuals.restaurant', 'Restaurant')}</FormLabel>
               <FormSelect
                 value={createRestaurantId || ''}
                 onChange={(e) => setCreateRestaurantId(parseInt(e.target.value))}
@@ -815,22 +815,22 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
           )}
 
           <FormGroup>
-            <FormLabel>{t('workManuals.title', 'Title')}</FormLabel>
+            <FormLabel>{t('common:ui.workManuals.title', 'Title')}</FormLabel>
             <FormInput
               type="text"
-              placeholder={t('workManuals.titlePlaceholder', 'Enter manual title')}
+              placeholder={t('common:ui.workManuals.titlePlaceholder', 'Enter manual title')}
               value={newManual.title}
               onChange={(e) => setNewManual(prev => ({ ...prev, title: e.target.value }))}
             />
           </FormGroup>
 
           <FormGroup>
-            <FormLabel>{t('workManuals.category', 'Category')}</FormLabel>
+            <FormLabel>{t('common:ui.workManuals.category', 'Category')}</FormLabel>
             <FormSelect
               value={newManual.category_id || ''}
               onChange={(e) => setNewManual(prev => ({ ...prev, category_id: e.target.value ? parseInt(e.target.value) : null }))}
             >
-              <option value="">{t('workManuals.noCategory', 'No Category')}</option>
+              <option value="">{t('common:ui.workManuals.noCategory', 'No Category')}</option>
               {categories.map(cat => (
                 <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
@@ -838,16 +838,16 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
           </FormGroup>
 
           <FormGroup>
-            <FormLabel>{t('workManuals.content', 'Content')}</FormLabel>
+            <FormLabel>{t('common:ui.workManuals.content', 'Content')}</FormLabel>
             <FormTextArea
-              placeholder={t('workManuals.contentPlaceholder', 'Enter manual content...')}
+              placeholder={t('common:ui.workManuals.contentPlaceholder', 'Enter manual content...')}
               value={newManual.content}
               onChange={(e) => setNewManual(prev => ({ ...prev, content: e.target.value }))}
             />
           </FormGroup>
 
           <FormGroup>
-            <FormLabel>{t('workManuals.attachments', 'Attachments')}</FormLabel>
+            <FormLabel>{t('common:ui.workManuals.attachments', 'Attachments')}</FormLabel>
             <FileUpload files={newAttachments} onChange={setNewAttachments} maxFiles={5} />
           </FormGroup>
         </CommonModal>
@@ -860,14 +860,14 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
         <CommonModal
           isOpen={true}
           onClose={() => { setShowViewModal(false); setSelectedManual(null); setIsEditing(false); }}
-          title={isEditing ? t('workManuals.editManual', 'Edit Manual') : t('workManuals.manualDetails', 'Manual Details')}
+          title={isEditing ? t('common:ui.workManuals.editManual', 'Edit Manual') : t('common:ui.workManuals.manualDetails', 'Manual Details')}
           size="large"
           footer={
             isEditing ? (
               <>
-                <Button variant="secondary" onClick={() => setIsEditing(false)}>{t('workManuals.cancel', 'Cancel')}</Button>
+                <Button variant="secondary" onClick={() => setIsEditing(false)}>{t('common:ui.workManuals.cancel', 'Cancel')}</Button>
                 <Button variant="primary" onClick={handleEditSave} disabled={saving}>
-                  {saving ? t('workManuals.saving', 'Saving...') : t('workManuals.save', 'Save')}
+                  {saving ? t('common:ui.workManuals.saving', 'Saving...') : t('common:ui.workManuals.save', 'Save')}
                 </Button>
               </>
             ) : (
@@ -876,23 +876,23 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
                   setShowCopyModal(true);
                   if (isOwner && selectedRestaurantId) setCopyTargetRestaurantId(selectedRestaurantId);
                 }}>
-                  {t('workManuals.copy', 'Copy')}
+                  {t('common:ui.workManuals.copy', 'Copy')}
                 </Button>
                 {(String(selectedManual.author_id) === String(user?.id) || user?.role === 'System Admin') && (
                   <Button variant="primary" onClick={() => {
                     setEditForm({ title: selectedManual.title, content: selectedManual.content, category_id: selectedManual.category_id });
                     setIsEditing(true);
                   }}>
-                    {t('workManuals.edit', 'Edit')}
+                    {t('common:ui.workManuals.edit', 'Edit')}
                   </Button>
                 )}
                 {(String(selectedManual.author_id) === String(user?.id) || user?.role === 'System Admin') && (
                   <DeleteButton onClick={() => setShowDeleteConfirm(true)}>
-                    {t('workManuals.delete', 'Delete')}
+                    {t('common:ui.workManuals.delete', 'Delete')}
                   </DeleteButton>
                 )}
                 <Button variant="secondary" onClick={() => { setShowViewModal(false); setSelectedManual(null); }}>
-                  {t('workManuals.close', 'Close')}
+                  {t('common:ui.workManuals.close', 'Close')}
                 </Button>
               </>
             )
@@ -901,23 +901,23 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
           {isEditing ? (
             <ViewSection>
               <FormGroup>
-                <FormLabel>{t('workManuals.title', 'Title')}</FormLabel>
+                <FormLabel>{t('common:ui.workManuals.title', 'Title')}</FormLabel>
                 <FormInput value={editForm.title} onChange={(e: any) => setEditForm({ ...editForm, title: e.target.value })} />
               </FormGroup>
               <FormGroup>
-                <FormLabel>{t('workManuals.category', 'Category')}</FormLabel>
+                <FormLabel>{t('common:ui.workManuals.category', 'Category')}</FormLabel>
                 <FormSelect
                   value={editForm.category_id || ''}
                   onChange={(e) => setEditForm({ ...editForm, category_id: e.target.value ? parseInt(e.target.value) : null })}
                 >
-                  <option value="">{t('workManuals.noCategory', 'No Category')}</option>
+                  <option value="">{t('common:ui.workManuals.noCategory', 'No Category')}</option>
                   {categories.map(cat => (
                     <option key={cat.id} value={cat.id}>{cat.name}</option>
                   ))}
                 </FormSelect>
               </FormGroup>
               <FormGroup>
-                <FormLabel>{t('workManuals.content', 'Content')}</FormLabel>
+                <FormLabel>{t('common:ui.workManuals.content', 'Content')}</FormLabel>
                 <textarea
                   value={editForm.content}
                   onChange={(e) => setEditForm({ ...editForm, content: e.target.value })}
@@ -936,7 +936,7 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
                   <span style={{ color: '#6B7280' }}>by {selectedManual.author?.full_name || selectedManual.author_name}</span>
                   {selectedManual.source_notice_id && (
                     <span style={{ fontSize: '11px', padding: '2px 8px', background: '#FEF3C7', borderRadius: '4px', color: '#92400E' }}>
-                      {t('workManuals.fromNotice', 'From Notice')}
+                      {t('common:ui.workManuals.fromNotice', 'From Notice')}
                     </span>
                   )}
                 </ViewMeta>
@@ -969,10 +969,10 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
           isOpen={true}
           onCancel={() => setShowDeleteConfirm(false)}
           onConfirm={handleDelete}
-          title={t('workManuals.deleteConfirmTitle', 'Delete Manual')}
-          message={t('workManuals.deleteConfirmMessage', 'Are you sure you want to delete this manual? This action cannot be undone.')}
-          confirmText={t('workManuals.delete', 'Delete')}
-          cancelText={t('workManuals.cancel', 'Cancel')}
+          title={t('common:ui.workManuals.deleteConfirmTitle', 'Delete Manual')}
+          message={t('common:ui.workManuals.deleteConfirmMessage', 'Are you sure you want to delete this manual? This action cannot be undone.')}
+          confirmText={t('common:ui.workManuals.delete', 'Delete')}
+          cancelText={t('common:ui.workManuals.cancel', 'Cancel')}
           type="danger"
         />
       )}
@@ -982,32 +982,32 @@ const WorkManualsPage: React.FC<WorkManualsPageProps> = ({
         <CommonModal
           isOpen={true}
           onClose={() => { setShowCopyModal(false); setCopyTargetRestaurantId(null); }}
-          title={t('workManuals.copyManual', 'Copy Manual')}
+          title={t('common:ui.workManuals.copyManual', 'Copy Manual')}
           maxWidth="480px"
           footer={
             <>
               <Button variant="secondary" onClick={() => { setShowCopyModal(false); setCopyTargetRestaurantId(null); }}>
-                {t('workManuals.cancel', 'Cancel')}
+                {t('common:ui.workManuals.cancel', 'Cancel')}
               </Button>
               <Button variant="primary" onClick={handleCopy} disabled={saving || (isOwner && !copyTargetRestaurantId)}>
-                {saving ? t('workManuals.copying', 'Copying...') : t('workManuals.copy', 'Copy')}
+                {saving ? t('common:ui.workManuals.copying', 'Copying...') : t('common:ui.workManuals.copy', 'Copy')}
               </Button>
             </>
           }
         >
           <p style={{ marginBottom: '16px', color: '#4B5563', fontSize: '14px' }}>
-            {t('workManuals.copyDescription', 'A copy of this manual will be created. You can edit it after copying.')}
+            {t('common:ui.workManuals.copyDescription', 'A copy of this manual will be created. You can edit it after copying.')}
           </p>
           <p style={{ fontWeight: 600, marginBottom: '16px' }}>"{selectedManual.title}"</p>
 
           {isOwner && ownerRestaurants.length > 0 && (
             <FormGroup>
-              <FormLabel>{t('workManuals.copyToRestaurant', 'Copy to Restaurant')}</FormLabel>
+              <FormLabel>{t('common:ui.workManuals.copyToRestaurant', 'Copy to Restaurant')}</FormLabel>
               <FormSelect
                 value={copyTargetRestaurantId || ''}
                 onChange={(e) => setCopyTargetRestaurantId(parseInt(e.target.value))}
               >
-                <option value="">{t('workManuals.selectRestaurant', 'Select restaurant...')}</option>
+                <option value="">{t('common:ui.workManuals.selectRestaurant', 'Select restaurant...')}</option>
                 {ownerRestaurants.map(r => (
                   <option key={r.id} value={r.id}>{r.name}{r.branch_name ? ` (${r.branch_name})` : ''}</option>
                 ))}

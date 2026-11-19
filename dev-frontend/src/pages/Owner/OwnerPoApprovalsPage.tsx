@@ -343,7 +343,7 @@ const OwnerPoApprovalsPage: React.FC = () => {
         </StatsGrid>
 
         <DataTableContainer>
-          <DataTable>
+          <DataTable data-card-upto="1280">
             <DataTableHead>
               <tr>
                 <DataTableHeaderCell>{t('ownerApprovals.table.poNumber')}</DataTableHeaderCell>

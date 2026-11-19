@@ -13,6 +13,8 @@ import { Modal as CommonModal, StatsGrid, StatCard, StatValue, StatLabel } from 
 import { Tabs, Tab, Badge as TabBadge } from '../../components/Common/TabComponents';
 import { useTabParam } from '../../hooks/useTabParam';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 import { markAllNoticesRead } from '../../utils/noticeReadApi';
 
 import { getAuthToken } from '../../utils/auth';
@@ -750,14 +752,14 @@ const NoticesPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>{'Notices'}</Title>
+          <Title>{tc('common:noticesPage.notices')}</Title>
           <ActionSection>
             {activeTab === 'received' && unreadCount > 0 && (
               <Button variant="secondary" onClick={handleMarkAllRead}>
                 {tc('inbox.markAllRead', 'Mark all read')}
               </Button>
             )}
-            <Button variant="primary" onClick={() => setShowNewModal(true)}>{'New Notice'}</Button>
+            <Button variant="primary" onClick={() => setShowNewModal(true)}>{tc('common:noticesPage.newNotice')}</Button>
           </ActionSection>
         </Header>
 
@@ -766,29 +768,29 @@ const NoticesPage: React.FC = () => {
           <StatsGrid>
             <StatCard color="#635BFF">
               <StatValue>{totalReceived}</StatValue>
-              <StatLabel>{'Received'}</StatLabel>
+              <StatLabel>{tc('common:ui.notices.received')}</StatLabel>
             </StatCard>
             <StatCard color="#F59E0B">
               <StatValue>{unreadCount}</StatValue>
-              <StatLabel>{'Unread'}</StatLabel>
+              <StatLabel>{tc('common:noticesPage.unread')}</StatLabel>
             </StatCard>
             <StatCard color="#10B981">
               <StatValue>{totalSent}</StatValue>
-              <StatLabel>{'Sent'}</StatLabel>
+              <StatLabel>{tc('common:ui.notices.sent')}</StatLabel>
             </StatCard>
             <StatCard color="#EF4444">
               <StatValue>{urgentCount}</StatValue>
-              <StatLabel>{'Urgent'}</StatLabel>
+              <StatLabel>{tc('common:noticesPage.urgent')}</StatLabel>
             </StatCard>
           </StatsGrid>
 
           {/* Tabs */}
           <Tabs>
             <Tab active={activeTab === 'received'} onClick={() => setActiveTab('received')}>
-              Received<TabBadge count={totalReceived} showZero />
+              {tc('common:ui.notices.received')}<TabBadge count={totalReceived} showZero />
             </Tab>
             <Tab active={activeTab === 'sent'} onClick={() => setActiveTab('sent')}>
-              Sent<TabBadge count={totalSent} showZero />
+              {tc('common:ui.notices.sent')}<TabBadge count={totalSent} showZero />
             </Tab>
           </Tabs>
 
@@ -811,7 +813,7 @@ const NoticesPage: React.FC = () => {
                   transition: 'all 0.15s'
                 }}
               >
-                {cat === 'all' ? 'All' : cat === 'general' ? 'General' : cat === 'guide' ? 'Guide' : 'Updates'}
+                {cat === 'all' ? tc('common:label.all') : statusLabel(tc, cat)}
               </button>
             ))}
           </div>
@@ -820,7 +822,7 @@ const NoticesPage: React.FC = () => {
           <FilterBar>
             <SearchInput
               type="text"
-              placeholder="Search notices..."
+              placeholder={tc('common:ui.search.notices')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -829,21 +831,21 @@ const NoticesPage: React.FC = () => {
                 value={authorRoleFilter}
                 onChange={(e) => setAuthorRoleFilter(e.target.value)}
               >
-                <option value="all">{'All Senders'}</option>
-                <option value="System Admin">{'System Admin'}</option>
-                <option value="Brand General">{'Brand General'}</option>
-                <option value="Foodcourt General">{'Foodcourt General'}</option>
-                <option value="Restaurant Owner">{'Multi-Restaurant Owner'}</option>
+                <option value="all">{tc('common:noticesPage.allSenders')}</option>
+                <option value="System Admin">{tc('common:noticesPage.systemAdmin')}</option>
+                <option value="Brand General">{tc('common:noticesPage.brandGeneral')}</option>
+                <option value="Foodcourt General">{tc('common:noticesPage.foodcourtGeneral')}</option>
+                <option value="Restaurant Owner">{tc('common:noticesPage.restaurantOwner')}</option>
               </FilterSelect>
             )}
             <FilterSelect
               value={filterPriority}
               onChange={(e) => setFilterPriority(e.target.value)}
             >
-              <option value="all">{'All Priority'}</option>
-              <option value="normal">{'Normal'}</option>
-              <option value="important">{'Important'}</option>
-              <option value="urgent">{'Urgent'}</option>
+              <option value="all">{tc('common:noticesPage.allPriorities')}</option>
+              <option value="normal">{statusLabel(tc, 'normal')}</option>
+              <option value="important">{statusLabel(tc, 'important')}</option>
+              <option value="urgent">{statusLabel(tc, 'urgent')}</option>
             </FilterSelect>
           </FilterBar>
 
@@ -866,7 +868,7 @@ const NoticesPage: React.FC = () => {
                           <span>From: {notice.author?.full_name || notice.author_name}</span>
                         )}
                         {activeTab === 'received' && notice.author_role && (
-                          <span>{notice.author_role}</span>
+                          <span>{getRoleDisplayName(notice.author_role, tc)}</span>
                         )}
                         {activeTab === 'sent' && notice.recipients && (
                           <span>
@@ -879,12 +881,12 @@ const NoticesPage: React.FC = () => {
                   </NoticeInfo>
                   <BadgeContainer>
                     {notice.category === 'guide' && (
-                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>{'Guide'}</span>
+                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#D1FAE5', color: '#065F46' }}>{tc('owner:noticesPage.guide')}</span>
                     )}
                     {notice.category === 'updates' && (
-                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6' }}>Updates</span>
+                      <span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600, background: '#EDE9FE', color: '#5B21B6' }}>{statusLabel(tc, 'updates')}</span>
                     )}
-                    <PriorityBadge priority={notice.priority}>{notice.priority}</PriorityBadge>
+                    <PriorityBadge priority={notice.priority}>{statusLabel(tc, notice.priority)}</PriorityBadge>
                   </BadgeContainer>
                 </NoticeHeader>
 
@@ -938,7 +940,7 @@ const NoticesPage: React.FC = () => {
       {/* New Notice Modal */}
       {/* ================================================================== */}
       {showNewModal && (
-        <CommonModal isOpen={true} onClose={() => setShowNewModal(false)} title="New Notice" footer={<><Button variant="secondary" onClick={() => setShowNewModal(false)}>{'Cancel'}</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim() || (!newNotice.allRestaurants && newNotice.selectedRestaurantIds.length === 0)}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
+        <CommonModal isOpen={true} onClose={() => setShowNewModal(false)} title={tc('common:noticesPage.newNotice')} footer={<><Button variant="secondary" onClick={() => setShowNewModal(false)}>{tc('common:noticesPage.cancel')}</Button><Button variant="primary" onClick={handleSendNotice} disabled={sending || !newNotice.title.trim() || !newNotice.content.trim() || (!newNotice.allRestaurants && newNotice.selectedRestaurantIds.length === 0)}>{sending ? 'Sending...' : 'Send Notice'}</Button></>}>
               <FormGroup>
                 <FormLabel>Title *</FormLabel>
                 <FormInput
@@ -974,8 +976,8 @@ const NoticesPage: React.FC = () => {
                     value={newNotice.category}
                     onChange={(e) => setNewNotice(prev => ({ ...prev, category: e.target.value }))}
                   >
-                    <option value="general">{'General'}</option>
-                    <option value="guide">{'Guide'}</option>
+                    <option value="general">{statusLabel(tc, 'general')}</option>
+                    <option value="guide">{statusLabel(tc, 'guide')}</option>
                   </FormSelect>
                 </FormGroup>
                 <FormGroup style={{ flex: 1 }}>
@@ -984,9 +986,9 @@ const NoticesPage: React.FC = () => {
                     value={newNotice.priority}
                     onChange={(e) => setNewNotice(prev => ({ ...prev, priority: e.target.value as any }))}
                   >
-                    <option value="normal">{'Normal'}</option>
-                    <option value="important">{'Important'}</option>
-                    <option value="urgent">{'Urgent'}</option>
+                    <option value="normal">{statusLabel(tc, 'normal')}</option>
+                    <option value="important">{statusLabel(tc, 'important')}</option>
+                    <option value="urgent">{statusLabel(tc, 'urgent')}</option>
                   </FormSelect>
                 </FormGroup>
               </div>
@@ -1042,7 +1044,7 @@ const NoticesPage: React.FC = () => {
                 </MetaItem>
                 <MetaItem>
                   <MetaLabel>Role:</MetaLabel>
-                  <MetaValue>{viewNotice.author?.role || viewNotice.author_role}</MetaValue>
+                  <MetaValue>{getRoleDisplayName(viewNotice.author?.role || viewNotice.author_role, tc)}</MetaValue>
                 </MetaItem>
                 <MetaItem>
                   <MetaLabel>Date:</MetaLabel>
@@ -1050,7 +1052,7 @@ const NoticesPage: React.FC = () => {
                 </MetaItem>
                 <MetaItem>
                   <MetaLabel>Priority:</MetaLabel>
-                  <PriorityBadge priority={viewNotice.priority}>{viewNotice.priority}</PriorityBadge>
+                  <PriorityBadge priority={viewNotice.priority}>{statusLabel(tc, viewNotice.priority)}</PriorityBadge>
                 </MetaItem>
               </NoticeDetailMeta>
 

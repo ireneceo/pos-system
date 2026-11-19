@@ -194,23 +194,23 @@ const SupplierInvoiceSettingsPage: React.FC = () => {
   if (loading) {
     return (
       <Container>
-        <Header><Title>Invoice Settings</Title></Header>
-        <Content><LoadingMessage>Loading...</LoadingMessage></Content>
+        <Header><Title>{t('supplier:menu.invoiceSettings')}</Title></Header>
+        <Content><LoadingMessage>{t('common:status.loading')}</LoadingMessage></Content>
       </Container>
     );
   }
 
   return (
     <Container>
-      <Header><Title>Invoice Settings</Title></Header>
+      <Header><Title>{t('supplier:menu.invoiceSettings')}</Title></Header>
       <Content>
         {error && <ErrorBanner>{error}</ErrorBanner>}
 
         <Section>
-          <SectionTitle>Invoice Configuration</SectionTitle>
+          <SectionTitle>{t('invoices:invoiceSettingsPage.invoiceConfiguration')}</SectionTitle>
           <FormGrid>
             <FormGroup>
-              <Label>Invoice Prefix</Label>
+              <Label>{t('invoices:invoiceSettingsPage.invoicePrefix')}</Label>
               <AutoSaveField onSave={() => saveField('invoicePrefix', settings.invoicePrefix)}>
                 <Input
                   type="text"
@@ -219,11 +219,11 @@ const SupplierInvoiceSettingsPage: React.FC = () => {
                   placeholder="INV"
                 />
               </AutoSaveField>
-              <HelpText>Prefix prepended to invoice numbers (e.g., INV-2026-0001)</HelpText>
+              <HelpText>{t('supplier:ui.invoiceSettings.prefixHelp')}</HelpText>
             </FormGroup>
 
             <FormGroup>
-              <Label>Payment Terms (days)</Label>
+              <Label>{t('supplier:ui.invoiceSettings.paymentTerms')}</Label>
               <AutoSaveField onSave={() => saveField('paymentTerms', settings.paymentTerms)}>
                 <Input
                   type="number"
@@ -233,11 +233,11 @@ const SupplierInvoiceSettingsPage: React.FC = () => {
                   placeholder="30"
                 />
               </AutoSaveField>
-              <HelpText>Days customers have to pay invoices after issue date</HelpText>
+              <HelpText>{t('supplier:ui.invoiceSettings.paymentTermsHelp')}</HelpText>
             </FormGroup>
 
             <FormGroup>
-              <Label>Tax Rate (%)</Label>
+              <Label>{t('supplier:ui.invoiceSettings.taxRate')}</Label>
               <AutoSaveField onSave={() => saveField('taxRate', settings.taxRate)}>
                 <Input
                   type="number"
@@ -248,13 +248,13 @@ const SupplierInvoiceSettingsPage: React.FC = () => {
                   placeholder="0"
                 />
               </AutoSaveField>
-              <HelpText>Default tax rate applied to invoice line items</HelpText>
+              <HelpText>{t('supplier:ui.invoiceSettings.taxRateHelp')}</HelpText>
             </FormGroup>
           </FormGrid>
         </Section>
 
         <Section>
-          <SectionTitle>Automation</SectionTitle>
+          <SectionTitle>{t('supplier:ui.invoiceSettings.automation')}</SectionTitle>
 
           <AutoSaveField type="toggle" onSave={() => saveField('autoGenerate', settings.autoGenerate)}>
             <CheckboxLabel>
@@ -263,7 +263,7 @@ const SupplierInvoiceSettingsPage: React.FC = () => {
                 checked={settings.autoGenerate}
                 onChange={e => handleChange('autoGenerate', e.target.checked)}
               />
-              Automatically generate trade invoices from confirmed orders
+              {t('supplier:ui.invoiceSettings.autoGenerate')}
             </CheckboxLabel>
           </AutoSaveField>
 
@@ -274,7 +274,7 @@ const SupplierInvoiceSettingsPage: React.FC = () => {
                 checked={settings.autoSendEmail}
                 onChange={e => handleChange('autoSendEmail', e.target.checked)}
               />
-              Automatically email invoices to customers when generated
+              {t('supplier:ui.invoiceSettings.autoEmail')}
             </CheckboxLabel>
           </AutoSaveField>
         </Section>

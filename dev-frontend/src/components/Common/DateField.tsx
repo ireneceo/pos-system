@@ -13,6 +13,7 @@ import ReactDOM from 'react-dom';
 import styled from 'styled-components';
 import { getRestaurantTimezone } from '../../utils/timezone';
 import { getMonthLabel } from './CalendarPicker';
+import { useTranslation } from 'react-i18next';
 
 interface DateFieldProps {
   value?: string | null; // YYYY-MM-DD
@@ -88,7 +89,7 @@ const DateField: React.FC<DateFieldProps> = ({
   value,
   onChange,
   disabled,
-  placeholder = 'Select date',
+  placeholder,
   min,
   max,
   className,
@@ -97,6 +98,7 @@ const DateField: React.FC<DateFieldProps> = ({
   required,
   dropdownPortal,
 }) => {
+  const { t } = useTranslation('common');
   const [isOpen, setIsOpen] = useState(false);
   const today = new Date();
   const initial = parseDate(value || '') || today;
@@ -233,7 +235,7 @@ const DateField: React.FC<DateFieldProps> = ({
           </svg>
         </CalendarIcon>
         <DisplayText $hasValue={!!value}>
-          {value ? formatDisplayDate(value) : placeholder}
+          {value ? formatDisplayDate(value) : (placeholder ?? t('common:ui.dateField.selectDate'))}
         </DisplayText>
         {value && !disabled && !required && (
           <ClearButton onClick={handleClear} aria-label="Clear">×</ClearButton>

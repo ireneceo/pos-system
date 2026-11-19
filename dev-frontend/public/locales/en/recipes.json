@@ -366,5 +366,8 @@
   "categoryTabCommon.placeholderMainDishes": "e.g., Main Dishes",
   "categoryTabCommon.organizeRecipes": "Create categories to organize your recipes",
   "categoryTabCommon.newIngredientCategory": "New Ingredient Category",
-  "categoryTabCommon.inactive": "Inactive"
+  "categoryTabCommon.inactive": "Inactive",
+  "ui.ingredients.searchPh": "Search stock items...",
+  "ui.ingredients.setCost": "Set Cost",
+  "ui.ingredients.newStockItem": "New Stock Item"
 }

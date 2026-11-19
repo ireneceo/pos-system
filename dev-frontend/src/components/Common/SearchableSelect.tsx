@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 
 interface Option {
   value: string | number;
@@ -165,11 +166,14 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options,
   value,
   onChange,
-  placeholder = 'Select...',
+  placeholder: placeholderProp,
   disabled = false,
   allowClear = true,
-  noOptionsMessage = 'No options found'
+  noOptionsMessage: noOptionsMessageProp
 }) => {
+  const { t } = useTranslation('common');
+  const placeholder = placeholderProp ?? t('common:ui.searchableSelect.placeholder');
+  const noOptionsMessage = noOptionsMessageProp ?? t('common:ui.searchableSelect.noOptions');
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);

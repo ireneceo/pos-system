@@ -303,5 +303,8 @@
   "delivery": {
     "title": "Penghantaran",
     "editTitle": "Syarat penghantaran"
-  }
+  },
+  "ui.customers.viewPendingContracts": "Lihat Kontrak Belum Selesai",
+  "ui.contracts.emptyHintPending": "Apabila pembeli menghantar permintaan kontrak, ia muncul di sini untuk kelulusan anda.",
+  "ui.contracts.emptyHintActive": "Kontrak aktif ialah pembeli yang anda bekalkan sekarang. Luluskan permintaan tertunggak untuk bermula."
 }

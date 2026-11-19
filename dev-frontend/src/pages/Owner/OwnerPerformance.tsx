@@ -17,6 +17,7 @@ import {
 import { formatCurrency as formatCurrencyUtil } from '../../utils/currency';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 
 
 import { getAuthToken } from '../../utils/auth';
@@ -516,7 +517,16 @@ const OwnerPerformance: React.FC = () => {
     return formatCurrencyUtil(amount, currencyCode);
   };
 
-  const periodLabel = isCustomDateRange ? `${dateRange.start} ~ ${dateRange.end}` : activePeriod;
+  const periodLabel = isCustomDateRange
+    ? `${dateRange.start} ~ ${dateRange.end}`
+    : ({
+        today: t('brand:brandPerformance.periodToday'),
+        yesterday: t('brand:brandPerformance.periodYesterday'),
+        week: t('brand:brandPerformance.periodLast7Days'),
+        month: t('brand:brandPerformance.periodLast30Days'),
+        year: t('brand:brandPerformance.periodLast365Days'),
+        all: t('common:time.all')
+      } as Record<string, string>)[activePeriod] || activePeriod;
 
   const handleExportReport = () => {
     if (sortedRestaurants.length === 0) return;
@@ -616,7 +626,7 @@ const OwnerPerformance: React.FC = () => {
             <StatCard color="#F97316">
               <StatValue>{stats.overallGrowth > 0 ? '+' : ''}{stats.overallGrowth}%</StatValue>
               <StatLabel>{t('owner:ownerPerformance.growth')}</StatLabel>
-              <StatDescription>vs previous period</StatDescription>
+              <StatDescription>{t('brand:brandPerformance.vsPreviousPeriod')}</StatDescription>
             </StatCard>
             <StatCard color="#14B8A6">
               <StatValue>{stats.totalRestaurants}</StatValue>
@@ -642,7 +652,7 @@ const OwnerPerformance: React.FC = () => {
                     <RestaurantHeader>
                       <RestaurantName>{restaurant.name}{restaurant.branch_name && <span style={{ fontSize: '12px', fontWeight: 500, color: '#4B5563', marginLeft: '6px' }}>({restaurant.branch_name})</span>}</RestaurantName>
                       <StatusBadge status={restaurant.status}>
-                        {restaurant.status === 'active' ? 'Active' : restaurant.status}
+                        {statusLabel(t, restaurant.status)}
                       </StatusBadge>
                     </RestaurantHeader>
                     <MetricRow>
@@ -687,7 +697,7 @@ const OwnerPerformance: React.FC = () => {
               </PerformanceGrid>
 
               <RankingSection>
-                <SectionTitle>Restaurant Ranking ({periodLabel})</SectionTitle>
+                <SectionTitle>{t('owner:ui.ownerPerformance.ranking', { period: periodLabel })}</SectionTitle>
                 {sortedRestaurants.slice(0, 10).map((restaurant, index) => (
                   <RankingItem key={restaurant.id}>
                     <RankNumber rank={index + 1}>{index + 1}</RankNumber>

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 const BrandWorkManualsPage: React.FC = () => {
   const { t } = useTranslation('brand');
-  return <WorkManualsPage pageTitle={t('workManuals.title', 'Work Manuals')} translationNs="brand" />;
+  return <WorkManualsPage pageTitle={t('common:nav.workManuals', 'Work Manuals')} translationNs="brand" />;
 };
 
 export default BrandWorkManualsPage;

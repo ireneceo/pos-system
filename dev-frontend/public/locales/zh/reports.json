@@ -206,5 +206,17 @@
     "staffMealSpend": "员工餐成本",
     "regularSpend": "一般采购",
     "staffMeal": "员工餐"
-  }
+  },
+  "ui.reports.salesReport": "销售报告",
+  "ui.reports.salesDetails": "销售明细",
+  "ui.reports.paymentAnalysis": "支付分析",
+  "ui.reports.menuAnalysis": "菜单分析",
+  "ui.reports.customerInsights": "顾客洞察",
+  "ui.reports.operations": "运营",
+  "reportsPage.customerInsights": "客户洞察",
+  "reportsPage.menuAnalysis": "菜单分析",
+  "reportsPage.operations": "运营",
+  "reportsPage.paymentAnalysis": "支付分析",
+  "reportsPage.salesDetails": "销售明细",
+  "reportsPage.salesReport": "销售报告"
 }

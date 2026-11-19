@@ -9,6 +9,8 @@ import { Modal, ModalButton, ModalWarning, FormRow, FormGroup, FormLabel, FormIn
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
+import { getRoleDisplayName } from '../../utils/roleDisplay';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { getAuthToken } from '../../utils/auth';
@@ -83,6 +85,9 @@ const PermissionTags = styled.div`
   flex-wrap: wrap;
   gap: 4px;
   justify-content: center;
+
+  /* 카드 상태(폰·태블릿): 다른 칸처럼 왼쪽부터 — 가운데로 쏠려 칸 이름과 떨어져 보였다(2026-11-18) */
+  @media (max-width: 1024px) { justify-content: flex-start; }
 `;
 
 const PermissionTag = styled.span`
@@ -176,6 +181,9 @@ const ActionGroup = styled.div`
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+
+  /* 카드 상태: 행동 줄은 카드 맨 아래 왼쪽부터(표준 — 다른 목록 카드와 같게) */
+  @media (max-width: 1024px) { justify-content: flex-start; }
 `;
 
 
@@ -700,7 +708,8 @@ const StaffPage: React.FC = () => {
   };
 
   const getInitials = (name: string) => {
-    return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2) || '?';
+    // 글자·숫자로 시작하는 낱말만 — «Aina (test staff)» 가 «A(» 로 보였다
+    return name.split(/\s+/).map(word => (word.match(/[A-Za-z0-9\u00C0-\u024F\uAC00-\uD7A3\u4E00-\u9FFF]/) || [''])[0]).join('').toUpperCase().slice(0, 2) || '?';
   };
 
   return (
@@ -715,7 +724,7 @@ const StaffPage: React.FC = () => {
               </Button>
             )}
             <Button variant="primary" onClick={handleOpenAddModal}>
-              Add Staff
+              {t('staff:staffPage.addStaff')}
             </Button>
           </ActionSection>
         </Header>
@@ -769,7 +778,7 @@ const StaffPage: React.FC = () => {
           <FilterBar>
             <SearchInput
               type="text"
-              placeholder="Search by name, email, department..."
+              placeholder={t('staff:ui.staff.searchPh')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoComplete="off"
@@ -795,7 +804,7 @@ const StaffPage: React.FC = () => {
                 </div>
               </EmptyState>
             ) : (
-              <DataTable>
+              <DataTable data-card-upto="1280">
                 <DataTableHead>
                   <tr>
                     <DataTableHeaderCell align="left">{t('staff:staffPage.staffMember')}</DataTableHeaderCell>
@@ -810,7 +819,7 @@ const StaffPage: React.FC = () => {
                 <tbody>
                   {filteredStaff.map(staff => (
                     <DataTableRow key={staff.id}>
-                      <DataTableCell data-label="Staff Member">
+                      <DataTableCell data-label={t('staff:staffPage.staffMember')}>
                         <StaffInfo>
                           <StaffAvatar role={staff.role}>
                             {getInitials(staff.name)}
@@ -829,19 +838,19 @@ const StaffPage: React.FC = () => {
                         </StaffInfo>
                       </DataTableCell>
 
-                      <DataTableCell data-label="Role" align="center">
+                      <DataTableCell data-label={t('staff:staffPage.role')} align="center">
                         <RoleBadge role={staff.role}>
-                          {staff.role}
+                          {getRoleDisplayName(staff.role, t)}
                         </RoleBadge>
                       </DataTableCell>
 
-                      <DataTableCell data-label="Department" align="center">
+                      <DataTableCell data-label={t('staff:staffPage.department')} align="center">
                         <span style={{ fontSize: '14px', color: '#4B5563' }}>
                           {staff.department || '—'}
                         </span>
                       </DataTableCell>
 
-                      <DataTableCell data-label="PIN" align="center">
+                      <DataTableCell data-label={t('staff:staffPage.pin')} align="center">
                         <span
                           style={{ fontSize: '14px', color: '#4B5563', fontFamily: 'monospace', letterSpacing: '2px' }}
                           title={staff.accessKind === 'context' && !staff.linkedAdmin ? t('staff:staffPage.linkedNoPin') : undefined}
@@ -850,7 +859,7 @@ const StaffPage: React.FC = () => {
                         </span>
                       </DataTableCell>
 
-                      <DataTableCell data-label="Permissions" align="center">
+                      <DataTableCell data-label={t('staff:staffPage.permissions')} align="center">
                         {staff.role === 'Restaurant Admin' ? (
                           <PermissionTag style={{ background: '#FEE2E2', color: '#DC2626' }}>{t('staff:staffPage.fullAccess')}</PermissionTag>
                         ) : staff.permissions.length === 0 ? (
@@ -859,16 +868,16 @@ const StaffPage: React.FC = () => {
                           <PermissionTags>
                             {staff.permissions.map(p => (
                               <PermissionTag key={p}>
-                                {[...WORK_ACCESS, ...MENU_GROUPS].find(g => g.key === p)?.label.split(' — ')[0].split(' (')[0] || p}
+                                {t(`staff:ui.perm.${p}`, { defaultValue: [...WORK_ACCESS, ...MENU_GROUPS].find(g => g.key === p)?.label.split(' — ')[0].split(' (')[0] || p })}
                               </PermissionTag>
                             ))}
                           </PermissionTags>
                         )}
                       </DataTableCell>
 
-                      <DataTableCell data-label="Status" align="center">
+                      <DataTableCell data-label={t('staff:staffPage.status')} align="center">
                         <StatusBadge active={staff.status === 'active'}>
-                          {staff.status}
+                          {statusLabel(t, staff.status)}
                         </StatusBadge>
                       </DataTableCell>
 
@@ -892,11 +901,11 @@ const StaffPage: React.FC = () => {
                         )}
                         {staff.accessKind !== 'context' && <ActionGroup>
                           <IconButton onClick={() => handleOpenEditModal(staff)}>
-                            Edit
+                            {t('common:button.edit')}
                           </IconButton>
                           {staff.role === 'Staff' && (
                             <IconButton onClick={() => setResetPasswordTarget(staff)}>
-                              Reset PW
+                              {t('staff:ui.staff.resetPw')}
                             </IconButton>
                           )}
                           {staff.role === 'Staff' && canManageRequests && String(staff.id) !== String(user?.id) && (

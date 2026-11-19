@@ -13,6 +13,7 @@ import { formatCurrency, getCurrencySymbol } from '../../utils/currency';
 import { formatDate } from '../../utils/timezone';
 import { getAuthToken } from '../../utils/auth';
 import { usePlayApp } from '../../utils/playApp';
+import { statusLabel } from '../../utils/statusLabel';
 import { Walkthrough, TourTrigger, type TourStep } from '../../components/Walkthrough';
 
 interface SubscriptionInfo {
@@ -355,7 +356,7 @@ const SupplierDashboard: React.FC = () => {
             <SubscriptionBadge variant={subscriptionVariant()} onClick={goSubscription} style={badgeStyle || { cursor: 'pointer' }}>
               {data.subscription.status === 'trial' && data.subscription.days_until_trial_end !== null
                 ? `${t('dashboard.trial')} - ${t('dashboard.daysLeft', { n: Math.max(0, data.subscription.days_until_trial_end) })}`
-                : data.subscription.status}
+                : statusLabel(t, data.subscription.status)}
             </SubscriptionBadge>
           </Subtitle>
         )}
@@ -442,7 +443,7 @@ const SupplierDashboard: React.FC = () => {
               <TableCard>
                 <TableHeader>
                   <h3>{t('dashboard.recentOrders', 'Recent Orders')}</h3>
-                  <a onClick={() => navigate('/pos/supplier/orders')}>{t('common.viewAll', 'View all')} →</a>
+                  <a onClick={() => navigate('/pos/supplier/orders')}>{t('common:button.viewAll')} →</a>
                 </TableHeader>
                 {data.recent_orders.length === 0 ? (
                   <EmptyTable>{t('dashboard.noRecentOrders', 'No orders yet.')}</EmptyTable>
@@ -461,7 +462,7 @@ const SupplierDashboard: React.FC = () => {
                         <DataTableRow key={po.id} onClick={() => navigate(`/pos/supplier/orders/${po.id}`)} style={{ cursor: 'pointer' }}>
                           <DataTableCell data-label={t('dashboard.poNumber', 'PO #')}><strong>{po.po_number}</strong></DataTableCell>
                           <DataTableCell data-label={t('dashboard.customer', 'Customer')}>{po.customer}</DataTableCell>
-                          <DataTableCell data-label={t('dashboard.status', 'Status')}><CommonStatusBadge status={mapSupplierStatusVariant(po.status)} size="small">{po.status === 'pending_approval' ? t('status.awaitingOwner', 'Awaiting owner approval') : po.status}</CommonStatusBadge></DataTableCell>
+                          <DataTableCell data-label={t('dashboard.status', 'Status')}><CommonStatusBadge status={mapSupplierStatusVariant(po.status)} size="small">{po.status === 'pending_approval' ? t('status.awaitingOwner', 'Awaiting owner approval') : statusLabel(t, po.status)}</CommonStatusBadge></DataTableCell>
                           <DataTableCell align="right" data-label={t('dashboard.total', 'Total')}>{formatCurrency(po.total_amount, po.currency || ccy)}</DataTableCell>
                         </DataTableRow>
                       ))}
@@ -473,7 +474,7 @@ const SupplierDashboard: React.FC = () => {
               <TableCard>
                 <TableHeader>
                   <h3>{t('dashboard.recentTradeInvoices', 'Recent Trade Invoices')}</h3>
-                  <a onClick={() => navigate('/pos/supplier/trade-invoices')}>{t('common.viewAll', 'View all')} →</a>
+                  <a onClick={() => navigate('/pos/supplier/trade-invoices')}>{t('common:button.viewAll')} →</a>
                 </TableHeader>
                 {data.recent_invoices.length === 0 ? (
                   <EmptyTable>{t('dashboard.noRecentInvoices', 'No invoices yet.')}</EmptyTable>
@@ -492,7 +493,7 @@ const SupplierDashboard: React.FC = () => {
                         <DataTableRow key={inv.id} onClick={() => navigate('/pos/supplier/trade-invoices')} style={{ cursor: 'pointer' }}>
                           <DataTableCell data-label={t('dashboard.invoiceNumber', 'Invoice #')}><strong>{inv.invoice_number}</strong></DataTableCell>
                           <DataTableCell data-label={t('dashboard.customer', 'Customer')}>{inv.customer}</DataTableCell>
-                          <DataTableCell data-label={t('dashboard.status', 'Status')}><CommonStatusBadge status={mapSupplierStatusVariant(inv.status)} size="small">{inv.status.replace('_', ' ')}</CommonStatusBadge></DataTableCell>
+                          <DataTableCell data-label={t('dashboard.status', 'Status')}><CommonStatusBadge status={mapSupplierStatusVariant(inv.status)} size="small">{statusLabel(t, inv.status)}</CommonStatusBadge></DataTableCell>
                           <DataTableCell align="right" data-label={t('dashboard.total', 'Total')}>{formatCurrency(inv.total_amount, ccy)}</DataTableCell>
                         </DataTableRow>
                       ))}
@@ -507,33 +508,33 @@ const SupplierDashboard: React.FC = () => {
               <h3>{t('dashboard.subscription')}</h3>
               <SubscriptionRow>
                 <SubscriptionItem>
-                  <div className="label">Plan</div>
+                  <div className="label">{t('common:tableCol.plan')}</div>
                   <div className="value">{data.subscription?.plan_name || '-'}</div>
                 </SubscriptionItem>
                 <SubscriptionItem>
-                  <div className="label">Status</div>
+                  <div className="label">{t('common:label.status')}</div>
                   <div className="value">
                     <SubscriptionBadge variant={subscriptionVariant()}>
-                      {data.subscription?.status || '-'}
+                      {statusLabel(t, data.subscription?.status) || '-'}
                     </SubscriptionBadge>
                   </div>
                 </SubscriptionItem>
                 <SubscriptionItem>
-                  <div className="label">Inventory Value</div>
+                  <div className="label">{t('supplier:dashboard.inventoryValue')}</div>
                   <div className="value">{formatCurrency(data.inventory_value, ccy)}</div>
                 </SubscriptionItem>
                 <SubscriptionItem>
-                  <div className="label">Active Products</div>
+                  <div className="label">{t('supplier:dashboard.activeProducts')}</div>
                   <div className="value">{data.products_active} / {data.products_total}</div>
                 </SubscriptionItem>
                 {data.subscription?.status === 'trial' && (
                   <>
                     <SubscriptionItem>
-                      <div className="label">Trial Ends</div>
+                      <div className="label">{t('supplier:ui.dashboard.trialEnds')}</div>
                       <div className="value">{formatTrialDate(data.subscription.trial_end_date)}</div>
                     </SubscriptionItem>
                     <SubscriptionItem>
-                      <div className="label">Days Left</div>
+                      <div className="label">{t('supplier:ui.dashboard.daysLeft')}</div>
                       <div className="value">
                         {data.subscription.days_until_trial_end !== null
                           ? Math.max(0, data.subscription.days_until_trial_end)

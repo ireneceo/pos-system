@@ -1002,7 +1002,7 @@ const ManagersPage: React.FC = () => {
 
           <SearchInput
             type="text"
-            placeholder="Search by name, email, or company..."
+            placeholder={t('admin:ui.managers.searchPh')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -1052,7 +1052,7 @@ const ManagersPage: React.FC = () => {
 
                   <DataTableCell data-label={t('admin:managersPage.status')}>
                     <StatusBadge status={manager.status}>
-                      {manager.status === 'active' ? 'Active' : 'Inactive'}
+                      {manager.status === 'active' ? t('common:status.active') : t('common:status.inactive')}
                     </StatusBadge>
                   </DataTableCell>
 
@@ -1377,7 +1377,7 @@ const ManagersPage: React.FC = () => {
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>{t('admin:managersPage.status')}</FormLabel>
-                  <FormInput type="text" value={selectedManager.status === 'active' ? 'Active' : 'Inactive'} disabled />
+                  <FormInput type="text" value={selectedManager.status === 'active' ? t('common:status.active') : t('common:status.inactive')} disabled />
                 </FormGroup>
                 <FormGroup>
                   <FormLabel>{t('admin:managersPage.restaurantCount')}</FormLabel>

@@ -8,6 +8,7 @@ import { ThemedButton } from '../../components/Theme/ThemedButton';
 import { FilterBar, SearchInput, FilterSelect } from '../../components/Common/FilterComponents';
 import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
+import { statusLabel } from '../../utils/statusLabel';
 import { formatDate as tzFormatDate } from '../../utils/timezone';
 import {
   Container,
@@ -657,7 +658,7 @@ const BrandSubscriptionsPage: React.FC = () => {
 
           <FilterBar>
             <SearchInput
-              placeholder="Search restaurants or plans..."
+              placeholder={t('brand:ui.subscriptions.searchPh')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -747,7 +748,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                           padding: '4px 10px', background: '#FEF3C7', color: '#92400E',
                           borderRadius: '6px', fontSize: '12px', fontWeight: 600
                         }}>
-                          Not Assigned
+                          {t('brand:ui.subscriptions.notAssigned')}
                         </span>
                       )}
                     </MobileValue>
@@ -755,7 +756,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                     <MobileValue>
                       <MobileLabel>{t('brand:brandSubscriptionsPage.status')}</MobileLabel>
                       <StatusBadge status={sub.restaurant_status}>
-                        {sub.restaurant_status.charAt(0).toUpperCase() + sub.restaurant_status.slice(1)}
+                        {statusLabel(t, sub.restaurant_status)}
                       </StatusBadge>
                     </MobileValue>
 
@@ -776,7 +777,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                         <div>
                           <div style={{fontSize: '13px', fontWeight: 500, color: '#0A2540'}}>{sub.latest_invoice.invoice_number}</div>
                           <StatusBadge status={sub.latest_invoice.status}>
-                            {sub.latest_invoice.status.replace('_', ' ')}
+                            {statusLabel(t, sub.latest_invoice.status)}
                           </StatusBadge>
                         </div>
                       ) : (
@@ -972,7 +973,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                         <div>
                           <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.status')}</div>
                           <StatusBadge status={viewingSub.restaurant_status}>
-                            {viewingSub.restaurant_status.charAt(0).toUpperCase() + viewingSub.restaurant_status.slice(1)}
+                            {statusLabel(t, viewingSub.restaurant_status)}
                           </StatusBadge>
                         </div>
                       </div>
@@ -1104,7 +1105,7 @@ const BrandSubscriptionsPage: React.FC = () => {
                           <div style={{marginBottom: '12px'}}>
                             <div style={{fontSize: '12px', color: '#4B5563', marginBottom: '4px'}}>{t('brand:brandSubscriptionsPage.status')}</div>
                             <StatusBadge status={viewingSub.latest_invoice.status}>
-                              {viewingSub.latest_invoice.status.replace('_', ' ')}
+                              {statusLabel(t, viewingSub.latest_invoice.status)}
                             </StatusBadge>
                           </div>
                           <div>

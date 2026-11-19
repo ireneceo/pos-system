@@ -40,5 +40,13 @@
   "dashboardContent.order": "주문",
   "dashboardContent.items": "항목",
   "dashboardContent.status": "상태",
-  "dashboardContent.time": "시간"
+  "dashboardContent.time": "시간",
+  "ui.basic.roleSystemAdmin": "시스템 전체에 접근해 모든 매니저·레스토랑·시스템 설정을 관리할 수 있습니다.",
+  "ui.basic.roleManager": "여러 레스토랑을 관리하고 묶음 리포트를 보며 운영을 살필 수 있습니다.",
+  "ui.basic.roleRestaurantAdmin": "레스토랑·직원·메뉴를 관리하고 POS 기능을 모두 쓸 수 있습니다.",
+  "ui.basic.roleStaff": "POS 단말·주방 화면·주문 관리 기능을 쓸 수 있습니다.",
+  "ui.basic.roleDefault": "Purple Here POS 에 오신 것을 환영합니다.",
+  "ui.basic.hello": "{{name}} 님, 안녕하세요!",
+  "ui.basic.systemOk": "모든 시스템이 정상입니다. 왼쪽 메뉴에서 쓸 수 있는 기능을 여세요.",
+  "ui.basic.gettingStarted": "왼쪽 메뉴에서 내 역할로 쓸 수 있는 기능을 고르세요."
 }

@@ -10,6 +10,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import CommentSection from '../../components/Common/CommentSection';
 import { StatsGrid, StatCard, StatValue, StatLabel, Modal as CommonModal } from '../../components/UI';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
@@ -547,7 +548,7 @@ const OwnerSystemInquiryPage: React.FC = () => {
           </Tabs>
           <FilterBar>
             <SearchInput
-              placeholder="Search inquiries..."
+              placeholder={t('common:ui.search.inquiries')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -589,8 +590,8 @@ const OwnerSystemInquiryPage: React.FC = () => {
                     </CustomerInfo>
                   </TicketInfo>
                   <TicketBadges>
-                    <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
-                    <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
+                    <StatusBadge status={ticket.status}>{statusLabel(t, ticket.status)}</StatusBadge>
+                    <PriorityBadge priority={ticket.priority}>{statusLabel(t, ticket.priority)}</PriorityBadge>
                   </TicketBadges>
                 </TicketHeader>
 
@@ -609,7 +610,7 @@ const OwnerSystemInquiryPage: React.FC = () => {
                   </MetaItem>
                   <MetaItem>
                     <MetaLabel>{t('owner:ownerSystemInquiryPage.category')}</MetaLabel>
-                    <MetaValue style={{textTransform: 'capitalize'}}>{ticket.category.replace('-', ' ')}</MetaValue>
+                    <MetaValue style={{textTransform: 'capitalize'}}>{statusLabel(t, ticket.category)}</MetaValue>
                   </MetaItem>
                   <MetaItem>
                     <MetaLabel>{t('owner:ownerSystemInquiryPage.restaurant')}</MetaLabel>
@@ -677,7 +678,7 @@ const OwnerSystemInquiryPage: React.FC = () => {
                       type="text"
                       value={newTicket.subject}
                       onChange={(e) => setNewTicket({...newTicket, subject: e.target.value})}
-                      placeholder="Brief description of your inquiry"
+                      placeholder={t('common:ui.inquiry.subjectPh')}
                       required
                     />
                   </FormGroup>
@@ -686,7 +687,7 @@ const OwnerSystemInquiryPage: React.FC = () => {
                     <FormTextArea
                       value={newTicket.description}
                       onChange={(e) => setNewTicket({...newTicket, description: e.target.value})}
-                      placeholder="Detailed description..."
+                      placeholder={t('common:ui.inquiry.detailShortPh')}
                       rows={4}
                       required
                     />
@@ -759,7 +760,7 @@ const OwnerSystemInquiryPage: React.FC = () => {
                       <div>
                         <FormLabel>{t('owner:ownerSystemInquiryPage.priority')}</FormLabel>
                         <div style={{ padding: '8px 0' }}>
-                          <PriorityBadge priority={selectedTicket.priority}>{selectedTicket.priority}</PriorityBadge>
+                          <PriorityBadge priority={selectedTicket.priority}>{statusLabel(t, selectedTicket.priority)}</PriorityBadge>
                         </div>
                       </div>
                       <div>
@@ -796,7 +797,7 @@ const OwnerSystemInquiryPage: React.FC = () => {
                       <div>
                         <FormLabel>{t('owner:ownerSystemInquiryPage.category')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#1F2937', textTransform: 'capitalize' }}>
-                          {selectedTicket.category.replace('-', ' ')}
+                          {statusLabel(t, selectedTicket.category)}
                         </div>
                       </div>
                     </div>

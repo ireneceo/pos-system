@@ -17,6 +17,7 @@ import { formatCurrency } from '../../utils/currency';
 import { formatDateTime } from '../../utils/timezone';
 import { formatPaymentDisplay } from '../../constants';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 import { useRoleDisplayName } from '../../utils/roleDisplay';
 
 import { getAuthToken } from '../../utils/auth';
@@ -741,7 +742,7 @@ const RestaurantDashboard: React.FC = () => {
                       fontSize: '13px'
                     }}
                   >
-                    Week
+                    {t('common:time.week')}
                   </button>
                   <button
                     onClick={() => setTimePeriod('month')}
@@ -756,7 +757,7 @@ const RestaurantDashboard: React.FC = () => {
                       fontSize: '13px'
                     }}
                   >
-                    Month
+                    {t('common:time.month')}
                   </button>
                   <button
                     onClick={() => setTimePeriod('year')}
@@ -771,7 +772,7 @@ const RestaurantDashboard: React.FC = () => {
                       fontSize: '13px'
                     }}
                   >
-                    Year
+                    {t('common:time.year')}
                   </button>
                 </div>
               </div>
@@ -825,7 +826,7 @@ const RestaurantDashboard: React.FC = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '12px', borderTop: '1px solid #C7CED6' }}>
                     <div style={{ fontSize: '13px', color: '#4B5563' }}>
-                      {timePeriod === 'week' ? 'Last 7 days' : timePeriod === 'month' ? 'Last 12 weeks' : 'Last 12 months'}
+                      {timePeriod === 'week' ? t('common:time.last7Days', 'Last 7 days') : timePeriod === 'month' ? t('common:time.last12Weeks', 'Last 12 weeks') : t('common:time.last12Months', 'Last 12 months')}
                     </div>
                     <div style={{ fontSize: '13px', fontWeight: '600', color: '#059669' }}>
                       {(() => {
@@ -1024,14 +1025,14 @@ const RestaurantDashboard: React.FC = () => {
                         <Badge variant={order.status}>
                           {(() => {
                             switch(order.status) {
-                              case 'awaiting_payment': return 'Outstanding';
-                              case 'pending': return 'Pending';
-                              case 'preparing': return 'Preparing';
-                              case 'ready': return 'Ready';
-                              case 'served': return 'Served';
-                              case 'completed': return 'Completed';
-                              case 'cancelled': return 'Cancelled';
-                              default: return order.status.charAt(0).toUpperCase() + order.status.slice(1);
+                              case 'awaiting_payment': return statusLabel(t, 'awaiting_payment');
+                              case 'pending': return statusLabel(t, 'pending');
+                              case 'preparing': return statusLabel(t, 'preparing');
+                              case 'ready': return statusLabel(t, 'ready');
+                              case 'served': return statusLabel(t, 'served');
+                              case 'completed': return statusLabel(t, 'completed');
+                              case 'cancelled': return statusLabel(t, 'cancelled');
+                              default: return statusLabel(t, order.status);
                             }
                           })()}
                         </Badge>
@@ -1049,7 +1050,7 @@ const RestaurantDashboard: React.FC = () => {
                       <DataTableCell align="right" data-label={t('settings:restaurantDashboard.amount')}>
                         <Amount>{formatCurrency(parseFloat(order.total_amount || 0), selectedCurrency)}</Amount>
                         <PaymentMethod isPending={order.payment_status === 'pending'}>
-                          {order.payment_status === 'pending' ? 'Pending' : formatPaymentDisplay(order.payment_method, (order as any).card_type, paymentSettings || undefined)}
+                          {order.payment_status === 'pending' ? statusLabel(t, 'pending') : formatPaymentDisplay(order.payment_method, (order as any).card_type, paymentSettings || undefined)}
                         </PaymentMethod>
                       </DataTableCell>
                     </DataTableRow>

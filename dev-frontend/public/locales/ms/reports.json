@@ -206,5 +206,17 @@
     "staffMealSpend": "Kos makanan staf",
     "regularSpend": "Pembelian biasa",
     "staffMeal": "Makanan staf"
-  }
+  },
+  "ui.reports.salesReport": "Laporan jualan",
+  "ui.reports.salesDetails": "Butiran jualan",
+  "ui.reports.paymentAnalysis": "Analisis pembayaran",
+  "ui.reports.menuAnalysis": "Analisis menu",
+  "ui.reports.customerInsights": "Pandangan pelanggan",
+  "ui.reports.operations": "Operasi",
+  "reportsPage.customerInsights": "Wawasan Pelanggan",
+  "reportsPage.menuAnalysis": "Analisis Menu",
+  "reportsPage.operations": "Operasi",
+  "reportsPage.paymentAnalysis": "Analisis Pembayaran",
+  "reportsPage.salesDetails": "Butiran Jualan",
+  "reportsPage.salesReport": "Laporan Jualan"
 }

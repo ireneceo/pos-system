@@ -203,11 +203,11 @@ const FoodcourtInventoryPage: React.FC = () => {
 
     const delta = parseFloat(adjustForm.quantity_delta);
     if (Number.isNaN(delta) || delta === 0) {
-      setFormError(t('common:invalidValue', 'Enter a non-zero number'));
+      setFormError(t('foodcourt:ui.inventory.nonZero', 'Enter a non-zero number'));
       return;
     }
     if (!adjustForm.reason) {
-      setFormError(t('common:required', 'Reason is required'));
+      setFormError(t('foodcourt:ui.inventory.reasonRequired', 'Reason is required'));
       return;
     }
 
@@ -249,7 +249,7 @@ const FoodcourtInventoryPage: React.FC = () => {
 
     const qty = parseFloat(receiveForm.quantity);
     if (Number.isNaN(qty) || qty <= 0) {
-      setFormError(t('common:invalidValue', 'Quantity must be > 0'));
+      setFormError(t('foodcourt:ui.inventory.qtyPositive', 'Quantity must be > 0'));
       return;
     }
 
@@ -302,7 +302,7 @@ const FoodcourtInventoryPage: React.FC = () => {
         <Content>
           <DataTableContainer>
             <DataTableEmpty>
-              {t('common:noFoodcourtAssigned', 'No foodcourt is assigned to your account.')}
+              {t('foodcourt:ui.inventory.noFoodcourt', 'No foodcourt is assigned to your account.')}
             </DataTableEmpty>
           </DataTableContainer>
         </Content>
@@ -339,7 +339,7 @@ const FoodcourtInventoryPage: React.FC = () => {
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder={t('common:search', 'Search') as string}
+            placeholder={t('common:button.search', 'Search') as string}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -347,7 +347,7 @@ const FoodcourtInventoryPage: React.FC = () => {
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
           >
-            <option value="all">{t('common:allCategories', 'All Categories')}</option>
+            <option value="all">{t('foodcourt:ui.inventory.allCategories', 'All Categories')}</option>
             {categories.map(cat => (
               <option key={cat.id} value={cat.id.toString()}>
                 {cat.emoji ? `${cat.emoji} ` : ''}{cat.name}
@@ -368,15 +368,15 @@ const FoodcourtInventoryPage: React.FC = () => {
           <DataTable>
             <DataTableHead>
               <tr>
-                <DataTableHeaderCell align="left">{t('common:name', 'Name')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:label.name', 'Name')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="left">SKU</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">{t('common:unit', 'Unit')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="left">{t('common:category', 'Category')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">{t('common:stock', 'Stock')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('foodcourt:ui.inventory.unit', 'Unit')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="left">{t('common:label.category', 'Category')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('foodcourt:ui.inventory.stock', 'Stock')}</DataTableHeaderCell>
                 <DataTableHeaderCell align="right">{t('supplier:inventory.modals.delta', 'Threshold')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right">{t('common:price', 'Unit Price')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="center">{t('common:status', 'Status')}</DataTableHeaderCell>
-                <DataTableHeaderCell align="right" isActions>{t('common:actions', 'Actions')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right">{t('foodcourt:ui.inventory.unitPrice', 'Unit Price')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="center">{t('common:label.status', 'Status')}</DataTableHeaderCell>
+                <DataTableHeaderCell align="right" isActions>{t('common:label.actions', 'Actions')}</DataTableHeaderCell>
               </tr>
             </DataTableHead>
             <tbody>
@@ -390,29 +390,29 @@ const FoodcourtInventoryPage: React.FC = () => {
                 <tr>
                   <td colSpan={9}>
                     <DataTableEmpty>
-                      {t('supplier:inventory.emptyHint', 'No products yet. Create products in the Products page first.')}
+                      {t('foodcourt:ui.inventory.emptyHint', 'No products yet. Create products in the Products page first.')}
                     </DataTableEmpty>
                   </td>
                 </tr>
               ) : (
                 rows.map(row => (
                   <DataTableRow key={row.id}>
-                    <DataTableCell data-label={t('common:name', 'Name') as string}>{row.name}</DataTableCell>
+                    <DataTableCell data-label={t('common:label.name', 'Name') as string}>{row.name}</DataTableCell>
                     <DataTableCell data-label="SKU">{row.sku || '-'}</DataTableCell>
-                    <DataTableCell data-label={t('common:unit', 'Unit') as string} align="center">{row.unit || '-'}</DataTableCell>
-                    <DataTableCell data-label={t('common:category', 'Category') as string}>
+                    <DataTableCell data-label={t('foodcourt:ui.inventory.unit', 'Unit') as string} align="center">{row.unit || '-'}</DataTableCell>
+                    <DataTableCell data-label={t('common:label.category', 'Category') as string}>
                       {row.category ? `${row.category.emoji ? row.category.emoji + ' ' : ''}${row.category.name}` : '-'}
                     </DataTableCell>
-                    <DataTableCell data-label={t('common:stock', 'Stock') as string} align="right">
+                    <DataTableCell data-label={t('foodcourt:ui.inventory.stock', 'Stock') as string} align="right">
                       {Number(row.current_stock).toFixed(2)}
                     </DataTableCell>
                     <DataTableCell data-label={t('supplier:inventory.modals.delta', 'Threshold') as string} align="right">
                       {Number(row.low_stock_threshold).toFixed(2)}
                     </DataTableCell>
-                    <DataTableCell data-label={t('common:price', 'Unit Price') as string} align="right">
+                    <DataTableCell data-label={t('foodcourt:ui.inventory.unitPrice', 'Unit Price') as string} align="right">
                       {fmtMoney(row.unit_price)}
                     </DataTableCell>
-                    <DataTableCell data-label={t('common:status', 'Status') as string} align="center">
+                    <DataTableCell data-label={t('common:label.status', 'Status') as string} align="center">
                       {row.stock_status === 'out_of_stock' ? (
                         <DataTableStatus variant="error">
                           {t('supplier:inventory.outOfStockBadge', 'OUT')}
@@ -467,7 +467,7 @@ const FoodcourtInventoryPage: React.FC = () => {
         <form id="fc-adjust-form" onSubmit={submitAdjust}>
           {activeRow && (
             <UIFormGroup>
-              <FormLabel>{t('common:currentStock', 'Current Stock')}</FormLabel>
+              <FormLabel>{t('foodcourt:ui.inventory.currentStock', 'Current Stock')}</FormLabel>
               <FormInput
                 type="text"
                 value={`${Number(activeRow.current_stock).toFixed(2)} ${activeRow.unit || ''}`}
@@ -482,11 +482,11 @@ const FoodcourtInventoryPage: React.FC = () => {
               step="0.01"
               value={adjustForm.quantity_delta}
               onChange={(e) => setAdjustForm({ ...adjustForm, quantity_delta: e.target.value })}
-              placeholder="e.g. -2 or 5"
+              placeholder={t('foodcourt:ui.inventory.deltaPh', 'e.g. -2 or 5')}
               required
             />
             <HelpText>
-              {t('supplier:inventory.deltaHint', 'Use negative values to deduct stock.')}
+              {t('foodcourt:ui.inventory.deltaHint', 'Use negative values to deduct stock.')}
             </HelpText>
           </UIFormGroup>
           <UIFormGroup>
@@ -496,10 +496,10 @@ const FoodcourtInventoryPage: React.FC = () => {
               onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
               required
             >
-              <option value="lost">{t('supplier:inventory.reason.lost', 'Lost')}</option>
-              <option value="damaged">{t('supplier:inventory.reason.damaged', 'Damaged')}</option>
-              <option value="correction">{t('supplier:inventory.reason.correction', 'Correction')}</option>
-              <option value="other">{t('supplier:inventory.reason.other', 'Other')}</option>
+              <option value="lost">{t('foodcourt:ui.inventory.reasonLost', 'Lost')}</option>
+              <option value="damaged">{t('foodcourt:ui.inventory.reasonDamaged', 'Damaged')}</option>
+              <option value="correction">{t('foodcourt:ui.inventory.reasonCorrection', 'Correction')}</option>
+              <option value="other">{t('foodcourt:ui.inventory.reasonOther', 'Other')}</option>
             </FormSelect>
           </UIFormGroup>
           <UIFormGroup>
@@ -538,7 +538,7 @@ const FoodcourtInventoryPage: React.FC = () => {
         <form id="fc-receive-form" onSubmit={submitReceive}>
           {activeRow && (
             <UIFormGroup>
-              <FormLabel>{t('common:currentStock', 'Current Stock')}</FormLabel>
+              <FormLabel>{t('foodcourt:ui.inventory.currentStock', 'Current Stock')}</FormLabel>
               <FormInput
                 type="text"
                 value={`${Number(activeRow.current_stock).toFixed(2)} ${activeRow.unit || ''}`}
@@ -565,7 +565,7 @@ const FoodcourtInventoryPage: React.FC = () => {
               onChange={(e) => setReceiveForm({ ...receiveForm, batch_no: e.target.value })}
             />
             <HelpText>
-              {t('supplier:inventory.batchHint', 'Sprint 3 — auto-tracked when PO ships')}
+              {t('foodcourt:ui.inventory.batchHint', 'Sprint 3 — auto-tracked when PO ships')}
             </HelpText>
           </UIFormGroup>
           <UIFormGroup>

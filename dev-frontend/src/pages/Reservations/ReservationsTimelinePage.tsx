@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
 import { useAuth } from '../../contexts/AuthContext';
 import { useStore } from '../../contexts/StoreContext';
@@ -120,6 +121,7 @@ function tomorrowInTz(tz: string): string {
 }
 
 export default function ReservationsTimelinePage() {
+  const { t } = useTranslation('reservation');
   const { user } = useAuth();
   const navigate = useNavigate();
   const { storeInfo } = useStore();
@@ -268,8 +270,8 @@ export default function ReservationsTimelinePage() {
 
       <Content>
         <FilterToolbar>
-          <DateButton active={date === today} onClick={() => setDate(today)}>Today</DateButton>
-          <DateButton active={date === tomorrow} onClick={() => setDate(tomorrow)}>Tomorrow</DateButton>
+          <DateButton active={date === today} onClick={() => setDate(today)}>{t('reservation:today')}</DateButton>
+          <DateButton active={date === tomorrow} onClick={() => setDate(tomorrow)}>{t('reservation:ui.tomorrow')}</DateButton>
           <div style={{ minWidth: 180 }}>
             <DateField value={date} onChange={setDate} />
           </div>
@@ -287,14 +289,14 @@ export default function ReservationsTimelinePage() {
         <DataTable>
           <DataTableHead>
             <tr>
-              <DataTableHeaderCell>Time</DataTableHeaderCell>
-              <DataTableHeaderCell>Guest</DataTableHeaderCell>
-              <DataTableHeaderCell>Party</DataTableHeaderCell>
-              <DataTableHeaderCell>Source</DataTableHeaderCell>
-              <DataTableHeaderCell>Status</DataTableHeaderCell>
-              <DataTableHeaderCell>Table</DataTableHeaderCell>
-              <DataTableHeaderCell>Notes</DataTableHeaderCell>
-              <DataTableHeaderCell>Actions</DataTableHeaderCell>
+              <DataTableHeaderCell>{t('reservation:form.time')}</DataTableHeaderCell>
+              <DataTableHeaderCell>{t('reservation:ui.col.guest')}</DataTableHeaderCell>
+              <DataTableHeaderCell>{t('reservation:form.party')}</DataTableHeaderCell>
+              <DataTableHeaderCell>{t('reservation:ui.col.source')}</DataTableHeaderCell>
+              <DataTableHeaderCell>{t('common:label.status')}</DataTableHeaderCell>
+              <DataTableHeaderCell>{t('reservation:form.table')}</DataTableHeaderCell>
+              <DataTableHeaderCell>{t('reservation:form.notes')}</DataTableHeaderCell>
+              <DataTableHeaderCell>{t('common:label.actions')}</DataTableHeaderCell>
             </tr>
           </DataTableHead>
           <tbody>

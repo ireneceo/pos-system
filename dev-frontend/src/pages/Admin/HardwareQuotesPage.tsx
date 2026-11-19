@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
+import { statusLabel } from '../../utils/statusLabel';
 // ─── Types ───────────────────────────────────────────────────────
 
 interface AddonItem {
@@ -1067,13 +1068,13 @@ const HardwareQuotesPage: React.FC = () => {
 
   const formatStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
-      new: 'New',
-      contacted: 'In Progress',
-      confirmed: 'Confirmed',
-      invoiced: 'Invoiced',
-      cancelled: 'Closed'
+      new: t('admin:hardwareQuotesPage.new', 'New'),
+      contacted: t('admin:hardwareQuotesPage.inProgress', 'In Progress'),
+      confirmed: t('admin:hardwareQuotesPage.confirmed', 'Confirmed'),
+      invoiced: t('admin:hardwareQuotesPage.invoiced', 'Invoiced'),
+      cancelled: t('admin:hardwareQuotesPage.closed', 'Closed')
     };
-    return labels[status] || status.charAt(0).toUpperCase() + status.slice(1);
+    return labels[status] || statusLabel(t, status);
   };
 
   const quoteCurrency = selectedQuote?.currency || 'MYR';
@@ -1107,19 +1108,19 @@ const HardwareQuotesPage: React.FC = () => {
 
           <Tabs>
             <Tab active={activeTab === 'new'} onClick={() => handleTabChange('new')}>
-              New ({newCount})
+              {t('admin:hardwareQuotesPage.new', 'New')} ({newCount})
             </Tab>
             <Tab active={activeTab === 'progress'} onClick={() => handleTabChange('progress')}>
-              In Progress ({progressCount})
+              {t('admin:hardwareQuotesPage.inProgress', 'In Progress')} ({progressCount})
             </Tab>
             <Tab active={activeTab === 'closed'} onClick={() => handleTabChange('closed')}>
-              Closed ({closedCount})
+              {t('admin:hardwareQuotesPage.closed', 'Closed')} ({closedCount})
             </Tab>
           </Tabs>
 
           <FilterBar>
             <SearchInput
-              placeholder="Search by name, email, company, quote number..."
+              placeholder={t('admin:ui.hardwareQuotes.searchPh', 'Search by name, email, company, quote number...')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -1190,7 +1191,7 @@ const HardwareQuotesPage: React.FC = () => {
                       color: '#059669',
                       marginBottom: '4px',
                     }}>
-                      + Subscription: {quote.plan_snapshot?.display_name || 'Plan'} ({quote.billing_cycle || 'monthly'})
+                      + {t('admin:ui.hardwareQuotes.subscription', 'Subscription')}: {quote.plan_snapshot?.display_name || t('admin:hardwareQuotesPage.plan', 'Plan')} ({statusLabel(t, quote.billing_cycle || 'monthly')})
                     </span>
                   )}
                   {quote.addon_items && quote.addon_items.length > 0 && (
@@ -1228,7 +1229,7 @@ const HardwareQuotesPage: React.FC = () => {
                         }}
                         style={{ background: '#F0F0FF', color: '#635BFF', borderColor: '#635BFF' }}
                       >
-                        Start Process
+                        {t('admin:ui.hardwareQuotes.startProcess', 'Start Process')}
                       </CloseQuoteButton>
                     )}
                     {activeTab === 'progress' && (
@@ -1238,7 +1239,7 @@ const HardwareQuotesPage: React.FC = () => {
                           handleCloseQuote(quote);
                         }}
                       >
-                        Close
+                        {t('common:button.close', 'Close')}
                       </CloseQuoteButton>
                     )}
                   </QuoteFooter>

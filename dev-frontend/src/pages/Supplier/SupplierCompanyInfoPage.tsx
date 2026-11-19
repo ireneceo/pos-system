@@ -278,7 +278,7 @@ const SupplierCompanyInfoPage: React.FC = () => {
     return (
       <Container>
         <Header><Title>{t('company.title')}</Title></Header>
-        <Content><LoadingMessage>Loading...</LoadingMessage></Content>
+        <Content><LoadingMessage>{t('common:status.loading')}</LoadingMessage></Content>
       </Container>
     );
   }
@@ -297,42 +297,42 @@ const SupplierCompanyInfoPage: React.FC = () => {
           <SectionTitle>{t('company.tabs.general')}</SectionTitle>
           <FormGrid>
             <FormGroup>
-              <Label>Supplier Name<span>*</span></Label>
+              <Label>{t('supplier:ui.companyInfo.supplierName')}<span>*</span></Label>
               <AutoSaveField onSave={() => saveField('name', company.name)}>
                 <Input
                   type="text"
                   value={company.name}
                   onChange={e => handleChange('name', e.target.value)}
-                  placeholder="Enter supplier company name"
+                  placeholder={t('supplier:ui.companyInfo.supplierNamePh')}
                 />
               </AutoSaveField>
             </FormGroup>
 
             <FormGroup>
-              <Label>Supplier Code</Label>
+              <Label>{t('supplier:ui.companyInfo.supplierCode')}</Label>
               <AutoSaveField onSave={() => saveField('code', company.code)}>
                 <Input
                   type="text"
                   value={company.code}
                   onChange={e => handleChange('code', e.target.value)}
-                  placeholder="e.g., SUP-001"
+                  placeholder={t('supplier:ui.companyInfo.supplierCodePh')}
                 />
               </AutoSaveField>
             </FormGroup>
 
             <FormGroup fullWidth>
-              <Label>Description</Label>
+              <Label>{t('common:label.description')}</Label>
               <AutoSaveField onSave={() => saveField('description', company.description)}>
                 <Textarea
                   value={company.description}
                   onChange={e => handleChange('description', e.target.value)}
-                  placeholder="Brief description of supplier business"
+                  placeholder={t('supplier:ui.companyInfo.descriptionPh')}
                 />
               </AutoSaveField>
             </FormGroup>
 
             <FormGroup fullWidth>
-              <Label>Logo</Label>
+              <Label>{t('supplier:ui.companyInfo.logo')}</Label>
               <AutoSaveField type="image" onSave={() => saveField('logo_url', company.logo_url)}>
                 <ImageUploadDropzone
                   value={company.logo_url}
@@ -346,10 +346,10 @@ const SupplierCompanyInfoPage: React.FC = () => {
 
         {/* Contact */}
         <Section>
-          <SectionTitle>Contact</SectionTitle>
+          <SectionTitle>{t('common:tableCol.contact')}</SectionTitle>
           <FormGrid>
             <FormGroup>
-              <Label>Email</Label>
+              <Label>{t('common:label.email')}</Label>
               <AutoSaveField onSave={() => saveField('email', company.email)}>
                 <Input
                   type="email"
@@ -361,7 +361,7 @@ const SupplierCompanyInfoPage: React.FC = () => {
             </FormGroup>
 
             <FormGroup>
-              <Label>Phone</Label>
+              <Label>{t('common:label.phone')}</Label>
               <AutoSaveField onSave={() => saveField('phone', company.phone)}>
                 <PhoneInput
                   value={company.phone}
@@ -372,7 +372,7 @@ const SupplierCompanyInfoPage: React.FC = () => {
             </FormGroup>
 
             <FormGroup fullWidth>
-              <Label>Website</Label>
+              <Label>{t('common:foodcourtCompanyInfoPage.website')}</Label>
               <AutoSaveField onSave={() => saveField('website', company.website)}>
                 <Input
                   type="url"
@@ -509,37 +509,37 @@ const SupplierCompanyInfoPage: React.FC = () => {
           <SectionTitle>{t('company.tabs.banking')}</SectionTitle>
           <FormGrid>
             <FormGroup>
-              <Label>Bank Name</Label>
+              <Label>{t('common:foodcourtCompanyInfoPage.bankName')}</Label>
               <AutoSaveField onSave={() => saveField('bank_name', company.bank_name)}>
                 <Input
                   type="text"
                   value={company.bank_name}
                   onChange={e => handleChange('bank_name', e.target.value)}
-                  placeholder="e.g., Maybank"
+                  placeholder={t('supplier:ui.companyInfo.bankNamePh')}
                 />
               </AutoSaveField>
             </FormGroup>
 
             <FormGroup>
-              <Label>Bank Account Number</Label>
+              <Label>{t('supplier:ui.companyInfo.bankAccountNumber')}</Label>
               <AutoSaveField onSave={() => saveField('bank_account', company.bank_account)}>
                 <Input
                   type="text"
                   value={company.bank_account}
                   onChange={e => handleChange('bank_account', e.target.value)}
-                  placeholder="Enter account number"
+                  placeholder={t('supplier:ui.companyInfo.accountNumberPh')}
                 />
               </AutoSaveField>
             </FormGroup>
 
             <FormGroup fullWidth>
-              <Label>Account Holder Name</Label>
+              <Label>{t('supplier:ui.companyInfo.accountHolder')}</Label>
               <AutoSaveField onSave={() => saveField('bank_account_name', company.bank_account_name)}>
                 <Input
                   type="text"
                   value={company.bank_account_name}
                   onChange={e => handleChange('bank_account_name', e.target.value)}
-                  placeholder="Name on bank account"
+                  placeholder={t('supplier:ui.companyInfo.accountHolderPh')}
                 />
               </AutoSaveField>
             </FormGroup>

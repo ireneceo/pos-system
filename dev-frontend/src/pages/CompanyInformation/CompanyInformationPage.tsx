@@ -324,7 +324,7 @@ const CompanyInformationPage: React.FC = () => {
                     type="text"
                     value={companyInfo.companyName}
                     onChange={(e) => handleInputChange('companyName', e.target.value)}
-                    placeholder="Legal entity name"
+                    placeholder={t('settings:ui.companyInfo.legalNamePh')}
                   />
                 </AutoSaveField>
               </FormGroup>
@@ -348,7 +348,7 @@ const CompanyInformationPage: React.FC = () => {
                     type="text"
                     value={companyInfo.tradeName || ''}
                     onChange={(e) => handleInputChange('tradeName', e.target.value)}
-                    placeholder="e.g., ABC Kitchen & Grill"
+                    placeholder={t('settings:ui.companyInfo.tradeNamePh')}
                   />
                 </AutoSaveField>
               </FormGroup>
@@ -478,7 +478,7 @@ const CompanyInformationPage: React.FC = () => {
                     type="text"
                     value={companyInfo.bankAccountName || ''}
                     onChange={(e) => handleInputChange('bankAccountName', e.target.value)}
-                    placeholder="Account holder name (must match company name)"
+                    placeholder={t('settings:ui.companyInfo.accountHolderPh')}
                   />
                 </AutoSaveField>
               </FormGroup>

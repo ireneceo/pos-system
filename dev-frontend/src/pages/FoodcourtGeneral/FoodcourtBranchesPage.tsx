@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 import {
   Container, Header, Title, ActionSection, Content, Button,
   DataTableContainer, DataTable, DataTableHead, DataTableRow, DataTableCell,
@@ -78,7 +79,7 @@ const FoodcourtBranchesPage: React.FC = () => {
   const save = async () => {
     if (!fcId) return;
     if (!form.name?.trim() || !form.code?.trim()) {
-      setError(t('branches.nameCodeRequired', 'Name and Code are required') as string);
+      setError(t('foodcourt:ui.branches.nameCodeRequired', 'Name and Code are required') as string);
       return;
     }
     try {
@@ -102,9 +103,9 @@ const FoodcourtBranchesPage: React.FC = () => {
   return (
     <Container>
       <Header>
-        <Title>{t('branches.title', 'Branches')}</Title>
+        <Title>{t('foodcourt:ui.branches.title', 'Branches')}</Title>
         <ActionSection>
-          <Button variant="primary" onClick={openNew}>{t('branches.addBranch', 'Add Branch')}</Button>
+          <Button variant="primary" onClick={openNew}>{t('foodcourt:ui.branches.addBranch', 'Add Branch')}</Button>
         </ActionSection>
       </Header>
 
@@ -114,25 +115,25 @@ const FoodcourtBranchesPage: React.FC = () => {
           <DataTableEmpty>{t('common.loading', 'Loading...')}</DataTableEmpty>
         ) : branches.length === 0 ? (
           <EmptyState
-            title={t('branches.emptyTitle', 'Add your first branch')}
-            description={t('branches.emptyDesc', 'A branch is a physical food court location. You need at least one branch before you can lay out the floor plan or place tenant restaurants.')}
-            primaryAction={{ label: t('branches.addBranch', 'Add Branch'), onClick: openNew }}
+            title={t('foodcourt:ui.branches.emptyTitle', 'Add your first branch')}
+            description={t('foodcourt:ui.branches.emptyDesc', 'A branch is a physical food court location. You need at least one branch before you can lay out the floor plan or place tenant restaurants.')}
+            primaryAction={{ label: t('foodcourt:ui.branches.addBranch', 'Add Branch'), onClick: openNew }}
             steps={[
-              { label: t('branches.step1', 'Register at least one branch (location).') },
-              { label: t('branches.step2', 'Set up the floor plan & units for each branch.') },
-              { label: t('branches.step3', 'Place tenant restaurants onto the units.') }
+              { label: t('foodcourt:ui.branches.step1', 'Register at least one branch (location).') },
+              { label: t('foodcourt:ui.branches.step2', 'Set up the floor plan & units for each branch.') },
+              { label: t('foodcourt:ui.branches.step3', 'Place tenant restaurants onto the units.') }
             ]}
           />
         ) : (
           <DataTableContainer>
             <DataTable>
               <DataTableHead>
-                <DataTableHeaderCell>{t('branches.code', 'Code')}</DataTableHeaderCell>
-                <DataTableHeaderCell>{t('branches.name', 'Name')}</DataTableHeaderCell>
-                <DataTableHeaderCell>{t('branches.city', 'City')}</DataTableHeaderCell>
-                <DataTableHeaderCell>{t('branches.phone', 'Phone')}</DataTableHeaderCell>
-                <DataTableHeaderCell>{t('branches.units', 'Units')}</DataTableHeaderCell>
-                <DataTableHeaderCell>{t('branches.status', 'Status')}</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('foodcourt:ui.branches.code', 'Code')}</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('foodcourt:ui.branches.name', 'Name')}</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('foodcourt:ui.branches.city', 'City')}</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('foodcourt:ui.branches.phone', 'Phone')}</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('foodcourt:ui.branches.units', 'Units')}</DataTableHeaderCell>
+                <DataTableHeaderCell>{t('foodcourt:ui.branches.status', 'Status')}</DataTableHeaderCell>
                 <DataTableHeaderCell></DataTableHeaderCell>
               </DataTableHead>
               <tbody>
@@ -140,18 +141,18 @@ const FoodcourtBranchesPage: React.FC = () => {
                   <DataTableRow key={b.id}>
                     <DataTableCell>
                       <code style={{ background: '#F1F4F8', padding: '2px 8px', borderRadius: 4, fontSize: 13, fontWeight: 600 }}>{b.code}</code>
-                      {b.is_primary && <PrimaryBadge>{t('branches.primary', 'Primary')}</PrimaryBadge>}
+                      {b.is_primary && <PrimaryBadge>{t('foodcourt:ui.branches.primary', 'Primary')}</PrimaryBadge>}
                     </DataTableCell>
                     <DataTableCell>{b.name}</DataTableCell>
                     <DataTableCell>{b.city || '—'}</DataTableCell>
                     <DataTableCell>{b.phone || '—'}</DataTableCell>
                     <DataTableCell>{b.units?.length ?? 0}</DataTableCell>
                     <DataTableCell>
-                      <StatusBadge active={b.status === 'active'}>{b.status}</StatusBadge>
+                      <StatusBadge active={b.status === 'active'}>{statusLabel(t, b.status)}</StatusBadge>
                     </DataTableCell>
                     <DataTableCell>
                       <Button variant="secondary" onClick={() => openEdit(b)} style={{ padding: '6px 12px', fontSize: 13 }}>
-                        {t('branches.edit', 'Edit')}
+                        {t('foodcourt:ui.branches.edit', 'Edit')}
                       </Button>
                     </DataTableCell>
                   </DataTableRow>
@@ -166,7 +167,7 @@ const FoodcourtBranchesPage: React.FC = () => {
         <CommonModal
           isOpen={showForm}
           onClose={() => { setShowForm(false); setSyncPreview(null); }}
-          title={editing ? t('branches.editBranch', 'Edit Branch') : t('branches.newBranch', 'New Branch')}
+          title={editing ? t('foodcourt:ui.branches.editBranch', 'Edit Branch') : t('foodcourt:ui.branches.newBranch', 'New Branch')}
           size="large"
           footer={
             <>
@@ -187,7 +188,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                       setShowForm(false);
                     } else setError(d.message);
                   } catch { setError('Apply failed'); }
-                }}>{t('branches.applyUnits', 'Apply Units & Save')}</Button>
+                }}>{t('foodcourt:ui.branches.applyUnits', 'Apply Units & Save')}</Button>
               )}
               <Button variant="primary" onClick={save}>{t('common.save', 'Save')}</Button>
             </>
@@ -195,21 +196,21 @@ const FoodcourtBranchesPage: React.FC = () => {
         >
           <FormRow>
             <FormGroup>
-              <FormLabel>{t('branches.name', 'Name')} *</FormLabel>
+              <FormLabel>{t('foodcourt:ui.branches.name', 'Name')} *</FormLabel>
               <FormInput value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Sunway Pyramid" />
             </FormGroup>
             <FormGroup>
-              <FormLabel>{t('branches.code', 'Code')} *</FormLabel>
+              <FormLabel>{t('foodcourt:ui.branches.code', 'Code')} *</FormLabel>
               <FormInput value={form.code || ''} onChange={e => setForm({ ...form, code: e.target.value.toUpperCase() })} placeholder="SUNWAY" disabled={editing?.is_primary} />
-              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>{t('branches.codeHint', 'Prefix for unit full code. Example: SUNWAY-A01')}</div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginTop: 4 }}>{t('foodcourt:ui.branches.codeHint', 'Prefix for unit full code. Example: SUNWAY-A01')}</div>
             </FormGroup>
           </FormRow>
 
           <FormGroup>
-            <FormLabel>{t('branches.status', 'Status')}</FormLabel>
+            <FormLabel>{t('foodcourt:ui.branches.status', 'Status')}</FormLabel>
             <FormSelect value={form.status || 'active'} onChange={e => setForm({ ...form, status: e.target.value as 'active' | 'inactive' })}>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="active">{t('common:status.active')}</option>
+              <option value="inactive">{t('common:status.inactive')}</option>
             </FormSelect>
           </FormGroup>
 
@@ -242,11 +243,11 @@ const FoodcourtBranchesPage: React.FC = () => {
 
           <FormRow>
             <FormGroup>
-              <FormLabel>{t('branches.phone', 'Phone')}</FormLabel>
+              <FormLabel>{t('foodcourt:ui.branches.phone', 'Phone')}</FormLabel>
               <FormInput value={form.phone || ''} onChange={e => setForm({ ...form, phone: e.target.value })} />
             </FormGroup>
             <FormGroup>
-              <FormLabel>{t('branches.email', 'Email')}</FormLabel>
+              <FormLabel>{t('foodcourt:ui.branches.email', 'Email')}</FormLabel>
               <FormInput type="email" value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value })} />
             </FormGroup>
           </FormRow>
@@ -294,10 +295,10 @@ const FoodcourtBranchesPage: React.FC = () => {
                 <SectionHeader>
                   <SectionHeaderText>
                     <SectionTitle>
-                      {t('branches.unitNumbering', 'Unit Numbering')}
+                      {t('foodcourt:ui.branches.unitNumbering', 'Unit Numbering')}
                     </SectionTitle>
                     <SectionHint>
-                      {t('branches.unitNumberingHint', 'Pre-define stall units for this branch. Automatically used by Floor Plan and Contract management.')}
+                      {t('foodcourt:ui.branches.unitNumberingHint', 'Pre-define stall units for this branch. Automatically used by Floor Plan and Contract management.')}
                     </SectionHint>
                   </SectionHeaderText>
                   <SwitchLabel>
@@ -307,7 +308,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                       onChange={(e) => setForm({ ...form, unit_config: { ...(form.unit_config || {}), enabled: e.target.checked, zones: form.unit_config?.zones || [{ prefix: 'A', count: 10, padding: 2 }] } })}
                     />
                     <SwitchTrack $on={!!form.unit_config?.enabled} />
-                    {form.unit_config?.enabled ? t('branches.enabled', 'Enabled') : t('branches.disabled', 'Disabled')}
+                    {form.unit_config?.enabled ? t('foodcourt:ui.branches.enabled', 'Enabled') : t('foodcourt:ui.branches.disabled', 'Disabled')}
                   </SwitchLabel>
                 </SectionHeader>
 
@@ -332,7 +333,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                                       }}
                                     />
                                     <SwitchTrack $on={hasPrefix} />
-                                    <span>{t('branches.usePrefix', 'Use Prefix')}</span>
+                                    <span>{t('foodcourt:ui.branches.usePrefix', 'Use Prefix')}</span>
                                   </SwitchLabel>
                                 </PrefixToggleRow>
                                 {hasPrefix && (
@@ -343,7 +344,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                                       zones[idx] = { ...z, prefix: e.target.value };
                                       setForm({ ...form, unit_config: { ...form.unit_config, zones } });
                                     }}
-                                    placeholder={t('branches.prefixPlaceholder', 'e.g., P-2-   ·   F2-   ·   (prepended to each number)') as string}
+                                    placeholder={t('foodcourt:ui.branches.prefixPlaceholder', 'e.g., P-2-   ·   F2-   ·   (prepended to each number)') as string}
                                     style={{ marginTop: 6 }}
                                   />
                                 )}
@@ -358,7 +359,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                               >×</RemoveZoneBtn>
                             </ZoneRow1>
                             <div style={{ marginTop: 10 }}>
-                              <FieldLabel>{t('branches.unitNumbers', 'Unit Numbers')}</FieldLabel>
+                              <FieldLabel>{t('foodcourt:ui.branches.unitNumbers', 'Unit Numbers')}</FieldLabel>
                               <NumberTextarea
                                 rows={3}
                                 value={z.numbers || ''}
@@ -367,12 +368,12 @@ const FoodcourtBranchesPage: React.FC = () => {
                                   zones[idx] = { ...z, numbers: e.target.value };
                                   setForm({ ...form, unit_config: { ...form.unit_config, zones } });
                                 }}
-                                placeholder={t('branches.numbersPlaceholder',
+                                placeholder={t('foodcourt:ui.branches.numbersPlaceholder',
                                   'Type freely. Comma or new line to separate.\nRanges: 01-20, A01-A10, 05A-08A\nExamples: A01, A02, A05-A08, Kiosk-1, B3'
                                 ) as string}
                               />
                               <Hint style={{ marginTop: 4 }}>
-                                {t('branches.numbersHint', 'Free-form. Separate by comma or newline. Ranges supported: 01-20 · A01-A10 · 05A-08A')}
+                                {t('foodcourt:ui.branches.numbersHint', 'Free-form. Separate by comma or newline. Ranges supported: 01-20 · A01-A10 · 05A-08A')}
                               </Hint>
                             </div>
                           </ZoneCard>
@@ -382,19 +383,19 @@ const FoodcourtBranchesPage: React.FC = () => {
                     <AddZoneBtn
                       type="button"
                       onClick={() => setForm({ ...form, unit_config: { ...form.unit_config, zones: [...(form.unit_config?.zones || []), { numbers: '' }] } })}
-                    >+ {t('branches.addZone', 'Add Zone')}</AddZoneBtn>
+                    >+ {t('foodcourt:ui.branches.addZone', 'Add Zone')}</AddZoneBtn>
 
                     <PreviewCard>
                       <PreviewHead>
-                        <PreviewTitle>{t('branches.preview', 'Preview')}</PreviewTitle>
+                        <PreviewTitle>{t('foodcourt:ui.branches.preview', 'Preview')}</PreviewTitle>
                         {previewNums.length > 0 && (
                           <TotalBadge>
-                            {previewNums.length} {t('branches.units', 'units')}
+                            {previewNums.length} {t('foodcourt:ui.branches.unitsLower', 'units')}
                           </TotalBadge>
                         )}
                       </PreviewHead>
                       {previewNums.length === 0 ? (
-                        <EmptyHint>{t('branches.noUnits', 'No units configured yet. Add a zone above.')}</EmptyHint>
+                        <EmptyHint>{t('foodcourt:ui.branches.noUnits', 'No units configured yet. Add a zone above.')}</EmptyHint>
                       ) : (
                         <UnitChipRow>
                           {previewNums.slice(0, 80).map(n => <UnitTag key={n}>{n}</UnitTag>)}
@@ -420,7 +421,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                             else setError(d.message);
                           } catch { setError('Preview failed'); }
                         }}
-                      >{t('branches.compareWithCurrent', 'Compare with Current Database')}</Button>
+                      >{t('foodcourt:ui.branches.compareWithCurrent', 'Compare with Current Database')}</Button>
                     )}
 
                     {syncPreview && (
@@ -429,7 +430,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                           <DiffRow $kind="sync">
                             <DiffIcon>✓</DiffIcon>
                             <DiffContent>
-                              <DiffLabel>{t('branches.inSync', 'Already in sync')}</DiffLabel>
+                              <DiffLabel>{t('foodcourt:ui.branches.inSync', 'Already in sync')}</DiffLabel>
                             </DiffContent>
                           </DiffRow>
                         ) : (
@@ -438,7 +439,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                               <DiffRow $kind="create">
                                 <DiffIcon>+</DiffIcon>
                                 <DiffContent>
-                                  <DiffLabel>{t('branches.toCreate', 'Will be created')} ({syncPreview.to_create.length})</DiffLabel>
+                                  <DiffLabel>{t('foodcourt:ui.branches.toCreate', 'Will be created')} ({syncPreview.to_create.length})</DiffLabel>
                                   <DiffItems>{syncPreview.to_create.slice(0, 20).join(', ')}{syncPreview.to_create.length > 20 ? `, +${syncPreview.to_create.length - 20} more` : ''}</DiffItems>
                                 </DiffContent>
                               </DiffRow>
@@ -447,7 +448,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                               <DiffRow $kind="delete">
                                 <DiffIcon>−</DiffIcon>
                                 <DiffContent>
-                                  <DiffLabel>{t('branches.toDelete', 'Will be removed (no contract)')} ({syncPreview.to_delete_ok.length})</DiffLabel>
+                                  <DiffLabel>{t('foodcourt:ui.branches.toDelete', 'Will be removed (no contract)')} ({syncPreview.to_delete_ok.length})</DiffLabel>
                                   <DiffItems>{syncPreview.to_delete_ok.join(', ')}</DiffItems>
                                 </DiffContent>
                               </DiffRow>
@@ -456,7 +457,7 @@ const FoodcourtBranchesPage: React.FC = () => {
                               <DiffRow $kind="block">
                                 <DiffIcon>!</DiffIcon>
                                 <DiffContent>
-                                  <DiffLabel>{t('branches.blockedByContract', 'Cannot remove — has active contract')} ({syncPreview.blocked_by_contract.length})</DiffLabel>
+                                  <DiffLabel>{t('foodcourt:ui.branches.blockedByContract', 'Cannot remove — has active contract')} ({syncPreview.blocked_by_contract.length})</DiffLabel>
                                   <DiffItems>{syncPreview.blocked_by_contract.map(b => b.unit_number).join(', ')}</DiffItems>
                                 </DiffContent>
                               </DiffRow>

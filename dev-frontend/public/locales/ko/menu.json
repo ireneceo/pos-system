@@ -251,5 +251,8 @@
   "menuManagementPage.keepAsMyMenu": "우리 메뉴로 남기기",
   "menuManagement.orderSetByBrand": "브랜드가 정한 순서",
   "menuManagement.orderLockedTitle": "브랜드가 정한 순서",
-  "menuManagement.orderLockedMessage": "이 메뉴들의 순서는 브랜드가 정합니다. 바꾸려면 브랜드에 요청하세요."
+  "menuManagement.orderLockedMessage": "이 메뉴들의 순서는 브랜드가 정합니다. 바꾸려면 브랜드에 요청하세요.",
+  "ui.menu.setBadge": "세트",
+  "ui.menu.featuredBadge": "추천",
+  "ui.menu.searchPh": "이름·설명·가격·카테고리로 메뉴 검색..."
 }

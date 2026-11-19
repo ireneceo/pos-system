@@ -11,6 +11,7 @@ import FileUpload, { AttachmentFile } from '../../components/Common/FileUpload';
 import AttachmentList from '../../components/Common/AttachmentList';
 import CommentSection from '../../components/Common/CommentSection';
 import { useTranslation } from 'react-i18next';
+import { statusLabel } from '../../utils/statusLabel';
 
 import { getAuthToken } from '../../utils/auth';
 import { formatDateTime as formatDateTimeTz } from '../../utils/timezone';
@@ -550,7 +551,7 @@ const SupportTicketsPage: React.FC = () => {
     <>
       <Container>
         <Header>
-          <Title>{t('nav.systemInquiry', 'System Inquiry')}</Title>
+          <Title>{t('common:nav.systemInquiry', 'System Inquiry')}</Title>
           <ActionSection>
             <Button variant="secondary" onClick={handleExportReports}>{t('settings:supportTicketsPage.export')}</Button>
             <Button variant="primary" onClick={handleCreateTicket}>{t('settings:supportTicketsPage.createTicket')}</Button>
@@ -596,7 +597,7 @@ const SupportTicketsPage: React.FC = () => {
 
           <FilterBar>
             <SearchInput
-              placeholder="Search tickets..."
+              placeholder={t('common:ui.search.tickets')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -632,15 +633,15 @@ const SupportTicketsPage: React.FC = () => {
                     </CustomerInfo>
                   </TicketInfo>
                   <TicketBadges>
-                    <StatusBadge status={ticket.status}>{ticket.status}</StatusBadge>
-                    <PriorityBadge priority={ticket.priority}>{ticket.priority}</PriorityBadge>
+                    <StatusBadge status={ticket.status}>{statusLabel(t, ticket.status)}</StatusBadge>
+                    <PriorityBadge priority={ticket.priority}>{statusLabel(t, ticket.priority)}</PriorityBadge>
                     {unreadCounts[ticket.id]?.unread_count > 0 ? (
                       <span style={{ background: '#EF4444', color: 'white', borderRadius: '6px', padding: '3px 10px', fontSize: '11px', fontWeight: 700, animation: 'pulse 1.5s infinite' }}>
-                        New Reply
+                        {t('common:ui.inquiry.newReply')}
                       </span>
                     ) : unreadCounts[ticket.id]?.total_comments > 0 ? (
                       <span style={{ background: '#E0F2FE', color: '#0369A1', borderRadius: '6px', padding: '3px 10px', fontSize: '11px', fontWeight: 600 }}>
-                        Replied
+                        {t('common:ui.inquiry.replied')}
                       </span>
                     ) : null}
                   </TicketBadges>
@@ -684,7 +685,7 @@ const SupportTicketsPage: React.FC = () => {
                   </MetaItem>
                   <MetaItem>
                     <MetaLabel>{t('settings:supportTicketsPage.category')}</MetaLabel>
-                    <MetaValue style={{textTransform: 'capitalize'}}>{ticket.category.replace('-', ' ')}</MetaValue>
+                    <MetaValue style={{textTransform: 'capitalize'}}>{statusLabel(t, ticket.category)}</MetaValue>
                   </MetaItem>
                   <MetaItem>
                     <MetaLabel>{t('settings:supportTicketsPage.responseTime')}</MetaLabel>
@@ -753,7 +754,7 @@ const SupportTicketsPage: React.FC = () => {
                       type="text"
                       value={newTicket.subject}
                       onChange={(e) => setNewTicket({...newTicket, subject: e.target.value})}
-                      placeholder="Enter ticket subject"
+                      placeholder={t('common:ui.inquiry.ticketSubjectPh')}
                       required
                     />
                   </FormGroup>
@@ -762,7 +763,7 @@ const SupportTicketsPage: React.FC = () => {
                     <FormTextArea
                       value={newTicket.description}
                       onChange={(e) => setNewTicket({...newTicket, description: e.target.value})}
-                      placeholder="Describe the issue or request in detail..."
+                      placeholder={t('common:ui.inquiry.ticketDetailPh')}
                       rows={4}
                       required
                     />
@@ -810,11 +811,11 @@ const SupportTicketsPage: React.FC = () => {
             <CommonModal
               isOpen={true}
               onClose={() => setShowViewTicketModal(false)}
-              title="Ticket Details"
+              title={t('common:ui.inquiry.ticketDetails')}
               size="large"
               footer={
                 <Button variant="secondary" onClick={() => setShowViewTicketModal(false)}>
-                  Close
+                  {t('common:button.close')}
                 </Button>
               }
             >
@@ -830,7 +831,7 @@ const SupportTicketsPage: React.FC = () => {
                         <FormLabel>{t('settings:supportTicketsPage.status')}</FormLabel>
                         <div style={{ padding: '8px 0' }}>
                           <StatusBadge status={selectedTicket.status}>
-                            {selectedTicket.status}
+                            {statusLabel(t, selectedTicket.status)}
                           </StatusBadge>
                         </div>
                       </div>
@@ -841,14 +842,14 @@ const SupportTicketsPage: React.FC = () => {
                         <FormLabel>{t('settings:supportTicketsPage.priority')}</FormLabel>
                         <div style={{ padding: '8px 0' }}>
                           <PriorityBadge priority={selectedTicket.priority}>
-                            {selectedTicket.priority}
+                            {statusLabel(t, selectedTicket.priority)}
                           </PriorityBadge>
                         </div>
                       </div>
                       <div>
                         <FormLabel>{t('settings:supportTicketsPage.category')}</FormLabel>
                         <div style={{ padding: '8px 0', color: '#1F2937', textTransform: 'capitalize' }}>
-                          {selectedTicket.category.replace('-', ' ')}
+                          {statusLabel(t, selectedTicket.category)}
                         </div>
                       </div>
                     </div>

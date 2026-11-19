@@ -366,5 +366,8 @@
   "categoryTabCommon.placeholderMainDishes": "例如：主菜",
   "categoryTabCommon.organizeRecipes": "创建分类来整理您的食谱",
   "categoryTabCommon.newIngredientCategory": "新建食材分类",
-  "categoryTabCommon.inactive": "停用"
+  "categoryTabCommon.inactive": "停用",
+  "ui.ingredients.searchPh": "搜索库存品项...",
+  "ui.ingredients.setCost": "设置成本",
+  "ui.ingredients.newStockItem": "新库存品项"
 }

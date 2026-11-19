@@ -1289,7 +1289,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
 
               <ProductDetails>
                 <DetailRow>
-                  <DetailLabel>{'Unit Price'}</DetailLabel>
+                  <DetailLabel>{t('brand:brandProductsTab.unitPrice')}</DetailLabel>
                   <PriceValue>RM {(Number(product.unit_price) || 0).toFixed(2)}</PriceValue>
                 </DetailRow>
                 {/* 마진 — 공급업체 가격(또는 레시피 원가)과 비교한 금액. 무엇이 비었는지 구분해 말한다. */}
@@ -1355,7 +1355,7 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                     자동 레시피와 함께 없앴다 (docs/TRADE_STRUCTURE.md §2-1).
                     아무 데도 안 붙은 것은 눈에 띄어야 한다 — 팔리는데 재고가 안 빠지는 상태다. */}
                 <DetailRow>
-                  <DetailLabel>{'Linked'}</DetailLabel>
+                  <DetailLabel>{t('brand:ui.brandProducts.linked')}</DetailLabel>
                   {/* 연결된 이름(포장재는 이름이 아주 길다)이 배지에 그대로 들어가면
                       space-between 행을 밀어 카드 레이아웃이 무너진다(2026-09-04 Irene).
                       → 배지는 이름을 자르고, 전체 이름은 title 로 띄운다. */}
@@ -1380,18 +1380,18 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
                 {(!product.unit_price || Number(product.unit_price) === 0) && (
                   <DetailRow>
                     <span />
-                    <StatusBadge status="error" size="small">No price</StatusBadge>
+                    <StatusBadge status="error" size="small">{t('brand:ui.brandProducts.noPrice')}</StatusBadge>
                   </DetailRow>
                 )}
                 {product.unit && (
                   <DetailRow>
-                    <DetailLabel>{'Unit'}</DetailLabel>
+                    <DetailLabel>{t('brand:brandProductsTab.unit')}</DetailLabel>
                     {/* 규격 한 줄 «10 kg/BOX» (2026-09-11 Irene 「1kg/pack 이런식으로」) */}
                     <DetailValue>{sellerSpecLabel({ seller_unit: product.unit, base_quantity: product.base_quantity, seller_package_unit: product.package_unit, order_mode: product.order_mode })}</DetailValue>
                   </DetailRow>
                 )}
                 <DetailRow>
-                  <DetailLabel>{'Min Order'}</DetailLabel>
+                  <DetailLabel>{t('brand:brandProductsTab.minOrder')}</DetailLabel>
                   <DetailValue>{product.min_order_quantity}</DetailValue>
                 </DetailRow>
               </ProductDetails>
@@ -1415,16 +1415,16 @@ const BrandProductsTab: React.FC<BrandProductsTabProps> = ({
               <CardSpacer />
               <ProductActions onClick={(e) => e.stopPropagation()}>
                 <ActionButton onClick={() => handleOpenModal(product)}>
-                  Edit
+                  {t('common:button.edit')}
                 </ActionButton>
                 <CopyButton onClick={(e) => handleCopyProduct(product, e)}>
-                  Copy
+                  {t('common:button.copy')}
                 </CopyButton>
                 <ToggleButton isActive={product.is_active} onClick={(e) => handleToggleActive(product, e)}>
-                  {product.is_active ? 'Active' : 'Inactive'}
+                  {product.is_active ? t('common:status.active') : t('common:status.inactive')}
                 </ToggleButton>
                 <ActionButton variant="danger" onClick={(e) => handleDeleteClick(product, e)}>
-                  Delete
+                  {t('common:button.delete')}
                 </ActionButton>
               </ProductActions>
             </ProductCard>

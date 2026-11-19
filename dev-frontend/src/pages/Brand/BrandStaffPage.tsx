@@ -11,6 +11,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { statusLabel } from '../../utils/statusLabel';
 import { BRAND_MANAGER_PERMISSION_GROUPS } from '../../utils/brandManagerPermissions';
 interface Manager {
   id: string;
@@ -610,7 +611,7 @@ const BrandStaffPage: React.FC = () => {
         {isGeneral && (
           <ActionSection>
             <Button variant="primary" onClick={handleOpenAddModal}>
-              Add Manager
+              {t('common:brandStaffPage.addManager')}
             </Button>
           </ActionSection>
         )}
@@ -631,7 +632,7 @@ const BrandStaffPage: React.FC = () => {
         <FilterBar>
           <SearchInput
             type="text"
-            placeholder="Search by name, email..."
+            placeholder={t('common:ui.managers.searchPh')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             autoComplete="off"
@@ -649,7 +650,7 @@ const BrandStaffPage: React.FC = () => {
               </div>
             </EmptyState>
           ) : (
-            <DataTable>
+            <DataTable data-card-upto="1280">
               <DataTableHead>
                 <tr>
                   <DataTableHeaderCell align="left">{t('common:brandStaffPage.manager')}</DataTableHeaderCell>
@@ -664,7 +665,7 @@ const BrandStaffPage: React.FC = () => {
               <tbody>
                 {filteredManagers.map(manager => (
                   <DataTableRow key={manager.linked ? `ctx-${manager.context_id}` : manager.id}>
-                    <DataTableCell data-label="Manager">
+                    <DataTableCell data-label={t('common:brandStaffPage.manager')}>
                       <ManagerName>
                         {manager.name}
                         {manager.linked && <PermissionTag style={{ marginLeft: 6 }}>{t('common:brandStaffPage.linkedTag', 'Linked account')}</PermissionTag>}
@@ -672,54 +673,54 @@ const BrandStaffPage: React.FC = () => {
                       <ManagerEmail>{manager.email}</ManagerEmail>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Phone" align="center">
+                    <DataTableCell data-label={t('common:brandStaffPage.phone')} align="center">
                       <span style={{ fontSize: '13px', color: '#4B5563' }}>
                         {manager.phone || '—'}
                       </span>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Brands" align="center">
+                    <DataTableCell data-label={t('common:brandStaffPage.brands')} align="center">
                       <span style={{ fontSize: '13px', color: '#4B5563' }}>{brandScopeLabel(manager)}</span>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Permissions" align="center">
+                    <DataTableCell data-label={t('common:brandStaffPage.permissions')} align="center">
                       <PermissionTags>
                         {manager.permissions.length === 0 ? (
                           <span style={{ fontSize: '12px', color: '#6B7280' }}>{t('common:brandStaffPage.noPermissions')}</span>
                         ) : (
                           manager.permissions.map(p => (
                             <PermissionTag key={p}>
-                              {PERMISSION_GROUPS.find(g => g.key === p)?.label.split(' (')[0] || p}
+                              {t(`common:ui.brandManagerPerm.${p}`, { defaultValue: PERMISSION_GROUPS.find(g => g.key === p)?.label.split(' (')[0] || p })}
                             </PermissionTag>
                           ))
                         )}
                       </PermissionTags>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Joined" align="center">
+                    <DataTableCell data-label={t('common:brandStaffPage.joined')} align="center">
                       <span style={{ fontSize: '13px', color: '#4B5563' }}>
                         {manager.joinDate || '—'}
                       </span>
                     </DataTableCell>
 
-                    <DataTableCell data-label="Status" align="center">
+                    <DataTableCell data-label={t('common:brandStaffPage.status')} align="center">
                       <StatusBadge active={manager.status === 'active'}>
-                        {manager.status}
+                        {statusLabel(t, manager.status)}
                       </StatusBadge>
                     </DataTableCell>
 
                     <DataTableCell data-label="" align="right" mobileFullWidth>
                       <ActionButtons>
                         <ActionButton onClick={() => handleOpenEditModal(manager)}>
-                          Edit
+                          {t('common:button.edit')}
                         </ActionButton>
                         {isGeneral && !manager.linked && (
                           <>
                             <ActionButton onClick={() => setResetPasswordTarget(manager)}>
-                              Reset PW
+                              {t('common:ui.managers.resetPw')}
                             </ActionButton>
                             <DeleteButton onClick={() => setDeleteTarget(manager)}>
-                              Delete
+                              {t('common:button.delete')}
                             </DeleteButton>
                           </>
                         )}

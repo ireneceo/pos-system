@@ -11,6 +11,7 @@ import PhoneInput from '../../components/Common/PhoneInput';
 import { useTranslation } from 'react-i18next';
 
 import { getAuthToken } from '../../utils/auth';
+import { statusLabel } from '../../utils/statusLabel';
 interface Manager {
   id: string;
   username: string;
@@ -469,7 +470,7 @@ const FoodcourtStaffPage: React.FC = () => {
           {isGeneral && (
             <ActionSection>
               <Button variant="primary" onClick={handleOpenAddModal}>
-                Add Manager
+                {t('common:foodcourtStaffPage.addManager')}
               </Button>
             </ActionSection>
           )}
@@ -490,7 +491,7 @@ const FoodcourtStaffPage: React.FC = () => {
           <FilterBar>
             <SearchInput
               type="text"
-              placeholder="Search by name, email..."
+              placeholder={t('common:ui.managers.searchPh')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               autoComplete="off"
@@ -522,55 +523,55 @@ const FoodcourtStaffPage: React.FC = () => {
                 <tbody>
                   {filteredManagers.map(manager => (
                     <DataTableRow key={manager.id}>
-                      <DataTableCell data-label="Manager">
+                      <DataTableCell data-label={t('common:foodcourtStaffPage.manager')}>
                         <ManagerName>{manager.name}</ManagerName>
                         <ManagerMeta>{manager.email}</ManagerMeta>
                       </DataTableCell>
 
-                      <DataTableCell data-label="Phone" align="center">
+                      <DataTableCell data-label={t('common:foodcourtStaffPage.phone')} align="center">
                         <span style={{ fontSize: '13px', color: '#4B5563' }}>
                           {manager.phone || '—'}
                         </span>
                       </DataTableCell>
 
-                      <DataTableCell data-label="Permissions" align="center">
+                      <DataTableCell data-label={t('common:foodcourtStaffPage.permissions')} align="center">
                         <PermissionTags>
                           {manager.permissions.length === 0 ? (
                             <span style={{ fontSize: '12px', color: '#6B7280' }}>{t('common:foodcourtStaffPage.noPermissions')}</span>
                           ) : (
                             manager.permissions.map(p => (
                               <PermissionTag key={p}>
-                                {PERMISSION_GROUPS.find(g => g.key === p)?.label.split(' (')[0] || p}
+                                {t(`common:ui.fcManagerPerm.${p}`, { defaultValue: PERMISSION_GROUPS.find(g => g.key === p)?.label.split(' (')[0] || p })}
                               </PermissionTag>
                             ))
                           )}
                         </PermissionTags>
                       </DataTableCell>
 
-                      <DataTableCell data-label="Joined" align="center">
+                      <DataTableCell data-label={t('common:foodcourtStaffPage.joined')} align="center">
                         <span style={{ fontSize: '13px', color: '#4B5563' }}>
                           {manager.joinDate || '—'}
                         </span>
                       </DataTableCell>
 
-                      <DataTableCell data-label="Status" align="center">
+                      <DataTableCell data-label={t('common:foodcourtStaffPage.status')} align="center">
                         <StatusBadge active={manager.status === 'active'}>
-                          {manager.status}
+                          {statusLabel(t, manager.status)}
                         </StatusBadge>
                       </DataTableCell>
 
                       <DataTableCell data-label="" align="right" mobileFullWidth>
                         <ActionGroup>
                           <ActionButton onClick={() => handleOpenEditModal(manager)}>
-                            Edit
+                            {t('common:button.edit')}
                           </ActionButton>
                           {isGeneral && (
                             <>
                               <ActionButton onClick={() => setResetPasswordTarget(manager)}>
-                                Reset PW
+                                {t('common:ui.managers.resetPw')}
                               </ActionButton>
                               <DeleteButton onClick={() => setDeleteTarget(manager)}>
-                                Delete
+                                {t('common:button.delete')}
                               </DeleteButton>
                             </>
                           )}

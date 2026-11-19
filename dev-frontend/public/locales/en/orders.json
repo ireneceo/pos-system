@@ -180,5 +180,15 @@
   "orderCancel.cardVoidFailed": "The card payment could not be cancelled on the terminal, so the order was not cancelled.",
   "orderCancel.cardVoidNoBridge": "Card RM {{amount}} was not cancelled here. Void it on the card terminal.",
   "brandMenuUpdatesPage.unlockedReplacedNote": "Unlocked fields you edited are replaced when the brand pushes again.",
-  "brandMenuUpdatesPage.brandPaused": "The brand has paused updates to stores. Nothing here can be applied until the brand turns it back on."
+  "brandMenuUpdatesPage.brandPaused": "The brand has paused updates to stores. Nothing here can be applied until the brand turns it back on.",
+  "ui.liveOrders.guest": "Guest",
+  "ui.liveOrders.allOrders": "All Orders",
+  "ui.liveOrders.startCooking": "Start Cooking",
+  "ui.liveOrders.startPreparing": "Start Preparing",
+  "ui.liveOrders.markReady": "Mark Ready",
+  "ui.liveOrders.completeOrder": "Complete Order",
+  "ui.liveOrders.outForDelivery": "Out for Delivery",
+  "ui.liveOrders.markDelivered": "Mark Delivered",
+  "ui.liveOrders.continuePayment": "Continue Payment",
+  "ui.liveOrders.verifyingPayment": "Verifying Payment"
 }
