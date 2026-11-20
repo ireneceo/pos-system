@@ -29,7 +29,7 @@ import DateField from '../../components/Common/DateField';
 import { useAuth } from '../../contexts/AuthContext';
 import { isOwnerRole, getOwnerPoRestaurantId, setOwnerPoRestaurantId, withOwnerPoScope } from '../../utils/ownerPoScope';
 import { getAuthToken } from '../../utils/auth';
-import { computeDeliveryFee, amountToFreeDelivery } from '../../utils/deliveryFee';
+import { effectiveDeliveryFee, amountToFreeDelivery } from '../../utils/deliveryFee';
 import DeliveryTermsText from '../../components/Common/DeliveryTermsText';
 import SupplierOptionModal, { SupplierOptionGroup, SelectedOption } from './SupplierOptionModal';
 import ConnectSellerModal from '../../components/Common/ConnectSellerModal';
@@ -1351,6 +1351,14 @@ const NewPurchaseOrderPage: React.FC = () => {
               seller_product_sku: s.seller_product_sku ?? null,
               seller_product_active: s.seller_product_active !== false,
               seller_stock: s.seller_stock ?? null,
+              // 배송 조건 — 매장 재료 목록과 같은 칸(2026-11-20 · 빠져 있으면 장바구니가 «판매자 미설정» 으로 보였다)
+              seller_min_order_amount: s.seller_min_order_amount ?? null,
+              seller_delivery_fee: s.seller_delivery_fee ?? null,
+              seller_delivery_policy: s.seller_delivery_policy ?? null,
+              seller_delivery_zone: s.seller_delivery_zone ?? null,
+              seller_delivery_zone_reason: s.seller_delivery_zone_reason ?? null,
+              seller_order_windows: s.seller_order_windows ?? null,
+              seller_currency: s.seller_currency ?? null,
             })),
           }));
         } catch { /* brand-shared fetch is additive; ignore failures */ }
@@ -1987,6 +1995,9 @@ const NewPurchaseOrderPage: React.FC = () => {
     return set.size === 1 ? [...set][0] : null;
   }, [cart]);
 
+  // 셀프픽업 — 판매자 묶음마다 구매자가 고른다(2026-11-20 Fable 설계 §4-4). 체크하면 그 묶음 배송비 0.
+  const [pickupBySeller, setPickupBySeller] = useState<Record<string, boolean>>({});
+
   const groups = useMemo(() => {
     const map = new Map<string, {
       key: string;
@@ -2034,14 +2045,15 @@ const NewPurchaseOrderPage: React.FC = () => {
       // 통화가 다르면 서버가 배송비를 0 으로 저장한다 — 화면도 같은 분기를 태워 어긋나지 않게.
       //   구매자 통화는 이 화면에 없으므로, 담은 줄들이 알려 주는 판매자 통화를 기준으로 본다:
       //   한 발주 안에서 판매자 통화가 서로 다르면 서버가 규칙을 적용하지 않는다.
-      const { fee, rule } = computeDeliveryFee(g.subtotal, g.terms, { orderCurrency: cartCurrency });
-      return { ...g, delivery_fee: fee, delivery_rule: rule,
-        to_free: amountToFreeDelivery(g.subtotal, g.terms), total: g.subtotal + fee };
+      const pickup = g.seller_type !== 'system_admin' && !!pickupBySeller[g.key];
+      const { fee, rule } = effectiveDeliveryFee(g.subtotal, g.terms, { orderCurrency: cartCurrency, pickup });
+      return { ...g, pickup, delivery_fee: fee, delivery_rule: rule,
+        to_free: pickup ? null : amountToFreeDelivery(g.subtotal, g.terms), total: g.subtotal + fee };
     });
     // ⚠ cartCurrency 는 **위에서 선언**돼 있어야 한다. 아래에 두면 장바구니가 빈 동안은 멀쩡하다가
     //   («.map» 콜백이 아예 실행되지 않으므로) 첫 품목을 담는 순간 TDZ 로 화면 전체가 죽는다.
     //   2026-09-17 운영 사고: /pos/purchase-orders «Cannot access 'mn' before initialization».
-  }, [cart, cartCurrency]);
+  }, [cart, cartCurrency, pickupBySeller]);
 
   const grandTotal = useMemo(() => groups.reduce((s, g) => s + g.subtotal + (g.delivery_fee || 0), 0), [groups]);
 
@@ -2116,6 +2128,8 @@ const NewPurchaseOrderPage: React.FC = () => {
           )),
           expected_delivery_date: expectedDate || null,
           delivery_address: deliveryAddress.trim() || null,
+          // 항상 명시해 보낸다 — 같은 판매자 초안에 합쳐질 때 나중 선택이 이긴다(서버 createPurchaseOrderCore)
+          ...(g.seller_type !== 'system_admin' ? { delivery_method: g.pickup ? 'pickup' : 'delivery' } : {}),
           notes: null
         };
       });
@@ -2737,7 +2751,9 @@ const NewPurchaseOrderPage: React.FC = () => {
                       <span>
                         {t('newPo.deliveryFee', '배송비')}
                         <span style={{ color: '#6B7280', marginLeft: 6 }}>
-                          {g.delivery_rule === 'unset'
+                          {g.delivery_rule === 'pickup'
+                            ? <span>{t('newPo.deliveryPickup', 'Self-pickup')}</span>
+                            : g.delivery_rule === 'unset'
                             ? <span title={t('newPo.deliveryUnsetHint', '이 판매자가 배송 조건을 아직 적지 않았습니다. 무료라는 뜻이 아니라, 실제 배송비는 청구서에서 확인됩니다') as string}>
                                 {t('newPo.deliveryUnset', '판매자 미설정')}
                               </span>
@@ -2746,7 +2762,18 @@ const NewPurchaseOrderPage: React.FC = () => {
                       </span>
                       <span>{g.delivery_fee.toFixed(2)}</span>
                     </div>
-                    {g.zone_reason === 'buyer_location_unknown' && (
+                    {g.seller_type !== 'system_admin' && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0A2540', cursor: 'pointer', fontSize: 12, padding: '2px 0' }}>
+                        <input
+                          type="checkbox"
+                          checked={!!g.pickup}
+                          onChange={(e) => setPickupBySeller(prev => ({ ...prev, [g.key]: e.target.checked }))}
+                          style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+                        />
+                        {t('newPo.selfPickup', 'Self-pickup (no delivery fee)')}
+                      </label>
+                    )}
+                    {!g.pickup && g.zone_reason === 'buyer_location_unknown' && (
                       <div style={{ color: '#6B7280' }}>
                         {t('newPo.deliveryZoneUnknown', 'Your store address has no state, so the default delivery fee applies.')}{' '}
                         <a href="/pos/settings" style={{ color: '#635BFF' }}>{t('newPo.deliveryZoneFix', 'Add state')}</a>

@@ -36,6 +36,13 @@ const PurchaseOrder = sequelize.define('PurchaseOrder', {
     type: DataTypes.JSON, allowNull: true,
     comment: '계산 근거 스냅샷 {free_above, fee, subtotal_at_calc, seller_currency, rule, computed_at}'
   },
+  // 수령 방식 · 판매자 배송비 면제 (2026-11-20 Fable 설계 D1) — 재계산 10곳이 po 에서 읽어 배송비를 0 으로 둔다.
+  //   pickup 은 구매자만(초안 단계) · waived 는 판매자만(주문 추가·품목 수정 창). 둘 다면 pickup 이 근거.
+  delivery_method: {
+    type: DataTypes.STRING(16), allowNull: false, defaultValue: 'delivery',
+    validate: { isIn: [['delivery', 'pickup']] }
+  },
+  delivery_fee_waived: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
   total_amount: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   currency: { type: DataTypes.STRING(10), defaultValue: 'MYR' },
 

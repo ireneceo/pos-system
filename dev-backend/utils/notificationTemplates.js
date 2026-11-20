@@ -719,7 +719,7 @@ function poAutoCompletedEmail({ sellerName, poNumber, total, currency, link, ite
   }, title, body, lang, { action: { state: 'fyi', key: 'no_action' } });
 }
 
-function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link, items }, lang = 'en') {
+function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link, items, pickup = false }, lang = 'en') {
   const { getEmailText } = require('./i18n');
   const t = (k, p) => getEmailText(lang, 'po.sellerReceived.' + k, p);
   const title = t('heading');
@@ -734,6 +734,7 @@ function sellerOrderReceivedEmail({ buyerName, poNumber, total, currency, link, 
       infoRow(t('poNumber'), safePo) +
       infoRow(t('buyer'), safeBuyer) +
       infoRow(t('total'), `<span style="color:${BRAND_COLOR};font-weight:700;">${money}</span>`) +
+      (pickup ? infoRow(t('pickupLabel'), `<strong>${t('pickup')}</strong>`) : '') +
       infoRow(t('status'), `<span style="color:#F59E0B;font-weight:600;">${t('awaitingConfirmation')}</span>`)
     )}
     ${poItemsTable(items, currency, total, lang)}

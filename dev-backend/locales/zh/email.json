@@ -84,6 +84,8 @@
   },
   "po": {
     "sellerReceived": {
+      "pickupLabel": "取货方式",
+      "pickup": "自取 — 买方将自行取货",
       "subject": "确认订单：{{poNumber}} · {{buyer}} · {{total}}",
       "heading": "收到新采购单",
       "body": "<strong>{{buyer}}</strong> 已向贵公司提交新采购单。",

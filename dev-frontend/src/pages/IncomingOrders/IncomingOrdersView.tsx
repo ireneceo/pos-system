@@ -27,6 +27,7 @@ import { shareTextViaApps, AppShareResult } from '../../utils/appShare';
 import AlertDialog from '../../components/Common/AlertDialog';
 import IncomingOrdersBoard from './IncomingOrdersBoard';
 import SellerReturnModal, { SellerReturnTarget } from './SellerReturnModal';
+import { effectiveDeliveryFee, DeliveryTerms } from '../../utils/deliveryFee';
 
 // Layout / Form / ModalButton primitives are inlined here on purpose.
 // Importing them across chunks from `components/UI` triggered a TDZ runtime
@@ -200,6 +201,11 @@ interface IncomingOrderRow {
   item_count?: number;
   items?: IncomingOrderItem[];
   total_amount?: number | string | null;
+  subtotal?: number | string | null;
+  /** 배송비 · 수령 방식 · 판매자 면제 (2026-11-20) */
+  delivery_fee?: number | string | null;
+  delivery_method?: 'delivery' | 'pickup' | null;
+  delivery_fee_waived?: boolean | number | null;
   currency?: string;
   created_at?: string | null;
   /** 발주일 — 구매자가 보낸 시각(서버 utils/poOrderedAt) */
@@ -207,6 +213,16 @@ interface IncomingOrderRow {
   expected_delivery_date?: string | null;
   delivery_address?: string | null;
   tracking_info?: any;
+}
+
+/** 판매자 창(주문 추가·품목 수정) 배송비 미리보기 — 서버 deliveryPreviewFor (2026-11-20 Fable 설계 D7) */
+interface SellerDeliveryPreview {
+  terms: DeliveryTerms | null;
+  zone_name: string | null;
+  method?: 'delivery' | 'pickup';
+  fee_waived?: boolean;
+  fee_now?: number;
+  subtotal_now?: number;
 }
 
 /** 품목 수정 모달이 고르는 판매자 카탈로그 상품 (서버가 구매자 연결까지 걸러서 준다) */
@@ -577,6 +593,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   const [amendRaiseNeedsApproval, setAmendRaiseNeedsApproval] = useState(false);
   const [amendRaiseConfirmOpen, setAmendRaiseConfirmOpen] = useState(false);
   const [amendPendingNotice, setAmendPendingNotice] = useState(false);
+  // 배송비 3줄(품목·배송비·총액) · «이 주문은 배송비 없이» (2026-11-20 Fable 설계 §4-2)
+  const [amendDelivery, setAmendDelivery] = useState<SellerDeliveryPreview | null>(null);
+  const [amendWaive, setAmendWaive] = useState(false);
+  // 서버가 TOTAL_EXCEEDS 로 돌려준 실제 앞뒤 총액(미리보기가 어긋났을 때의 안전망 · D9)
+  const [amendServerRaise, setAmendServerRaise] = useState<{ before: number; after: number } | null>(null);
   // 출고 뒤 «실제 보낸 양으로 정정» (2026-11-07 Fable 설계 post-delivery-amend §4) — 줄이기만 · 사유 필수
   const [correctRow, setCorrectRow] = useState<IncomingOrderRow | null>(null);
   const [correctItems, setCorrectItems] = useState<IncomingOrderItem[]>([]);
@@ -595,6 +616,8 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   const [createProducts, setCreateProducts] = useState<AmendProduct[]>([]);
   const [createNotes, setCreateNotes] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
+  const [createDelivery, setCreateDelivery] = useState<SellerDeliveryPreview | null>(null);
+  const [createWaive, setCreateWaive] = useState(false);
 
   // Ship form
   const [carrier, setCarrier] = useState('');
@@ -943,6 +966,69 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     return t(`supplier:${key}`, { defaultValue: fallback ?? key, ...(vars || {}) }) as string;
   };
 
+  // 판매자 창(품목 수정·주문 추가) 금액 상자 — 품목 합계 · 배송비 · 주문 총액 3줄 (2026-11-20 Fable 설계 §4-2·4-3)
+  //   앞뒤 값이 같으면 한 값, 바뀌면 «옛 → 새». 인상 경고색은 총액 줄에만.
+  const renderDeliveryTotals = (o: {
+    currency?: string;
+    itemsBefore?: number; itemsAfter: number;
+    feeBefore?: number; feeAfter: number;
+    totalBefore?: number; totalAfter: number;
+    rule: string | null; raised?: boolean;
+    showWaive: boolean; waived: boolean; onWaive: (v: boolean) => void;
+    pickup?: boolean;
+  }) => {
+    const same = (a: number | undefined, b: number) => a == null || Math.abs(a - b) < 0.005;
+    const pair = (before: number | undefined, after: number, strong?: boolean, color?: string) => (
+      same(before, after)
+        ? (strong ? <strong style={{ fontSize: 15, color }}>{formatMoney(after, o.currency)}</strong> : <span>{formatMoney(after, o.currency)}</span>)
+        : (
+          <span>
+            <span style={{ color: '#9CA3AF', textDecoration: 'line-through' }}>{formatMoney(before, o.currency)}</span>
+            {'  →  '}
+            {strong ? <strong style={{ fontSize: 15, color }}>{formatMoney(after, o.currency)}</strong> : <span style={{ color }}>{formatMoney(after, o.currency)}</span>}
+          </span>
+        )
+    );
+    const tag = o.rule === 'pickup' ? tNs('orders.amend.deliveryPickupTag', 'Self-pickup')
+      : o.rule === 'waived_by_seller' ? tNs('orders.amend.deliveryWaivedTag', 'Not charged')
+      : o.rule === 'unset' ? tNs('orders.amend.deliveryUnsetTag', 'Not set')
+      : null;
+    const row: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, fontSize: 14 };
+    const label: React.CSSProperties = { fontSize: 13, color: '#6B7280' };
+    return (
+      <div style={{ background: '#F9FAFB', borderRadius: 8, padding: '12px 14px', margin: '0 0 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={row}>
+          <span style={label}>{tNs('orders.amend.itemsTotal', 'Items total')}</span>
+          {pair(o.itemsBefore, o.itemsAfter)}
+        </div>
+        <div style={row}>
+          <span style={label}>
+            {tNs('orders.amend.deliveryFee', 'Delivery fee')}
+            {tag && <span style={{ marginLeft: 6, color: '#6B7280' }}>· {tag}</span>}
+          </span>
+          {pair(o.feeBefore, o.feeAfter)}
+        </div>
+        {o.pickup ? (
+          <div style={{ fontSize: 12, color: '#6B7280' }}>{tNs('orders.amend.pickupNoFee', 'Self-pickup order — no delivery fee')}</div>
+        ) : o.showWaive ? (
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#0A2540', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={o.waived}
+              onChange={(e) => o.onWaive(e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+            />
+            {tNs('orders.amend.waiveDelivery', 'No delivery fee for this order')}
+          </label>
+        ) : null}
+        <div style={{ ...row, borderTop: '1px solid #E5E7EB', paddingTop: 8 }}>
+          <span style={{ ...label, fontWeight: 600, color: '#374151' }}>{tNs('orders.amend.orderTotal', 'Order total')}</span>
+          {pair(o.totalBefore, o.totalAfter, true, o.raised ? '#92400E' : '#111827')}
+        </div>
+      </div>
+    );
+  };
+
   // 반품이 막힌 이유 — 서버 code 로 번역, 없으면 서버 문장 (2026-11-17)
   const returnBlockedText = (b?: { code: string; message: string } | null) => (b ? tNs(`orders.returns.blocked.${b.code}`, b.message) : undefined);
 
@@ -1138,6 +1224,8 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   const pickCreateBuyer = async (buyerId: number | null) => {
     setCreateBuyerId(buyerId);
     setCreateProducts([]);
+    setCreateDelivery(null);
+    setCreateWaive(false);
     setCreateLines([{ key: `c-${Date.now()}`, ingredient_seller_product_id: null, quantity_ordered: '1' }]);
     if (buyerId == null) return;
     setCreateLoading(true);
@@ -1156,6 +1244,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           : p
       )));
       else setErrorMessage(data?.message || 'Failed to load products');
+      if (data?.success) setCreateDelivery(data.data?.delivery || null);
     } catch (err) {
       console.error(err);
       setErrorMessage('Network error');
@@ -1173,6 +1262,9 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     if (!p || !Number.isFinite(qty) || qty <= 0) return sum;
     return sum + Math.round(qty * p.unit_price * 100) / 100;
   }, 0);
+  const createFeeCalc = effectiveDeliveryFee(createSubtotal, createDelivery?.terms, { waived: createWaive });
+  const createFee = createDelivery && createSubtotal > 0 ? createFeeCalc.fee : 0;   // 품목을 고르기 전엔 배송비도 0 으로 보인다
+  const createTotal = Math.round((createSubtotal + createFee) * 100) / 100;
   const createHasInvalidLine = createLines.some(l => {
     const qty = parseFloat(l.quantity_ordered);
     return l.ingredient_seller_product_id == null || !Number.isFinite(qty) || qty <= 0;
@@ -1202,7 +1294,8 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
               unit_price: p ? p.unit_price : 0
             };
           }),
-          ...(createNotes.trim() ? { notes: createNotes.trim() } : {})
+          ...(createNotes.trim() ? { notes: createNotes.trim() } : {}),
+          ...(createWaive ? { waive_delivery_fee: true } : {})
         })
       });
       const data = await res.json();
@@ -1229,6 +1322,9 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     setAmendProducts([]);
     setAmendOriginalTotal(Number(row.total_amount) || 0);
     setAmendRaiseNeedsApproval(false);
+    setAmendDelivery(null);
+    setAmendWaive(!!row.delivery_fee_waived);
+    setAmendServerRaise(null);
     setAmendLoading(true);
     try {
       const token = getAuthToken();
@@ -1245,6 +1341,10 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
           : p
       )));
       if (prods?.success) setAmendRaiseNeedsApproval(prods.data?.raise_requires_approval === true);
+      if (prods?.success && prods.data?.delivery) {
+        setAmendDelivery(prods.data.delivery);
+        setAmendWaive(!!prods.data.delivery.fee_waived);
+      }
       const items = detail?.data?.items || [];
       setAmendLines(items.map((it: any, i: number) => {
         const opts = Array.isArray(it.options) ? it.options : [];
@@ -1279,13 +1379,30 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     const adj = l.item_id && l.ingredient_seller_product_id === l.orig_seller_product_id ? (l.option_adjustment || 0) : 0;
     return sum + Math.round(qty * (p.unit_price + adj) * 100) / 100;
   }, 0);
-  const amendExceeds = amendNewSubtotal - amendOriginalTotal > 0.005;
+  // 배송비 — 서버와 같은 규칙으로 미리 낸다. 비교는 «총액(배송비 포함) 끼리» (2026-11-20 Fable 설계 D8)
+  //   전에는 «원래 총액(배송비 포함) → 새 품목 합계(배송비 없음)» 를 비교해 같은 품목인데 배송비만큼 내려가 보였다.
+  const amendIsPickup = amendDelivery?.method === 'pickup';
+  const amendFeeCalc = effectiveDeliveryFee(amendNewSubtotal, amendDelivery?.terms, {
+    orderCurrency: amendModalRow?.currency, pickup: amendIsPickup, waived: amendWaive
+  });
+  const amendNewFee = amendDelivery ? amendFeeCalc.fee : 0;
+  const amendOldSubtotal = amendDelivery?.subtotal_now ?? amendNewSubtotal;
+  const amendOldFee = amendDelivery?.fee_now ?? 0;
+  const amendNewTotal = Math.round((amendNewSubtotal + amendNewFee) * 100) / 100;
+  const amendShowWaive = !!amendDelivery && !amendIsPickup
+    && ((Number(amendDelivery.terms?.delivery_fee) || 0) > 0 || amendOldFee > 0 || amendWaive);
+  const amendExceeds = amendNewTotal - amendOriginalTotal > 0.005;
   const amendHasInvalidLine = amendLines.some(l => {
     const qty = parseFloat(l.quantity_ordered);
     return l.ingredient_seller_product_id == null || !Number.isFinite(qty) || qty <= 0;
   });
   const amendCanSave = amendLines.length > 0 && !amendHasInvalidLine && !submitting && !amendLoading;
-  const amendTotalsText = `${formatMoney(amendOriginalTotal, amendModalRow?.currency)} → ${formatMoney(amendNewSubtotal, amendModalRow?.currency)}`;
+  const amendTotalsText = amendServerRaise
+    ? `${formatMoney(amendServerRaise.before, amendModalRow?.currency)} → ${formatMoney(amendServerRaise.after, amendModalRow?.currency)}`
+    : `${formatMoney(amendOriginalTotal, amendModalRow?.currency)} → ${formatMoney(amendNewTotal, amendModalRow?.currency)}`;
+  const amendRaiseDiff = amendServerRaise
+    ? Math.max(0, amendServerRaise.after - amendServerRaise.before)
+    : Math.max(0, amendNewTotal - amendOriginalTotal);
 
   // 올리는 수정이면 확인 창부터 — 확인이 confirm_increase 를 보낸다(서버도 이 값 없이는 인상을 거부한다)
   const handleAmendClick = () => {
@@ -1313,11 +1430,19 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             };
           }),
           ...(amendReason.trim() ? { reason: amendReason.trim() } : {}),
+          ...(amendDelivery && !amendIsPickup ? { waive_delivery_fee: amendWaive } : {}),
           ...(confirmIncrease ? { confirm_increase: true } : {})
         })
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
+        // 미리보기와 서버 계산이 어긋나 서버가 인상으로 봤다 → 오류 글 대신 서버 숫자로 확인 창(D9)
+        if (data?.code === 'TOTAL_EXCEEDS' && !confirmIncrease && data.total_before != null && data.total_after != null) {
+          setAmendServerRaise({ before: Number(data.total_before) || 0, after: Number(data.total_after) || 0 });
+          if (typeof data.approval_required === 'boolean') setAmendRaiseNeedsApproval(data.approval_required);
+          setAmendRaiseConfirmOpen(true);
+          return;
+        }
         setErrorMessage(data.message || 'Failed to amend order');
         return;
       }
@@ -1584,7 +1709,13 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                         )}
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.delivery', 'Delivery') as string}>
-                        {row.delivery_address && (
+                        {row.delivery_method === 'pickup' ? (
+                          <InfoLine>
+                            <span className="text" style={{ maxWidth: 160, fontWeight: 600, color: '#0A2540' }}>
+                              {tNs('orders.list.selfPickup', 'Self-pickup')}
+                            </span>
+                          </InfoLine>
+                        ) : row.delivery_address && (
                           <InfoLine>
                             <span className="text" style={{ maxWidth: 160 }}>{row.delivery_address}</span>
                           </InfoLine>
@@ -1606,7 +1737,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               {ti.tracking_number ? ` · ${ti.tracking_number}` : ''}
                             </span>
                           )
-                        ) : !row.delivery_address ? (
+                        ) : !row.delivery_address && row.delivery_method !== 'pickup' ? (
                           <span style={{ color: '#6B7280', fontSize: 12 }}>—</span>
                         ) : null}
                       </DataTableCell>
@@ -1660,6 +1791,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.amount', 'Amount') as string} align="right">
                         <strong>{formatMoney(row.total_amount, row.currency)}</strong>
+                        {Number(row.delivery_fee) > 0 && (
+                          <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2, whiteSpace: 'nowrap' }}>
+                            {tNs('orders.list.inclDelivery', 'incl. delivery {{fee}}', { fee: formatMoney(row.delivery_fee, row.currency) })}
+                          </div>
+                        )}
                       </DataTableCell>
                       <DataTableCell align="right" mobileFullWidth onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                         <DataTableActions>
@@ -2091,13 +2227,14 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                   </ModalButton>
                 </div>
 
-                <div style={{
-                  background: '#F9FAFB', borderRadius: 8, padding: '12px 14px', margin: '0 0 16px',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8
-                }}>
-                  <span style={{ fontSize: 13, color: '#6B7280' }}>{tNs('orders.amend.itemsTotal', 'Items total')}</span>
-                  <strong style={{ fontSize: 15 }}>{formatMoney(createSubtotal)}</strong>
-                </div>
+                {renderDeliveryTotals({
+                  itemsAfter: createSubtotal,
+                  feeAfter: createFee,
+                  totalAfter: createTotal,
+                  rule: createDelivery ? createFeeCalc.rule : null,
+                  showWaive: !!createDelivery && ((Number(createDelivery.terms?.delivery_fee) || 0) > 0 || createWaive),
+                  waived: createWaive, onWaive: setCreateWaive
+                })}
 
                 <FormGroup>
                   <FormLabel>{tNs('orders.create.notes', 'Note (optional)')}</FormLabel>
@@ -2216,23 +2353,16 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
               </ModalButton>
             </div>
 
-            <div style={{
-              background: '#F9FAFB', borderRadius: 8, padding: '12px 14px', margin: '0 0 16px',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8
-            }}>
-              <span style={{ fontSize: 13, color: '#6B7280' }}>
-                {tNs('orders.amend.itemsTotal', 'Items total')}
-              </span>
-              <span style={{ fontSize: 14 }}>
-                <span style={{ color: '#9CA3AF', textDecoration: 'line-through' }}>
-                  {formatMoney(amendOriginalTotal, amendModalRow?.currency)}
-                </span>
-                {'  →  '}
-                <strong style={{ color: amendExceeds ? '#92400E' : '#111827' }}>
-                  {formatMoney(amendNewSubtotal, amendModalRow?.currency)}
-                </strong>
-              </span>
-            </div>
+            {renderDeliveryTotals({
+              currency: amendModalRow?.currency,
+              itemsBefore: amendOldSubtotal, itemsAfter: amendNewSubtotal,
+              feeBefore: amendOldFee, feeAfter: amendNewFee,
+              totalBefore: amendOriginalTotal, totalAfter: amendNewTotal,
+              rule: amendDelivery ? amendFeeCalc.rule : null,
+              raised: amendExceeds,
+              showWaive: amendShowWaive, waived: amendWaive, onWaive: setAmendWaive,
+              pickup: amendIsPickup
+            })}
 
             {amendExceeds && (
               <div style={{
@@ -2272,7 +2402,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         message={
           tNs('orders.amend.confirmRaiseBody', '{{totals}} (+{{diff}}). The buyer is told what changed.', {
             totals: amendTotalsText,
-            diff: formatMoney(Math.max(0, amendNewSubtotal - amendOriginalTotal), amendModalRow?.currency)
+            diff: formatMoney(amendRaiseDiff, amendModalRow?.currency)
           }) + (amendRaiseNeedsApproval
             ? '\n\n' + tNs('orders.amend.confirmRaiseApprovalBody', "The buyer's Owner must approve the new total. Until then the order is not in your list. If declined, it returns to the buyer as a draft and the buyer reorders. Once approved it comes back as Submitted — confirm it again.")
             : '')
@@ -2281,7 +2411,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         cancelText={tNs('orders.amend.cancel', 'Cancel') as string}
         type="warning"
         onConfirm={() => { setAmendRaiseConfirmOpen(false); handleAmend(true); }}
-        onCancel={() => setAmendRaiseConfirmOpen(false)}
+        onCancel={() => { setAmendRaiseConfirmOpen(false); setAmendServerRaise(null); }}
       />
       <ConfirmModal
         isOpen={amendPendingNotice}

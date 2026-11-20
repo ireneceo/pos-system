@@ -84,6 +84,8 @@
   },
   "po": {
     "sellerReceived": {
+      "pickupLabel": "Penghantaran",
+      "pickup": "Ambil sendiri — pembeli akan mengambil pesanan ini",
       "subject": "Sahkan pesanan: {{poNumber}} · {{buyer}} · {{total}}",
       "heading": "Pesanan Belian Baharu Diterima",
       "body": "<strong>{{buyer}}</strong> telah menghantar pesanan belian baharu kepada syarikat anda.",

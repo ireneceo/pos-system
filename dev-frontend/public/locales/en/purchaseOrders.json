@@ -230,7 +230,9 @@
       "deliveryUnset": "(not set by seller)",
       "staffMeal": "Staff meal",
       "staffMealSplit": "Staff meal {{staff}} · Regular {{regular}}",
-      "shipped": "Shipped"
+      "shipped": "Shipped",
+      "deliveryPickup": "· Self-pickup",
+      "deliveryWaived": "· Not charged by seller"
     },
     "delivery": {
       "expected": "Expected Date",
@@ -615,7 +617,9 @@
       "overWarn": "Only {{n}}{{u}} at the brand right now — the rest ships when restocked",
       "overBlock": "Brand accepts up to {{n}}{{u}} right now"
     },
-    "brandStockBadge": "Brand stock"
+    "brandStockBadge": "Brand stock",
+    "selfPickup": "Self-pickup (no delivery fee)",
+    "deliveryPickup": "Self-pickup"
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",
@@ -686,7 +690,10 @@
     "discarding": "Discarding…",
     "belowMinRetry": "Remove this line and add it again from the order screen.",
     "fromStock": "From Stock",
-    "fromStockHint": "Added from Stock by {{name}} · {{when}} · {{qty}} {{unit}}"
+    "fromStockHint": "Added from Stock by {{name}} · {{when}} · {{qty}} {{unit}}",
+    "deliveryFee": "Delivery fee {{fee}}",
+    "selfPickup": "Self-pickup (no delivery fee)",
+    "pickupNoFee": "Self-pickup · no delivery fee"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit mismatch — manual entry required",

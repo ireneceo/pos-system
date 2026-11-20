@@ -159,6 +159,25 @@ function zoneBasis(z) {
  * 배송 지역 (2026-10-07 Fable): 판매자에게 delivery_zones 가 있으면 구매자 주소의 주(州)로 지역을 골라
  *   그 지역 배송비를 «유효 delivery_fee» 로 쓴다. computeDeliveryFee 본문은 그대로다. 근거는 basis 에 덧붙인다.
  */
+/**
+ * 판매자 행 + 구매자 → 유효 배송 조건(지역 적용 뒤). 판매자 엔티티가 없거나(system_admin) 못 찾으면 null.
+ * computeTotalsWithDelivery 와 판매자 화면 미리보기(amendable-products · sellable-products)가 같이 쓴다.
+ * @returns {Promise<{row, terms, zoneInfo}|null>}  조회 오류는 throw — 호출자가 처리한다.
+ */
+async function resolveSellerDeliveryTerms(seller = {}, buyer = null) {
+  const type = seller.seller_type;
+  const id = parseInt(seller.seller_entity_id, 10);
+  if (!type || type === 'system_admin' || !Number.isFinite(id)) return null;
+  const { resolveSellers, getSeller } = require('./sellerNames');
+  const map = await resolveSellers([{ seller_type: type, seller_entity_id: id }]);
+  const row = getSeller(map, type, id);
+  if (!row) return { row: null, terms: null, zoneInfo: null };
+  const zoneInfo = await resolveZoneForBuyer(row, buyer || {
+    entity_type: seller.entity_type, entity_id: seller.entity_id
+  });
+  return { row, terms: effectiveDeliveryTerms(row, zoneInfo), zoneInfo };
+}
+
 async function computeTotalsWithDelivery(items, seller = {}, opts = {}) {
   const subtotal = computeSubtotal(items);
   let fee = 0;
@@ -169,17 +188,11 @@ async function computeTotalsWithDelivery(items, seller = {}, opts = {}) {
   // system_admin(POS 카탈로그)은 판매자 엔티티가 없어 규칙이 없다 = 0.
   if (type && type !== 'system_admin' && Number.isFinite(id)) {
     try {
-      const { resolveSellers, getSeller } = require('./sellerNames');
-      const map = await resolveSellers([{ seller_type: type, seller_entity_id: id }]);
-      const row = getSeller(map, type, id);
-      if (row) {
-        const zoneInfo = await resolveZoneForBuyer(row, opts.buyer || {
-          entity_type: seller.entity_type, entity_id: seller.entity_id
-        });
-        const terms = effectiveDeliveryTerms(row, zoneInfo);
-        const r = computeDeliveryFee(subtotal, terms, { orderCurrency: opts.orderCurrency });
+      const resolved = await resolveSellerDeliveryTerms(seller, opts.buyer || null);
+      if (resolved && resolved.row) {
+        const r = computeDeliveryFee(subtotal, resolved.terms, { orderCurrency: opts.orderCurrency });
         fee = r.fee;
-        basis = zoneInfo ? { ...r.basis, ...zoneBasis(zoneInfo) } : r.basis;
+        basis = resolved.zoneInfo ? { ...r.basis, ...zoneBasis(resolved.zoneInfo) } : r.basis;
       } else {
         basis = { ...basis, rule: 'seller_not_found' };
       }
@@ -190,12 +203,28 @@ async function computeTotalsWithDelivery(items, seller = {}, opts = {}) {
     }
   }
 
+  // 셀프픽업 · 판매자 면제 (2026-11-20 Fable 설계 D2·D3) — 0 처리는 여기 한 곳에서만.
+  //   opts 가 po 값보다 우선(생성·수정 직전 새 값). 원래 규칙·금액은 근거에 남긴다. 둘 다면 pickup.
+  const method = (opts.delivery_method ?? seller.delivery_method) === 'pickup' ? 'pickup' : 'delivery';
+  const waivedRaw = opts.delivery_fee_waived ?? seller.delivery_fee_waived;
+  const waived = waivedRaw === true || waivedRaw === 1 || waivedRaw === '1';
+  if (method === 'pickup' || waived) {
+    basis = {
+      ...basis,
+      rule: method === 'pickup' ? 'pickup' : 'waived_by_seller',
+      rule_without_override: basis.rule,
+      fee_without_override: fee
+    };
+    fee = 0;
+  }
+
   const totals = computePurchaseOrderTotals(items, { delivery_fee: fee, tax_amount: opts.tax_amount || 0 });
   return { ...totals, delivery_fee_basis: basis };
 }
 
 module.exports = {
   computeTotalsWithDelivery,
+  resolveSellerDeliveryTerms,
   computeDeliveryFee,
   computePurchaseOrderTotals,
   computeSubtotal,

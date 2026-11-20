@@ -1594,7 +1594,15 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                         {t('detail.items.deliveryUnset', '(판매자 미설정)')}
                       </span>
                     )}
-                    {detail?.delivery_fee_basis?.zone?.name && (
+                    {detail?.delivery_fee_basis?.rule === 'pickup' ? (
+                      <span style={{ color: '#6B7280', marginLeft: 6, fontSize: 12 }}>
+                        {t('detail.items.deliveryPickup', '· Self-pickup')}
+                      </span>
+                    ) : detail?.delivery_fee_basis?.rule === 'waived_by_seller' ? (
+                      <span style={{ color: '#6B7280', marginLeft: 6, fontSize: 12 }}>
+                        {t('detail.items.deliveryWaived', '· Not charged by seller')}
+                      </span>
+                    ) : detail?.delivery_fee_basis?.zone?.name && (
                       <span style={{ color: '#6B7280', marginLeft: 6, fontSize: 12 }}>
                         · {detail.delivery_fee_basis.zone.name}
                       </span>

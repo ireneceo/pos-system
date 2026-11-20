@@ -295,7 +295,14 @@
       "confirmRaiseOk": "총액 올리기",
       "savedTitle": "주문 수정됨",
       "savedPendingApproval": "저장했습니다 — 주문은 목록에 «오너 승인 대기» 로 남습니다. 구매처 오너가 새 총액을 승인하면 다시 확인해 주세요.",
-      "ok": "확인"
+      "ok": "확인",
+      "deliveryFee": "배송비",
+      "orderTotal": "주문 총액",
+      "waiveDelivery": "이 주문은 배송비 없이",
+      "deliveryWaivedTag": "받지 않음",
+      "deliveryPickupTag": "셀프픽업",
+      "deliveryUnsetTag": "미설정",
+      "pickupNoFee": "셀프픽업 주문 — 배송비 없음"
     },
     "create": {
       "action": "주문 추가",
@@ -454,6 +461,10 @@
       "brand": "브랜드",
       "foodcourt": "푸드코트",
       "buyer": "구매자"
+    },
+    "list": {
+      "inclDelivery": "배송비 {{fee}} 포함",
+      "selfPickup": "셀프픽업"
     }
   },
   "tradeInvoicesPage": {

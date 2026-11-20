@@ -927,8 +927,14 @@ async function checkCreditLimit({ buyerEntity, seller_type, seller_entity_id, co
 
 // enforceMinOrder: 구매자 경로(POST·bulk)는 최소주문을 강제한다. 판매자 대리주문(seller-orders POST /)은
 //   같은 core 를 쓰지만 판매자가 규칙의 주인이라 끈다(2026-10-05 Fable 설계 §4-A · utils/poMinOrder.js).
-async function createPurchaseOrderCore({ buyerEntity, userId, payload, transaction, poNumberOffset = 0, mergeDraft = false, enforceMinOrder = true }) {
+// deliveryFeeWaived: 판매자 «이 주문은 배송비 없이» — payload 가 아니라 별도 인자다(2026-11-20 Fable 설계 D4).
+//   구매자 라우트가 req.body 를 payload 로 넘겨도 면제를 주입할 수 없게 한다. 판매자 라우트만 넘긴다.
+async function createPurchaseOrderCore({ buyerEntity, userId, payload, transaction, poNumberOffset = 0, mergeDraft = false, enforceMinOrder = true, deliveryFeeWaived = false }) {
   const { seller_type, seller_entity_id, items, expected_delivery_date, delivery_address, notes } = payload || {};
+  // 수령 방식 — 'pickup' 만 인정, 그 밖·없음은 'delivery'. POS 카탈로그(system_admin)는 판매자가 없어 항상 delivery.
+  const deliveryMethodGiven = payload && (payload.delivery_method === 'pickup' || payload.delivery_method === 'delivery');
+  const deliveryMethod = seller_type !== 'system_admin' && payload && payload.delivery_method === 'pickup' ? 'pickup' : 'delivery';
+  const feeWaived = deliveryFeeWaived === true;
 
   // Buyer 엔티티 default 배송지 결정 — payload 미지정 시
   let resolvedDeliveryAddress = delivery_address;
@@ -1250,7 +1256,8 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     validatedItems,
     { seller_type, seller_entity_id },
     // 배송 지역 (2026-10-07 Fable) — 구매자 주소의 주(州)로 판매자 지역을 고른다
-    { orderCurrency: buyerCurrency, buyer: buyerEntity ? { entity_type: buyerEntity.type, entity_id: buyerEntity.id } : null }
+    { orderCurrency: buyerCurrency, buyer: buyerEntity ? { entity_type: buyerEntity.type, entity_id: buyerEntity.id } : null,
+      delivery_method: deliveryMethod, delivery_fee_waived: feeWaived }
   );
 
   // ─────────────────────────────────────────────────────────────────
@@ -1341,13 +1348,16 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       if (itemsToCreate.length) await PurchaseOrderItem.bulkCreate(itemsToCreate, { transaction });
 
       // 합산이 생겼으므로 총액은 누적이 아니라 **라인에서 다시 계산**한다(중복 가산 방지)
+      // 수령 방식을 이번에 명시했으면 나중 선택이 이긴다(2026-11-20 Fable 설계 §3-2) — 없으면 기존 초안 값 유지.
+      const mergedMethod = deliveryMethodGiven ? deliveryMethod : (existing.delivery_method || 'delivery');
       const freshItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: existing.id }, transaction });
       const recomputed = await computeTotalsWithDelivery(
         freshItems.map(x => ({ quantity_ordered: x.quantity_ordered, unit_price: x.unit_price })),
         existing,
-        { orderCurrency: existing.currency }
+        { orderCurrency: existing.currency, delivery_method: mergedMethod }
       );
       await existing.update({
+        delivery_method: mergedMethod,
         subtotal: recomputed.subtotal,
         tax_amount: recomputed.tax_amount,
         delivery_fee: recomputed.delivery_fee,
@@ -1386,6 +1396,8 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
     tax_amount: totals.tax_amount,
     delivery_fee: totals.delivery_fee,
     delivery_fee_basis: totals.delivery_fee_basis,
+    delivery_method: deliveryMethod,
+    delivery_fee_waived: feeWaived,
     total_amount: totals.total_amount,
     currency: buyerCurrency,
     expected_delivery_date: expected_delivery_date || null,
@@ -1567,6 +1579,31 @@ router.put('/purchase-orders/:id', async (req, res) => {
     const { items, expected_delivery_date, delivery_address, notes } = req.body;
     const updates = {};
 
+    // 수령 방식(셀프픽업) — 구매자만 · 초안 단계만 바꾼다(2026-11-20 Fable 설계 D4·D5).
+    //   delivery_fee_waived 는 판매자 전용이라 여기서 받지 않는다(무시).
+    let methodChanged = false;
+    if (req.body.delivery_method !== undefined) {
+      const m = req.body.delivery_method;
+      if (m !== 'delivery' && m !== 'pickup') {
+        await t.rollback();
+        return res.status(400).json({ success: false, code: 'BAD_DELIVERY_METHOD', message: 'delivery_method must be delivery or pickup' });
+      }
+      const current = po.delivery_method || 'delivery';
+      if (m !== current) {
+        if (po.status !== 'draft') {
+          await t.rollback();
+          return res.status(400).json({ success: false, code: 'DELIVERY_METHOD_LOCKED', message: 'Delivery method can only be changed before the order is sent' });
+        }
+        if (po.seller_type === 'system_admin') {
+          await t.rollback();
+          return res.status(400).json({ success: false, code: 'BAD_DELIVERY_METHOD', message: 'Self-pickup is not available for this order' });
+        }
+        po.delivery_method = m;
+        updates.delivery_method = m;
+        methodChanged = true;
+      }
+    }
+
     if (expected_delivery_date !== undefined) updates.expected_delivery_date = expected_delivery_date || null;
     if (delivery_address !== undefined) updates.delivery_address = delivery_address ? sanitizeString(String(delivery_address)) : null;
     if (notes !== undefined) updates.notes = notes ? sanitizeString(String(notes)) : null;
@@ -1623,6 +1660,17 @@ router.put('/purchase-orders/:id', async (req, res) => {
       await PurchaseOrderItem.bulkCreate(validated, { transaction: t });
 
       const totals = await computeTotalsWithDelivery(validated, po, { orderCurrency: po.currency });
+      updates.subtotal = totals.subtotal;
+      updates.tax_amount = totals.tax_amount;
+      updates.delivery_fee = totals.delivery_fee;
+      updates.delivery_fee_basis = totals.delivery_fee_basis;
+      updates.total_amount = totals.total_amount;
+    } else if (methodChanged) {
+      // 품목은 그대로 · 수령 방식만 바뀜 → 현재 줄로 배송비·총액만 다시 낸다
+      const cur = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
+      const totals = await computeTotalsWithDelivery(
+        cur.map(x => ({ quantity_ordered: x.quantity_ordered, unit_price: x.unit_price })),
+        po, { orderCurrency: po.currency, tax_amount: po.tax_amount });
       updates.subtotal = totals.subtotal;
       updates.tax_amount = totals.tax_amount;
       updates.delivery_fee = totals.delivery_fee;

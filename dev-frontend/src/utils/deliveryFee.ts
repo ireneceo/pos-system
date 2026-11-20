@@ -25,7 +25,9 @@ export type DeliveryRule =
   | 'always'                // 기준 없이 항상 고정액
   | 'below_threshold'       // 기준 미만이라 고정액
   | 'free_threshold_met'    // 기준 이상이라 무료
-  | 'currency_mismatch';    // 판매자 통화 ≠ 발주 통화 — 금액 비교가 성립하지 않는다
+  | 'currency_mismatch'     // 판매자 통화 ≠ 발주 통화 — 금액 비교가 성립하지 않는다
+  | 'pickup'                // 구매자 셀프픽업 — 배송비 0 (2026-11-20)
+  | 'waived_by_seller';     // 판매자가 «이 주문은 배송비 없이» — 배송비 0 (2026-11-20)
 
 const round2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
 
@@ -56,6 +58,21 @@ export function computeDeliveryFee(
   if (freeAbove === null || freeAbove <= 0) return { fee: round2(fee), rule: 'always' };
   if (sub >= freeAbove) return { fee: 0, rule: 'free_threshold_met' };
   return { fee: round2(fee), rule: 'below_threshold' };
+}
+
+/**
+ * 셀프픽업 · 판매자 면제까지 반영한 배송비 (2026-11-20 Fable 설계 §4-1) — 서버 computeTotalsWithDelivery 의 덮어쓰기와 같은 순서.
+ * 픽업이 면제보다 우선. feeWithoutOverride = 덮어쓰지 않았을 때의 배송비(«원래 얼마였나»).
+ */
+export function effectiveDeliveryFee(
+  subtotal: number,
+  terms: DeliveryTerms | null | undefined,
+  opts: { orderCurrency?: string | null; pickup?: boolean; waived?: boolean } = {}
+): { fee: number; rule: DeliveryRule; feeWithoutOverride: number } {
+  const base = computeDeliveryFee(subtotal, terms || {}, { orderCurrency: opts.orderCurrency });
+  if (opts.pickup) return { fee: 0, rule: 'pickup', feeWithoutOverride: base.fee };
+  if (opts.waived) return { fee: 0, rule: 'waived_by_seller', feeWithoutOverride: base.fee };
+  return { ...base, feeWithoutOverride: base.fee };
 }
 
 /** 기준 미달이면 «얼마 더 담으면 무료». 아니면 null */

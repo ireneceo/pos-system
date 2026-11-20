@@ -477,6 +477,8 @@ subtotal (DECIMAL 10,2)
 tax_amount (DECIMAL 10,2)
 delivery_fee (DECIMAL 10,2, NOT NULL default 0)   -- 판매자 두 칸으로 자동 계산. 사람이 발주마다 적지 않는다
 delivery_fee_basis (JSON, nullable)               -- {free_above, fee, subtotal_at_calc, seller_currency, rule, computed_at}
+delivery_method (VARCHAR 16, NOT NULL default 'delivery')  -- 'delivery' | 'pickup' — 구매자 셀프픽업(초안 단계만) (2026-11-20)
+delivery_fee_waived (BOOLEAN, NOT NULL default 0)          -- 판매자 «이 주문은 배송비 없이» (2026-11-20)
 total_amount (DECIMAL 10,2)
 currency (STRING 3, default 'MYR')
 
@@ -493,6 +495,7 @@ created_by (FK → users.id)
 > 한 곳에서만 한다. 배송비는 **원가에 태우지 않는다**(세금·배송·할인은 품목 단가에 섞지 않는다는 기존 원칙).
 > 판매자 **확인 전**(draft·submitted)에는 품목이 바뀌면 다시 계산하고 확인 뒤에는 동결하며, 소급 단가 반영(`retroApplyPrice`)은 배송비를 그대로 둔다.
 > **배송 지역 (2026-10-07 Fable · Irene 확정):** 판매자(브랜드·푸드코트·가입 공급업체)가 `delivery_zones`(지역 이름·배송비·포함 주)를 적으면, 구매자 주소의 주(州)로 지역을 자동으로 골라 그 지역 배송비를 «유효 배송비»로 쓴다(`utils/deliveryZones.js` → `computeTotalsWithDelivery` 전처리, `computeDeliveryFee` 본문 그대로). 안 맞거나 주를 모르면 기본 `delivery_fee`. 무료 기준(`min_order_amount`)은 판매자당 하나. 외부 공급업체는 지역 없음. **제출(submit) 때 1회 다시 계산**한다(담은 뒤 주소·지역이 바뀐 경우). 근거는 `delivery_fee_basis.zone·zone_reason`.
+> **셀프픽업 · 판매자 면제 (2026-11-20 Fable 설계 · Irene «우리가 넣을 때는 배송비 없이 … 고객이 셀프픽업을 하면 배송비 없어야»):** 발주 행의 `delivery_method`('pickup') 또는 `delivery_fee_waived`(참)이면 배송비 0. **0 처리는 `computeTotalsWithDelivery` 한 곳**(재계산 10곳이 po 를 넘겨 자동으로 따라온다) · opts 가 po 값보다 우선 · 둘 다면 근거 `pickup`. 근거 `delivery_fee_basis.rule` = `pickup` / `waived_by_seller` 와 `rule_without_override`·`fee_without_override`(원래 얼마였나). **고르는 사람:** 픽업 = 구매자만, 장바구니(판매자 묶음 체크)·발주 대기(카드 체크 → `PUT {delivery_method}`), 제출 뒤 변경은 400 `DELIVERY_METHOD_LOCKED` · POS 카탈로그(system_admin) 제외. 면제 = 판매자만, 주문 추가(`waive_delivery_fee`) · 품목 수정(boolean 일 때만 바꿈 — 옛 번들은 현재 값 유지). 구매자 경로가 `delivery_fee_waived` 를 보내도 무시(`createPurchaseOrderCore` 의 별도 인자 `deliveryFeeWaived`). 면제는 이후 재계산(구매자 수정 등)에서도 유지되고, 판매자가 다시 켜면 총액 인상이라 기존 `confirm_increase`·오너 승인 게이트를 그대로 탄다. 판매자 수정 창은 «품목 합계 · 배송비 · 주문 총액» 3줄이고 인상 판정은 총액끼리(전에는 «원래 총액(배송비 포함) → 새 품목 합계» 를 비교해 배송비만큼 내려가 보였다). 범위 밖: 판매자별 «픽업 안 받음» 설정 · 정기 발주 픽업 · 재고 화면 BulkOrderModal 의 선택 칸 · 제출 뒤 방식 변경. 같은 날: 장바구니의 브랜드 공유 재료 목록(`GET /restaurants/:id/brand-ingredients?include=sellers`)에도 매장 재료 목록과 같은 판매자 배송 조건 칸(seller_delivery_fee·min_order_amount·zone·currency·order_windows·policy)을 싣는다 — 전엔 빠져 장바구니가 «판매자 미설정» 으로 보이는데 저장된 발주엔 배송비가 붙었다.
 
 **PurchaseOrderItem:**
 ```

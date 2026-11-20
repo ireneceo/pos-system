@@ -84,6 +84,8 @@
   },
   "po": {
     "sellerReceived": {
+      "pickupLabel": "수령 방식",
+      "pickup": "셀프픽업 — 구매처가 직접 가져갑니다",
       "subject": "주문 확인: 발주 {{poNumber}} · {{buyer}} · {{total}}",
       "heading": "새 발주가 접수되었습니다",
       "body": "<strong>{{buyer}}</strong> 님이 귀사에 새 발주를 넣었습니다.",

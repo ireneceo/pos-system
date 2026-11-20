@@ -73,7 +73,8 @@ async function fireSellerSubmittedNotification(po) {
       poNumber: po.po_number,
       total: po.total_amount,
       currency: po.currency || 'MYR',
-      items
+      items,
+      pickup: po.delivery_method === 'pickup'   // 셀프픽업 한 줄 (2026-11-20 Fable 설계 §3-5)
     };
     // 팩토리 전달 — 수신자마다 자기 언어로 렌더된다(2026-08-30).
     // 2026-10-22: 수신자마다 자격(브랜드/브랜드 담당자/공급업체)과 그 자격 화면 버튼.

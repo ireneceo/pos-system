@@ -230,7 +230,9 @@
       "deliveryUnset": "(tidak ditetapkan penjual)",
       "staffMeal": "Makanan staf",
       "staffMealSplit": "Makanan staf {{staff}} · Biasa {{regular}}",
-      "shipped": "Dihantar"
+      "shipped": "Dihantar",
+      "deliveryPickup": "· Ambil sendiri",
+      "deliveryWaived": "· Tidak dicaj oleh penjual"
     },
     "delivery": {
       "expected": "Tarikh Dijangka",
@@ -615,7 +617,9 @@
       "overWarn": "Hanya {{n}}{{u}} di jenama sekarang — selebihnya dihantar selepas tambah stok",
       "overBlock": "Jenama menerima sehingga {{n}}{{u}} sahaja sekarang"
     },
-    "brandStockBadge": "Stok jenama"
+    "brandStockBadge": "Stok jenama",
+    "selfPickup": "Ambil sendiri (tiada yuran penghantaran)",
+    "deliveryPickup": "Ambil sendiri"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",
@@ -686,7 +690,10 @@
     "discarding": "Membuang…",
     "belowMinRetry": "Buang baris ini dan tambah semula dari skrin pesanan.",
     "fromStock": "Dari Stok",
-    "fromStockHint": "Ditambah dari Stok oleh {{name}} · {{when}} · {{qty}} {{unit}}"
+    "fromStockHint": "Ditambah dari Stok oleh {{name}} · {{when}} · {{qty}} {{unit}}",
+    "deliveryFee": "Yuran penghantaran {{fee}}",
+    "selfPickup": "Ambil sendiri (tiada yuran penghantaran)",
+    "pickupNoFee": "Ambil sendiri · tiada yuran penghantaran"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: unit tidak sepadan — kemasukan manual diperlukan",

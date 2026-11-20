@@ -230,7 +230,9 @@
       "deliveryUnset": "（卖方未设定）",
       "staffMeal": "员工餐",
       "staffMealSplit": "员工餐 {{staff}} · 一般 {{regular}}",
-      "shipped": "已发货"
+      "shipped": "已发货",
+      "deliveryPickup": "· 自取",
+      "deliveryWaived": "· 卖方不收取"
     },
     "delivery": {
       "expected": "预计日期",
@@ -615,7 +617,9 @@
       "overWarn": "品牌目前仅有 {{n}}{{u}}——其余补货后发货",
       "overBlock": "品牌目前最多接受 {{n}}{{u}}"
     },
-    "brandStockBadge": "品牌库存"
+    "brandStockBadge": "品牌库存",
+    "selfPickup": "自取（无配送费）",
+    "deliveryPickup": "自取"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",
@@ -686,7 +690,10 @@
     "discarding": "删除中…",
     "belowMinRetry": "请删除此行，并在下单页面重新加入。",
     "fromStock": "来自库存",
-    "fromStockHint": "{{name}} 从库存页面加入 · {{when}} · {{qty}} {{unit}}"
+    "fromStockHint": "{{name}} 从库存页面加入 · {{when}} · {{qty}} {{unit}}",
+    "deliveryFee": "配送费 {{fee}}",
+    "selfPickup": "自取（无配送费）",
+    "pickupNoFee": "自取 · 无配送费"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}：数量单位不一致 — 需手动输入",

@@ -84,6 +84,8 @@
   },
   "po": {
     "sellerReceived": {
+      "pickupLabel": "Delivery",
+      "pickup": "Self-pickup — the buyer will collect this order",
       "subject": "Confirm order: {{poNumber}} · {{buyer}} · {{total}}",
       "heading": "New Purchase Order Received",
       "body": "<strong>{{buyer}}</strong> has submitted a new purchase order to your company.",

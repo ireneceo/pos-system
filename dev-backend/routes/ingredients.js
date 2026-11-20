@@ -691,6 +691,27 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
       const stockUnitById = Object.fromEntries(brandIngredients.map(i => [i.id, {
         unit: i.unit, base_quantity: i.base_quantity, package_unit: i.package_unit, package_quantity: i.package_quantity
       }]));
+      // 배송 조건 — 매장 자기 재료 목록(restaurants-ingredients include=sellers)과 같은 칸을 싣는다(2026-11-20).
+      //   전에는 이 목록(브랜드 공유 재료)만 빠져, 장바구니가 «판매자 미설정» 으로 보이는데 저장된 발주엔 배송비가 붙었다.
+      const { getSeller } = require('../utils/sellerNames');
+      const { resolveDeliveryZone } = require('../utils/deliveryZones');
+      const buyerLoc = await require('../models/Restaurant').findByPk(req.params.restaurantId, { attributes: ['state', 'postal_code', 'country'] })
+        .then(x => (x ? { state: x.state, postal_code: x.postal_code, country: x.country } : null))
+        .catch(() => null);
+      const deliveryFieldsOf = (r) => {
+        const row = getSeller(sellerMapResolved, r.seller_type, r.seller_entity_id);
+        if (!row) return {};
+        const z = row.delivery_zones ? resolveDeliveryZone(row.delivery_zones, buyerLoc) : null;
+        return {
+          seller_min_order_amount: row.min_order_amount != null ? row.min_order_amount : null,
+          seller_delivery_fee: row.delivery_fee != null ? row.delivery_fee : null,
+          seller_delivery_policy: row.delivery_policy || null,
+          seller_delivery_zone: z ? z.zone : null,
+          seller_delivery_zone_reason: z ? z.reason : null,
+          seller_order_windows: row.order_windows || null,
+          seller_currency: row.currency || null
+        };
+      };
       rows.forEach(r => {
         const prod = r.seller_type === 'supplier' ? spMap[r.seller_product_id]
                    : r.seller_type === 'brand' ? bpMap[r.seller_product_id]
@@ -698,6 +719,7 @@ router.get('/restaurants/:restaurantId/brand-ingredients', authenticateToken, ch
         (sellerMap[r.ingredient_id] = sellerMap[r.ingredient_id] || []).push({
           ...r.toJSON(),
           seller_name: getSellerName(sellerMapResolved, r.seller_type, r.seller_entity_id),
+          ...deliveryFieldsOf(r),
           seller_product_name: prod?.name || null,
           seller_product_sku: prod?.sku || null,
           // 규격·주문방식 — 매장이 이 목록에서 바로 발주하므로 여기에도 실어야

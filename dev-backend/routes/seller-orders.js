@@ -542,7 +542,11 @@ router.get('/sellable-products', async (req, res) => {
       products.push(...await unlinkedBrandProductsFor(entityId, sellerEntityId, products));
       products.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     }
-    res.json({ success: true, data: { products } });
+    const delivery = await deliveryPreviewFor(
+      { seller_type: req.sellerEntity.type, seller_entity_id: sellerEntityId },
+      { entity_type: 'restaurant', entity_id: entityId }
+    );
+    res.json({ success: true, data: { products, delivery } });
   } catch (err) {
     console.error('GET /api/seller-orders/sellable-products error:', err);
     res.status(500).json({ success: false, message: 'Failed to load products' });
@@ -1311,8 +1315,30 @@ const {
 } = require('../utils/poAmend');
 const { carriedOptionsFor } = require('../utils/poLineOptions');
 const { isApprovalRequiredForPo, applyAmendRaiseGate } = require('../utils/poOwnerApproval');
-const { computeTotalsWithDelivery } = require('../utils/purchaseOrderTotals');
+const { computeTotalsWithDelivery, resolveSellerDeliveryTerms } = require('../utils/purchaseOrderTotals');
 const { currencySymbol } = require('../utils/currency');
+
+/**
+ * 판매자 창(주문 추가·품목 수정) 미리보기용 유효 배송 조건 — 장바구니와 같은 방식(2026-11-20 Fable 설계 D7).
+ * 서버가 지역 적용 뒤 조건을 주고 화면은 utils/deliveryFee.ts 로 계산한다. 조회 실패는 null(화면은 «미설정»).
+ */
+async function deliveryPreviewFor(seller, buyer) {
+  try {
+    const r = await resolveSellerDeliveryTerms(seller, buyer);
+    if (!r || !r.terms) return { terms: null, zone_name: null };
+    return {
+      terms: {
+        min_order_amount: r.terms.min_order_amount != null ? Number(r.terms.min_order_amount) : null,
+        delivery_fee: r.terms.delivery_fee != null ? Number(r.terms.delivery_fee) : null,
+        currency: r.terms.currency || null
+      },
+      zone_name: (r.zoneInfo && r.zoneInfo.zone && r.zoneInfo.zone.name) || null
+    };
+  } catch (e) {
+    console.error('[seller-orders] 배송 조건 미리보기 실패:', e.message);
+    return { terms: null, zone_name: null };
+  }
+}
 
 /** 구매자 메일의 변경 표(Item · Change · Before · After) — amend·출고 뒤 정정이 같이 쓴다(2026-11-07). */
 function changesTableHtml(changes, money) {
@@ -1430,7 +1456,9 @@ router.post('/', async (req, res) => {
       },
       transaction: t,
       // 판매자 대리주문은 최소주문을 강제하지 않는다 — 판매자가 규칙의 주인(2026-10-05 Fable 설계 §4-A ③)
-      enforceMinOrder: false
+      enforceMinOrder: false,
+      // «이 주문은 배송비 없이» — 판매자만 켠다(2026-11-20 Fable 설계 D4)
+      deliveryFeeWaived: req.body?.waive_delivery_fee === true
     });
     if (!result.ok) {
       await t.rollback();
@@ -1441,7 +1469,8 @@ router.post('/', async (req, res) => {
     const po = result.po;
     const created = appendTrackingEvent(po, 'created', 'Added by the seller on your behalf', null, {
       created_by_seller: true,
-      by_user_id: req.user.id
+      by_user_id: req.user.id,
+      ...(po.delivery_fee_waived ? { delivery_fee_waived: true } : {})
     });
     await po.update({ tracking_info: created }, { transaction: t });
 
@@ -1512,10 +1541,19 @@ router.get('/:id/amendable-products', async (req, res) => {
       products.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
     }
     // 인상 시 오너 재승인 여부 — 저장 게이트(applyAmendRaiseGate)와 같은 판정이라 화면 말과 서버 행동이 같다.
+    const preview = await deliveryPreviewFor(po, { entity_type: po.entity_type, entity_id: po.entity_id });
     res.json({ success: true, data: {
       products,
       amendable: AMENDABLE_STATUSES.includes(po.status) && !po.trade_invoice_id,
-      raise_requires_approval: await isApprovalRequiredForPo(po)
+      raise_requires_approval: await isApprovalRequiredForPo(po),
+      // 수정 창 3줄(품목·배송비·총액) 미리보기 — 2026-11-20 Fable 설계 §3-3
+      delivery: {
+        ...preview,
+        method: po.delivery_method || 'delivery',
+        fee_waived: !!po.delivery_fee_waived,
+        fee_now: Number(po.delivery_fee) || 0,
+        subtotal_now: Number(po.subtotal) || 0
+      }
     } });
   } catch (err) {
     console.error('GET /api/seller-orders/:id/amendable-products error:', err);
@@ -1531,6 +1569,8 @@ router.post('/:id/amend', async (req, res) => {
 
     const reason = sanitizeString(String(req.body?.reason || '').trim()).slice(0, 1000);
     const confirmIncrease = req.body?.confirm_increase === true;
+    // 판매자 «이 주문은 배송비 없이» — boolean 이 왔을 때만 바꾼다(옛 번들은 안 보냄 → 현재 값 유지 · D10)
+    const waiveGiven = typeof req.body?.waive_delivery_fee === 'boolean';
     const items = req.body?.items;
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ success: false, message: 'At least one item is required' });
@@ -1594,7 +1634,10 @@ router.post('/:id/amend', async (req, res) => {
           carriedOptionsFor(raw, mappingId, beforeRows)));
       }
 
-      const totals = await computeTotalsWithDelivery(validated, po, { orderCurrency: po.currency });
+      const waivedAfter = waiveGiven ? req.body.waive_delivery_fee : !!po.delivery_fee_waived;
+      const feeBefore = parseFloat(po.delivery_fee) || 0;
+      const totals = await computeTotalsWithDelivery(validated, po,
+        { orderCurrency: po.currency, delivery_fee_waived: waivedAfter });
       const totalBefore = parseFloat(po.total_amount) || 0;
       const totalAfter = parseFloat(totals.total_amount) || 0;
       // 🔒 돈 게이트 — 총액을 올리려면 판매자 확인(confirm_increase)이 꼭 있어야 한다
@@ -1626,7 +1669,10 @@ router.post('/:id/amend', async (req, res) => {
           by_user_id: req.user?.id || req.user?.userId || null,
           total_before: totalBefore,
           total_after: totalAfter,
-          total_increased: totalIncreased
+          total_increased: totalIncreased,
+          delivery_fee_before: feeBefore,
+          delivery_fee_after: totals.delivery_fee,
+          delivery_fee_waived: waivedAfter
         }
       );
       // ⚠ status 는 바꾸지 않는다 — 'amended' 는 이력 이벤트 이름일 뿐이다.
@@ -1635,6 +1681,7 @@ router.post('/:id/amend', async (req, res) => {
         tax_amount: totals.tax_amount,
         delivery_fee: totals.delivery_fee,
         delivery_fee_basis: totals.delivery_fee_basis,
+        delivery_fee_waived: waivedAfter,
         total_amount: totals.total_amount,
         tracking_info: tracking
       }, { transaction: t });
@@ -1646,7 +1693,8 @@ router.post('/:id/amend', async (req, res) => {
         })
         : false;
 
-      return { po, changes, reason, totalBefore, totalAfter, needsApproval };
+      return { po, changes, reason, totalBefore, totalAfter, needsApproval,
+        feeBefore, feeAfter: totals.delivery_fee, waivedAfter };
     });
 
     emitPoEvent(req, result.po, 'seller-order-updated');
@@ -1659,6 +1707,9 @@ router.post('/:id/amend', async (req, res) => {
           'Order Amended',
           (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">The seller has amended your purchase order <strong>${result.po.po_number}</strong>.</p>
            ${changesTableHtml(result.changes, money)}
+           ${Math.abs((result.feeBefore || 0) - (result.feeAfter || 0)) > 0.005
+             ? `<p style="color:#374151;font-size:14px;margin:0 0 8px;">Delivery fee: <span style="color:#9CA3AF;">${money(result.feeBefore)}</span> → <strong>${money(result.feeAfter)}</strong>${result.waivedAfter ? ' (not charged by seller)' : ''}</p>`
+             : ''}
            <p style="color:#374151;font-size:14px;margin:0 0 20px;">Order total: <span style="color:#9CA3AF;">${money(result.totalBefore)}</span> → <strong>${money(result.totalAfter)}</strong></p>
            ${result.needsApproval
              ? '<div style="background:#FFFBEB;border-left:4px solid #F59E0B;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;"><p style="color:#92400E;font-size:14px;margin:0;">This change is waiting for Owner approval before it is confirmed.</p></div>'

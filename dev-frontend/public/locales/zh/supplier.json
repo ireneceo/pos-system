@@ -295,7 +295,14 @@
       "confirmRaiseOk": "提高总额",
       "savedTitle": "订单已更新",
       "savedPendingApproval": "已保存——订单仍在列表中，显示为“等待业主批准”。买方业主批准新总额后请再次确认。",
-      "ok": "确定"
+      "ok": "确定",
+      "deliveryFee": "配送费",
+      "orderTotal": "订单总额",
+      "waiveDelivery": "此订单不收配送费",
+      "deliveryWaivedTag": "不收取",
+      "deliveryPickupTag": "自取",
+      "deliveryUnsetTag": "未设置",
+      "pickupNoFee": "自取订单 — 无配送费"
     },
     "create": {
       "action": "添加订单",
@@ -454,6 +461,10 @@
       "brand": "品牌",
       "foodcourt": "美食广场",
       "buyer": "买方"
+    },
+    "list": {
+      "inclDelivery": "含配送费 {{fee}}",
+      "selfPickup": "自取"
     }
   },
   "tradeInvoicesPage": {

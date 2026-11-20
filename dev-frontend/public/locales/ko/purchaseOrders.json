@@ -230,7 +230,9 @@
       "deliveryUnset": "(판매자 미설정)",
       "staffMeal": "직원식",
       "staffMealSplit": "직원식 {{staff}} · 일반 {{regular}}",
-      "shipped": "보냄"
+      "shipped": "보냄",
+      "deliveryPickup": "· 셀프픽업",
+      "deliveryWaived": "· 판매처가 받지 않음"
     },
     "delivery": {
       "expected": "예상일",
@@ -615,7 +617,9 @@
       "overWarn": "브랜드에 지금 {{n}}{{u}} 만 있습니다 — 나머지는 입고 후 보냅니다",
       "overBlock": "브랜드가 지금은 {{n}}{{u}} 까지만 받습니다"
     },
-    "brandStockBadge": "브랜드 재고"
+    "brandStockBadge": "브랜드 재고",
+    "selfPickup": "셀프픽업 (배송비 없음)",
+    "deliveryPickup": "셀프픽업"
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",
@@ -686,7 +690,10 @@
     "discarding": "삭제 중…",
     "belowMinRetry": "이 줄을 지우고 발주 화면에서 다시 담아 주세요.",
     "fromStock": "재고에서 담음",
-    "fromStockHint": "{{name}} 님이 재고 화면에서 담음 · {{when}} · {{qty}} {{unit}}"
+    "fromStockHint": "{{name}} 님이 재고 화면에서 담음 · {{when}} · {{qty}} {{unit}}",
+    "deliveryFee": "배송비 {{fee}}",
+    "selfPickup": "셀프픽업 (배송비 없음)",
+    "pickupNoFee": "셀프픽업 · 배송비 없음"
   },
   "unitCompat": {
     "diff": "{{a}} ↔ {{b}}: 수량 단위 차이 — 수동 입력 필요",

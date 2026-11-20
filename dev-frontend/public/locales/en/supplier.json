@@ -295,7 +295,14 @@
       "confirmRaiseOk": "Raise total",
       "savedTitle": "Order updated",
       "savedPendingApproval": "Saved — the order stays in your list as «Awaiting owner approval». Confirm it again once the buyer's Owner approves the new total.",
-      "ok": "OK"
+      "ok": "OK",
+      "deliveryFee": "Delivery fee",
+      "orderTotal": "Order total",
+      "waiveDelivery": "No delivery fee for this order",
+      "deliveryWaivedTag": "Not charged",
+      "deliveryPickupTag": "Self-pickup",
+      "deliveryUnsetTag": "Not set",
+      "pickupNoFee": "Self-pickup order — no delivery fee"
     },
     "create": {
       "action": "Add order",
@@ -454,6 +461,10 @@
       "brand": "brand",
       "foodcourt": "foodcourt",
       "buyer": "buyer"
+    },
+    "list": {
+      "inclDelivery": "incl. delivery {{fee}}",
+      "selfPickup": "Self-pickup"
     }
   },
   "tradeInvoicesPage": {

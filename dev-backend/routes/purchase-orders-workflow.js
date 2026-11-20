@@ -296,6 +296,9 @@ router.get('/purchase-orders/:id/pdf', async (req, res) => {
     //   빈 줄이 «무료»로 읽히면 안 된다.
     const deliveryFee = Number(po.delivery_fee || 0);
     const deliveryUnset = !po.delivery_fee_basis || po.delivery_fee_basis.rule === 'unset';
+    // 셀프픽업 · 판매자 면제 (2026-11-20 Fable 설계 §3-5) — 줄 꼬리표로 «왜 0인가» 를 남긴다
+    const isPickup = po.delivery_method === 'pickup';
+    const deliveryTag = isPickup ? ' (self-pickup)' : (po.delivery_fee_waived ? ' (not charged)' : (deliveryUnset ? ' (not set)' : ''));
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -334,7 +337,7 @@ td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
     <h3>From (Buyer)</h3>
     <div class="name">${buyerName || '—'}</div>
     ${buyerAddress ? `<div class="line">${buyerAddress}</div>` : ''}
-    ${po.delivery_address ? `<div class="line"><strong>Deliver to:</strong> ${po.delivery_address}</div>` : ''}
+    ${isPickup ? `<div class="line"><strong>Self-pickup</strong> — the buyer collects this order</div>` : (po.delivery_address ? `<div class="line"><strong>Deliver to:</strong> ${po.delivery_address}</div>` : '')}
   </div>
   <div class="party">
     <h3>To (Supplier)</h3>
@@ -349,7 +352,7 @@ td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; font-size: 13px; }
   <tbody>
     ${items.map(i => `<tr><td>${i.name}</td><td>${i.sku || '—'}</td><td class="num">${i.qty_text}</td><td class="num">${i.unit_price.toFixed(2)}</td><td class="num">${i.line_total.toFixed(2)}</td></tr>`).join('')}
     <tr><td colspan="4" class="num">Subtotal</td><td class="num">${subtotal.toFixed(2)}</td></tr>
-    <tr><td colspan="4" class="num">Delivery${deliveryUnset ? ' (not set)' : ''}</td><td class="num">${deliveryFee.toFixed(2)}</td></tr>
+    <tr><td colspan="4" class="num">Delivery${deliveryTag}</td><td class="num">${deliveryFee.toFixed(2)}</td></tr>
     <tr class="total-row"><td colspan="4" class="num">Total (${currencySymbol(po.currency || 'MYR')})</td><td class="num">${(subtotal + deliveryFee).toFixed(2)}</td></tr>
   </tbody>
 </table>

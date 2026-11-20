@@ -448,6 +448,11 @@
       "ko": "승인 예외",
       "zh": "审批豁免",
       "ms": "Pengecualian kelulusan"
+    },
+    "Self-pickup": {
+      "ko": "셀프픽업",
+      "zh": "自取",
+      "ms": "Ambil sendiri"
     }
   }
 }

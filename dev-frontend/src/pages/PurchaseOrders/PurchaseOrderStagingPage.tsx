@@ -100,6 +100,10 @@ interface POStaging {
   status: string;
   total_amount: string;
   currency: string;
+  /** 배송비 · 수령 방식 (2026-11-20 Fable 설계 §4-5) */
+  delivery_fee?: string | number | null;
+  delivery_fee_basis?: { rule?: string } | null;
+  delivery_method?: 'delivery' | 'pickup' | null;
   expected_delivery_date?: string | null;
   delivery_address?: string | null;
   // 2026-08-30 Irene: "담은 날짜가 안 보인다" — 스키마에 이미 있던 값을 표시만 한다(신설 없음).
@@ -551,6 +555,27 @@ const PurchaseOrderStagingPage: React.FC = () => {
     }
   };
 
+  // 셀프픽업 바꾸기 — 초안만(서버가 제출 뒤 변경을 400 으로 막는다). 바꾼 뒤 목록·합계를 새로 받는다.
+  const [pickupSavingId, setPickupSavingId] = useState<number | null>(null);
+  const setPickup = async (po: POStaging, pickup: boolean) => {
+    setPickupSavingId(po.id);
+    try {
+      const token = getAuthToken();
+      const res = await fetch(withOwnerPoScope(`/api/purchase-orders/${po.id}`, user?.role), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ delivery_method: pickup ? 'pickup' : 'delivery' })
+      });
+      const j = await res.json().catch(() => null);
+      if (res.ok && j?.success) fetchDrafts({ silent: true });
+      else setAlertDlg({ title: t('common:error.title', 'Error') as string, message: j?.message || 'Failed to update' });
+    } catch {
+      setAlertDlg({ title: t('common:error.title', 'Error') as string, message: 'Network error' });
+    } finally {
+      setPickupSavingId(null);
+    }
+  };
+
   // 오늘 마감이 이미 지나 다음 배송분으로 넘어가는 판매자 — «Submit All» 확인 창에 덧붙인다
   const lateCutoffWarning = (() => {
     const tt = t as unknown as (k: string, d: string, o?: Record<string, unknown>) => string;
@@ -628,6 +653,28 @@ const PurchaseOrderStagingPage: React.FC = () => {
             </div>
           ); }); })()}
         </ItemsBlock>
+      )}
+
+      {po.seller_type !== 'system_admin' && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, fontSize: 12, color: '#4B5563', margin: '4px 0 8px' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#0A2540', cursor: pickupSavingId === po.id ? 'wait' : 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={po.delivery_method === 'pickup'}
+              disabled={pickupSavingId === po.id}
+              onChange={(e) => setPickup(po, e.target.checked)}
+              style={{ width: 16, height: 16, accentColor: '#635BFF' }}
+            />
+            {t('staging.selfPickup', 'Self-pickup (no delivery fee)')}
+          </label>
+          <span>
+            {po.delivery_method === 'pickup'
+              ? t('staging.pickupNoFee', 'Self-pickup · no delivery fee')
+              : (!po.delivery_fee_basis || po.delivery_fee_basis.rule === 'unset')
+              ? `${t('newPo.deliveryFee', 'Delivery fee')} · ${t('newPo.deliveryUnset', 'Not set by seller')}`
+              : t('staging.deliveryFee', { defaultValue: 'Delivery fee {{fee}}', fee: `${getCurrencySymbol(po.currency || 'MYR')} ${Number(po.delivery_fee || 0).toFixed(2)}` })}
+          </span>
+        </div>
       )}
 
       <ApprovalPreviewLine po={po} itemLabel={itemLabel} />

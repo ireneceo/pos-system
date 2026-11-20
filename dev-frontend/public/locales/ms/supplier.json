@@ -295,7 +295,14 @@
       "confirmRaiseOk": "Naikkan jumlah",
       "savedTitle": "Pesanan dikemas kini",
       "savedPendingApproval": "Disimpan — pesanan kekal dalam senarai anda sebagai «Menunggu kelulusan pemilik». Sahkan semula selepas Pemilik pembeli meluluskan jumlah baharu.",
-      "ok": "OK"
+      "ok": "OK",
+      "deliveryFee": "Yuran penghantaran",
+      "orderTotal": "Jumlah pesanan",
+      "waiveDelivery": "Tiada yuran penghantaran untuk pesanan ini",
+      "deliveryWaivedTag": "Tidak dicaj",
+      "deliveryPickupTag": "Ambil sendiri",
+      "deliveryUnsetTag": "Belum ditetapkan",
+      "pickupNoFee": "Pesanan ambil sendiri — tiada yuran penghantaran"
     },
     "create": {
       "action": "Tambah pesanan",
@@ -454,6 +461,10 @@
       "brand": "jenama",
       "foodcourt": "medan selera",
       "buyer": "pembeli"
+    },
+    "list": {
+      "inclDelivery": "termasuk penghantaran {{fee}}",
+      "selfPickup": "Ambil sendiri"
     }
   },
   "tradeInvoicesPage": {

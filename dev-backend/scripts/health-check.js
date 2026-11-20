@@ -9184,6 +9184,146 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   });
 
   // ══════════════════════════════════════════════════════════════════
+  // 셀프픽업 · 판매자 «배송비 없이» (2026-11-20 Fable 설계 §6 V1~V11)
+  //   Irene «아이템 하나 넣었는데 밖에는 배송비 붙고, 안에는 왜 금액을 다르게 표시해? 우리가 넣을 때는 배송비 없이 …
+  //   고객이 주문할 때는 셀프픽업을 하면 배송비 없어야 하고»
+  //   판매자 배송비 10 · 100 이상 무료(시험 동안만 · 끝나면 원래 값으로). 품목 51.60 × 1.
+  // ══════════════════════════════════════════════════════════════════
+  test('po', '셀프픽업·판매자 배송비 면제 — 총액식·잠금·구매자 주입 차단·수정 비교 (V1~V11)', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const { BrandProduct, Brand, Ingredient, IngredientSellerProduct, PurchaseOrder, User } = require('../models');
+    const q = (s, r) => sequelize.query(s, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const fx = (await q(`SELECT r.id rid, b.id bid, u.id uid FROM restaurants r
+        JOIN brands b ON b.id = r.brand_id JOIN users u ON u.id = b.owner_id
+       WHERE r.is_demo = 1 AND u.email = 'demo-brand@purplehere.com' ORDER BY r.id LIMIT 1`))[0];
+    const ra = fx && await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: fx.rid } });
+    if (!fx || !ra) { console.log(c.gray('      (건너뜀: 데모 매장/BG/RA 픽스처 불가)')); return true; }
+    const bgAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: fx.uid }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const raAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const tag = 'ZZ-HC-PICKUP-' + Date.now();
+    const brand = await Brand.findByPk(fx.bid);
+    const orig = { delivery_fee: brand.delivery_fee, min_order_amount: brand.min_order_amount, delivery_zones: brand.delivery_zones };
+    const poIds = [], ingIds = [];
+    let bp = null;
+    const n = (v) => Math.round(Number(v) * 100) / 100;
+    const got = (b) => `${n(b?.subtotal)}/${n(b?.delivery_fee)}/${n(b?.total_amount)} ${b?.delivery_fee_basis?.rule}`;
+    try {
+      await brand.update({ delivery_fee: 10, min_order_amount: 100, delivery_zones: null });
+      bp = await BrandProduct.create({ owner_user_id: fx.uid, is_active: true, distribution_mode: 'all', product_kind: 'stock',
+        current_stock: 100, order_mode: 'pack', sku: 'ZZP-' + Math.random().toString(36).slice(2, 9),
+        name: tag, unit: 'pack', base_quantity: 1, unit_price: 51.6, min_order_quantity: 1 });
+      const c1 = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`, { brand_product_id: bp.id }, raAuth);
+      const ing = c1.body?.data?.ingredient, map = c1.body?.data?.mapping;
+      if (ing?.id) ingIds.push(ing.id);
+      if (![200, 201].includes(c1.status) || !map) return fail(`준비 ${c1.status} ${JSON.stringify(c1.body).slice(0, 160)}`);
+      const line = (qty = 1) => ({ ingredient_id: ing.id, ingredient_seller_product_id: map.id, quantity_ordered: qty, unit_price: 51.6 });
+      const buy = async (extra) => {
+        const r = await request('POST', '/purchase-orders', { seller_type: 'brand', seller_entity_id: fx.bid, items: [line()], ...extra }, raAuth);
+        if (r.body?.data?.id) poIds.push(r.body.data.id);
+        return r;
+      };
+
+      // V1 배송 — 51.60 + 10 = 61.60
+      const v1 = await buy({});
+      if (v1.status !== 201 || got(v1.body.data) !== '51.6/10/61.6 below_threshold') return fail(`V1 ${v1.status} ${got(v1.body?.data)}`);
+      // V2 셀프픽업 — 51.60 · 다시 읽어도 같음
+      const v2 = await buy({ delivery_method: 'pickup' });
+      if (v2.status !== 201 || got(v2.body.data) !== '51.6/0/51.6 pickup') return fail(`V2 ${v2.status} ${got(v2.body?.data)}`);
+      const v2r = await PurchaseOrder.findByPk(v2.body.data.id);
+      if (v2r.delivery_method !== 'pickup' || n(v2r.total_amount) !== 51.6 || n(v2r.delivery_fee_basis?.fee_without_override) !== 10) return fail('V2 다시 읽기');
+      // V4 구매자가 면제를 넣어도 무시
+      const v4 = await buy({ delivery_fee_waived: true, waive_delivery_fee: true });
+      const v4r = v4.body?.data?.id && await PurchaseOrder.findByPk(v4.body.data.id);
+      if (v4.status !== 201 || !v4r || n(v4r.delivery_fee) !== 10 || v4r.delivery_fee_waived) return fail(`V4 구매자 면제 주입 ${v4.status} ${got(v4.body?.data)}`);
+      // V5 초안 PUT — delivery→pickup→delivery · 이상한 값 400 · 구매자 PUT 면제 무시
+      const id1 = v1.body.data.id;
+      const p1 = await request('PUT', `/purchase-orders/${id1}`, { delivery_method: 'pickup' }, raAuth);
+      if (p1.status !== 200 || got(p1.body.data) !== '51.6/0/51.6 pickup') return fail(`V5 → pickup ${p1.status} ${got(p1.body?.data)}`);
+      const p2 = await request('PUT', `/purchase-orders/${id1}`, { delivery_method: 'delivery', delivery_fee_waived: true }, raAuth);
+      if (p2.status !== 200 || got(p2.body.data) !== '51.6/10/61.6 below_threshold') return fail(`V5 → delivery ${p2.status} ${got(p2.body?.data)}`);
+      const p3 = await request('PUT', `/purchase-orders/${id1}`, { delivery_method: 'drone' }, raAuth);
+      if (p3.status !== 400 || p3.body?.code !== 'BAD_DELIVERY_METHOD') return fail(`V5 이상한 값 ${p3.status}`);
+      // V3 픽업 초안 제출 — 제출 재계산 뒤에도 0 · 제출 뒤 방식 변경 400
+      const id2 = v2.body.data.id;
+      const s2 = await request('POST', `/purchase-orders/${id2}/submit`, {}, raAuth);
+      const s2r = await PurchaseOrder.findByPk(id2);
+      if (s2.status !== 200 || n(s2r.delivery_fee) !== 0 || n(s2r.total_amount) !== 51.6) return fail(`V3 제출 ${s2.status} ${s2r.delivery_fee}/${s2r.total_amount}`);
+      const lk = await request('PUT', `/purchase-orders/${id2}`, { delivery_method: 'delivery' }, raAuth);
+      if (lk.status !== 400 || lk.body?.code !== 'DELIVERY_METHOD_LOCKED') return fail(`V5 잠금 ${lk.status} ${lk.body?.code}`);
+
+      // V6 판매자 주문 추가 — 기본 61.60 · 면제 51.60
+      const sell = async (extra) => {
+        const r = await request('POST', '/seller-orders', { entity_type: 'restaurant', entity_id: fx.rid,
+          items: [{ ingredient_seller_product_id: map.id, quantity_ordered: 1 }], ...extra }, bgAuth);
+        if (r.body?.data?.id) poIds.push(r.body.data.id);
+        return r;
+      };
+      const s6a = await sell({});
+      if (s6a.status !== 201 || got(s6a.body.data) !== '51.6/10/61.6 below_threshold') return fail(`V6 기본 ${s6a.status} ${got(s6a.body?.data)}`);
+      const s6b = await sell({ waive_delivery_fee: true });
+      if (s6b.status !== 201 || got(s6b.body.data) !== '51.6/0/51.6 waived_by_seller' || !s6b.body.data.delivery_fee_waived)
+        return fail(`V6 면제 ${s6b.status} ${got(s6b.body?.data)}`);
+      const ev = (s6b.body.data.tracking_info?.events || []).find(e => e.status === 'created');
+      if (ev && ev.meta && ev.meta.delivery_fee_waived !== true) return fail('V6 이력 표시 없음');
+
+      // 수정 창 미리보기 — 배송 조건·현재 품목 합계·배송비
+      const sid = s6a.body.data.id;
+      const ap = await request('GET', `/seller-orders/${sid}/amendable-products`, null, bgAuth);
+      const d = ap.body?.data?.delivery;
+      if (ap.status !== 200 || !d || n(d.terms?.delivery_fee) !== 10 || n(d.terms?.min_order_amount) !== 100
+        || n(d.subtotal_now) !== 51.6 || n(d.fee_now) !== 10 || d.method !== 'delivery' || d.fee_waived !== false)
+        return fail(`미리보기 ${ap.status} ${JSON.stringify(d)}`);
+      const sp = await request('GET', `/seller-orders/sellable-products?entity_type=restaurant&entity_id=${fx.rid}`, null, bgAuth);
+      if (n(sp.body?.data?.delivery?.terms?.delivery_fee) !== 10) return fail(`주문 추가 미리보기 ${JSON.stringify(sp.body?.data?.delivery)}`);
+
+      const amend = (qty, extra) => request('POST', `/seller-orders/${sid}/amend`,
+        { items: [{ ingredient_seller_product_id: map.id, quantity_ordered: qty }], ...extra }, bgAuth);
+      const st = (await PurchaseOrder.findByPk(sid)).status;
+      if (!['submitted', 'confirmed'].includes(st)) { console.log(c.gray(`      (V7~V9 건너뜀: 판매자 주문 상태 ${st})`)); return true; }
+      // V7 Irene 사례 — 같은 품목 그대로 저장 → 61.60 → 61.60, 확인 필요 없음
+      const a7 = await amend(1);
+      if (a7.status !== 200 || got(a7.body.data) !== '51.6/10/61.6 below_threshold') return fail(`V7 ${a7.status} ${a7.body?.code} ${got(a7.body?.data)}`);
+      // V8 2개로 → 103.20(100 이상 무료) — 확인 없으면 400 (before 61.6 / after 103.2)
+      const a8 = await amend(2);
+      if (a8.status !== 400 || a8.body?.code !== 'TOTAL_EXCEEDS' || n(a8.body.total_before) !== 61.6 || n(a8.body.total_after) !== 103.2)
+        return fail(`V8 ${a8.status} ${a8.body?.code} ${a8.body?.total_before}/${a8.body?.total_after}`);
+      // V9 면제만 켬 → 51.60(확인 불필요) · 다시 끔 → 확인 필요 · 확인하면 61.60
+      const a9 = await amend(1, { waive_delivery_fee: true });
+      if (a9.status !== 200 || got(a9.body.data) !== '51.6/0/51.6 waived_by_seller') return fail(`V9 켬 ${a9.status} ${got(a9.body?.data)}`);
+      // V10(옛 번들) — waive 를 안 보내면 현재 값 유지
+      const a10 = await amend(1);
+      if (a10.status !== 200 || n(a10.body.data.delivery_fee) !== 0) return fail(`V10 옛 번들 유지 ${a10.status} ${got(a10.body?.data)}`);
+      const a9b = await amend(1, { waive_delivery_fee: false });
+      if (a9b.status !== 400 || a9b.body?.code !== 'TOTAL_EXCEEDS') return fail(`V9 끔(확인 없음) ${a9b.status}`);
+      const a9c = await amend(1, { waive_delivery_fee: false, confirm_increase: true });
+      const after9 = await PurchaseOrder.findByPk(sid);
+      if (a9c.status !== 200 || (after9.status !== 'pending_approval' && n(after9.total_amount) !== 61.6)) return fail(`V9 끔(확인) ${a9c.status} ${after9.status} ${after9.total_amount}`);
+
+      // V11 판매자가 뺀 주문을 구매자가 고쳐도 면제 유지
+      const wid = s6b.body.data.id;
+      const b11 = await request('PUT', `/purchase-orders/${wid}`, { items: [line(1)] }, raAuth);
+      const w = await PurchaseOrder.findByPk(wid);
+      if (b11.status === 200 && (n(w.delivery_fee) !== 0 || !w.delivery_fee_waived)) return fail(`V11 ${w.delivery_fee} ${w.delivery_fee_waived}`);
+      return true;
+    } catch (e) { return fail(`예외: ${e.message}`); }
+    finally {
+      try { await hcCleanupPurchaseOrders(poIds); } catch {}
+      try { await brand.update(orig); } catch (e) { console.log(c.gray(`      (브랜드 배송 조건 복원 실패: ${e.message})`)); }
+      try {
+        if (bp) await IngredientSellerProduct.destroy({ where: { seller_type: 'brand', seller_product_id: bp.id }, force: true });
+        if (ingIds.length) {
+          for (const tb of ['restaurant_ingredient_costs', 'stock_alerts', 'inventory_transactions', 'inventory_batches'])
+            try { await sequelize.query(`DELETE FROM ${tb} WHERE ingredient_id IN (:a)`, { replacements: { a: ingIds } }); } catch {}
+          await Ingredient.destroy({ where: { id: ingIds }, force: true });
+        }
+        if (bp) await BrandProduct.destroy({ where: { id: bp.id }, force: true });
+      } catch (e) { console.log(c.gray(`      (정리 실패: ${e.message})`)); }
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
   // 재고 화면 발주 = 발주 대기에만 담김 (2026-11-10 Fable 설계 .claude/fable-design-20261110-stock-order-to-staging.md §4)
   //   Irene «스톡에서 발주하면 바로 발주되면 안돼. PO로 보내야 하는 거 아니야? 그리고 스톡에서 보냈다고 알게도 확인하고.»
   //   K1 bulk {source:'stock'} → draft 그대로 · submitted_at 없음 · 판매자 목록에 없음
