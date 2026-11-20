@@ -850,6 +850,8 @@
     "pricier": "lebih mahal",
     "cheaper": "lebih murah",
     "applyYes": "Guna harga ini",
+    "applyLocked": "Harga pembekal — tidak boleh diubah di sini",
+    "notOnInvoice": "Tiada dalam invois",
     "applyNone": "Tiada pautan",
     "changedLines": "{{n}} baris berbeza daripada pesanan",
     "cancel": "Batal",
@@ -867,6 +869,7 @@
       "delivery": "Penghantaran",
       "discount": "Diskaun",
       "deliveryExpected": "dijangka {{amount}} semasa pesanan",
+      "deliveryAndCharges": "Penghantaran & caj tambahan",
       "deliveryDiff": "perbezaan {{diff}}"
     },
     "col": {
@@ -878,6 +881,8 @@
     "state": {
       "matched": "Sepadan",
       "needsCheck": "Perlu semak",
+      "samePrice": "Harga sama — dipadankan",
+      "notInvoiced": "Tiada dalam invois — kuantiti 0",
       "unmatched": "Tidak sepadan"
     },
     "reason": {
@@ -885,7 +890,8 @@
       "noLines": "Tiada baris dibaca",
       "ok": "Nama dan jumlah sepadan — sila sahkan",
       "amountMismatch": "Jumlah tidak sama dengan kuantiti × harga seunit",
-      "nameUnsure": "Nama tidak pasti"
+      "nameUnsure": "Nama tidak pasti",
+      "samePrice": "Harga dan kuantiti sama dengan pesanan — nama invois akan diingati semasa simpan"
     },
     "result": {
       "lines": "Nilai invois untuk {{n}} baris disimpan.",

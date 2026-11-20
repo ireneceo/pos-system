@@ -6338,6 +6338,99 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
     finally { await hcOverlayCleanup(made); }
   });
 
+  // ── 인보이스 대조 «이 가격으로» 판정·수량 0 줄 (2026-11-20 운영 발주 249 · Fable 설계 D8·D9) ─────────
+  //   D8 GET 줄마다 seller_price_editable(내 외부 공급업체만) · seller_unit_price — POST ③ 과 같은 판정 함수
+  //   D9 청구 수량 0(인보이스에 없는 줄)은 원가·발주처 가격·이름 사전·전파에 쓰지 않는다
+  test('inventory', '대조 D8·D9 — 내 외부 업체만 «이 가격으로» 가능 · 가격 다른 줄은 상품가·매핑·재료 원가 같이 · 수량 0 줄은 원가 무접촉 · 재저장 멱등', async () => {
+    const { sequelize } = require('../config/database');
+    const M = require('../models');
+    const Q = (sql, rep) => sequelize.query(sql, { replacements: rep, type: sequelize.QueryTypes.SELECT });
+    const X = async (sql, rep) => { try { await sequelize.query(sql, { replacements: rep }); } catch {} };
+    const made = { ings: [], sps: [], isps: [] };
+    try {
+      const [store] = await Q('SELECT id FROM restaurants WHERE is_demo = 1 ORDER BY id LIMIT 1');
+      const [ra] = store ? await Q("SELECT id FROM users WHERE restaurant_id = :r AND role = 'Restaurant Admin' AND is_active = 1 LIMIT 1", { r: store.id }) : [];
+      const [regSp] = await Q('SELECT sp.id, sp.unit_price FROM supplier_products sp JOIN supplier_companies sc ON sc.id = sp.supplier_company_id WHERE sc.is_system_registered = 1 AND sp.unit_price > 0 AND sp.deleted_at IS NULL AND sp.is_active = 1 ORDER BY sp.id LIMIT 1');
+      if (!store || !ra || !regSp) { console.log(c.gray('      (건너뜀: 데모 매장·관리자·가입 공급업체 상품 없음)')); return true; }
+      const tag = 'ZZ-HC-RCD9-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+      made.sc = await M.SupplierCompany.create({ name: tag, status: 'active', is_system_registered: false, registered_by_entity_type: 'restaurant', registered_by_entity_id: store.id });
+      await M.SupplierContract.create({ entity_type: 'restaurant', entity_id: store.id, supplier_company_id: made.sc.id, status: 'active', requested_by_user_id: ra.id });
+      // A 가격 다름(20→22) · B 같음(10) · C 인보이스에 없음(30, 수량 0) · D 가입 업체 상품(가격 못 바꿈)
+      const spec = [['A', 20, made.sc.id], ['B', 10, made.sc.id], ['C', 30, made.sc.id], ['D', Number(regSp.unit_price), null]];
+      for (const [k, price, scId] of spec) {
+        const ing = await M.Ingredient.create({ owner_type: 'restaurant', restaurant_id: store.id, name: `${tag}-${k}`, unit: 'kg', base_quantity: 1, unit_cost: price, is_active: true });
+        const sp = scId ? await M.SupplierProduct.create({ supplier_company_id: scId, name: `${tag}-${k} SP`, unit_price: price, unit: 'kg', base_quantity: 1, is_active: true }) : null;
+        if (sp) made.sps.push(sp);
+        const isp = await M.IngredientSellerProduct.create({ ingredient_id: ing.id, seller_type: 'supplier', seller_entity_id: scId || made.sc.id, seller_product_id: sp ? sp.id : regSp.id, unit_price: price, unit_conversion: 1, is_active: true, is_preferred: true });
+        made.ings.push(ing); made.isps.push(isp);
+      }
+      made.po = await M.PurchaseOrder.create({
+        po_number: 'HC-RCD9-' + Date.now() % 1000000 + '-' + Math.random().toString(36).slice(2, 5),
+        entity_type: 'restaurant', entity_id: store.id, seller_type: 'supplier', seller_entity_id: made.sc.id,
+        status: 'received', subtotal: 60 + Number(regSp.unit_price), tax_amount: 0, total_amount: 60 + Number(regSp.unit_price), currency: 'MYR',
+        created_by_user_id: ra.id, payment_status: 'unpaid', submitted_at: new Date(),
+      });
+      made.items = [];
+      for (let i = 0; i < 4; i++) {
+        made.items.push(await M.PurchaseOrderItem.create({
+          purchase_order_id: made.po.id, ingredient_id: made.ings[i].id, ingredient_seller_product_id: made.isps[i].id,
+          description: `${tag}-${spec[i][0]}`, quantity_ordered: 1, quantity_received: 1, unit: 'kg', unit_price: spec[i][1], unit_conversion: 1, line_total: spec[i][1],
+        }));
+      }
+      const auth = { Authorization: `Bearer ${require('jsonwebtoken').sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+      const g = await request('GET', `/purchase-orders/${made.po.id}/reconcile`, null, auth);
+      const rows = (g.body?.data?.items || []);
+      const ed = made.items.map((it) => rows.find((r) => r.id === it.id)?.seller_price_editable);
+      if (g.status !== 200 || ed.join() !== 'true,true,true,false' || Number(rows.find((r) => r.id === made.items[0].id)?.seller_unit_price) !== 20) {
+        console.log(c.gray(`      (GET ${g.status} editable ${ed.join()} )`)); return false;
+      }
+      const dPrice = Number(regSp.unit_price);
+      const body = {
+        invoice: { total: 22 + 10 + 0 + dPrice },
+        lines: [
+          { item_id: made.items[0].id, invoiced_unit_price: 22, invoiced_quantity: 1, apply_to_seller_price: true },
+          { item_id: made.items[1].id, invoiced_unit_price: 10, invoiced_quantity: 1, apply_to_seller_price: false },
+          { item_id: made.items[2].id, invoiced_unit_price: 31, invoiced_quantity: 0, apply_to_seller_price: true, retro_apply: true, invoice_line_name: 'ZZ ALIAS C' },
+          { item_id: made.items[3].id, invoiced_unit_price: dPrice, invoiced_quantity: 1, apply_to_seller_price: true },
+        ],
+      };
+      const p1 = await request('POST', `/purchase-orders/${made.po.id}/reconcile`, body, auth);
+      if (p1.status !== 200) { console.log(c.gray(`      (POST ${p1.status} ${JSON.stringify(p1.body).slice(0, 200)})`)); return false; }
+      const one = async (sql, rep) => (await Q(sql, rep))[0] || {};
+      const spA = await one('SELECT unit_price FROM supplier_products WHERE id = :i', { i: made.sps[0].id });
+      const ispA = await one('SELECT unit_price FROM ingredient_seller_products WHERE id = :i', { i: made.isps[0].id });
+      const ingA = await one('SELECT unit_cost FROM ingredients WHERE id = :i', { i: made.ings[0].id });
+      const spC = await one('SELECT unit_price, invoice_name FROM supplier_products WHERE id = :i', { i: made.sps[2].id });
+      const ingC = await one('SELECT unit_cost FROM ingredients WHERE id = :i', { i: made.ings[2].id });
+      const logC = await one("SELECT COUNT(*) n FROM cost_change_logs WHERE subject_type = 'ingredient' AND subject_id = :i", { i: made.ings[2].id });
+      const spD = await one('SELECT unit_price FROM supplier_products WHERE id = :i', { i: regSp.id });
+      const dReason = (p1.body?.data?.propagated || []).find((p) => p.item_id === made.items[3].id)?.targets?.[0]?.reason_code;
+      const itC = await one('SELECT invoiced_quantity FROM purchase_order_items WHERE id = :i', { i: made.items[2].id });
+      const logsBefore = await one('SELECT COUNT(*) n FROM cost_change_logs WHERE purchase_order_id = :p', { p: made.po.id });
+      const p2 = await request('POST', `/purchase-orders/${made.po.id}/reconcile`, body, auth);
+      const logsAfter = await one('SELECT COUNT(*) n FROM cost_change_logs WHERE purchase_order_id = :p', { p: made.po.id });
+      const ok = Number(spA.unit_price) === 22 && Number(ispA.unit_price) === 22 && Math.abs(Number(ingA.unit_cost) - 22) < 0.0001
+        && Number(spC.unit_price) === 30 && spC.invoice_name == null && Math.abs(Number(ingC.unit_cost) - 30) < 0.0001 && Number(logC.n) === 0
+        && Number(itC.invoiced_quantity) === 0
+        && Number(spD.unit_price) === dPrice && dReason === 'REGISTERED_SUPPLIER_PRICE_IS_THEIRS'
+        && p2.status === 200 && Number(logsAfter.n) === Number(logsBefore.n);
+      if (!ok) console.log(c.gray(`      (prop ${JSON.stringify(p1.body?.data?.propagated).slice(0, 300)} fail ${JSON.stringify(p1.body?.data?.propagation_failed)})`));
+      if (!ok) console.log(c.gray(`      (A sp ${spA.unit_price} map ${ispA.unit_price} ing ${ingA.unit_cost} · C sp ${spC.unit_price} name ${spC.invoice_name} ing ${ingC.unit_cost} log ${logC.n} qty ${itC.invoiced_quantity} · D ${spD.unit_price} ${dReason} · 재저장 ${p2.status} 로그 ${logsBefore.n}→${logsAfter.n})`));
+      return ok;
+    } catch (e) { console.log(c.gray(`      (예외: ${e.message})`)); return false; }
+    finally {
+      if (made.po) { await X('DELETE FROM cost_change_logs WHERE purchase_order_id = :p', { p: made.po.id }); try { await hcCleanupPurchaseOrders(made.po.id); } catch {} }
+      for (const ing of made.ings) {
+        await X("DELETE FROM cost_change_logs WHERE subject_type = 'ingredient' AND subject_id = :i", { i: ing.id });
+        await X('DELETE FROM restaurant_ingredient_costs WHERE ingredient_id = :i', { i: ing.id });
+      }
+      for (const isp of made.isps) await X('DELETE FROM ingredient_seller_products WHERE id = :i', { i: isp.id });
+      for (const sp of made.sps) await X('DELETE FROM supplier_products WHERE id = :i', { i: sp.id });
+      for (const ing of made.ings) await X('DELETE FROM ingredients WHERE id = :i', { i: ing.id });
+      if (made.sc) { await X('DELETE FROM supplier_contracts WHERE supplier_company_id = :s', { s: made.sc.id }); await X('DELETE FROM supplier_companies WHERE id = :s', { s: made.sc.id }); }
+    }
+  });
+
   // ── §G 구매자별 공급업체 활성/비활성 (2026-09-11 · docs/SUPPLIER_CONTRACT_SYSTEM.md §G) ─────────────
   //   활성/비활성 = 그 구매자의 계약 행. 2026-09-24 ⑥ 부터 브랜드 → 매장 상속은 없다 — 매장은 브랜드가 준 **사본**(자기 업체)을
   //   자기 계약 행으로 켜고 끈다. 브랜드 원본의 켜기/끄기는 매장 사본에 영향이 없다(Irene «서로 연동하지 않아»).

@@ -24,7 +24,7 @@ import { useStore } from '../../contexts/StoreContext';
 import AlertDialog from '../../components/Common/AlertDialog';
 import {
   parseInvoiceText, parseInvoiceHeader, matchInvoiceToPo, shouldAutoFill, MatchResult, MatchReason, PoLine,
-  aliasFor, aliasToRemember,
+  aliasFor, aliasToRemember, inferNotInvoiced,
 } from '../../utils/invoiceMatcher';
 import { readInvoiceText } from '../../utils/invoiceOcr';
 import { lineQtyText } from '../../utils/unitConversion';
@@ -43,6 +43,10 @@ interface ReconcileItem extends PoLine {
   /** 주문 시점 용량 스냅샷 «10 kg/BOX» (2026-09-11) */
   base_quantity?: string | number | null;
   base_unit?: string | null;
+  /** 현재 발주처 상품가 — «이 가격으로» 기본값을 이 값과 비교한다 (2026-11-20 D7) */
+  seller_unit_price?: string | number | null;
+  /** 이 구매자가 그 상품가를 고칠 수 있나(내가 등록한 외부 공급업체) — 서버 isOwnedExternalSupplier (D8) */
+  seller_price_editable?: boolean;
 }
 
 interface ReconcilePo {
@@ -81,6 +85,14 @@ interface LineDraft {
    */
   invoice_line_name?: string;
   apply_to_seller_price: boolean;
+  /**
+   * 사람이 «이 가격으로» 를 직접 만졌나 (2026-11-20 D7 · Irene «권고대로» A).
+   * 안 만졌으면 체크 값은 **파생**이다 — 내 외부 공급업체이고 청구 단가가 현재 상품가와 다르면 켜짐.
+   * 한 번 만지면 그 값으로 고정한다.
+   */
+  apply_touched?: boolean;
+  /** 인보이스에 없는 줄로 자동 판정됐나 (D5 — 화면 배지용, 저장 값은 청구 수량 0) */
+  auto_not_invoiced?: boolean;
   /** 과거 발주에도 이 가격을 소급할지 — **기본 꺼짐**(설계 §4). 결제·수령된 발주는 대상이 아니다. */
   retro_apply: boolean;
 }
@@ -319,6 +331,11 @@ const InvoiceReconcilePage: React.FC = () => {
   const [header, setHeader] = useState({ number: '', date: '', total: '', tax: '', delivery: '', discount: '' });
   // 발주 때 계산된 예상 배송비 (읽기 전용 사실) — 저장하는 값과 섞지 않는다
   const [expectedDelivery, setExpectedDelivery] = useState<number | null>(null);
+  /**
+   * 배송비·추가 비용 칸의 값이 어디서 왔나 (2026-11-20 D4) — 읽은 «Extra Charges» 가 덮어도 되는지 가른다.
+   *   saved 저장된 청구 배송비 · human 사람이 고침 → 덮지 않는다 / expected 발주 때 예상 · empty 빈 칸 · read 읽은 값 → 덮는다
+   */
+  const deliverySource = useRef<'saved' | 'human' | 'expected' | 'empty' | 'read'>('empty');
   const [pasted, setPasted] = useState('');
   const [matches, setMatches] = useState<Record<number, MatchResult>>({});
   const [loading, setLoading] = useState(true);
@@ -357,6 +374,8 @@ const InvoiceReconcilePage: React.FC = () => {
       setPo(p);
       setItems(its);
       setExpectedDelivery(p.delivery_fee != null ? Number(p.delivery_fee) : null);
+      deliverySource.current = p.invoice_delivery != null ? 'saved'
+        : (p.delivery_fee != null && Number(p.delivery_fee) > 0 ? 'expected' : 'empty');
       setHeader({
         number: p.invoice_number || '',
         date: p.invoice_date ? String(p.invoice_date).slice(0, 10) : '',
@@ -417,20 +436,23 @@ const InvoiceReconcilePage: React.FC = () => {
   const applyText = useCallback((text: string) => {
     const parsed = parseInvoiceText(text);
     const results = matchInvoiceToPo(items, parsed);
+    // 짝 결과 — 자동 채움 문에 막힌 줄은 «못 찾음» 으로 내린다. 상태 갱신 함수 **밖에서** 먼저 정한다
+    //   (갱신 함수는 늦게 돌 수 있어, 아래 «인보이스에 없는 줄» 판정이 빈 map 을 볼 수 있었다 — 2026-11-20).
+    // 돈 칸의 마지막 문 — 규칙은 `utils/invoiceMatcher.ts` 의 `shouldAutoFill` 하나뿐이다.
+    // 화면에서 다시 판단하지 않는다(순수 함수라 계약 테스트로 지켜진다).
     const map: Record<number, MatchResult> = {};
+    for (const r of results) {
+      const poLine = items.find((it) => it.id === r.poLineId);
+      map[r.poLineId] = (r.state !== 'unmatched' && r.parsed && poLine && !shouldAutoFill(r, poLine))
+        ? { ...r, parsed: null, state: 'unmatched', reason: 'no_candidate' }
+        : r;
+    }
     setDrafts((prev) => {
       const next = { ...prev };
-      for (const r of results) {
-        map[r.poLineId] = r;
-        if (r.state === 'unmatched' || !r.parsed) continue;   // 못 찾은 줄은 손대지 않는다
-
-        // 돈 칸의 마지막 문 — 규칙은 `utils/invoiceMatcher.ts` 의 `shouldAutoFill` 하나뿐이다.
-        // 화면에서 다시 판단하지 않는다(순수 함수라 계약 테스트로 지켜진다).
+      for (const r0 of results) {
+        const r = map[r0.poLineId];
+        if (r.state === 'unmatched' || !r.parsed) continue;   // 못 찾은 줄·문에 막힌 줄은 손대지 않는다
         const poLine = items.find((it) => it.id === r.poLineId);
-        if (poLine && !shouldAutoFill(r, poLine)) {
-          map[r.poLineId] = { ...r, parsed: null, state: 'unmatched', reason: 'no_candidate' };
-          continue;
-        }
         // 자릿수를 **발주 쪽과 맞춘다** — 왼쪽이 «7.00» 인데 오른쪽이 «7» 이면 같은 값인데도
         // 다르게 보인다(2026-09-10 Irene 지적). 값은 그대로고 보이는 형식만 맞춘다.
         next[r.poLineId] = {
@@ -438,9 +460,12 @@ const InvoiceReconcilePage: React.FC = () => {
           invoiced_unit_price: r.parsed.unitPrice != null
             ? r.parsed.unitPrice.toFixed(decimalsOf(poLine?.unit_price, 2))
             : next[r.poLineId]?.invoiced_unit_price,
-          invoiced_quantity: r.parsed.quantity != null
+          // D6 (2026-11-20): 금액 검산이 안 맞는 줄은 **수량을 믿지 않는다** — 발주 수량을 그대로 둔다.
+          //   단위 옆 빈 네모가 수량으로 읽혀(식용유 2→1) 틀린 수량이 총액 불일치로 저장을 막던 경로의 이중 방어.
+          invoiced_quantity: r.parsed.quantity != null && r.reason !== 'amount_mismatch'
             ? r.parsed.quantity.toFixed(decimalsOf(poLine?.quantity_ordered, 2))
             : next[r.poLineId]?.invoiced_quantity,
+          auto_not_invoiced: false,
           // 저장 시 이름 사전에 기록된다 — **정규화한 값**만, 그리고 **사전으로 붙은 줄은 갱신하지 않는다**
           //   (안 그러면 깨끗한 사전을 이번에 읽힌 잡음으로 덮어써 학습이 퇴화한다. 2026-09-24)
           invoice_line_name: aliasToRemember(r),
@@ -464,12 +489,31 @@ const InvoiceReconcilePage: React.FC = () => {
     // 머리 칸(번호·일자·총액)도 채운다 — 사람 눈에 바로 보이는 칸이라 안전하다.
     // 사람이 이미 적어 둔 값은 덮지 않는다.
     const h = parseInvoiceHeader(text);
+    // D4: 읽은 추가 비용(Extra Charges·Delivery…)은 배송비·추가 비용 칸으로 — 저장된 값·사람이 고친 값은 덮지 않는다
+    const takeCharges = h.charges != null && ['expected', 'empty', 'read'].includes(deliverySource.current);
+    if (takeCharges) deliverySource.current = 'read';
     setHeader((prev) => ({
       ...prev,
       number: prev.number || h.number || '',
       date: prev.date || h.date || '',
       total: prev.total || (h.total != null ? h.total.toFixed(2) : ''),
+      delivery: takeCharges ? (h.charges as number).toFixed(2) : prev.delivery,
     }));
+
+    // D5: 짝 붙은 줄 합 + 추가 비용 = 읽은 총액인데 못 붙은 발주 줄이 남으면 → 인보이스에 없는 줄. 청구 수량 0 으로.
+    //   (위에서 자동 채움 문에 막힌 줄은 map 에서 unmatched 로 내려가 있다 — 그 결과로 판정한다)
+    const notInvoiced = inferNotInvoiced(items.map((it) => map[it.id] || {
+      poLineId: it.id, parsed: null, state: 'unmatched', score: 0, reason: 'no_candidate',
+    } as MatchResult), items, { total: h.total, charges: h.charges });
+    if (notInvoiced.length) {
+      setDrafts((prev) => {
+        const next = { ...prev };
+        for (const lineId of notInvoiced) {
+          next[lineId] = { ...next[lineId], invoiced_quantity: '0', auto_not_invoiced: true, invoice_line_name: undefined };
+        }
+        return next;
+      });
+    }
     return results;
   }, [items]);
 
@@ -515,8 +559,35 @@ const InvoiceReconcilePage: React.FC = () => {
       case 'ok': return t('reconcile.reason.ok', '이름과 금액이 맞습니다 — 확인만 해주세요');
       case 'amount_mismatch': return t('reconcile.reason.amountMismatch', '금액이 수량×단가와 맞지 않습니다');
       case 'name_unsure': return t('reconcile.reason.nameUnsure', '이름이 확실하지 않습니다');
+      case 'same_price': return t('reconcile.reason.samePrice', 'Price and quantity match the order — the invoice name will be remembered on save');
       default: return '';
     }
+  };
+
+  /**
+   * «이 가격으로»(발주처 상품가도 바꾸기) — 화면에 보이고 저장에 실리는 **실제 값** (2026-11-20 D7 · Irene «권고대로» A).
+   *   사람이 만졌으면 그 값. 안 만졌으면 파생: 내가 등록한 외부 공급업체(서버 판정) + 인보이스에 있는 줄 +
+   *   청구 단가가 현재 발주처 상품가와 0.005 이상 다르면 켜짐. 가입 공급업체 줄은 늘 꺼짐(서버도 막는다).
+   */
+  const autoApply = (it: ReconcileItem, d: LineDraft | undefined): boolean => {
+    // 이미 대조한 줄은 파생 켜짐 없음 — 옛 인보이스 가격이 지금 발주처 가격을 되돌리지 않게 (Fable 게이트 2026-11-20).
+    //   줄 단위로 본다: «총액만» 으로 먼저 확정한 발주는 줄 값이 null 이라 나중 줄 대조 때 기본 켜짐이 살아 있다.
+    if (it.invoiced_unit_price != null) return false;
+    if (!it.seller_price_editable || !it.seller_product_id || !d) return false;
+    if (d.invoiced_quantity !== '' && d.invoiced_quantity != null && num(d.invoiced_quantity) === 0) return false;
+    if (d.invoiced_unit_price === '' || d.invoiced_unit_price == null) return false;
+    const current = it.seller_unit_price != null && it.seller_unit_price !== '' ? num(it.seller_unit_price) : num(it.unit_price);
+    return Math.abs(num(d.invoiced_unit_price) - current) >= 0.005;
+  };
+  const applyEffective = (it: ReconcileItem, d: LineDraft | undefined): boolean =>
+    (d?.apply_touched ? !!d.apply_to_seller_price : autoApply(it, d));
+
+  /** 고르기 목록 표시 — «이름 40자 · 수량 × 단가 = 금액» (D6 · 예전엔 앞 60자라 숫자가 잘려 고를 수 없었다) */
+  const pickLabel = (raw: string): string => {
+    const p = parseInvoiceText(raw)[0];
+    if (!p) return raw.slice(0, 60);
+    const nm = p.name.length > 40 ? `${p.name.slice(0, 40)}…` : p.name;
+    return `${nm} · ${p.quantity ?? '?'} × ${p.unitPrice != null ? p.unitPrice.toFixed(2) : '?'} = ${p.amount != null ? p.amount.toFixed(2) : '?'}`;
   };
 
   /** 줄의 «발주 금액»(수량×단가). 청구 쪽은 입력값 기준. */
@@ -598,7 +669,7 @@ const InvoiceReconcilePage: React.FC = () => {
             item_id: it.id,
             invoiced_unit_price: drafts[it.id]?.invoiced_unit_price,
             invoiced_quantity: drafts[it.id]?.invoiced_quantity,
-            apply_to_seller_price: !!drafts[it.id]?.apply_to_seller_price,
+            apply_to_seller_price: applyEffective(it, drafts[it.id]),
             retro_apply: !!drafts[it.id]?.retro_apply,
             invoice_line_name: drafts[it.id]?.invoice_line_name
           }))
@@ -743,8 +814,8 @@ const InvoiceReconcilePage: React.FC = () => {
               <Field>{t('reconcile.field.tax', '세금')}
                 <ThemedInput type="number" step="0.01" value={header.tax} onChange={(e) => setHeader({ ...header, tax: e.target.value })} />
               </Field>
-              <Field>{t('reconcile.field.delivery', '배송비')}
-                <ThemedInput type="number" step="0.01" value={header.delivery} onChange={(e) => setHeader({ ...header, delivery: e.target.value })} />
+              <Field>{t('reconcile.field.deliveryAndCharges', 'Delivery & extra charges')}
+                <ThemedInput type="number" step="0.01" value={header.delivery} onChange={(e) => { deliverySource.current = 'human'; setHeader({ ...header, delivery: e.target.value }); }} />
                 {/* 발주 때 예상한 배송비와 실제 청구액의 차이 — 숫자만 보고는 «많이 나왔나» 를 알 수 없다 */}
                 {expectedDelivery != null && (
                   <div style={{ fontSize: 11, color: '#4B5563', marginTop: 4 }}>
@@ -967,9 +1038,12 @@ const InvoiceReconcilePage: React.FC = () => {
                           ? <> · <StateTag tone="warn">◐ {t('reconcile.receivedMismatch', '청구 수량 ≠ 받은 수량')}</StateTag></>
                           : null;
                       })()}
-                      {m && (
+                      {d?.auto_not_invoiced && num(d.invoiced_quantity) === 0 ? (
+                        <> · <StateTag tone="warn">◐ {t('reconcile.state.notInvoiced', 'Not on invoice — qty 0')}</StateTag></>
+                      ) : m && (
                         <> · <StateTag tone={m.state === 'matched' ? 'ok' : m.state === 'needs_check' ? 'warn' : 'none'}>
-                          {m.state === 'matched' ? `● ${t('reconcile.state.matched', '맞음')}`
+                          {m.state === 'matched' && m.reason === 'same_price' ? `● ${t('reconcile.state.samePrice', 'Same price — linked')}`
+                            : m.state === 'matched' ? `● ${t('reconcile.state.matched', '맞음')}`
                             : m.state === 'needs_check' ? `◐ ${t('reconcile.state.needsCheck', '확인 필요')}`
                             : `○ ${t('reconcile.state.unmatched', '미매칭')}`}
                         </StateTag> {reasonText(m.reason)}</>
@@ -1032,7 +1106,7 @@ const InvoiceReconcilePage: React.FC = () => {
                         {ocrLines
                           .filter((raw) => raw === m?.parsed?.raw || !usedRawLines.has(raw))
                           .map((raw, i) => (
-                            <option key={i} value={raw}>{raw.slice(0, 60)}</option>
+                            <option key={i} value={raw}>{pickLabel(raw)}</option>
                           ))}
                       </select>
                     )}
@@ -1056,7 +1130,7 @@ const InvoiceReconcilePage: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <ThemedInput
                       type="number" step="0.001" value={d?.invoiced_quantity ?? ''}
-                      onChange={(e) => setDrafts({ ...drafts, [it.id]: { ...d, invoiced_quantity: e.target.value } })}
+                      onChange={(e) => setDrafts({ ...drafts, [it.id]: { ...d, invoiced_quantity: e.target.value, auto_not_invoiced: false } })}
                     />
                       {it.unit && (
                         <span style={{ fontSize: 12.5, color: '#4B5563', whiteSpace: 'nowrap', fontWeight: 600 }}>
@@ -1064,17 +1138,40 @@ const InvoiceReconcilePage: React.FC = () => {
                         </span>
                       )}
                     </div>
-                  </Cell>
-                  <Cell data-label={t('reconcile.col.apply', '원가 반영')}>
-                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#4B5563' }}>
+                    {/* D5 (2026-11-20): 인보이스에 없는 줄(발주했지만 청구 안 됨) — 청구 수량 0 ↔ 발주 수량.
+                        수량 0 줄은 서버가 원가·발주처 가격·이름 사전에 쓰지 않는다(D9). */}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#6B7280', marginTop: 4 }}>
                       <input
                         type="checkbox"
-                        checked={!!d?.apply_to_seller_price}
-                        disabled={!it.seller_product_id}
-                        onChange={(e) => setDrafts({ ...drafts, [it.id]: { ...d, apply_to_seller_price: e.target.checked } })}
+                        checked={d?.invoiced_quantity !== '' && d?.invoiced_quantity != null && num(d.invoiced_quantity) === 0}
+                        onChange={(e) => setDrafts({ ...drafts, [it.id]: {
+                          ...d,
+                          invoiced_quantity: e.target.checked ? '0' : String(num(it.quantity_ordered).toFixed(decimalsOf(it.quantity_ordered, 2))),
+                          auto_not_invoiced: false,
+                          invoice_line_name: e.target.checked ? undefined : d?.invoice_line_name,
+                        } })}
                       />
-                      {it.seller_product_id ? t('reconcile.applyYes', '이 가격으로') : t('reconcile.applyNone', '연결 없음')}
+                      {t('reconcile.notOnInvoice', 'Not on invoice')}
                     </label>
+                  </Cell>
+                  <Cell data-label={t('reconcile.col.apply', '원가 반영')}>
+                    {/* D7 (2026-11-20): 내 외부 공급업체 + 가격이 다르면 기본 켜짐 — 발주처 상품가·재료 원가가 같이 맞는다.
+                        가입 공급업체 가격은 그 업체 것이라 여기서 못 바꾼다 → 체크박스 대신 글자. */}
+                    {it.seller_product_id && !it.seller_price_editable ? (
+                      <span style={{ fontSize: 12, color: '#6B7280' }}>
+                        {t('reconcile.applyLocked', "Supplier's price — can't change here")}
+                      </span>
+                    ) : (
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#4B5563' }}>
+                        <input
+                          type="checkbox"
+                          checked={applyEffective(it, d)}
+                          disabled={!it.seller_product_id}
+                          onChange={(e) => setDrafts({ ...drafts, [it.id]: { ...d, apply_to_seller_price: e.target.checked, apply_touched: true } })}
+                        />
+                        {it.seller_product_id ? t('reconcile.applyYes', '이 가격으로') : t('reconcile.applyNone', '연결 없음')}
+                      </label>
+                    )}
                     {/* 과거 발주 소급 (설계 §4) — 기본 꺼짐. 결제·수령이 끝난 발주는 대상이 아니다
                         (이미 결제·마감·정산에 쓰인 금액을 나중에 바꾸면 원장이 깨진다). */}
                     {it.ingredient_seller_product_id && (

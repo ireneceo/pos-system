@@ -850,6 +850,8 @@
     "pricier": "higher",
     "cheaper": "lower",
     "applyYes": "Use this price",
+    "applyLocked": "Supplier's price — can't change here",
+    "notOnInvoice": "Not on invoice",
     "applyNone": "No link",
     "changedLines": "{{n}} lines differ from the order",
     "cancel": "Cancel",
@@ -867,6 +869,7 @@
       "delivery": "Delivery",
       "discount": "Discount",
       "deliveryExpected": "expected {{amount}} at order",
+      "deliveryAndCharges": "Delivery & extra charges",
       "deliveryDiff": "difference {{diff}}"
     },
     "col": {
@@ -878,6 +881,8 @@
     "state": {
       "matched": "Matched",
       "needsCheck": "Needs check",
+      "samePrice": "Same price — linked",
+      "notInvoiced": "Not on invoice — qty 0",
       "unmatched": "Unmatched"
     },
     "reason": {
@@ -885,7 +890,8 @@
       "noLines": "No lines were read",
       "ok": "Name and amount match — just confirm",
       "amountMismatch": "Amount does not equal qty × unit price",
-      "nameUnsure": "Name is not certain"
+      "nameUnsure": "Name is not certain",
+      "samePrice": "Price and quantity match the order — the invoice name will be remembered on save"
     },
     "result": {
       "lines": "Saved invoiced values for {{n}} lines.",

@@ -41,8 +41,26 @@ function checkPOOwnership(po, req) {
   return po.entity_type === req.buyerEntity.type && po.entity_id === req.buyerEntity.id;
 }
 
+/**
+ * 이 공급업체 상품 가격을 **이 발주의 구매자가** 고칠 수 있나 — 구매자가 직접 등록한 외부 공급업체일 때만.
+ * GET(화면 기본값 «이 가격으로»)·POST(③ 판매상품가 전파)가 **같은 함수**를 쓴다 (2026-11-20 Fable D8).
+ * 가입(플랫폼) 공급업체의 가격은 그 공급업체 소유 — 여기서 덮으면 같은 상품을 사는 다른 매장 원가까지 움직인다.
+ */
+function isOwnedExternalSupplier(sc, po) {
+  return !!sc && !sc.is_system_registered
+    && sc.registered_by_entity_type === po.entity_type
+    && Number(sc.registered_by_entity_id) === Number(po.entity_id);
+}
+
 const num = (v) => (v === undefined || v === null || v === '' ? null : Number(v));
 const money = (v) => { const n = num(v); return n !== null && Number.isFinite(n) && n >= 0 ? n : null; };
+/**
+ * 인보이스에 **없는** 줄인가 — 청구 수량을 0 으로 보낸 줄 (2026-11-20 Fable D9 · 운영 발주 249 후추).
+ * 줄 값 저장(①)과 총액 계산은 그대로 하되, 청구 단가라는 근거가 없으므로 원가(①-b·①-c)·이름 사전·
+ * 판매상품가 전파(③)·소급에는 쓰지 않는다.
+ */
+const notInvoiced = (l) => l && l.invoiced_quantity !== undefined && l.invoiced_quantity !== null
+  && l.invoiced_quantity !== '' && money(l.invoiced_quantity) === 0;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/purchase-orders/:id/reconcile — 대조 화면 데이터
@@ -89,9 +107,19 @@ router.get('/purchase-orders/:id/reconcile', async (req, res) => {
     if (supplierProductIds.length) {
       const sps = await SupplierProduct.findAll({
         where: { id: supplierProductIds },
-        attributes: ['id', 'name', 'invoice_name'],
+        attributes: ['id', 'name', 'invoice_name', 'unit_price', 'supplier_company_id'],
       });
       for (const sp of sps) spById.set(sp.id, sp);
+    }
+    // 줄마다 «이 가격으로» 를 쓸 수 있나 (D8) — POST ③ 과 같은 판정 함수
+    const scIds = [...new Set([...spById.values()].map((sp) => sp.supplier_company_id).filter(Boolean))];
+    const scById = new Map();
+    if (scIds.length) {
+      const scs = await SupplierCompany.findAll({
+        where: { id: scIds },
+        attributes: ['id', 'is_system_registered', 'registered_by_entity_type', 'registered_by_entity_id'],
+      });
+      for (const sc of scs) scById.set(sc.id, sc);
     }
 
     // 대조 화면에서 바로 결제 (2026-10-29 Fable 설계 invoice-pay-flow R-3) — 낼 금액·월결제 판정은 서버 단일 소스를 그대로 쓴다.
@@ -154,7 +182,12 @@ router.get('/purchase-orders/:id/reconcile', async (req, res) => {
             seller_type: m ? m.seller_type : null,
             seller_entity_id: m ? m.seller_entity_id : null,
             seller_product_name: (m && spById.get(m.seller_product_id)) ? spById.get(m.seller_product_id).name : null,
-            seller_invoice_name: (m && spById.get(m.seller_product_id)) ? spById.get(m.seller_product_id).invoice_name : null
+            seller_invoice_name: (m && spById.get(m.seller_product_id)) ? spById.get(m.seller_product_id).invoice_name : null,
+            // 현재 발주처 상품가 · 구매자가 그 값을 고칠 수 있는가 (D7·D8 — 화면 «이 가격으로» 기본값의 근거)
+            seller_unit_price: (m && m.seller_type === 'supplier' && spById.get(m.seller_product_id))
+              ? spById.get(m.seller_product_id).unit_price : null,
+            seller_price_editable: !!(m && m.seller_type === 'supplier' && spById.get(m.seller_product_id)
+              && isOwnedExternalSupplier(scById.get(spById.get(m.seller_product_id).supplier_company_id), po))
           };
         })
       }
@@ -300,7 +333,7 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
       // 이름 사전 갱신 — 값이 실제로 왔을 때만, 그리고 **이 발주의 라인일 때만**
       const alias = typeof l.invoice_line_name === 'string' ? sanitizeString(l.invoice_line_name).trim().slice(0, 255) : '';
       const own = ownItemById.get(itemId);
-      if (alias && own && own.ingredient_seller_product_id) {
+      if (alias && own && !notInvoiced(l) && own.ingredient_seller_product_id) {
         const map = await IngredientSellerProduct.findByPk(own.ingredient_seller_product_id, { transaction: t });
         if (map && map.seller_type === 'supplier' && map.seller_product_id) {
           await SupplierProduct.update({ invoice_name: alias },
@@ -318,7 +351,7 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
       for (const l of lines) {
         const it = itemById.get(parseInt(l.item_id, 10));
         const price = money(l.invoiced_unit_price);
-        if (!it || !it.ingredient_id || price === null) continue;
+        if (!it || !it.ingredient_id || price === null || notInvoiced(l)) continue;
         const conv = parseFloat(it.unit_conversion) || 1;
         const ing = await Ingredient.findByPk(it.ingredient_id, {
           attributes: ['id', 'owner_type', 'restaurant_id', 'unit_cost', 'base_quantity'], transaction: t
@@ -353,7 +386,7 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
       for (const l of lines) {
         const it = itemById.get(parseInt(l.item_id, 10));
         const price = money(l.invoiced_unit_price);
-        if (!it || !it.product_ingredient_id || price === null || !brand) continue;
+        if (!it || !it.product_ingredient_id || price === null || !brand || notInvoiced(l)) continue;
         const pi = await ProductIngredient.findByPk(it.product_ingredient_id, { transaction: t });
         if (!pi || Number(pi.owner_user_id) !== Number(brand.owner_id)) continue;
         const conv = parseFloat(it.unit_conversion) || 1;
@@ -392,6 +425,7 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
   const failed = [];
   const retroResults = [];
   for (const l of (totalOnly ? [] : lines)) {   // 총액만 모드는 전파·소급도 하지 않는다
+    if (notInvoiced(l)) continue;               // D9: 인보이스에 없는 줄은 청구 단가라는 근거가 없다 — 판매가·소급에 안 씀
     const item0 = itemById.get(parseInt(l.item_id, 10));
 
     // 과거 발주 소급 (설계 §4) — **판매가 반영과 별개 옵션**이다.
@@ -433,9 +467,7 @@ router.post('/purchase-orders/:id/reconcile', async (req, res) => {
       //   외부 공급업체는 우리가 등록한 장부일 뿐이라 구매자가 고쳐도 되고, 그게 설계 §5 의 전제다.
       const sc = await SupplierCompany.findByPk(sp.supplier_company_id,
         { attributes: ['id', 'name', 'is_system_registered', 'registered_by_entity_type', 'registered_by_entity_id'] });
-      const ownedExternal = !!sc && !sc.is_system_registered
-        && sc.registered_by_entity_type === po.entity_type
-        && Number(sc.registered_by_entity_id) === Number(po.entity_id);
+      const ownedExternal = isOwnedExternalSupplier(sc, po);
       if (!ownedExternal) {
         propagated.push({
           item_id: item.id,

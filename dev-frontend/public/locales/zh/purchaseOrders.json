@@ -850,6 +850,8 @@
     "pricier": "更贵",
     "cheaper": "更便宜",
     "applyYes": "采用此价格",
+    "applyLocked": "供应商价格 — 此处不可修改",
+    "notOnInvoice": "发票上没有",
     "applyNone": "未连结",
     "changedLines": "{{n}} 行与采购单不同",
     "cancel": "取消",
@@ -867,6 +869,7 @@
       "delivery": "运费",
       "discount": "折扣",
       "deliveryExpected": "订货时预估 {{amount}}",
+      "deliveryAndCharges": "运费及额外费用",
       "deliveryDiff": "差异 {{diff}}"
     },
     "col": {
@@ -878,6 +881,8 @@
     "state": {
       "matched": "匹配",
       "needsCheck": "需确认",
+      "samePrice": "价格相同 — 已自动关联",
+      "notInvoiced": "发票上没有 — 数量 0",
       "unmatched": "未匹配"
     },
     "reason": {
@@ -885,7 +890,8 @@
       "noLines": "没有读取到任何行",
       "ok": "名称与金额一致 — 请确认",
       "amountMismatch": "金额与数量×单价不符",
-      "nameUnsure": "名称不确定"
+      "nameUnsure": "名称不确定",
+      "samePrice": "单价和数量与订单一致 — 保存后会记住发票名称"
     },
     "result": {
       "lines": "已保存 {{n}} 行的发票数值。",

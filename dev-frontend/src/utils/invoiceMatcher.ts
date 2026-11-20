@@ -45,7 +45,8 @@ export type MatchReason =
   | 'no_lines'         // 읽어들인 줄 자체가 없음
   | 'ok'               // 이름·금액 모두 맞음
   | 'amount_mismatch'  // 금액이 수량×단가와 안 맞음
-  | 'name_unsure';     // 이름이 확실하지 않음
+  | 'name_unsure'      // 이름이 확실하지 않음
+  | 'same_price';      // 이름은 달라도 단가·수량이 발주와 같고 검산이 맞음 (D3 · 2026-11-20)
 
 export interface MatchResult {
   poLineId: number;
@@ -56,6 +57,13 @@ export interface MatchResult {
   reason: MatchReason;
   /** 이름 사전으로 붙었나 — 화면이 «사전을 덮어쓰지 않는다» 판단에 쓴다 */
   viaAlias?: boolean;
+}
+
+/** 발주 줄과 단가·수량이 같은가 (D3) — 단가 ±0.005, 수량 ±0.0005 */
+function samePriceQty(p: ParsedInvoiceLine, line: PoLine): boolean {
+  if (p.unitPrice == null || p.quantity == null) return false;
+  return Math.abs(p.unitPrice - (Number(line.unit_price) || 0)) < 0.005
+    && Math.abs(p.quantity - (Number(line.quantity_ordered) || 0)) < 0.0005;
 }
 
 /** 이름 비교용 정규화: 소문자, 기호 제거, 연속 공백 하나로. */
@@ -138,15 +146,23 @@ export function parseInvoiceLine(raw: string): ParsedInvoiceLine | null {
   // 이 조건이 없으면 머리글의 문서번호("INVOICE INV-2291")가 금액 한 줄로 잡힌다.
   if (nums.length < 2) return null;
   const tail = nums.slice(-3);
-  const name = line.slice(0, tail[0].index).trim().replace(/[-–—:|]+$/, '').trim();
-  if (!name) return null;
 
   let quantity: number | null = null;
   let unitPrice: number | null = null;
   let amount: number | null = null;
 
+  let nameEnd = tail[0].index;
   if (tail.length === 3) {
     [quantity, unitPrice, amount] = tail.map((n) => n.value);
+    // D1 수량 구제 (2026-11-20 운영 발주 249 · LOW SEAT HOONG · Fable 설계):
+    //   «. 2 #ETong [1 31.3000 62.60» — 단위 옆 빈 네모 «[]» 가 «[1» 로 읽혀 수량 자리에 1 이 앉았다.
+    //   뒤 3개가 «수량×단가=금액» 을 못 맞추면 단가·금액은 그대로 두고, **그 앞 1~2번째 숫자** 중
+    //   검산이 맞는 것을 수량으로 쓴다. 못 찾으면 지금 동작 그대로(28.00→8.00 오독은 «확인 필요» 로 남는다).
+    if (unitPrice !== null && amount !== null && Math.abs(Math.abs(quantity as number) * unitPrice - amount) > 0.01) {
+      const before = nums.slice(Math.max(0, nums.length - 5), nums.length - 3).reverse();
+      const hit = before.find((n) => n.value !== 0 && Math.abs(Math.abs(n.value) * (unitPrice as number) - (amount as number)) <= 0.01);
+      if (hit) { quantity = hit.value; nameEnd = hit.index; }
+    }
   } else if (tail.length === 2) {
     // 수량·금액만 준 형태가 흔하다. 단가는 나눠서 만든다.
     [quantity, amount] = tail.map((n) => n.value);
@@ -154,6 +170,9 @@ export function parseInvoiceLine(raw: string): ParsedInvoiceLine | null {
   } else {
     amount = tail[0].value;
   }
+
+  const name = line.slice(0, nameEnd).trim().replace(/[-–—:|]+$/, '').trim();
+  if (!name) return null;
 
   // 금액이 0 이하면 품목 줄이 아니다(문서번호·페이지수 등이 걸린 것).
   if (!(amount !== null && amount > 0)) return null;
@@ -186,17 +205,76 @@ export function parseInvoiceLine(raw: string): ParsedInvoiceLine | null {
 /** 붙여넣은 덩어리를 줄 단위로 쪼갠다. 빈 줄과 합계 줄은 버린다. */
 const TOTAL_WORDS = /(total|subtotal|amount due|balance|sst|gst|tax|delivery|discount|합계|총액|소계|세금|배송|할인)/i;
 
+/** 표 머리줄 — 수량 칸과 금액 칸 이름이 함께 있는 줄 (D2). */
+const TABLE_HEAD_QTY = /\b(qty|quantity)\b/i;
+const TABLE_HEAD_MONEY = /(price|total|amount)/i;
+/** 표 구역을 닫는 줄 — 합계어(추가 비용 줄은 제외) 또는 Remark·Notes·Terms 로 시작 */
+const TABLE_END = /^\W*(remarks?|notes?|terms)\b/i;
+/** 추가 비용 줄 (D4) — 품목이 아니라 배송비·추가 비용 칸으로 간다 */
+const CHARGE_WORDS = /(extra\s*charges?|surcharge|delivery|transport|freight|handling|service\s*charge)/i;
+
+/**
+ * 읽은 글자를 **품목 줄**과 **추가 비용**으로 나눈다 (2026-11-20 운영 발주 249 · Fable 설계 D2·D4).
+ *
+ * D2 표 구역만 읽기: 문서에 표 머리줄(«Qty … Price/Total»)이 하나라도 있으면 품목 줄은 머리줄 뒤부터
+ *   합계어 줄 또는 Remark·Notes·Terms 줄 전까지만 인정한다(쪽마다 다시 열린다). 주소·계좌·주문번호 줄
+ *   («D/Order No. : DO2611-3570» 이 수량 3570 으로 읽혔다)이 고르기 목록에 섞이던 것을 막는다.
+ *   머리줄이 없으면(붙여넣기·다른 양식) 예전 동작 그대로다.
+ * D4 추가 비용: 표 구역 안에서 «Extra Charges·Delivery…» 이고 «수량×단가=금액» 검산이 맞는 줄은 품목에서 빼
+ *   합계를 `charges` 로 돌려준다(화면이 배송비·추가 비용 칸에 넣는다).
+ */
+function scanInvoiceText(text: string): { items: ParsedInvoiceLine[]; charges: number | null } {
+  const lines = String(text || '').split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+  const isHead = (l: string) => TABLE_HEAD_QTY.test(l) && TABLE_HEAD_MONEY.test(l);
+  const hasTable = lines.some(isHead);
+  const items: ParsedInvoiceLine[] = [];
+  if (!hasTable) {
+    for (const l of lines) {
+      if (TOTAL_WORDS.test(l)) continue;
+      const p = parseInvoiceLine(l);
+      if (p) items.push(p);
+    }
+    return { items, charges: null };
+  }
+  let inTable = false;
+  let charges: number | null = null;
+  for (const l of lines) {
+    if (isHead(l)) { inTable = true; continue; }
+    if (!inTable) continue;
+    const isCharge = CHARGE_WORDS.test(l);
+    if (TABLE_END.test(l) || (TOTAL_WORDS.test(l) && !isCharge)) { inTable = false; continue; }
+    const p = parseInvoiceLine(l);
+    if (!p) continue;
+    if (isCharge) {
+      if (amountConsistent(p)) charges = Math.round(((charges ?? 0) + (p.amount as number)) * 100) / 100;
+      continue;
+    }
+    items.push(p);
+  }
+  // 표 안 구역 제목 줄 거르기 (2026-11-20 실브라우저 실측 · 발주 249):
+  //   «Storage Met: Dry Goods (Cool Dry Place) F# (4:8 Bis FRA FI)» — 한자가 숫자 4·8 로 읽혀 «4 × 2.00 = 8.00» 품목이 됐다.
+  //   표의 품목 줄들이 **소수점 금액**(62.60·9.20)을 쓰면, 소수점 없는 금액 줄은 품목이 아니다.
+  //   소수점 금액 줄이 둘 미만이면(정수로만 적는 양식) 거르지 않는다.
+  const decimalAmount = (p: ParsedInvoiceLine) => {
+    const nums = p.raw.match(NUM) || [];
+    return /\.\d/.test(nums[nums.length - 1] || '');
+  };
+  const withDecimals = items.filter(decimalAmount).length;
+  if (withDecimals >= 2) return { items: items.filter(decimalAmount), charges };
+  return { items, charges };
+}
+
 export function parseInvoiceText(text: string): ParsedInvoiceLine[] {
-  return String(text || '')
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0 && !TOTAL_WORDS.test(l))
-    .map(parseInvoiceLine)
-    .filter((x): x is ParsedInvoiceLine => x !== null);
+  return scanInvoiceText(text).items;
+}
+
+/** 읽은 글자의 추가 비용(배송·운송·Extra Charges) 합계 — 표 구역에서만. 없으면 null. */
+export function parseInvoiceCharges(text: string): number | null {
+  return scanInvoiceText(text).charges;
 }
 
 /** 금액 = 수량 × 단가 가 맞는지 (반올림 오차 1센트 허용). */
-function amountConsistent(p: ParsedInvoiceLine): boolean {
+export function amountConsistent(p: ParsedInvoiceLine): boolean {
   if (p.quantity == null || p.unitPrice == null || p.amount == null) return false;
   return Math.abs(p.quantity * p.unitPrice - p.amount) <= 0.01;
 }
@@ -229,6 +307,8 @@ export interface InvoiceHeader {
   number: string | null;
   date: string | null;     // YYYY-MM-DD
   total: number | null;
+  /** 추가 비용(Extra Charges·Delivery…) 합계 — 표 구역에서만 읽는다(D4). 없으면 null */
+  charges: number | null;
 }
 
 /**
@@ -250,11 +330,18 @@ export function parseInvoiceHeader(text: string): InvoiceHeader {
     const line = raw.replace(/\s+/g, ' ').trim();
     if (!line) continue;
 
-    // 번호 — «INVOICE : XXX». 콜론 뒤에서 공백/괄호를 뺀 토큰.
-    if (number === null && /invoice/i.test(line) && /:/.test(line)) {
-      const after = line.split(':').slice(1).join(':').trim();
-      const tok = after.replace(/[|\]\[]/g, ' ').trim().split(' ')[0];
-      if (tok && /[0-9]/.test(tok) && tok.length >= 4) number = tok;
+    // 번호 — «INVOICE : XXX». **줄 안 마지막 «invoice» 낱말 뒤** 콜론 다음 토큰.
+    //   2026-11-20 운영 발주 249: «Account No: 300-W117 Registration No: | Invoice Ne. :[Va611-3295» 에서
+    //   첫 콜론 뒤를 읽어 계좌번호 300-W117 이 인보이스 번호 칸에 들어갔다(Fable D6).
+    if (number === null && /invoice/i.test(line)) {
+      const at = line.toLowerCase().lastIndexOf('invoice');
+      const rest = line.slice(at);
+      const colon = rest.indexOf(':');
+      if (colon >= 0) {
+        const after = rest.slice(colon + 1).trim();
+        const tok = after.replace(/[|\]\[]/g, ' ').trim().split(' ')[0];
+        if (tok && /[0-9]/.test(tok) && tok.length >= 4) number = tok;
+      }
     }
 
     // 일자 — d/m/yyyy 또는 d-m-yyyy. 말레이시아 표기라 **일/월/년** 으로 읽는다.
@@ -276,7 +363,7 @@ export function parseInvoiceHeader(text: string): InvoiceHeader {
       }
     }
   }
-  return { number, date, total };
+  return { number, date, total, charges: parseInvoiceCharges(text) };
 }
 
 export function shouldAutoFill(result: MatchResult, poLine: PoLine): boolean {
@@ -300,7 +387,7 @@ export function shouldAutoFill(result: MatchResult, poLine: PoLine): boolean {
 
 export function matchInvoiceToPo(poLines: PoLine[], parsedLines: ParsedInvoiceLine[]): MatchResult[] {
   const takenInvoice = new Set<number>();
-  const assigned = new Map<number, { idx: number; score: number; viaAlias: boolean }>();
+  const assigned = new Map<number, { idx: number; score: number; viaAlias: boolean; samePrice?: boolean }>();
 
   // ── 1단계: 이름 사전. 가장 확실한 근거라 점수 경쟁을 시키지 않는다.
   //   ⚠ **완전일치로 하면 안 된다** — OCR 이 읽은 이름에는 줄번호·잡음이 붙는다
@@ -359,6 +446,23 @@ export function matchInvoiceToPo(poLines: PoLine[], parsedLines: ParsedInvoiceLi
     assigned.set(pair.lineId, { idx: pair.idx, score: pair.score, viaAlias: false });
   }
 
+  // ── 2.5단계: «가격이 같으면» (D3(b) · 2026-11-20 Irene «가격이 같으면 좀 알아서 가져올 수 없어?»)
+  //   이름으로 못 붙은 발주 줄 ↔ 남은 인보이스 줄(검산 통과분만) 사이에서 **단가·수량이 같은 짝이
+  //   양쪽 모두 유일할 때만** 붙인다. 같은 가격 줄이 둘 이상이면 어느 것인지 모르므로 붙이지 않는다.
+  const freeParsed = parsedLines
+    .map((p, i) => ({ p, i }))
+    .filter(({ p, i }) => !takenInvoice.has(i) && amountConsistent(p));
+  const freeLines = poLines.filter((l) => !assigned.has(l.id));
+  for (const line of freeLines) {
+    const cands = freeParsed.filter(({ p }) => samePriceQty(p, line));
+    if (cands.length !== 1) continue;
+    const only = cands[0];
+    const rivals = freeLines.filter((other) => samePriceQty(only.p, other));
+    if (rivals.length !== 1) continue;
+    takenInvoice.add(only.i);
+    assigned.set(line.id, { idx: only.i, score: 0, viaAlias: false, samePrice: true });
+  }
+
   // ── 3단계: 판정
   return poLines.map((line) => {
     const a = assigned.get(line.id);
@@ -379,10 +483,37 @@ export function matchInvoiceToPo(poLines: PoLine[], parsedLines: ParsedInvoiceLi
     if ((a.viaAlias || a.score >= 0.6) && consistent) {
       return { poLineId: line.id, parsed, state: 'matched' as MatchState, score, reason: 'ok' as MatchReason, viaAlias: a.viaAlias };
     }
+    // D3: 가격으로 붙은 줄(2.5단계) · 이름이 애매하게 붙었지만 단가·수량이 발주와 같고 검산이 맞는 줄 → 확실
+    if (consistent && (a.samePrice || (!a.viaAlias && samePriceQty(parsed, line)))) {
+      return { poLineId: line.id, parsed, state: 'matched' as MatchState, score, reason: 'same_price' as MatchReason, viaAlias: false };
+    }
     return {
       poLineId: line.id, parsed, state: 'needs_check' as MatchState, score,
       reason: (!consistent ? 'amount_mismatch' : 'name_unsure') as MatchReason,
       viaAlias: a.viaAlias,
     };
   });
+}
+
+/**
+ * 인보이스에 **없는** 발주 줄을 찾는다 (D5 · 2026-11-20 운영 발주 249 — 후추 82.00 이 인보이스에 없었다).
+ *
+ * 산수가 맞을 때만 말한다: 읽은 총액이 있고, 짝이 붙은 줄 금액 합 + 추가 비용 = 총액(±0.01)인데
+ * 못 붙은 발주 줄이 남아 있으면 → 그 줄들은 청구되지 않은 것이다(화면이 청구 수량 0 으로 채운다).
+ * 산수가 안 맞으면 빈 배열 — 지어내지 않는다.
+ */
+export function inferNotInvoiced(
+  results: MatchResult[],
+  poLines: PoLine[],
+  opts: { total: number | null | undefined; charges?: number | null },
+): number[] {
+  const total = opts.total;
+  if (total == null || !Number.isFinite(Number(total)) || !(Number(total) > 0)) return [];
+  const missing = poLines
+    .map((l) => l.id)
+    .filter((id) => { const r = results.find((x) => x.poLineId === id); return !r || !r.parsed || r.state === 'unmatched'; });
+  if (!missing.length) return [];
+  const matchedSum = results.reduce((s, r) => (r.parsed && r.state !== 'unmatched' && r.parsed.amount != null ? s + r.parsed.amount : s), 0);
+  const sum = Math.round((matchedSum + (Number(opts.charges) || 0)) * 100) / 100;
+  return Math.abs(sum - Math.round(Number(total) * 100) / 100) <= 0.01 ? missing : [];
 }
