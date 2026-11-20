@@ -1,0 +1,47 @@
+{
+  "tag": "mobile-tablet-header",
+  "sw_version": "6.23-mobile-tablet-header-20261120",
+  "date": "2026-11-20",
+  "in_progress": [
+    "작업 폴더 미커밋(인보이스 대조 매칭 규칙 작업방 6c7ba40c 진행 중 — cost-reconciliation·invoiceMatcher·InvoiceReconcilePage·purchaseOrders 번역 · playwright 설정 · .claude/oneoff-*·run-*.sh · session-state)은 다른 방 몫이라 깨끗한 사본에서 빠짐"
+  ],
+  "completed": [
+    "폰·태블릿 헤더 메뉴·표 «기능 알아보기» — 폰 머리줄 정리 · 태블릿 손가락으로 1단 메뉴 누르면 이동 없이 하위 메뉴 창 · 칸 많은 표 14개 1025~1280 카드 · 한국어 화면 영어 약 870키×4언어 번역(23c5f19f1)",
+    "태블릿 «운영»·«설정» 을 마우스·트랙패드로 눌러도 하위 메뉴 창만 열기(c20af6877)",
+    "개발 도구: 프론트 타입 검사 메모리 부족 막기(npm run typecheck · 맨 tsc 차단) — 운영 무변경(4507691d8)",
+    "개발 DB 백업: 덤프 실패가 좋은 사본을 덮어쓰지 않게 — 개발서버 스크립트만(72cbd9f12)"
+  ],
+  "issues": [
+    "폰·태블릿에서 헤더 메뉴·표가 잘리거나 영어로 보여 기능을 알아보기 어렵던 문제",
+    "태블릿에서 1단 메뉴를 누르면 하위 메뉴를 고르기 전에 첫 화면으로 이동해 버리던 문제(손가락·마우스 모두)"
+  ],
+  "upcoming": [
+    "인보이스 대조 매칭 규칙(수량·인보이스 번호·배송비·가격 짝짓기) — 작업방 6c7ba40c 진행 중 · Irene 답 기다림",
+    "표 줄 높이(시재관리·매장 대시보드 최근 주문·예약) · 라이브 오더 표 카드화 후보"
+  ],
+  "behavior_changes": [
+    "화면 틀(MainLayout) 겉모양: 폰 머리줄(매장 이름 아랫줄·언어·이름표·알림 숫자) · 하위 칸 접힘(≤1280)·769 이상이면 1단 메뉴 누르면 이동 없이 하위 메뉴 창 · 창 밖 누르면 닫힘 — 인쇄 구간 변경 0(print-guard 지문 Irene 승인 등록 2회)",
+    "표: 1025~1440 여백·금액 줄바꿈 금지 · 칸 많은 14표 1025~1280 카드 보기",
+    "번역 키 약 870개×4언어 추가 · utils/statusLabel.ts 상태 이름 번역",
+    "서버·DB·API 변경 0 · 새 마이그 0"
+  ],
+  "check_areas": [
+    "태블릿(820·1024·1180) 사이드바 «운영»·«설정» — 손가락·마우스 모두 누르면 하위 메뉴 창만 열림 · 1366 이상은 그대로 이동",
+    "폰 머리줄 — 매장 이름·언어·알림 숫자 위치",
+    "태블릿 가로 1025~1280 칸 많은 표 — 카드 보기",
+    "한국어 화면 — 공급업체·오너·관리자 화면 영어 남은 곳",
+    "POS1 주방 자동 인쇄 — 화면 틀 변경 뒤에도 그대로(폴러 5초 간격)"
+  ],
+  "verification": {
+    "api": "health-check 497/497 · health-check print 14/14 · 서버 코드 변경 0",
+    "fault_injection": "tsc 차단 훅 막을 것 10/통과 9 · 손가락 메뉴 92번 불합격 0",
+    "browser": "verify-all --full(빌드 4) mount sweep 크래시 0 · 태블릿 마우스·손가락 실측 48/48(역할 5) · 매장 38 폴러 60초 13회·5초 간격 · 타입 신규 0(436→379)",
+    "printer": "인쇄 동작 무변경 — MainLayout 인쇄 구간(_printPollFn) 무접촉 · 겉모양 줄만 바뀌어 Irene 승인으로 print-guard 지문 등록(2회) · print-guard 8/8",
+    "migrations": "새 마이그 0",
+    "sw_version": "6.23-mobile-tablet-header-20261120",
+    "fable_note": "폰·태블릿 헤더·표 Fable 설계 + 게이트 2차 PASS(.claude/fable-gate-20261118-mobile-tablet.md) · 태블릿 마우스 메뉴 Fable 게이트 PASS(마커 d6ddc78e4a89) · 타입 검사·DB 백업은 Fable 안 씀(개발 도구)"
+  },
+  "notes": "배포 준비 11/20 · 범위 a0179499c..c20af6877(배포 기록 보관 커밋 포함 5커밋 · 기능 4) · wip 0 · SW 6.22→6.23(이 준비 커밋에서 올림) · 새 마이그 0 · Fable 대기 0 · 막음 0 · 미커밋(인보이스 대조 진행 중·playwright 설정·oneoff/run 스크립트·session-state)은 깨끗한 사본에서 빠짐",
+  "irene_actions_after_deploy": [],
+  "fable_note": "Fable 대기 0 · 🔒 보호 파일(MainLayout) 접촉 2건 모두 Fable PASS + Irene 승인 지문 등록"
+}
