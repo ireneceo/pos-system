@@ -889,6 +889,8 @@
       "matched": "Matched",
       "needsCheck": "Needs check",
       "samePrice": "Same price — linked",
+      "priceDiff": "Price differs",
+      "amountDiff": "Amount differs",
       "notInvoiced": "Not on invoice — qty 0",
       "unmatched": "Unmatched"
     },
@@ -898,7 +900,9 @@
       "ok": "Name and amount match — just confirm",
       "amountMismatch": "Amount does not equal qty × unit price",
       "nameUnsure": "Name is not certain",
-      "samePrice": "Price and quantity match the order — the invoice name will be remembered on save"
+      "samePrice": "Price and quantity match the order — the invoice name will be remembered on save",
+      "priceDiff": "The invoiced unit price differs from the order — please check it",
+      "amountDiff": "The invoiced quantity differs from the order, so the line amount differs — please check it"
     },
     "result": {
       "lines": "Saved invoiced values for {{n}} lines.",

@@ -1040,14 +1040,26 @@ const InvoiceReconcilePage: React.FC = () => {
                       })()}
                       {d?.auto_not_invoiced && num(d.invoiced_quantity) === 0 ? (
                         <> · <StateTag tone="warn">◐ {t('reconcile.state.notInvoiced', 'Not on invoice — qty 0')}</StateTag></>
-                      ) : m && (
-                        <> · <StateTag tone={m.state === 'matched' ? 'ok' : m.state === 'needs_check' ? 'warn' : 'none'}>
-                          {m.state === 'matched' && m.reason === 'same_price' ? `● ${t('reconcile.state.samePrice', 'Same price — linked')}`
-                            : m.state === 'matched' ? `● ${t('reconcile.state.matched', '맞음')}`
-                            : m.state === 'needs_check' ? `◐ ${t('reconcile.state.needsCheck', '확인 필요')}`
-                            : `○ ${t('reconcile.state.unmatched', '미매칭')}`}
-                        </StateTag> {reasonText(m.reason)}</>
-                      )}
+                      ) : m && (() => {
+                        // 짝은 확실(matched)해도 청구 값이 발주와 다르면 «맞음» 이 아니다 — 지금 칸 값으로 단가·수량을 비교한다 (2026-11-23 Irene).
+                        const priceDiffers = d?.invoiced_unit_price !== undefined && d?.invoiced_unit_price !== ''
+                          && Math.abs(num(d.invoiced_unit_price) - num(it.unit_price)) >= 0.005;
+                        const qtyDiffers = d?.invoiced_quantity !== undefined && d?.invoiced_quantity !== ''
+                          && Math.abs(num(d.invoiced_quantity) - num(it.quantity_ordered)) > 0.0001;
+                        const differs = m.state === 'matched' && (priceDiffers || qtyDiffers);
+                        return (
+                          <> · <StateTag tone={differs ? 'warn' : m.state === 'matched' ? 'ok' : m.state === 'needs_check' ? 'warn' : 'none'}>
+                            {differs && priceDiffers ? `◐ ${t('reconcile.state.priceDiff', 'Price differs')}`
+                              : differs ? `◐ ${t('reconcile.state.amountDiff', 'Amount differs')}`
+                              : m.state === 'matched' && m.reason === 'same_price' ? `● ${t('reconcile.state.samePrice', 'Same price — linked')}`
+                              : m.state === 'matched' ? `● ${t('reconcile.state.matched', '맞음')}`
+                              : m.state === 'needs_check' ? `◐ ${t('reconcile.state.needsCheck', '확인 필요')}`
+                              : `○ ${t('reconcile.state.unmatched', '미매칭')}`}
+                          </StateTag> {differs && priceDiffers ? t('reconcile.reason.priceDiff', 'The invoiced unit price differs from the order — please check it')
+                            : differs ? t('reconcile.reason.amountDiff', 'The invoiced quantity differs from the order, so the line amount differs — please check it')
+                            : reasonText(m.reason)}</>
+                        );
+                      })()}
                     </Muted>
                   </Cell>
                   <Cell data-label={t('reconcile.col.ordered', '발주 단가')}>{num(it.unit_price).toFixed(2)}</Cell>

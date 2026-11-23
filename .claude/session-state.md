@@ -1,5 +1,16 @@
 ## 현재 작업 상태
 
+### ✅ 완료 (2026-11-23) — 실사용 확인 작은 고침 2건 [Claude Code · 백그라운드 작업방 2e35fb76]
+- ① 발주 대조 화면 상태 표시: 짝이 확실(matched)해도 청구 단가·수량이 발주와 다르면 «● 맞음» 대신 «◐ 가격 다름»/«◐ 금액 다름» + 확인 문구(`InvoiceReconcilePage.tsx` · purchaseOrders.json 4언어 reconcile.state/reason.priceDiff·amountDiff). 실브라우저 발주 84109: Garbage Bag ▼4.4% · Mushroom ▼5.8% · Cooking Oil ▲1% 셋 다 «가격 다름», 나머지 «맞음» 그대로
+  - Cooking Oil «표시 없음» 은 재현 못 함 — 이번 실행(고치기 전에도)에서 «● 맞음» 이 붙어 있었음(OCR 결과에 따라 달랐을 수 있음). 지금은 가격이 다르면 «가격 다름»
+- ② 판매 주문 «보낸 수량 정정» 막힌 안내: 서버 코드(ALREADY_PAID·ALREADY_RECONCILED·INVOICE_LOCKED)를 화면 언어로(`IncomingOrdersView.tsx` correctBlockedText · supplier.json 4언어 orders.correct.blocked.*). 실브라우저 결제된 주문 79833: ko «결제된 주문입니다 — 수량을 정정하려면 먼저 결제를 되돌리세요» · en 그대로
+- SW 6.25-reconcile-diff-badge-20261123 · Fable 안 씀 — 표시 문구·번역(공용 기준 «쓰지 않는 곳»)
+- 운영 반영: 다음 배포 때 · 배포 기록 `dev-backend/releases/2026-11-23-reconcile-diff-badge.json`
+- 검증: verify-all --full 23/24 → 빠진 1건(배포 기록 없음) 채운 뒤 deploy-ready 통과 · health-check 전체 · print-guard 8/8 변경 0 · design-guard 신규 0 · 타입 신규 0 · i18n 통과 · mount sweep 크래시 0
+- /개발완료: 경로 지정 커밋(다른 방 미커밋 deploy-manifest·releases 이동·playwright·oneoff 는 그대로 둠)
+- 진행 중인 작업: 없음 · 다음 확정 작업: 없음 — 지시 대기
+- 후속 후보(확정 X · /개발시작 자동 추천 아님): 대조 화면 입력칸 초록 테두리는 «짝 확실» 뜻이라 그대로 둠(가격 다름이어도 초록) — 바꿀지는 Irene 판단
+
 ### ✅ 완료 (2026-11-23) — 배포 준비(상황판 실행기) [Claude Code · 백그라운드 작업방 759e5589]
 - 나갈 범위 441ca8232..HEAD: 기록 커밋 5개뿐(코드 변경 0 · 프론트 변경 0 · 새 마이그 0 · wip 0) → 화면 버전 그대로(6.24-po-delivery-pickup-20261120)
 - 배포 기록 `dev-backend/releases/2026-11-23-records-only.json` 만들어 경로 지정 커밋(886e08f34) · check-deploy-record OK · 민감 판정 비대상

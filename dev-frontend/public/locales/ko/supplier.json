@@ -389,7 +389,13 @@
       "confirmOk": "정정 저장",
       "savedTitle": "수량을 정정했습니다",
       "saved": "주문과 청구서를 고쳤고 구매처에 알렸습니다.",
-      "ok": "확인"
+      "ok": "확인",
+      "blocked": {
+        "ALREADY_PAID": "결제된 주문입니다 — 수량을 정정하려면 먼저 결제를 되돌리세요",
+        "ALREADY_RECONCILED": "이 주문의 공급업체 청구서는 이미 대조를 마쳤습니다",
+        "INVOICE_SUBMITTED": "구매처가 이 청구서의 결제를 제출했습니다 — 먼저 결제 제출을 거절하세요",
+        "INVOICE_LOCKED": "청구서가 이미 결제되었거나 취소되어 고칠 수 없습니다"
+      }
     },
     "hold": {
       "seller_raise": "총액을 올렸습니다 {{from}} → {{to}}",

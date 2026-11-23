@@ -389,7 +389,13 @@
       "confirmOk": "Save correction",
       "savedTitle": "Quantities corrected",
       "saved": "The order and its invoice were updated, and the buyer was told.",
-      "ok": "OK"
+      "ok": "OK",
+      "blocked": {
+        "ALREADY_PAID": "This order has been paid — reverse the payment before correcting quantities",
+        "ALREADY_RECONCILED": "The supplier invoice for this order is already reconciled",
+        "INVOICE_SUBMITTED": "The buyer has submitted payment for this invoice — reject the payment submission first",
+        "INVOICE_LOCKED": "The invoice is already paid or cancelled and cannot be rewritten"
+      }
     },
     "hold": {
       "seller_raise": "You raised the total {{from}} → {{to}}",

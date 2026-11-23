@@ -966,6 +966,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
     return t(`supplier:${key}`, { defaultValue: fallback ?? key, ...(vars || {}) }) as string;
   };
 
+  // «보낸 수량 정정» 막힌 이유 — 서버 코드(utils/poAmend.js sellerCorrectionBlock)를 화면 언어로. 모르는 코드는 서버 문구 그대로.
+  const correctBlockedText = (row: { correct_blocked?: { code: string; message: string } | null; trade_invoice?: { status: string } | null }) => {
+    const b = row.correct_blocked;
+    if (!b) return undefined;
+    const key = b.code === 'INVOICE_LOCKED' && row.trade_invoice?.status === 'payment_submitted' ? 'INVOICE_SUBMITTED' : b.code;
+    if (!['ALREADY_PAID', 'ALREADY_RECONCILED', 'INVOICE_SUBMITTED', 'INVOICE_LOCKED'].includes(key)) return b.message;
+    return tNs(`orders.correct.blocked.${key}`, b.message);
+  };
+
   // 판매자 창(품목 수정·주문 추가) 금액 상자 — 품목 합계 · 배송비 · 주문 총액 3줄 (2026-11-20 Fable 설계 §4-2·4-3)
   //   앞뒤 값이 같으면 한 값, 바뀌면 «옛 → 새». 인상 경고색은 총액 줄에만.
   const renderDeliveryTotals = (o: {
@@ -1827,7 +1836,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               size="small"
                               variant="outline"
                               disabled={!row.can_correct}
-                              title={row.correct_blocked?.message || undefined}
+                              title={correctBlockedText(row)}
                               onClick={() => openCorrectModal(row)}
                             >
                               {tNs('orders.actions.correct', 'Correct quantities')}
@@ -2451,7 +2460,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
               {tNs('orders.correct.hint', 'Enter what was actually delivered. Quantities can only go down. The order total and the invoice are updated and the buyer is told.')}
             </p>
             {correctRow && !correctRow.can_correct && correctRow.correct_blocked && (
-              <div style={{ color: '#DC2626', fontSize: 13, margin: '0 0 12px' }}>{correctRow.correct_blocked.message}</div>
+              <div style={{ color: '#DC2626', fontSize: 13, margin: '0 0 12px' }}>{correctBlockedText(correctRow)}</div>
             )}
 
             {correctItems.map((it) => {
@@ -2623,7 +2632,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             {detailRow && detailRow.can_correct !== undefined && detailRow.correct_blocked?.code !== 'BAD_STATUS' && (
               <ModalButton
                 disabled={!detailRow.can_correct}
-                title={detailRow.correct_blocked?.message || undefined}
+                title={correctBlockedText(detailRow)}
                 onClick={() => { const r = detailRow; closeDetail(); openCorrectModal(r); }}
               >
                 {tNs('orders.actions.correct', 'Correct quantities')}

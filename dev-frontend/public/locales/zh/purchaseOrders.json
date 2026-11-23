@@ -889,6 +889,8 @@
       "matched": "匹配",
       "needsCheck": "需确认",
       "samePrice": "价格相同 — 已自动关联",
+      "priceDiff": "价格不同",
+      "amountDiff": "金额不同",
       "notInvoiced": "发票上没有 — 数量 0",
       "unmatched": "未匹配"
     },
@@ -898,7 +900,9 @@
       "ok": "名称与金额一致 — 请确认",
       "amountMismatch": "金额与数量×单价不符",
       "nameUnsure": "名称不确定",
-      "samePrice": "单价和数量与订单一致 — 保存后会记住发票名称"
+      "samePrice": "单价和数量与订单一致 — 保存后会记住发票名称",
+      "priceDiff": "发票单价与订单不同 — 请确认",
+      "amountDiff": "发票数量与订单不同，行金额也不同 — 请确认"
     },
     "result": {
       "lines": "已保存 {{n}} 行的发票数值。",

@@ -389,7 +389,13 @@
       "confirmOk": "Simpan pembetulan",
       "savedTitle": "Kuantiti dibetulkan",
       "saved": "Pesanan dan invoisnya dikemas kini, dan pembeli telah dimaklumkan.",
-      "ok": "OK"
+      "ok": "OK",
+      "blocked": {
+        "ALREADY_PAID": "Pesanan ini telah dibayar — batalkan bayaran dahulu sebelum membetulkan kuantiti",
+        "ALREADY_RECONCILED": "Invois pembekal untuk pesanan ini sudah disemak",
+        "INVOICE_SUBMITTED": "Pembeli telah menghantar bayaran untuk invois ini — tolak penghantaran bayaran dahulu",
+        "INVOICE_LOCKED": "Invois sudah dibayar atau dibatalkan dan tidak boleh diubah"
+      }
     },
     "hold": {
       "seller_raise": "Anda menaikkan jumlah {{from}} → {{to}}",

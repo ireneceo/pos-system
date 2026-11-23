@@ -889,6 +889,8 @@
       "matched": "Sepadan",
       "needsCheck": "Perlu semak",
       "samePrice": "Harga sama — dipadankan",
+      "priceDiff": "Harga berbeza",
+      "amountDiff": "Jumlah berbeza",
       "notInvoiced": "Tiada dalam invois — kuantiti 0",
       "unmatched": "Tidak sepadan"
     },
@@ -898,7 +900,9 @@
       "ok": "Nama dan jumlah sepadan — sila sahkan",
       "amountMismatch": "Jumlah tidak sama dengan kuantiti × harga seunit",
       "nameUnsure": "Nama tidak pasti",
-      "samePrice": "Harga dan kuantiti sama dengan pesanan — nama invois akan diingati semasa simpan"
+      "samePrice": "Harga dan kuantiti sama dengan pesanan — nama invois akan diingati semasa simpan",
+      "priceDiff": "Harga seunit invois berbeza daripada pesanan — sila semak",
+      "amountDiff": "Kuantiti invois berbeza daripada pesanan, jadi jumlah baris berbeza — sila semak"
     },
     "result": {
       "lines": "Nilai invois untuk {{n}} baris disimpan.",

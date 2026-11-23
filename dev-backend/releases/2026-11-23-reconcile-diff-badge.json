@@ -1,0 +1,37 @@
+{
+  "tag": "reconcile-diff-badge",
+  "sw_version": "6.25-reconcile-diff-badge-20261123",
+  "date": "2026-11-23",
+  "in_progress": [
+    "작업 폴더 미커밋(playwright 설정 · .claude/oneoff-*·run-*.sh 운영 읽기 스크립트)은 다른 방 몫이라 깨끗한 사본에서 빠짐"
+  ],
+  "completed": [
+    "인보이스 대조 화면: 짝은 맞아도 청구 단가·수량이 발주와 다르면 «맞음» 대신 «가격 다름»/«금액 다름» 표시",
+    "판매 주문: 결제된 주문의 «보낸 수량 정정» 막힌 안내를 화면 언어(한·영·중·말레이)로"
+  ],
+  "issues": [
+    "대조 화면에서 가격이 다른 줄에도 «● 맞음 — 확인만 해주세요» 가 붙던 문제",
+    "한국어 화면에서 «보낸 수량 정정» 비활성 안내가 영어로 나오던 문제"
+  ],
+  "upcoming": ["none"],
+  "behavior_changes": [
+    "대조 화면 상태 꼬리표만 바뀜(저장·원가 반영 동작 그대로)",
+    "판매 주문 «보낸 수량 정정» 안내 문구 번역(서버 판정·막는 조건 그대로) · 번역 키 6개×4언어 추가"
+  ],
+  "check_areas": [
+    "인보이스 대조 화면 — 가격이 다른 줄은 «◐ 가격 다름», 같은 줄은 «● 맞음»",
+    "브랜드 판매 주문 — 결제된 주문 «보낸 수량 정정» 버튼에 마우스를 올리면 한국어 안내"
+  ],
+  "verification": {
+    "api": "health-check 전체 통과(verify-all --full 안) · inspection 신규 0",
+    "fault_injection": "없음 — 표시 문구·번역만(판정 로직 무변경)",
+    "browser": "verify-all --full mount sweep 크래시 0 · 실브라우저 발주 84109 가격 다른 3줄 «가격 다름» · 판매 주문 79833 ko/en 안내 확인",
+    "printer": "인쇄 동작 무변경 — print-guard 8/8 변경 0",
+    "migrations": "없음",
+    "sw_version": "6.25-reconcile-diff-badge-20261123",
+    "fable_note": "Fable 안 씀 — 표시 문구·번역(공용 기준 «쓰지 않는 곳»)"
+  },
+  "notes": "11/23 실사용 확인 작은 고침 2건 · 새 마이그 0 · 민감 판정 비대상",
+  "irene_actions_after_deploy": [],
+  "fable_note": "Fable 안 씀 — 표시 문구·번역만, 민감 판정 비대상"
+}

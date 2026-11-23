@@ -389,7 +389,13 @@
       "confirmOk": "保存更正",
       "savedTitle": "数量已更正",
       "saved": "订单和发票已更新，并已通知买方。",
-      "ok": "确定"
+      "ok": "确定",
+      "blocked": {
+        "ALREADY_PAID": "此订单已付款 — 请先撤销付款再更正数量",
+        "ALREADY_RECONCILED": "此订单的供应商发票已完成核对",
+        "INVOICE_SUBMITTED": "买方已提交此发票的付款 — 请先拒绝该付款提交",
+        "INVOICE_LOCKED": "发票已付款或已取消，无法修改"
+      }
     },
     "hold": {
       "seller_raise": "您提高了总额 {{from}} → {{to}}",
