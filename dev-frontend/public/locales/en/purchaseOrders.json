@@ -290,14 +290,22 @@
       "status": {
         "approved": "Approved",
         "rejected": "Rejected",
-        "requested": "Requested"
+        "requested": "Requested",
+        "withdrawn": "Withdrawn"
       },
       "returnedLine": "Returned −{{amount}} · To pay {{pay}}",
       "blocked": {
         "ALREADY_PAID": "This order is already paid — a return cannot reduce the bill. Reverse the payment first.",
         "INVOICE_LOCKED": "The invoice is paid, submitted for payment or cancelled — it cannot be reduced.",
         "SOA_LOCKED": "The statement that contains this invoice is already paid or submitted."
-      }
+      },
+      "withdrawFailed": "Could not withdraw the request",
+      "hintPaid": "This order is paid — once the seller approves, they refund the amount to you. You confirm here when it arrives.",
+      "hintPaidExternal": "This order is paid. Send the return note to the supplier and close it here — then mark the refund received once the supplier pays you back.",
+      "toRefund": "{{amount}} to be refunded",
+      "withdraw": "Withdraw request",
+      "withdrawTitle": "Withdraw this return request?",
+      "withdrawBody": "The seller is told. Nothing changes in your stock or the bill."
     },
     "noEmailTitle": "No Email",
     "noEmail": "No email address is registered for this seller.",
@@ -356,7 +364,36 @@
       "minQty": "min {{n}}"
     },
     "correctedBySeller": "The seller corrected the delivered quantities",
-    "correctedStockAdjusted": "Your stock was adjusted by the difference."
+    "correctedStockAdjusted": "Your stock was adjusted by the difference.",
+    "cancelledBySeller": "The seller cancelled this order",
+    "cancelledInvoice": "Invoice {{number}} was cancelled — nothing to pay for this order.",
+    "cancelledStock": "Your stock was reduced by what you had received.",
+    "refunds": {
+      "title": "Refunds for returned items",
+      "waiting": "Waiting for the seller to send it",
+      "externalHint": "Mark it received once the supplier pays you back.",
+      "sentLine": "The seller sent it {{date}} by {{method}}",
+      "ref": "ref",
+      "confirmedLine": "You confirmed receiving it {{date}}",
+      "received": "Refund received",
+      "notReceived": "Not received",
+      "receivedTitle": "Refund received",
+      "receivedHint": "Confirm you got {{amount}} back. If it came in cash, it goes back into the cash drawer.",
+      "receivedHow": "How did you get it?",
+      "notReceivedTitle": "Refund not received",
+      "tellSeller": "Tell the seller",
+      "whatHappened": "What happened? (required)",
+      "whatPlaceholder": "e.g. Nothing has arrived in our bank account yet",
+      "failed": "Could not save",
+      "drawerIn": "{{amount}} was put back into the cash drawer.",
+      "drawerSkipped": "No shift is open, so the cash drawer was not changed.",
+      "method": {
+        "bank_transfer": "Bank transfer",
+        "cash": "Cash",
+        "cashDrawer": "Cash (into the drawer)",
+        "other": "Other"
+      }
+    }
   },
   "receive": {
     "modalTitle": "Receive Order",
@@ -788,7 +825,9 @@
       "multipleShifts": "More than one shift is open — close one before recording a cash payment.",
       "failed": "Could not complete this action.",
       "network": "Network error. Please try again.",
-      "alreadyPaid": "This order's invoice is already marked paid, so it was not charged again. Refresh the list — the order will show as paid."
+      "alreadyPaid": "This order's invoice is already marked paid, so it was not charged again. Refresh the list — the order will show as paid.",
+      "sellerConfirmed": "The seller has confirmed this payment, so it cannot be reversed here. Request a return — the seller then refunds you.",
+      "hasRefund": "This order has a refund for returned items, so the payment cannot be reversed. Settle it through the refund in the order."
     },
     "drawerSkipped": {
       "title": "Payment recorded — drawer not updated",

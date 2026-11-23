@@ -12,6 +12,7 @@ import { supplierFacingName } from '../../utils/poShare';
  *   Irene «incoming-orders 여기에서 아이템 한개씩 또는 주문 전체 반품 처리할 수 있어야 해»
  *   - 줄마다 반품 수량(최대 = 서버 returnable_qty) · «주문 전체» 는 모든 줄을 반품 가능 수량으로 채운다
  *   - 저장 = POST /api/seller-orders/:id/returns (넣는 즉시 처리 · 청구서에서 금액이 빠짐)
+ *   - 2026-11-23 결제된 주문(return_settlement 'refund') = 청구서 그대로 · 환불할 금액이 생김(SellerRefundPanel 에서 «보냄»)
  *   - 판정(결제된 주문 막기 등)은 서버 can_return / return_blocked 그대로 — 화면이 상태 목록을 복사하지 않는다
  */
 
@@ -86,6 +87,8 @@ const SellerReturnModal: React.FC<Props> = ({ target, onClose, onDone, tNs, form
   const [blocked, setBlocked] = useState<{ code: string; message: string } | null>(null);
   const [invoice, setInvoice] = useState<{ invoice_number: string; total_amount: number | string } | null>(null);
   const [deliveryFee, setDeliveryFee] = useState(0);
+  // 결제된 주문 = 청구서에서 못 빼고 환불로 (2026-11-23 · 서버 return_settlement)
+  const [settlement, setSettlement] = useState<'deduct' | 'refund' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -94,7 +97,7 @@ const SellerReturnModal: React.FC<Props> = ({ target, onClose, onDone, tNs, form
   useEffect(() => {
     if (!target) return;
     let alive = true;
-    setLoading(true); setError(null); setLines([]); setQty({}); setReason(''); setInvoice(null); setDeliveryFee(0);
+    setLoading(true); setError(null); setLines([]); setQty({}); setReason(''); setInvoice(null); setDeliveryFee(0); setSettlement(null);
     (async () => {
       try {
         const res = await fetch(`/api/seller-orders/${target.id}`, { headers: { Authorization: `Bearer ${getAuthToken()}` } });
@@ -106,6 +109,7 @@ const SellerReturnModal: React.FC<Props> = ({ target, onClose, onDone, tNs, form
         setBlocked(d.return_blocked || null);
         setInvoice(d.trade_invoice || null);
         setDeliveryFee(Number(d.delivery_fee) || 0);
+        setSettlement(d.return_settlement || null);
       } catch (e) {
         if (alive) setError('Network error');
       } finally {
@@ -124,7 +128,8 @@ const SellerReturnModal: React.FC<Props> = ({ target, onClose, onDone, tNs, form
   const nothingReceived = lines.length > 0 && lines.every(l => (Number(l.quantity_received) || 0) <= 0);
   const nothingLeft = lines.length > 0 && lines.every(l => maxOf(l) <= 0);
   const canSave = canReturn && !loading && !submitting && chosen.length > 0 && !lines.some(badOf) && reason.trim().length >= 3;
-  const invBefore = invoice ? Number(invoice.total_amount) || 0 : null;
+  const isRefund = settlement === 'refund';
+  const invBefore = invoice && !isRefund ? Number(invoice.total_amount) || 0 : null;
   const invAfter = invBefore != null ? Math.max(0, round2(invBefore - total)) : null;
 
   const fillAll = () => setQty(Object.fromEntries(lines.map(l => [l.id, maxOf(l) > 0 ? String(maxOf(l)) : ''])));
@@ -142,7 +147,10 @@ const SellerReturnModal: React.FC<Props> = ({ target, onClose, onDone, tNs, form
       const data = await res.json();
       if (!res.ok || !data.success) { setError(data.message || 'Failed to process return'); return; }
       const inv = data?.data?.deduction?.invoice;
-      onDone(inv
+      const rf = data?.data?.refund;
+      onDone(rf
+        ? tNs('orders.returns.doneRefund', 'Return processed. Refund {{amount}} is due to the buyer — mark it sent once you pay it back.', { amount: formatMoney(rf.amount, currency) })
+        : inv
         ? tNs('orders.returns.doneInvoice', 'Return processed. Invoice {{number}} is now {{total}}.', { number: inv.invoice_number, total: formatMoney(inv.total_after, currency) })
         : tNs('orders.returns.done', 'Return processed.'));
     } catch (e) {
@@ -178,7 +186,9 @@ const SellerReturnModal: React.FC<Props> = ({ target, onClose, onDone, tNs, form
         ) : (
           <div data-testid="seller-return-modal">
             <p style={{ margin: '0 0 16px', fontSize: 13, color: '#6B7280', lineHeight: 1.6 }}>
-              {tNs('orders.returns.sellerHint', "Enter what the buyer sent back. The buyer's stock goes down, your stock comes back, and the amount is taken off the invoice.")}
+              {isRefund
+                ? tNs('orders.returns.sellerHintRefund', "This order is paid. Enter what the buyer sent back — stock moves back, and the amount becomes a refund you send to the buyer. The paid invoice stays as it is.")
+                : tNs('orders.returns.sellerHint', "Enter what the buyer sent back. The buyer's stock goes down, your stock comes back, and the amount is taken off the invoice.")}
             </p>
             {!canReturn && blocked && (
               <div style={{ color: '#DC2626', fontSize: 13, margin: '0 0 12px' }}>{tNs(`orders.returns.blocked.${blocked.code}`, blocked.message)}</div>
@@ -248,6 +258,9 @@ const SellerReturnModal: React.FC<Props> = ({ target, onClose, onDone, tNs, form
                 <span>{tNs('orders.returns.returnTotal', 'Return total')}</span>
                 <strong style={{ color: '#111827', fontSize: 14 }}>{total > 0 ? `−${formatMoney(total, currency)}` : formatMoney(0, currency)}</strong>
               </div>
+              {isRefund && total > 0 && (
+                <div>{tNs('orders.returns.refundDue', 'Refund to the buyer: {{amount}}', { amount: formatMoney(total, currency) })}</div>
+              )}
               {invoice && invBefore != null && invAfter != null && (
                 <div>{tNs('orders.returns.invoiceChange', 'Invoice {{number}}: {{from}} → {{to}}', { number: invoice.invoice_number, from: formatMoney(invBefore, currency), to: formatMoney(invAfter, currency) })}</div>
               )}
@@ -272,7 +285,9 @@ const SellerReturnModal: React.FC<Props> = ({ target, onClose, onDone, tNs, form
       <ConfirmModal
         isOpen={confirmOpen}
         title={tNs('orders.returns.confirmTitle', 'Return {{n}} item(s), −{{amount}}?', { n: chosen.length, amount: formatMoney(total, currency) })}
-        message={tNs('orders.returns.confirmBody', 'Stock moves back right away and the amount is taken off the invoice. The buyer is told by email. This cannot be undone here.')}
+        message={isRefund
+          ? tNs('orders.returns.confirmBodyRefund', 'Stock moves back right away and a refund of this amount is recorded for the buyer. The buyer is told by email. This cannot be undone here.')
+          : tNs('orders.returns.confirmBody', 'Stock moves back right away and the amount is taken off the invoice. The buyer is told by email. This cannot be undone here.')}
         confirmText={submitting ? '…' : tNs('orders.returns.submit', 'Process return')}
         cancelText={tNs('orders.correct.cancel', 'Cancel')}
         type="warning"

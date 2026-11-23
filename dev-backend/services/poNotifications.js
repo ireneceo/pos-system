@@ -364,7 +364,55 @@ async function fireAutoReceivedNotifications(po) {
   }
 }
 
+/**
+ * 구매자가 반품을 신청·철회하거나 환불 «받았음»·«못 받았음» 을 적었다 — 판매자에게 알림 (2026-11-23 · 설계 §4-4 ②).
+ *   틀·받는 사람 규칙은 fireSellerAmendedByBuyerNotification 과 같다(카테고리 seller_order_received · 'en' 고정).
+ *   외부(미가입) 공급업체는 계정이 없어 받는 사람이 0 이다(자연히 안 나감).
+ * @param kind 'return_requested' | 'return_withdrawn' | 'refund_confirmed' | 'refund_disputed'
+ */
+async function fireSellerReturnRefundNotification(po, { kind, lines = [], amount = null, note = null } = {}) {
+  try {
+    const list = await sellerAddressees(po);
+    const userIds = list.map(r => r.id);
+    if (userIds.length === 0) {
+      console.log(`[notify] ${kind} po=${po.po_number} seller=${po.seller_type}:${po.seller_entity_id} recipients=none`);
+      return;
+    }
+    const { wrapTemplate, withRenderMeta, ctaButton } = require('../utils/notificationTemplates');
+    const { currencySymbol } = require('../utils/currency');
+    const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const buyerName = (await resolveBuyerName(po)) || 'The buyer';
+    const sym = currencySymbol(po.currency);
+    const money = (n) => `${sym} ${(parseFloat(n) || 0).toFixed(2)}`;
+    const T = {
+      return_requested: { title: 'Return Requested', subject: `Return requested: ${po.po_number} · by ${buyerName}`, lead: `<strong>${esc(buyerName)}</strong> requested a return on purchase order <strong>${esc(po.po_number)}</strong>. Approve or reject it.`, state: 'action' },
+      return_withdrawn: { title: 'Return Request Withdrawn', subject: `Return withdrawn: ${po.po_number} · by ${buyerName}`, lead: `<strong>${esc(buyerName)}</strong> withdrew a return request on purchase order <strong>${esc(po.po_number)}</strong>. Nothing changed.`, state: 'info' },
+      refund_confirmed: { title: 'Refund Received', subject: `Refund received: ${po.po_number} · ${money(amount)}`, lead: `<strong>${esc(buyerName)}</strong> confirmed receiving your refund of <strong>${money(amount)}</strong> for purchase order <strong>${esc(po.po_number)}</strong>.`, state: 'info' },
+      refund_disputed: { title: 'Refund Not Received', subject: `Refund not received: ${po.po_number} · ${money(amount)}`, lead: `<strong>${esc(buyerName)}</strong> reports the refund of <strong>${money(amount)}</strong> for purchase order <strong>${esc(po.po_number)}</strong> has not arrived.`, state: 'action' }
+    }[kind];
+    if (!T) return;
+    const rows = lines.map(l => `<tr><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#374151;">${esc(l.name)}</td>`
+      + `<td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;font-size:13px;color:#374151;text-align:right;">${esc(l.qty)} ${esc(l.unit || '')}</td></tr>`).join('');
+    const bodyFor = (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">${T.lead}</p>
+       ${rows ? `<table style="width:100%;border-collapse:collapse;margin:0 0 16px;">${rows}</table>` : ''}
+       ${note ? `<div style="background:#F9FAFB;border-left:4px solid #635BFF;padding:16px;margin:0 0 24px;border-radius:0 8px 8px 0;"><p style="color:#4B5563;font-size:13px;font-weight:600;margin:0 0 6px;">Note</p><p style="color:#374151;font-size:14px;margin:0;">${esc(String(note).slice(0, 600))}</p></div>` : ''}
+       ${ctaButton('Review Order', link)}`;
+    const _brandingEntity = sellerBrandingEntity(po);
+    await sendNotificationBatch(userIds, 'seller_order_received', mailFor(list, (a) => {
+      const body = bodyFor(goLink(a, 'seller_orders'));
+      return Object.assign(withRenderMeta({
+        subject: T.subject,
+        html: wrapTemplate(T.title, body, 'en'),
+        text: `${T.title}: ${po.po_number}${note ? ` — ${note}` : ''}`
+      }, T.title, body, 'en', { action: { state: T.state, key: 'review_changes' } }), { _brandingEntity });
+    }));
+  } catch (e) {
+    console.error('[poNotifications] fireSellerReturnRefundNotification error:', e.message);
+  }
+}
+
 module.exports = {
+  fireSellerReturnRefundNotification,
   fireAutoReceivedNotifications,
   fireSellerApprovalRevokedNotification,
   fireSellerAmendedByBuyerNotification,

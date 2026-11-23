@@ -28,6 +28,7 @@ import RecurringOrderModal from '../../components/PurchaseOrders/RecurringOrderM
 import AlertDialog from '../../components/Common/AlertDialog';
 import ConfirmDialog from '../../components/Common/ConfirmDialog';
 import PoFileManageModal from '../../components/PurchaseOrders/PoFileManageModal';
+import BuyerRefundCard from './BuyerRefundCard';
 import { getCurrencySymbol } from '../../utils/currency';
 import { reconcileGap, formatGap, gapColor } from '../../utils/reconcileGap';
 
@@ -580,6 +581,9 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
   const [returnSubmitting, setReturnSubmitting] = useState(false);
   const [returnError, setReturnError] = useState<string | null>(null);
   const [existingReturns, setExistingReturns] = useState<any[]>([]);
+  // 반품 신청 철회 확인 (2026-11-23) · 환불 카드 다시 읽기 신호
+  const [withdrawRet, setWithdrawRet] = useState<any | null>(null);
+  const [refundReload, setRefundReload] = useState(0);
 
   /**
    * 외부(솔루션 미가입) 공급업체 발주인가 — 반품을 밖으로 보내야 하는 경우다 (2026-09-08).
@@ -640,6 +644,27 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
       const data = await res.json();
       if (!res.ok || !data.success) {
         setReturnError(data?.message || (t('detail.returns.closeFailed', '반품을 닫지 못했습니다') as string));
+        return;
+      }
+      await loadReturnsRef.current?.();
+      fetchDetailRef.current?.();
+      setRefundReload(x => x + 1);   // 결제된 외부 업체 주문 = 환불 카드가 생긴다 (2026-11-23)
+    } catch (_) {
+      setReturnError(t('detail.returns.networkError', 'Network error') as string);
+    }
+  }, [id, t]);
+
+  /** 구매자 신청 철회 — requested 일 때만 · 재고·돈 변화 없음 (2026-11-23) */
+  const withdrawReturn = useCallback(async (ret: any) => {
+    try {
+      const res = await fetch(`/api/purchase-orders/${id}/returns/${ret.id}/withdraw`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+        body: '{}'
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setReturnError(data?.message || (t('detail.returns.withdrawFailed', 'Could not withdraw the request') as string));
         return;
       }
       await loadReturnsRef.current?.();
@@ -1392,6 +1417,25 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                 </div>
               );
             })()}
+            {/* 결제된 주문의 반품 환불 (2026-11-23) — 판매자 «보냄» ↔ 구매자 «받았음 / 못 받았음» */}
+            <BuyerRefundCard poId={detail.id} formatMoney={(n: number) => formatMoney(n)} reloadKey={refundReload} onChanged={() => fetchDetailRef.current?.()} />
+            {/* 판매자가 주문을 취소했을 때 (2026-11-23) — 사유 · 같이 취소된 청구서 */}
+            {(() => {
+              if (detail.status !== 'cancelled') return null;
+              const events = (detail as any).tracking_info?.events;
+              const ev = Array.isArray(events) ? [...events].reverse().find((e: any) => e?.status === 'cancelled' && e?.source === 'seller_cancel') : null;
+              if (!ev) return null;
+              return (
+                <div data-testid="po-seller-cancelled" style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#991B1B', fontSize: 14, lineHeight: 1.6 }}>
+                  <strong>{t('detail.cancelledBySeller', 'The seller cancelled this order')}{ev.at ? ` · ${formatDate(ev.at)}` : ''}</strong>
+                  {ev.reason ? <div style={{ marginTop: 4, color: '#374151' }}>{ev.reason}</div> : null}
+                  {ev.invoice_number ? <div style={{ marginTop: 4, fontSize: 13, color: '#374151' }}>{t('detail.cancelledInvoice', 'Invoice {{number}} was cancelled — nothing to pay for this order.', { number: ev.invoice_number })}</div> : null}
+                  {Array.isArray(ev.buyer_stock_reversed) && ev.buyer_stock_reversed.length > 0 && (
+                    <div style={{ marginTop: 4, fontSize: 13, color: '#374151' }}>{t('detail.cancelledStock', 'Your stock was reduced by what you had received.')}</div>
+                  )}
+                </div>
+              );
+            })()}
             {/* 판매자가 품목을 고쳤을 때 — 이력(타임라인)에도 남지만, 금액이 바뀐 일이라 상단에서 먼저 알린다.
                 마지막 'amended' 이벤트 기준. 이유는 선택이므로 없으면 문장만 나온다. */}
             {(() => {
@@ -2064,7 +2108,11 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
         }
       >
         <div style={{ padding: 12, background: '#FFFBEB', border: '1px solid #F59E0B', borderRadius: 8, fontSize: 13, color: '#78350F', marginBottom: 16 }}>
-          {isExternalSupplier
+          {(detail as any)?.return_settlement === 'refund'
+            ? (isExternalSupplier
+              ? t('detail.returns.hintPaidExternal', 'This order is paid. Send the return note to the supplier and close it here — then mark the refund received once the supplier pays you back.')
+              : t('detail.returns.hintPaid', 'This order is paid — once the seller approves, they refund the amount to you. You confirm here when it arrives.'))
+            : isExternalSupplier
             ? t('detail.returns.hintExternal', 'Specify return quantity per line. Send the return note to the supplier, then close it here — the amount is taken off the invoice.')
             : t('detail.returns.hintSeller', "Specify return quantity per line. Returns need the seller's approval. Once approved the amount is taken off the invoice.")}
         </div>
@@ -2084,13 +2132,25 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
                       {r.status === 'approved' && Number(r.deducted_amount) > 0 && (
                         <span style={{ color: '#065F46' }}> · {t('detail.returns.deducted', '−{{amount}} off the invoice', { amount: formatMoney(Number(r.deducted_amount)) })}</span>
                       )}
+                      {r.status === 'approved' && !!r.refund_id && (
+                        <span style={{ color: '#1E40AF' }}> · {t('detail.returns.toRefund', '{{amount}} to be refunded', { amount: formatMoney((Number(r.quantity) || 0) * (Number(r.unit_price) || 0)) })}</span>
+                      )}
+                      {r.status === 'rejected' && r.rejection_reason ? <span style={{ color: '#991B1B' }}> · {r.rejection_reason}</span> : null}
                     </span>
                     <span style={{
-                      padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-                      background: r.status === 'approved' ? '#ECFDF5' : r.status === 'rejected' ? '#FEF2F2' : '#FEF3C7',
-                      color: r.status === 'approved' ? '#065F46' : r.status === 'rejected' ? '#991B1B' : '#92400E'
-                    }}>{r.status === 'approved' ? t('detail.returns.status.approved', 'Approved') : r.status === 'rejected' ? t('detail.returns.status.rejected', 'Rejected') : t('detail.returns.status.requested', 'Requested')}</span>
+                      padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap',
+                      background: r.status === 'approved' ? '#ECFDF5' : r.status === 'rejected' ? '#FEF2F2' : r.status === 'withdrawn' ? '#F3F4F6' : '#FEF3C7',
+                      color: r.status === 'approved' ? '#065F46' : r.status === 'rejected' ? '#991B1B' : r.status === 'withdrawn' ? '#4B5563' : '#92400E'
+                    }}>{r.status === 'approved' ? t('detail.returns.status.approved', 'Approved') : r.status === 'rejected' ? t('detail.returns.status.rejected', 'Rejected') : r.status === 'withdrawn' ? t('detail.returns.status.withdrawn', 'Withdrawn') : t('detail.returns.status.requested', 'Requested')}</span>
                   </div>
+                  {/* 가입 판매자에게 낸 신청은 승인 전이면 거둘 수 있다 (2026-11-23) */}
+                  {!isExternalSupplier && r.status === 'requested' && r.initiated_by !== 'seller' && (
+                    <div style={{ marginTop: 6 }}>
+                      <ThemedButton size="small" variant="outline" onClick={() => setWithdrawRet(r)}>
+                        {t('detail.returns.withdraw', 'Withdraw request')}
+                      </ThemedButton>
+                    </div>
+                  )}
 
                   {/* 외부 공급업체는 로그인이 없어 시스템에서 승인할 사람이 없다 (2026-09-08 Irene:
                       "외부공급업체는 발주처럼 왓츠앱 메일, pdf 로 보내게 해줘야지").
@@ -2202,6 +2262,15 @@ const PurchaseOrderDetailPage: React.FC<PurchaseOrderDetailPageProps> = ({ embed
         message={detail ? t(detail.is_external ? 'ownerApprovals.revokeConfirmExternal' : 'ownerApprovals.revokeConfirmRegistered', { po: detail.po_number }) as string : ''}
         variant="warning"
         confirmText={t('ownerApprovals.revoke') as string}
+      />
+      <ConfirmDialog
+        isOpen={!!withdrawRet}
+        onClose={() => setWithdrawRet(null)}
+        onConfirm={() => { const r = withdrawRet; setWithdrawRet(null); if (r) withdrawReturn(r); }}
+        title={t('detail.returns.withdrawTitle', 'Withdraw this return request?') as string}
+        message={t('detail.returns.withdrawBody', 'The seller is told. Nothing changes in your stock or the bill.') as string}
+        variant="warning"
+        confirmText={t('detail.returns.withdraw', 'Withdraw request') as string}
       />
     </Outer>
   );

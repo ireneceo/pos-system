@@ -27,6 +27,8 @@ import { shareTextViaApps, AppShareResult } from '../../utils/appShare';
 import AlertDialog from '../../components/Common/AlertDialog';
 import IncomingOrdersBoard from './IncomingOrdersBoard';
 import SellerReturnModal, { SellerReturnTarget } from './SellerReturnModal';
+import SellerCancelModal, { SellerCancelTarget } from './SellerCancelModal';
+import SellerRefundPanel from './SellerRefundPanel';
 import { effectiveDeliveryFee, DeliveryTerms } from '../../utils/deliveryFee';
 
 // Layout / Form / ModalButton primitives are inlined here on purpose.
@@ -198,6 +200,17 @@ interface IncomingOrderRow {
   return_blocked?: { code: string; message: string } | null;
   /** 승인돼 청구에서 뺀 반품 합 */
   returned_amount?: number | string | null;
+  /** 반품 정산 방식 — 'deduct'(결제 전 · 청구서에서 뺌) | 'refund'(결제 후 · 환불) (2026-11-23 utils/poAmend.returnSettlement) */
+  return_settlement?: 'deduct' | 'refund' | null;
+  /** 구매자 반품 신청 중 건수 */
+  pending_return_count?: number;
+  /** 환불 요약(결제 후 반품) */
+  refund?: { pending_amount: number; sent_amount: number; confirmed_amount: number; status: 'pending' | 'sent' | 'confirmed' | null; disputed: boolean } | null;
+  /** 판매자 주문 취소 가능 여부 — 서버 utils/poAmend.sellerCancelBlock 판정 그대로(2026-11-23) */
+  can_cancel?: boolean;
+  cancel_blocked?: { code: string; message: string } | null;
+  cancelled_reason?: string | null;
+  cancelled_at?: string | null;
   item_count?: number;
   items?: IncomingOrderItem[];
   total_amount?: number | string | null;
@@ -655,6 +668,10 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
   const [rejectRid, setRejectRid] = useState<number | null>(null);
   const [rejectText, setRejectText] = useState('');
   const [returnActionError, setReturnActionError] = useState<string | null>(null);
+  // 판매자 주문 취소 (2026-11-23) · 정정 «전부 0» → 취소 안내 · 환불 칸 다시 읽기 신호
+  const [cancelTarget, setCancelTarget] = useState<SellerCancelTarget | null>(null);
+  const [correctNoLines, setCorrectNoLines] = useState(false);
+  const [refundReload, setRefundReload] = useState(0);
 
   // Sprint 6: must be declared BEFORE fetchList — useCallback deps array
   // reads `dateRange` at definition time. Declaring later → TDZ at component
@@ -710,7 +727,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
       method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}'
     });
     const d = await r.json().catch(() => ({}));
-    if (r.ok && d.success) { reloadReturns(); refreshAll(); openDetail(detailRow); }
+    if (r.ok && d.success) { reloadReturns(); refreshAll(); openDetail(detailRow); setRefundReload(x => x + 1); }
     else setReturnActionError(d.message || 'Failed to approve return');
   };
   const rejectReturn = async (rid: number, reason: string) => {
@@ -1040,6 +1057,7 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
 
   // 반품이 막힌 이유 — 서버 code 로 번역, 없으면 서버 문장 (2026-11-17)
   const returnBlockedText = (b?: { code: string; message: string } | null) => (b ? tNs(`orders.returns.blocked.${b.code}`, b.message) : undefined);
+  const cancelBlockedText = (b?: { code: string; message: string } | null) => (b ? tNs(`orders.cancel.blocked.${b.code}`, b.message) : undefined);
 
   // 카톡·다른 앱 결과 — PC 는 복사했다고 알려 준다 (utils/appShare)
   const [shareNote, setShareNote] = useState<{ title: string; message: string } | null>(null);
@@ -1528,9 +1546,13 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setErrorMessage(data.message || 'Failed to correct quantities');
+        setCorrectNoLines(data.code === 'NO_LINES');
+        setErrorMessage(data.code === 'NO_LINES'
+          ? tNs('orders.correct.noLines', 'To remove every item, cancel the order instead.')
+          : (data.message || 'Failed to correct quantities'));
         return;
       }
+      setCorrectNoLines(false);
       setCorrectRow(null);
       setCorrectSavedOpen(true);
       refreshAll();
@@ -1788,6 +1810,22 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               {tNs('orders.badge.notYetDispatched', '{{count}} item(s) not yet dispatched').replace('{{count}}', String(row.unshipped_count))}
                             </div>
                           )}
+                          {/* 반품 신청이 와 있음 · 돌려줄 환불 (2026-11-23) — 화면을 안 열어도 보이게 */}
+                          {(row.pending_return_count || 0) > 0 && (
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', marginTop: 2 }}>
+                              {tNs('orders.badge.returnRequested', 'Return requested')}
+                            </div>
+                          )}
+                          {!!row.refund && row.refund.pending_amount > 0 && (
+                            <div style={{ fontSize: '11px', fontWeight: 700, color: '#B45309', marginTop: 2 }}>
+                              {(row.refund.disputed ? tNs('orders.badge.refundDisputed', 'Refund not received · {{amount}}') : tNs('orders.badge.refundDue', 'Refund due · {{amount}}')).replace('{{amount}}', formatMoney(row.refund.pending_amount, row.currency))}
+                            </div>
+                          )}
+                          {!!row.refund && !(row.refund.pending_amount > 0) && row.refund.sent_amount > 0 && (
+                            <div style={{ fontSize: '11px', fontWeight: 500, color: '#6B7280', marginTop: 2 }}>
+                              {tNs('orders.badge.refundSent', 'Refund sent · {{amount}}').replace('{{amount}}', formatMoney(row.refund.sent_amount, row.currency))}
+                            </div>
+                          )}
                         </DataTableStatus>
                       </DataTableCell>
                       <DataTableCell data-label={tNs('orders.table.payment', 'Payment') as string} align="center">
@@ -1852,6 +1890,18 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                               onClick={() => setReturnTarget({ id: row.id, po_number: row.po_number, currency: row.currency })}
                             >
                               {tNs('orders.actions.returnItems', 'Return items')}
+                            </ThemedButton>
+                          )}
+                          {/* 주문 취소(삭제) — 확정 뒤 어느 단계든 결제 전 · 노출은 서버 판정(BAD_STATUS 가 아니면) (2026-11-23) */}
+                          {row.can_cancel !== undefined && row.cancel_blocked?.code !== 'BAD_STATUS' && (
+                            <ThemedButton
+                              size="small"
+                              variant="danger-outline"
+                              disabled={!row.can_cancel}
+                              title={cancelBlockedText(row.cancel_blocked)}
+                              onClick={() => setCancelTarget({ id: row.id, po_number: row.po_number, currency: row.currency })}
+                            >
+                              {tNs('orders.actions.cancelOrder', 'Cancel order')}
                             </ThemedButton>
                           )}
                           {/* 서비스 전용 발주(배송 없음)는 «완료 처리» 하나로 끝난다 — 배송·도착 단계를 띄우지 않는다.
@@ -2544,6 +2594,13 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
             {errorMessage && (
               <div style={{ color: '#DC2626', fontSize: 13 }}>{errorMessage}</div>
             )}
+            {correctNoLines && correctRow && (
+              <div style={{ marginTop: 8 }}>
+                <ThemedButton size="small" variant="danger-outline" onClick={() => { const r = correctRow; setCorrectRow(null); setCorrectNoLines(false); setErrorMessage(null); setCancelTarget({ id: r.id, po_number: r.po_number, currency: r.currency }); }}>
+                  {tNs('orders.correct.cancelInstead', 'Cancel order instead')}
+                </ThemedButton>
+              </div>
+            )}
           </>
         )}
       </Modal>
@@ -2645,6 +2702,15 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 onClick={() => { const r = detailRow; closeDetail(); setReturnTarget({ id: r.id, po_number: r.po_number, currency: r.currency }); }}
               >
                 {tNs('orders.actions.returnItems', 'Return items')}
+              </ModalButton>
+            )}
+            {detailRow && detailRow.can_cancel !== undefined && detailRow.cancel_blocked?.code !== 'BAD_STATUS' && (
+              <ModalButton
+                disabled={!detailRow.can_cancel}
+                title={cancelBlockedText(detailRow.cancel_blocked)}
+                onClick={() => { const r = detailRow; closeDetail(); setCancelTarget({ id: r.id, po_number: r.po_number, currency: r.currency }); }}
+              >
+                {tNs('orders.actions.cancelOrder', 'Cancel order')}
               </ModalButton>
             )}
             {!!detailRow?.shipped_at && (detailRow?.unshipped_count || 0) > 0 && (
@@ -2852,6 +2918,11 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                         <div style={{ fontSize: 11, color: '#4B5563', marginTop: 2 }}>
                           {r.reason || '—'}
                         </div>
+                        {r.status === 'approved' && !!r.refund_id && (
+                          <div style={{ fontSize: 11, color: '#1E40AF', marginTop: 2 }}>
+                            {tNs('orders.returns.toRefund', '{{amount}} to refund to the buyer', { amount: formatMoney((Number(r.quantity) || 0) * (Number(r.unit_price) || 0), detailFull?.currency) })}
+                          </div>
+                        )}
                         {r.status === 'approved' && Number(r.deducted_amount) > 0 && (
                           <div style={{ fontSize: 11, color: '#065F46', marginTop: 2 }}>
                             {tNs('orders.returns.deducted', '−{{amount}} taken off the invoice', { amount: formatMoney(r.deducted_amount, detailFull?.currency) })}
@@ -2861,9 +2932,9 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{
                           fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999,
-                          background: r.status === 'approved' ? '#ECFDF5' : r.status === 'rejected' ? '#FEF2F2' : '#FEF3C7',
-                          color: r.status === 'approved' ? '#065F46' : r.status === 'rejected' ? '#991B1B' : '#92400E'
-                        }}>{r.status === 'approved' ? tNs('orders.returns.status.approved', 'Approved') : r.status === 'rejected' ? tNs('orders.returns.status.rejected', 'Rejected') : tNs('orders.returns.status.requested', 'Requested')}</span>
+                          background: r.status === 'approved' ? '#ECFDF5' : r.status === 'rejected' ? '#FEF2F2' : r.status === 'withdrawn' ? '#F3F4F6' : '#FEF3C7',
+                          color: r.status === 'approved' ? '#065F46' : r.status === 'rejected' ? '#991B1B' : r.status === 'withdrawn' ? '#4B5563' : '#92400E'
+                        }}>{r.status === 'approved' ? tNs('orders.returns.status.approved', 'Approved') : r.status === 'rejected' ? tNs('orders.returns.status.rejected', 'Rejected') : r.status === 'withdrawn' ? tNs('orders.returns.status.withdrawn', 'Withdrawn by buyer') : tNs('orders.returns.status.requested', 'Requested')}</span>
                         {r.status === 'requested' && (
                           <>
                             <ThemedButton size="small" variant="primary" disabled={detailRow?.can_return === false} title={returnBlockedText(detailRow?.return_blocked)} onClick={() => { setReturnActionError(null); setApproveRid(r.id); }}>
@@ -2881,6 +2952,27 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
                 {returnActionError && <div style={{ color: '#DC2626', fontSize: 13, marginTop: 8 }}>{returnActionError}</div>}
               </div>
             )}
+
+            {/* 결제 후 반품 환불 (2026-11-23) — 판매자 «보냄» ↔ 구매자 «받았음 / 못 받았음» */}
+            <SellerRefundPanel
+              poId={detailFull.id}
+              currency={detailFull.currency}
+              reloadKey={refundReload}
+              onChanged={refreshAll}
+              tNs={tNs}
+              formatMoney={formatMoney}
+            />
+
+            {/* 취소된 주문 — 사유 · 같이 취소된 청구서 (2026-11-23) */}
+            {detailFull.status === 'cancelled' && (
+              <div style={{ background: '#FEF2F2', borderLeft: '4px solid #DC2626', borderRadius: '0 8px 8px 0', padding: '10px 14px', fontSize: 13, color: '#374151', lineHeight: 1.6 }}>
+                <div style={{ fontWeight: 600, color: '#991B1B' }}>{tNs('orders.cancel.cancelledTitle', 'Cancelled')}{detailFull.cancelled_at ? ` · ${formatDateTime(detailFull.cancelled_at)}` : ''}</div>
+                {detailFull.cancelled_reason && <div>{detailFull.cancelled_reason}</div>}
+                {detailFull.trade_invoice?.status === 'cancelled' && (
+                  <div style={{ color: '#6B7280' }}>{tNs('orders.cancel.invoiceWasCancelled', 'Invoice {{number}} was cancelled', { number: detailFull.trade_invoice.invoice_number })}</div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </Modal>
@@ -2893,10 +2985,19 @@ const IncomingOrdersView: React.FC<IncomingOrdersViewProps> = ({ sellerScope, i1
         tNs={tNs}
         formatMoney={formatMoney}
       />
+      <SellerCancelModal
+        target={cancelTarget}
+        onClose={() => setCancelTarget(null)}
+        onDone={(msg) => { setCancelTarget(null); setReturnNote(msg); refreshAll(); }}
+        tNs={tNs}
+        formatMoney={formatMoney}
+      />
       <ConfirmModal
         isOpen={approveRid != null}
         title={tNs('orders.returns.approveTitle', 'Approve this return?')}
-        message={tNs('orders.returns.approveBody', "The buyer's stock goes down, your stock comes back, and the amount is taken off the invoice.")}
+        message={detailRow?.return_settlement === 'refund'
+          ? tNs('orders.returns.approveBodyRefund', "This order is paid. The buyer's stock goes down, your stock comes back, and the amount becomes a refund you send to the buyer.")
+          : tNs('orders.returns.approveBody', "The buyer's stock goes down, your stock comes back, and the amount is taken off the invoice.")}
         confirmText={tNs('orders.returns.approve', 'Approve') as string}
         cancelText={tNs('orders.correct.cancel', 'Cancel') as string}
         type="warning"

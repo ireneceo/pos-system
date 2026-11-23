@@ -1828,7 +1828,7 @@ router.post('/:id/correct-delivery', async (req, res) => {
         wanted.set(itemId, Math.round(q * 1000) / 1000);
       }
       if (wanted.size === 0) throw fail('NO_CHANGE', 'No quantity was changed');
-      if (lines.length - [...wanted.values()].filter(q => q === 0).length < 1) throw fail('NO_LINES', 'An order must keep at least one item');
+      if (lines.length - [...wanted.values()].filter(q => q === 0).length < 1) throw fail('NO_LINES', 'To remove every item, cancel the order instead');
 
       const rets = await PurchaseOrderReturn.findAll({
         where: { purchase_order_item_id: [...wanted.keys()] }, attributes: ['purchase_order_item_id', 'quantity', 'status'], transaction: t
@@ -2022,6 +2022,182 @@ router.post('/:id/correct-delivery', async (req, res) => {
     if (err.http) return res.status(err.http).json({ success: false, code: err.code, message: err.message });
     console.error('POST /api/seller-orders/:id/correct-delivery error:', err);
     res.status(500).json({ success: false, message: 'Failed to correct quantities' });
+  }
+});
+
+// ============================================
+// 판매자 주문 취소 — POST /api/seller-orders/:id/cancel (2026-11-23)
+//   설계 .claude/fable-design-20261123-seller-order-cancel-edit-refund.md §2
+//   Irene «주문 삭제하는 게 없어. 배송완료해도 수정이나 삭제가 필요한 경우 해야 해. 인보이스도 같이 바뀌어야 하고 결제 안된 건.»
+//   «삭제» = 기록을 지우지 않고 취소로 남긴다(청구서 번호·재고 장부가 끊기지 않게). 확정 뒤 어느 단계든 결제 전이면.
+//   한 트랜잭션: 판매자 재고 복귀(출고된 줄) · 구매자 재고 차감(받은 줄) · 청구서 cancelled(번호 유지) · 발주 cancelled.
+//   커밋 뒤: 정산서 합계 재계산 → 비면 닫음 · 구매자 메일. 판정은 utils/poAmend.sellerCancelBlock 하나(목록 can_cancel 과 같다).
+//   되살리기는 없다 — 잘못 취소했으면 «Add order» 로 다시 넣는다.
+// ============================================
+router.post('/:id/cancel', async (req, res) => {
+  let result;
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(404).json({ success: false, message: 'Order not found' });
+    const fail = (code, message, http = 400) => { const e = new Error(message); e.code = code; e.http = http; return e; };
+    const reason = sanitizeString(String(req.body?.reason || '').trim()).slice(0, 1000);
+    const userId = req.user?.id || null;
+    const userName = req.user?.full_name || req.user?.username || null;
+
+    result = await sequelize.transaction(async (t) => {
+      const { Invoice, PurchaseOrderReturn } = require('../models');
+      const { sellerCancelBlock } = require('../utils/poAmend');
+      const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+      if (!po || !checkSellerOwnership(po, req)) throw fail('NOT_FOUND', 'Order not found', 404);
+      { const blk = sellerBlockError(po); if (blk) throw blk; }   // 숨김 404 · hold 409
+
+      const invoice = po.trade_invoice_id
+        ? await Invoice.findByPk(po.trade_invoice_id, { lock: t.LOCK.UPDATE, transaction: t })
+        : null;
+      const soa = invoice && invoice.parent_soa_invoice_id
+        ? await Invoice.findByPk(invoice.parent_soa_invoice_id, { attributes: ['id', 'status'], transaction: t })
+        : null;
+      const rets = await PurchaseOrderReturn.findAll({ where: { purchase_order_id: po.id }, attributes: ['id', 'status'], transaction: t });
+      const block = sellerCancelBlock(po, invoice, soa, rets);
+      if (block) throw fail(block.code, block.message, block.http);
+      if (reason.length < 3) throw fail('REASON_REQUIRED', 'Please give a reason for cancelling this order');
+
+      // ── 재고 — 줄마다 (서비스 줄 제외 · poStockReversal 호출만) ──
+      const { serviceLineIdsOf } = require('../utils/orderFulfillment');
+      const { reverseBuyerStock, restoreSellerStock } = require('../services/poStockReversal');
+      const lines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, order: [['id', 'ASC']], transaction: t });
+      const svc = await serviceLineIdsOf(sequelize, po.id, t);
+      const legacyAllShipped = !!po.shipped_at && !lines.some(l => l.shipped_at);
+      const note = `Order ${po.po_number} cancelled by seller: ${reason.slice(0, 200)}`;
+      const sellerRestored = [];
+      const buyerReversed = [];
+      for (const item of lines) {
+        if (svc.has(Number(item.id))) continue;
+        const recv = parseFloat(item.quantity_received) || 0;
+        if (recv > 0) {
+          const r = await reverseBuyerStock({
+            po, item, qty: recv, unitPrice: item.unit_price, t, userId, note,
+            ledgerType: 'adjustment', reasonCode: 'seller_cancel'
+          });
+          if (r) buyerReversed.push({ item_id: item.id, qty: recv, moved: r.moved });
+          await item.update({ quantity_received: 0 }, { transaction: t });
+        }
+        const shipped = !!item.shipped_at || legacyAllShipped;
+        const ordered = parseFloat(item.quantity_ordered) || 0;
+        if (shipped && ordered > 0) {
+          const ok = await restoreSellerStock({
+            po, item, qty: ordered, t, userId, note,
+            ledgerType: 'adjustment', reasonCode: 'seller_cancel', supplierReason: 'po_cancel'
+          });
+          if (ok) sellerRestored.push({ item_id: item.id, qty: ordered });
+        }
+      }
+
+      // ── 청구서 — 취소 상태로(번호·줄·총액은 그대로). 정산서에서 풀고 번호를 기억한다 ──
+      let invOut = null;
+      let soaId = null;
+      if (invoice && invoice.status !== 'cancelled') {
+        soaId = invoice.parent_soa_invoice_id || null;
+        let history = invoice.modification_history;
+        if (typeof history === 'string') { try { history = JSON.parse(history); } catch { history = []; } }
+        history = Array.isArray(history) ? [...history] : [];
+        history.push({
+          modified_at: new Date().toISOString(), modified_by: userId, modified_by_name: userName,
+          changes: { status: { from: invoice.status, to: 'cancelled' } },
+          reason: `Order cancelled by seller — PO ${po.po_number}: ${reason.slice(0, 300)}`,
+          source: 'seller_cancel'
+        });
+        const isInternal = invoice.payment_method === 'internal';
+        await invoice.update({
+          status: 'cancelled', parent_soa_invoice_id: null,
+          ...(isInternal ? { paid_amount: 0 } : {}),
+          modification_history: history, is_modified: true
+        }, { transaction: t });
+        invOut = { id: invoice.id, invoice_number: invoice.invoice_number, total: parseFloat(invoice.total_amount) || 0 };
+      }
+
+      const fromStatus = po.status;
+      const tracking = appendTrackingEvent(po, 'cancelled', `Cancelled by seller: ${reason.slice(0, 200)}`, null, {
+        source: 'seller_cancel', from_status: fromStatus, by_user_id: userId, reason,
+        seller_stock_restored: sellerRestored, buyer_stock_reversed: buyerReversed,
+        invoice_id: invOut ? invOut.id : null, invoice_number: invOut ? invOut.invoice_number : null,
+        invoice_total: invOut ? invOut.total : null
+      });
+      await po.update({
+        status: 'cancelled', cancelled_at: new Date(), cancelled_reason: reason, tracking_info: tracking
+      }, { transaction: t });
+      return { po, invOut, soaId, reason, fromStatus, sellerRestored, buyerReversed };
+    });
+
+    // ── 커밋 뒤: 정산서 합계 재계산 → 비면 닫음 (자기 트랜잭션) ──
+    let soa = null;
+    if (result.soaId && result.invOut) {
+      try {
+        const { followChildToSoa, closeSoaIfEmpty } = require('../services/externalSoa');
+        const actor = { actorId: req.user?.id || null, actorName: req.user?.full_name || req.user?.username || null };
+        const f = await followChildToSoa(
+          { parent_soa_invoice_id: result.soaId, invoice_number: result.invOut.invoice_number, total_amount: 0 },
+          { prevChildTotal: result.invOut.total, ...actor }
+        );
+        const c = await closeSoaIfEmpty(result.soaId, { ...actor, reason: `Last invoice ${result.invOut.invoice_number} cancelled with PO ${result.po.po_number}` });
+        soa = { soa_id: result.soaId, total: f && f.followed ? f.total : null, soa_locked: !!(f && f.soa_locked), closed: !!c.closed };
+      } catch (e) {
+        console.error('[seller-cancel] SOA follow failed:', e.message);
+        soa = { soa_id: result.soaId, error: e.message };
+      }
+    }
+
+    emitPoEvent(req, result.po, 'seller-order-updated');
+
+    setImmediate(async () => {
+      try {
+        const esc = (x) => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const html = buyerMail(
+          'Order Cancelled by Seller',
+          (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">The seller cancelled your purchase order <strong>${esc(result.po.po_number)}</strong>.</p>
+           ${result.invOut ? `<p style="color:#374151;font-size:14px;margin:0 0 12px;">Invoice <strong>${esc(result.invOut.invoice_number)}</strong> was cancelled — nothing to pay for this order.</p>` : ''}
+           ${result.buyerReversed.length ? '<p style="color:#374151;font-size:14px;margin:0 0 12px;">You had already received this order — your stock has been adjusted.</p>' : ''}
+           <div style="background:#FEF2F2;border-left:4px solid #DC2626;padding:16px;margin:12px 0 24px;border-radius:0 8px 8px 0;">
+             <p style="color:#991B1B;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p>
+             <p style="color:#374151;font-size:14px;margin:0;">${esc(result.reason).slice(0, 600)}</p>
+           </div>
+           <div style="text-align:center;margin:24px 0;"><a href="${link}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`
+        );
+        const sellerName = await sellerNameOf(result.po);
+        await fireBuyerNotification(result.po, 'seller_order_received', {
+          subject: `Cancelled: ${result.po.po_number}${sellerName ? ` · by ${sellerName}` : ''}`,
+          action: { state: 'result', tone: 'bad', key: 'review_changes' },
+          html,
+          text: `The seller cancelled your purchase order ${result.po.po_number}. Reason: ${result.reason}`
+        });
+      } catch (e) {
+        console.error('[seller-orders] cancel notification error:', e.message);
+      }
+    });
+
+    const updated = await PurchaseOrder.findByPk(result.po.id, {
+      include: [{ model: PurchaseOrderItem, as: 'items', include: [{ model: Ingredient, as: 'ingredient', attributes: ['id', 'name', 'unit'] }] }]
+    });
+    const obj = updated.toJSON();
+    obj.buyer = await resolveBuyerInfo(updated);
+    await attachShipmentState(obj);
+    attachAutoReceiveAt(obj);
+    await attachSellerProductInfo(obj);
+    await attachCorrectionState(obj);
+    try { await require('../services/poReturnDeduction').attachReturnState(obj); } catch (e) { console.error('[return-state] attach failed:', e.message); }
+    res.json({
+      success: true, data: obj, message: 'Order cancelled',
+      cancellation: {
+        from_status: result.fromStatus, reason: result.reason, invoice: result.invOut,
+        seller_stock_restored: result.sellerRestored.length, buyer_stock_reversed: result.buyerReversed.length, soa
+      }
+    });
+  } catch (err) {
+    if (sendSellerBlock(res, err)) return;   // 숨김 404 · hold 409 AWAITING_OWNER_APPROVAL
+    if (err.code === 'NOT_FOUND') return res.status(404).json({ success: false, message: 'Order not found' });
+    if (err.http) return res.status(err.http).json({ success: false, code: err.code, message: err.message });
+    console.error('POST /api/seller-orders/:id/cancel error:', err);
+    res.status(500).json({ success: false, message: 'Failed to cancel order' });
   }
 });
 

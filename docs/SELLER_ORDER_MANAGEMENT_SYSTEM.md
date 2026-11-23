@@ -1468,3 +1468,43 @@ hold 중 판매자는 **읽기만.** 판매자 동작 라우트 전부가 주문
 **알려진 한계:** 외부 업체가 반품을 이미 뺀 새 청구서를 보내 그 금액으로 다시 대조하면 두 번 빠질 수 있다(반품 줄이 청구서에 보이므로 사람이 알아챌 수 있음).
 **범위 밖:** 결제된 주문의 반품·환불 · 받기 전 회수(«수량 정정» 몫) · 구매 통계가 `po.total_amount` 를 그대로 더하는 곳 · 옛 승인 반품(Credit Note 만 있고 청구서 그대로) 소급 — Irene 결정 대기.
 **검사:** health-check `inventory --grep=반품` R1~R4·R5~R8·R10 · `invoice-pay-flow` R9 · 고장주입 3건(차감 호출 제거 / paid 판정 제거 / 대조 반품 줄 제거 → 각각 실패 확인).
+
+## 주문 취소 · 결제 후 반품 환불 — 2026-11-23
+
+> Irene «incoming-orders 이거 주문 삭제하는 게 없어. 배송완료해도 수정이나 삭제가 필요한 경우 해야 해. 인보이스도 같이 바뀌어야 하고 결제 안된 건. 그리고 고객이 돌려보내거나 환불요청 하는 거 기능 정확히 하고 서로 승인하고 대응하게 제대로 검증하고 보완해줘.»
+> 설계(Fable) `.claude/fable-design-20261123-seller-order-cancel-edit-refund.md`
+
+**주문 취소(«삭제»)** — 기록을 지우지 않고 취소로 남긴다(청구서 번호·재고 장부가 끊기지 않게). 되살리기 없음(«Add order» 로 다시 넣기).
+
+| 무엇 | 어디 |
+|---|---|
+| 판정 `sellerCancelBlock(po, invoice, soa, returns)` — 확정 뒤 모든 단계(confirmed~received·delivery_failed). 막힘 `BAD_STATUS`(submitted=기존 Reject) · `RETURN_PENDING` 409 · `HAS_RETURNS` · `ALREADY_PAID` · `INVOICE_LOCKED` 409(청구서 paid/payment_submitted/낸 금액>0) · `SOA_LOCKED` 409. 직영 정산 통과 | `utils/poAmend.js` |
+| `POST /api/seller-orders/:id/cancel {reason}`(3자 이상) — 한 트랜잭션: 받은 줄 구매자 재고 −(받은 양 0) · 출고된 줄 판매자 재고 +(주문 양) · 청구서 `cancelled`(번호·줄·총액 그대로 · 정산서에서 풀림 · 직영은 낸 금액 0 · 이력 `seller_cancel`) · 발주 `cancelled`. 커밋 뒤 정산서 합계 재계산 → 비면 정산서도 취소(`externalSoa.closeSoaIfEmpty`) · 구매자 메일 | `routes/seller-orders.js` |
+| 목록·상세 `can_cancel`·`cancel_blocked` — 반품 장식과 같은 쿼리 | `poReturnDeduction.attachReturnState` |
+| 취소된 발주에 결제 기록 금지(`recordPayment` 400) | `services/purchaseOrderPayment.js` |
+
+**배송 뒤 수정** — 기존 «Correct quantities»(줄이기·줄 빼기·청구서 다시 쓰기) 그대로. 전부 0 이면 `NO_LINES` «cancel the order instead» + 화면이 «대신 주문 취소» 단추. 늘리기·단가·상품 교체는 취소 후 다시 넣기.
+
+**반품·환불 — 누가 시작하고 누가 닫나**
+
+| 상황 | 시작 | 닫음 | 돈 |
+|---|---|---|---|
+| 결제 전 | 구매자 신청 / 판매자 직접 | 판매자 승인·거절 / 즉시 | 청구서에서 뺌(11-17) |
+| **결제 후** | 구매자 신청 / 판매자 직접 | 판매자 승인 / 즉시 | **환불할 금액(pending) → 판매자 «환불 보냄»(sent) → 구매자 «받았음»(confirmed) / «못 받았음»(pending 으로)** |
+| 외부(미가입) 업체 | 구매자 | 구매자 | 결제 후면 구매자가 pending 에서 바로 «받았음» |
+| 신청 철회 | 구매자(requested 만) | — | 없음 |
+
+| 무엇 | 어디 |
+|---|---|
+| 정산 방식 `returnSettlement(po, invoice, soa)` → `{block}` 또는 `{mode:'deduct'|'refund'}`. 결제된 발주·청구서·정산서 = refund · 청구서/정산서 결제 제출 중·청구서 취소·부분 결제 = 막힘. `returnMoneyBlock` 은 껍데기 | `utils/poAmend.js` |
+| 승인 본체가 mode 로 갈림 — refund 면 낸 청구서·정산서 무접촉, `poRefund.addToPending`(같은 발주 pending 행에 더함) · 반품 행 `refund_id` · `returned_amount` += | `routes/po-returns.js` · `services/poRefund.js` |
+| 환불 라우트 — `GET /seller-orders/:id/refunds` · `GET /purchase-orders/:id/refunds` · `POST /seller-orders/:id/refunds/:rid/sent {method, reference?, note?}` · `POST /purchase-orders/:id/refunds/:rid/confirm {received_method}` · `.../dispute {note}`. 발주·환불 행 잠금 | `routes/po-refunds.js` |
+| 드로어 — 구매자 «현금으로 받음» + 매장 발주: 넣는 금액 = min(환불액, 순출금 − 낼 금액). 이체·카드로 낸 주문은 0 | `services/poRefund.confirmReceived` |
+| 신청 철회 `POST /purchase-orders/:id/returns/:rid/withdraw` → `withdrawn`(새 상태값) | `routes/po-returns.js` |
+| 판매자 알림(신청·철회·받았음·못 받았음) — 새 틀·카테고리 없음 | `services/poNotifications.fireSellerReturnRefundNotification` |
+| 구매자 «결제 되돌리기» 가드 — 판매자가 입금 확인한 결제(`paid_by_user_id` 없음·직영 아님·외부 업체 아님)는 409 `SELLER_CONFIRMED`(실호출 재현 뒤 넣음) | `routes/purchase-orders-workflow.js` refund-payment |
+| DB — 새 표 `purchase_order_refunds` · `purchase_order_returns.refund_id` · 반품 상태 `withdrawn`(expandEnum) | `scripts/migrate-po-cancel-refund.js` (deploy) |
+| 화면 — 판매자 «Cancel order»(행·상세) + `SellerCancelModal.tsx` · `SellerRefundPanel.tsx` · 행 표시 «Return requested»·«Refund due»·«Refund sent» · 구매자 `BuyerRefundCard.tsx` · «Withdraw request» · «The seller cancelled this order» | `pages/IncomingOrders/*` · `pages/PurchaseOrders/*` |
+
+**범위 밖:** 결제된 주문의 취소(반품→환불로) · 결제됐는데 아직 «받음» 전인 주문은 반품 수량 0(자동 수령 뒤 가능) · 카드 자동 환불·환불 문서 · 구매자의 확정 주문 취소 «요청» · 통계의 환불·취소 반영 · 구매자 발주 목록의 환불 표시(상세·메일만).
+**검사:** health-check `inventory` F1~F11 · 고장주입 4건(취소의 판매자 재고 복귀 제거 / 청구서 취소 제거 / 취소 판정 paid 줄 제거 / 승인 mode 를 항상 차감 → 각각 실패 확인).

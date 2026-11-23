@@ -290,14 +290,22 @@
       "status": {
         "approved": "Diluluskan",
         "rejected": "Ditolak",
-        "requested": "Dimohon"
+        "requested": "Dimohon",
+        "withdrawn": "Ditarik balik"
       },
       "returnedLine": "Dipulangkan −{{amount}} · Perlu dibayar {{pay}}",
       "blocked": {
         "ALREADY_PAID": "Pesanan ini sudah dibayar — pemulangan tidak boleh mengurangkan bil. Batalkan pembayaran dahulu.",
         "INVOICE_LOCKED": "Invois sudah dibayar, dihantar untuk bayaran atau dibatalkan — tidak boleh dikurangkan.",
         "SOA_LOCKED": "Penyata yang mengandungi invois ini sudah dibayar atau dihantar."
-      }
+      },
+      "withdrawFailed": "Tidak dapat menarik balik permintaan",
+      "hintPaid": "Pesanan ini sudah dibayar — selepas penjual meluluskan, mereka membayar balik jumlahnya kepada anda. Sahkan di sini apabila diterima.",
+      "hintPaidExternal": "Pesanan ini sudah dibayar. Hantar nota pulangan kepada pembekal dan tutup di sini — kemudian tandakan bayaran balik diterima selepas pembekal membayar.",
+      "toRefund": "{{amount}} akan dibayar balik",
+      "withdraw": "Tarik balik permintaan",
+      "withdrawTitle": "Tarik balik permintaan pulangan ini?",
+      "withdrawBody": "Penjual akan dimaklumkan. Stok dan bil anda tidak berubah."
     },
     "noEmailTitle": "Tiada E-mel",
     "noEmail": "Tiada alamat e-mel didaftarkan untuk penjual ini.",
@@ -356,7 +364,36 @@
       "minQty": "min {{n}}"
     },
     "correctedBySeller": "Penjual membetulkan kuantiti yang dihantar",
-    "correctedStockAdjusted": "Stok anda telah diselaraskan mengikut perbezaan."
+    "correctedStockAdjusted": "Stok anda telah diselaraskan mengikut perbezaan.",
+    "cancelledBySeller": "Penjual telah membatalkan pesanan ini",
+    "cancelledInvoice": "Invois {{number}} dibatalkan — tiada bayaran untuk pesanan ini.",
+    "cancelledStock": "Stok anda dikurangkan mengikut apa yang telah diterima.",
+    "refunds": {
+      "title": "Bayaran balik untuk item dipulangkan",
+      "waiting": "Menunggu penjual menghantarnya",
+      "externalHint": "Tandakan diterima selepas pembekal membayar balik.",
+      "sentLine": "Penjual menghantarnya {{date}} melalui {{method}}",
+      "ref": "rujukan",
+      "confirmedLine": "Anda mengesahkan penerimaan {{date}}",
+      "received": "Bayaran balik diterima",
+      "notReceived": "Belum diterima",
+      "receivedTitle": "Bayaran balik diterima",
+      "receivedHint": "Sahkan anda telah menerima {{amount}}. Jika tunai, ia dimasukkan semula ke laci tunai.",
+      "receivedHow": "Bagaimana anda menerimanya?",
+      "notReceivedTitle": "Bayaran balik belum diterima",
+      "tellSeller": "Beritahu penjual",
+      "whatHappened": "Apa yang berlaku? (wajib)",
+      "whatPlaceholder": "cth. Belum masuk ke akaun bank kami",
+      "failed": "Tidak dapat disimpan",
+      "drawerIn": "{{amount}} telah dimasukkan semula ke laci tunai.",
+      "drawerSkipped": "Tiada syif dibuka, jadi laci tunai tidak berubah.",
+      "method": {
+        "bank_transfer": "Pindahan bank",
+        "cash": "Tunai",
+        "cashDrawer": "Tunai (ke dalam laci)",
+        "other": "Lain-lain"
+      }
+    }
   },
   "receive": {
     "modalTitle": "Terima Pesanan",
@@ -788,7 +825,9 @@
       "multipleShifts": "Lebih daripada satu syif dibuka — tutup satu sebelum merekod pembayaran tunai.",
       "failed": "Tindakan ini tidak dapat diselesaikan.",
       "network": "Ralat rangkaian. Sila cuba lagi.",
-      "alreadyPaid": "Invois pesanan ini sudah ditanda dibayar, jadi ia tidak dicaj lagi. Muat semula senarai — pesanan akan dipaparkan sebagai dibayar."
+      "alreadyPaid": "Invois pesanan ini sudah ditanda dibayar, jadi ia tidak dicaj lagi. Muat semula senarai — pesanan akan dipaparkan sebagai dibayar.",
+      "sellerConfirmed": "Penjual telah mengesahkan bayaran ini, jadi ia tidak boleh dibatalkan di sini. Mohon pulangan — penjual kemudian membuat bayaran balik.",
+      "hasRefund": "Pesanan ini ada bayaran balik untuk item dipulangkan, jadi bayaran tidak boleh dibatalkan. Selesaikan melalui bayaran balik dalam pesanan."
     },
     "drawerSkipped": {
       "title": "Pembayaran direkod — laci tidak dikemas kini",

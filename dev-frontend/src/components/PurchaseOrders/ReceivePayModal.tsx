@@ -123,7 +123,12 @@ export default function ReceivePayModal({ open, mode, po, buyerIsRestaurant = tr
           : j?.code === 'ALREADY_PAID'
             // 연결 청구서가 이미 결제됨 — 두 번 내지 않았다는 것과 할 일을 사람 말로 (2026-10-29 Fable 설계 invoice-pay-flow R-4)
             ? (t('pay.error.alreadyPaid', "This order's invoice is already marked paid, so it was not charged again. Refresh the list — the order will show as paid.") as string)
-            : (j?.message || (t('pay.error.failed', 'Could not complete this action.') as string)));
+            : j?.code === 'SELLER_CONFIRMED'
+              // 판매자가 입금을 확인한 결제 — 구매자 혼자 못 되돌린다. 반품·환불로 (2026-11-23)
+              ? (t('pay.error.sellerConfirmed', 'The seller has confirmed this payment, so it cannot be reversed here. Request a return — the seller then refunds you.') as string)
+              : j?.code === 'HAS_REFUND'
+                ? (t('pay.error.hasRefund', 'This order has a refund for returned items, so the payment cannot be reversed. Settle it through the refund in the order.') as string)
+                : (j?.message || (t('pay.error.failed', 'Could not complete this action.') as string)));
         setBusy(false);
         return;
       }

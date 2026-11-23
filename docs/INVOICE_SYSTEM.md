@@ -1061,3 +1061,8 @@ ALTER TABLE invoices ADD COLUMN parent_soa_invoice_id INT NULL;
 - 구독 할인(100% 포함)을 매장·브랜드·푸드코트·오너 구독 청구서 모두에 반영 — `services/subscriptionInvoiceService.js` · `services/invoiceScheduler.js`.
 - 받을 돈 0원이 된 이번 기간 청구서는 결제완료(Fully discounted)로 닫힘 → 연체·정지로 안 넘어감 · 같은 저장을 반복해도 청구서가 늘거나 지난 청구서를 덮지 않음.
 - 관리자 수정 저장 때 구독 줄 `item_type` 이 서비스로 바뀌던 것 · 할인만 바꿔도 세금 재매김 · 매장 월 청구 할인 이중 적용 고침. 배포 마이그 2(`migrate-subscription-item-type-repair.js` · `migrate-company-logo-to-file.js`).
+
+## 11-6. 판매자 주문 취소 = 청구서 취소·정산서에서 빠짐 (2026-11-23) [Claude Code]
+- 판매자가 확정 뒤(배송완료·수령 뒤 포함) 결제 전 주문을 취소하면 거래 청구서는 `cancelled` 로 남는다(번호·줄·총액 그대로 · 수정 이력 `source:'seller_cancel'`) — 지우지 않는다. `po.trade_invoice_id` 는 그대로라 청구서가 다시 생기지 않는다.
+- 정산서에 묶였으면 풀고 합계를 다시 계산한다(`soaChildSum` 은 취소 청구서를 원래 뺀다). 남은 청구서가 0장이면 정산서도 `cancelled`(`externalSoa.closeSoaIfEmpty` · 0원 연체 메일 방지).
+- 결제된 주문은 취소를 막고 반품→환불로 보낸다(낸 청구서·정산서는 건드리지 않고 `purchase_order_refunds` 에 환불할 금액). 상세 `docs/SELLER_ORDER_MANAGEMENT_SYSTEM.md` «주문 취소 · 결제 후 반품 환불».

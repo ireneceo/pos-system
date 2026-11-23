@@ -755,6 +755,29 @@ router.post('/purchase-orders/:id/refund-payment', async (req, res) => {
       if (po.payment_status !== 'paid') {
         const e = new Error('This purchase order is not paid'); e.code = 'NOT_PAID'; e.statusCode = 409; throw e;
       }
+      // 환불 기록이 있는 주문은 결제를 되돌리지 않는다 (2026-11-23 Fable gate H1 · 실호출 재현: 200 → 청구서 미수 복귀,
+      //   낼 금액은 반품만큼 줄고 환불도 남아 같은 돈이 두 번 빠진다). 상태 무관 — 환불은 환불 흐름으로 닫는다.
+      {
+        const { PurchaseOrderRefund } = require('../models');
+        const n = await PurchaseOrderRefund.count({ where: { purchase_order_id: po.id }, transaction: t });
+        if (n > 0) {
+          const e = new Error('This order has a refund for returned items — settle it through the refund instead of reversing the payment');
+          e.code = 'HAS_REFUND'; e.statusCode = 409; throw e;
+        }
+      }
+      // 판매자가 입금을 확인한 결제(청구서 쪽 confirm-payment·카드 → 발주에 paid_by_user_id 없음)는 구매자 혼자 못 되돌린다
+      //   (2026-11-23 실호출 재현: 구매자 «Reverse payment» 200 → 발주 refunded · 청구서 미수로 복귀). 반품·환불로 간다.
+      //   구매자가 발주 Pay 로 직접 적은 결제(paid_by_user_id 있음)·직영 정산(reversePayment 가 막음)은 그대로.
+      //   외부(미가입) 공급업체 주문은 판매자 로그인이 없어 구매자가 청구서 쪽에서 직접 «결제함» 을 적는다 — 막지 않는다.
+      let externalSeller = false;
+      if (po.seller_type === 'supplier' && po.seller_entity_id) {
+        const sc = await require('../models/SupplierCompany').findByPk(po.seller_entity_id, { attributes: ['id', 'is_system_registered'], transaction: t });
+        externalSeller = !!sc && !sc.is_system_registered;
+      }
+      if (!po.paid_by_user_id && po.payment_method !== 'internal' && !externalSeller) {
+        const e = new Error('The seller has confirmed this payment — request a return/refund instead');
+        e.code = 'SELLER_CONFIRMED'; e.statusCode = 409; throw e;
+      }
       return reversePayment(po, {
         userId: req.user && req.user.id,
         reason: req.body && req.body.reason ? sanitizeString(String(req.body.reason)).slice(0, 255) : null,

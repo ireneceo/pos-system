@@ -158,4 +158,34 @@ async function followChildToSoa(child, { prevChildTotal, actorId = null, actorNa
   });
 }
 
-module.exports = { reconcileSoa, followChildToSoa, checkExternalSoa, soaChildSum, recomputeSoaTotal, DIFF_LINE };
+/**
+ * 묶인 청구서가 하나도 안 남은 정산서를 닫는다 (2026-11-23 · 판매자 주문 취소 §2-2 ⑤).
+ *   안 닫으면 «미수 0원» 정산서가 남아 연체·0원 메일이 나간다(반품 closeIfFullyReturned 와 같은 이유).
+ *   결제·제출된 정산서(LOCKED)는 건드리지 않는다. 자기 트랜잭션 — 커밋 뒤에 부른다.
+ * @returns {{closed:boolean, soa_id?:number}}
+ */
+async function closeSoaIfEmpty(soaId, { actorId = null, actorName = null, reason = null } = {}) {
+  if (!soaId) return { closed: false };
+  const Invoice = require('../models/Invoice');
+  const { sequelize } = require('../config/database');
+  return sequelize.transaction(async (transaction) => {
+    const soa = await Invoice.findByPk(soaId, { lock: transaction.LOCK.UPDATE, transaction });
+    if (!soa || soa.invoice_category !== 'soa') return { closed: false };
+    if (LOCKED.includes(soa.status) || soa.status === 'payment_submitted') return { closed: false, soa_id: soa.id };
+    const left = await Invoice.count({ where: { parent_soa_invoice_id: soa.id, status: { [Op.ne]: 'cancelled' } }, transaction });
+    if (left > 0) return { closed: false, soa_id: soa.id };
+    await soa.update({
+      status: 'cancelled',
+      modification_history: pushHistory(soa, {
+        modified_by: actorId, modified_by_name: actorName,
+        changes: { status: { from: soa.status, to: 'cancelled' } },
+        reason: reason || 'No invoices left on this statement',
+        source: 'soa_empty_close'
+      }),
+      is_modified: true
+    }, { transaction });
+    return { closed: true, soa_id: soa.id };
+  });
+}
+
+module.exports = { reconcileSoa, followChildToSoa, closeSoaIfEmpty, checkExternalSoa, soaChildSum, recomputeSoaTotal, DIFF_LINE };

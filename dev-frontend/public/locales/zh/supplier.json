@@ -226,7 +226,8 @@
       "shipRemaining": "发送剩余商品",
       "correct": "更正发货数量",
       "print": "打印",
-      "returnItems": "处理退货"
+      "returnItems": "处理退货",
+      "cancelOrder": "取消订单"
     },
     "confirm": {
       "title": "确认订单",
@@ -269,7 +270,11 @@
       "notYetDispatched": "{{count}} 个商品未发货",
       "autoCompletes": "{{date}} 自动完成",
       "stockShort": "库存不足 · {{count}} 项",
-      "notShippedYet": "尚未发货"
+      "notShippedYet": "尚未发货",
+      "returnRequested": "有退货申请",
+      "refundDue": "待退款 · {{amount}}",
+      "refundDisputed": "退款未收到 · {{amount}}",
+      "refundSent": "已退款 · {{amount}}"
     },
     "amend": {
       "title": "修改订单项目",
@@ -395,7 +400,9 @@
         "ALREADY_RECONCILED": "此订单的供应商发票已完成核对",
         "INVOICE_SUBMITTED": "买方已提交此发票的付款 — 请先拒绝该付款提交",
         "INVOICE_LOCKED": "发票已付款或已取消，无法修改"
-      }
+      },
+      "noLines": "如需删除全部商品，请改为取消订单。",
+      "cancelInstead": "改为取消订单"
     },
     "hold": {
       "seller_raise": "您提高了总额 {{from}} → {{to}}",
@@ -438,7 +445,8 @@
       "status": {
         "approved": "已批准",
         "rejected": "已拒绝",
-        "requested": "已申请"
+        "requested": "已申请",
+        "withdrawn": "买家已撤回"
       },
       "approveTitle": "批准此退货？",
       "approveBody": "买家库存减少，你的库存恢复，金额从发票中扣除。",
@@ -449,7 +457,13 @@
         "ALREADY_PAID": "此订单已付款 — 退货无法减少账单。请先撤销付款。",
         "INVOICE_LOCKED": "发票已付款、已提交付款或已取消 — 无法减少。",
         "SOA_LOCKED": "包含此发票的对账单已付款或已提交。"
-      }
+      },
+      "sellerHintRefund": "此订单已付款。输入买家退回的数量 — 库存会退回，该金额将成为您需退还给买家的退款。已付款的发票保持不变。",
+      "doneRefund": "退货已处理。需向买家退款 {{amount}} — 退还后请标记为已退款。",
+      "refundDue": "退给买家：{{amount}}",
+      "confirmBodyRefund": "库存会立即退回，并为买家记录此金额的退款。系统会邮件通知买家。此处无法撤销。",
+      "approveBodyRefund": "此订单已付款。买家库存减少，您的库存恢复，该金额将成为您需退还给买家的退款。",
+      "toRefund": "需退给买家 {{amount}}"
     },
     "search": {
       "placeholder": "搜索买方或采购单号"
@@ -471,6 +485,60 @@
     "list": {
       "inclDelivery": "含配送费 {{fee}}",
       "selfPickup": "自取"
+    },
+    "cancel": {
+      "title": "取消订单",
+      "keep": "保留订单",
+      "submit": "取消订单",
+      "order": "订单",
+      "buyer": "买家",
+      "total": "总额",
+      "whatHappens": "将会发生",
+      "stays": "订单不会被删除，会连同原因保留在“已取消”标签中。",
+      "invoiceCancelled": "发票 {{number}}（{{total}}）将被取消 — 买家无需为此订单付款。",
+      "stockBack": "已发出的 {{n}} 项商品将退回您的库存。",
+      "buyerStock": "买家已收到此订单 — 买家库存将相应减少。",
+      "mail": "系统会邮件通知买家。",
+      "reasonPlaceholder": "例如：重复订单 — 买家下了两次单",
+      "confirmTitle": "取消订单 {{po}}？",
+      "confirmBody": "此操作无法撤销。如需再次发货，请新增订单。",
+      "done": "订单 {{po}} 已取消。",
+      "doneInvoice": "订单 {{po}} 已取消，发票 {{number}} 也已取消。",
+      "cancelledTitle": "已取消",
+      "invoiceWasCancelled": "发票 {{number}} 已取消",
+      "blocked": {
+        "BAD_STATUS": "此阶段无法取消订单。",
+        "RETURN_PENDING": "请先批准或拒绝待处理的退货申请。",
+        "HAS_RETURNS": "此订单已有处理过的退货 — 其余部分请用“退货”处理。",
+        "ALREADY_PAID": "此订单已付款 — 请用“退货”处理并退款。",
+        "INVOICE_LOCKED": "发票已付款或已提交付款 — 请先拒绝提交，或用“退货”处理。",
+        "SOA_LOCKED": "包含此发票的对账单已付款或已提交。",
+        "REASON_REQUIRED": "请填写取消原因。"
+      }
+    },
+    "refunds": {
+      "title": "退款",
+      "sentLine": "{{date}} 通过 {{method}} 发出",
+      "ref": "参考号",
+      "confirmedLine": "买家已于 {{date}} 确认收到",
+      "disputed": "买家表示未收到：{{note}}",
+      "status": {
+        "pending": "待退款",
+        "sent": "已发出 · 等待买家确认",
+        "confirmed": "退款已确认"
+      },
+      "markSent": "标记已退款",
+      "sendTitle": "标记已退款",
+      "sendHint": "请先在系统外向买家退还 {{amount}}，再在此记录。买家收到后会确认。",
+      "methodLabel": "您如何退款？",
+      "referenceLabel": "参考号（可选）",
+      "referencePlaceholder": "例如：转账编号",
+      "noteLabel": "给买家的备注（可选）",
+      "method": {
+        "bank_transfer": "银行转账",
+        "cash": "现金",
+        "other": "其他"
+      }
     }
   },
   "tradeInvoicesPage": {

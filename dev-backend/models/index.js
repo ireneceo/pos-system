@@ -95,6 +95,8 @@ const SupplierInventoryTransaction = require('./SupplierInventoryTransaction');
 const Carrier = require('./Carrier');
 const CarrierWebhookEvent = require('./CarrierWebhookEvent');
 const PurchaseOrderReturn = require('./PurchaseOrderReturn');
+// 결제 후 반품 환불 기록 (2026-11-23)
+const PurchaseOrderRefund = require('./PurchaseOrderRefund');
 // 정기 발주 (2026-10-22 Fable 설계 recurring-po)
 const PurchaseOrderSchedule = require('./PurchaseOrderSchedule');
 const PurchaseOrderScheduleRun = require('./PurchaseOrderScheduleRun');
@@ -1133,6 +1135,7 @@ module.exports = {
   Carrier,
   CarrierWebhookEvent,
   PurchaseOrderReturn,
+  PurchaseOrderRefund,
   StockTake,
   StockTakeItem,
   StockAlert,

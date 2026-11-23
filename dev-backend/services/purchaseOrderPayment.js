@@ -102,6 +102,10 @@ async function recordPayment(po, { method, userId, reason, paidAt: paidAtIn, via
   if (!PAYMENT_METHODS.includes(method)) {
     throw err(`payment_method must be one of: ${PAYMENT_METHODS.join(', ')}`, 'INVALID_PAYMENT_METHOD');
   }
+  // 취소된 발주에는 결제를 기록하지 않는다 — 화면 단추만 숨겨져 있었다 (2026-11-23 판매자 취소 §1-7)
+  if (po.status === 'cancelled') {
+    throw err('This purchase order is cancelled', 'BAD_STATUS', 400);
+  }
   // 이미 낸 발주를 또 내면 드로어에서 두 번 빠진다 — 한 번만 허용한다.
   if (po.payment_status === 'paid') {
     throw err('This purchase order is already paid', 'ALREADY_PAID', 409);

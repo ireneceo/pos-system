@@ -116,7 +116,8 @@ async function attachPendingReturnsToInvoice({ poId, invoice, t }) {
   const { PurchaseOrderReturn, PurchaseOrderItem } = require('../models');
   const { Op } = require('sequelize');
   const rets = await PurchaseOrderReturn.findAll({
-    where: { purchase_order_id: poId, status: 'approved', deducted_invoice_id: null, deducted_amount: { [Op.gt]: 0 } },
+    // refund_id: null — 결제 후 환불로 처리한 반품이 나중 청구서에 음수 줄로 또 붙지 않게 (2026-11-23)
+    where: { purchase_order_id: poId, status: 'approved', deducted_invoice_id: null, refund_id: null, deducted_amount: { [Op.gt]: 0 } },
     order: [['id', 'ASC']], transaction: t
   });
   if (!rets.length) return 0;
@@ -158,14 +159,15 @@ async function returnChargesFor(poId, invoiceId, t) {
  * 목록·상세 장식 (§3-4) — 판매자 목록/상세 · 구매자 상세가 같이 쓴다.
  *   발주: can_return · return_blocked{code,message} · returned_amount
  *   줄: returned_qty(승인 합) · return_pending_qty(신청 합) · returnable_qty(받은 양 − 둘)
- * 청구서·정산서·반품 합을 각각 한 쿼리로 모은다. 판정은 utils/poAmend.returnMoneyBlock 하나.
+ * 청구서·정산서·반품 합을 각각 한 쿼리로 모은다. 판정은 utils/poAmend.returnSettlement 하나.
+ * 2026-11-23: + return_settlement('deduct'|'refund') · pending_return_count · refund 요약 · can_cancel/cancel_blocked(sellerCancelBlock)
  */
 async function attachReturnState(objs) {
   const list = (Array.isArray(objs) ? objs : [objs]).filter(Boolean);
   if (!list.length) return objs;
   const { Invoice, PurchaseOrderReturn } = require('../models');
   const { Op } = require('sequelize');
-  const { returnMoneyBlock } = require('../utils/poAmend');
+  const { returnSettlement, sellerCancelBlock } = require('../utils/poAmend');
 
   const invIds = [...new Set(list.map(o => o.trade_invoice_id).filter(Boolean))];
   const invs = invIds.length ? await Invoice.findAll({
@@ -179,9 +181,14 @@ async function attachReturnState(objs) {
   const poIds = list.map(o => o.id).filter(Boolean);
   const sums = poIds.length ? await PurchaseOrderReturn.findAll({
     where: { purchase_order_id: { [Op.in]: poIds }, status: { [Op.in]: ['requested', 'approved'] } },
-    attributes: ['purchase_order_item_id', 'status', 'quantity'], raw: true
+    attributes: ['purchase_order_id', 'purchase_order_item_id', 'status', 'quantity'], raw: true
   }) : [];
   const byItem = new Map();
+  const pendingByPo = new Map();   // 신청 중 건수 — 목록 «Return requested» 표시 (2026-11-23)
+  for (const r of sums) {
+    if (r.status === 'requested') pendingByPo.set(Number(r.purchase_order_id), (pendingByPo.get(Number(r.purchase_order_id)) || 0) + 1);
+  }
+  const refundByPo = await require('./poRefund').refundSummaryFor(poIds);
   for (const r of sums) {
     const k = Number(r.purchase_order_item_id);
     const e = byItem.get(k) || { approved: 0, requested: 0 };
@@ -192,7 +199,8 @@ async function attachReturnState(objs) {
   for (const o of list) {
     const inv = o.trade_invoice_id ? invById.get(o.trade_invoice_id) || null : null;
     const soa = inv && inv.parent_soa_invoice_id ? soaById.get(inv.parent_soa_invoice_id) || null : null;
-    const blk = returnMoneyBlock(o, inv, soa);
+    const settle = returnSettlement(o, inv, soa);
+    const blk = settle.block || null;
     o.returned_amount = round2(num(o.returned_amount));
     let anyReturnable = false;
     for (const it of (Array.isArray(o.items) ? o.items : [])) {
@@ -205,6 +213,13 @@ async function attachReturnState(objs) {
     o.can_return = !blk;
     o.return_blocked = blk ? { code: blk.code, message: blk.message } : null;
     o.has_returnable = anyReturnable;
+    o.return_settlement = settle.mode || null;   // 'deduct' | 'refund' — 화면 안내 문구용
+    o.pending_return_count = pendingByPo.get(Number(o.id)) || 0;
+    o.refund = refundByPo.get(Number(o.id)) || null;
+    // 판매자 주문 취소 판정 — 같은 청구서·정산서·반품 읽기를 쓴다(목록에 쿼리를 더 얹지 않는다 · 2026-11-23 §2-3)
+    const cblk = sellerCancelBlock(o, inv, soa, sums.filter(r => Number(r.purchase_order_id) === Number(o.id)));
+    o.can_cancel = !cblk;
+    o.cancel_blocked = cblk ? { code: cblk.code, message: cblk.message } : null;
   }
   return objs;
 }

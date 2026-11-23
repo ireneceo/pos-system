@@ -290,14 +290,22 @@
       "status": {
         "approved": "승인됨",
         "rejected": "거절됨",
-        "requested": "신청됨"
+        "requested": "신청됨",
+        "withdrawn": "철회함"
       },
       "returnedLine": "반품 −{{amount}} · 낼 금액 {{pay}}",
       "blocked": {
         "ALREADY_PAID": "이미 결제된 주문이라 반품으로 청구를 줄일 수 없습니다. 결제를 먼저 되돌리세요.",
         "INVOICE_LOCKED": "청구서가 결제됐거나 결제 제출·취소된 상태라 줄일 수 없습니다.",
         "SOA_LOCKED": "이 청구서가 묶인 정산서가 이미 결제·제출됐습니다."
-      }
+      },
+      "withdrawFailed": "신청을 철회하지 못했습니다",
+      "hintPaid": "결제된 주문입니다 — 판매자가 승인하면 그 금액을 환불해 줍니다. 받으면 여기서 확인하세요.",
+      "hintPaidExternal": "결제된 주문입니다. 공급업체에 반품서를 보내고 여기서 닫은 뒤, 공급업체가 돈을 돌려주면 «환불 받음» 을 누르세요.",
+      "toRefund": "환불 받을 금액 {{amount}}",
+      "withdraw": "신청 철회",
+      "withdrawTitle": "이 반품 신청을 철회할까요?",
+      "withdrawBody": "판매자에게 알립니다. 재고·청구 금액은 바뀌지 않습니다."
     },
     "noEmailTitle": "이메일 없음",
     "noEmail": "이 판매자에게 등록된 이메일이 없습니다.",
@@ -356,7 +364,36 @@
       "minQty": "최소 {{n}}"
     },
     "correctedBySeller": "판매처에서 실제 보낸 수량으로 정정했습니다",
-    "correctedStockAdjusted": "차이만큼 재고가 조정되었습니다."
+    "correctedStockAdjusted": "차이만큼 재고가 조정되었습니다.",
+    "cancelledBySeller": "판매자가 이 주문을 취소했습니다",
+    "cancelledInvoice": "청구서 {{number}} 도 취소됐습니다 — 이 주문으로 낼 돈은 없습니다.",
+    "cancelledStock": "받았던 양만큼 재고가 줄었습니다.",
+    "refunds": {
+      "title": "반품 환불",
+      "waiting": "판매자가 보내기를 기다리는 중",
+      "externalHint": "공급업체가 돈을 돌려주면 «환불 받음» 을 누르세요.",
+      "sentLine": "판매자가 {{date}} {{method}} 로 보냄",
+      "ref": "참조",
+      "confirmedLine": "{{date}} 받았다고 확인함",
+      "received": "환불 받음",
+      "notReceived": "못 받음",
+      "receivedTitle": "환불 받음",
+      "receivedHint": "{{amount}} 를 돌려받았는지 확인하세요. 현금으로 받았으면 돈통(드로어)에 다시 넣습니다.",
+      "receivedHow": "어떻게 받았나요?",
+      "notReceivedTitle": "환불 못 받음",
+      "tellSeller": "판매자에게 알리기",
+      "whatHappened": "무슨 일인가요? (필수)",
+      "whatPlaceholder": "예: 아직 통장에 들어오지 않았어요",
+      "failed": "저장하지 못했습니다",
+      "drawerIn": "{{amount}} 를 돈통(드로어)에 다시 넣었습니다.",
+      "drawerSkipped": "열린 시프트가 없어 돈통(드로어)은 그대로입니다.",
+      "method": {
+        "bank_transfer": "계좌 이체",
+        "cash": "현금",
+        "cashDrawer": "현금 (돈통에 넣음)",
+        "other": "기타"
+      }
+    }
   },
   "receive": {
     "modalTitle": "주문 수령",
@@ -788,7 +825,9 @@
       "multipleShifts": "열려 있는 시프트가 둘 이상입니다 — 하나를 마감한 뒤 현금 결제를 기록하세요.",
       "failed": "처리하지 못했습니다.",
       "network": "네트워크 오류입니다. 다시 시도해 주세요.",
-      "alreadyPaid": "이 발주의 청구서는 이미 결제됨으로 표시돼 있어 다시 결제하지 않았습니다. 목록을 새로 고치면 결제됨으로 보입니다."
+      "alreadyPaid": "이 발주의 청구서는 이미 결제됨으로 표시돼 있어 다시 결제하지 않았습니다. 목록을 새로 고치면 결제됨으로 보입니다.",
+      "sellerConfirmed": "판매자가 입금을 확인한 결제라 여기서 되돌릴 수 없습니다. 반품을 신청하면 판매자가 환불합니다.",
+      "hasRefund": "반품 환불 기록이 있는 주문이라 결제를 되돌릴 수 없습니다. 주문 안의 환불로 정리하세요."
     },
     "drawerSkipped": {
       "title": "결제는 기록됨 — 현금서랍은 반영 안 됨",

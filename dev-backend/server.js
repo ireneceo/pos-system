@@ -375,6 +375,8 @@ const buyerSellersRouter = require('./routes/buyer-sellers');
 const carriersRouter = require('./routes/carriers');
 // Sprint 6 (2026-04-27) — PO returns / credit notes
 const poReturnsRouter = require('./routes/po-returns');
+// 2026-11-23 — 결제된 주문의 반품 환불 (판매자 «보냄» ↔ 구매자 «받았음/못 받았음»)
+const poRefundsRouter = require('./routes/po-refunds');
 // Sprint 7 (2026-04-28) — Carrier webhooks (HMAC + 2-stage processing)
 const carrierWebhooksRouter = require('./routes/carrier-webhooks');
 // Sprint 4 — Supply Chain Design 4 (Seller-side order management + buyer-side trade invoices)
@@ -567,6 +569,7 @@ app.use('/api', buyerSellersRouter);  // exposes /api/buyer-sellers
 app.use('/api', carriersRouter);  // exposes /api/carriers + /api/admin/carriers/*
 // Sprint 6 (2026-04-27) — PO Returns
 app.use('/api', poReturnsRouter);  // exposes /api/purchase-orders/:id/returns + /api/seller-orders/:id/returns/*
+app.use('/api', poRefundsRouter);  // exposes /api/purchase-orders/:id/refunds/* + /api/seller-orders/:id/refunds/*
 app.use('/api', carrierWebhooksRouter);  // Sprint 7: /api/carrier-webhooks/:carrier_code + /api/admin/carrier-webhook-events/*
 // Sprint 4 — buyer-side
 app.use('/api', purchaseInvoicesRouter);  // exposes /api/purchase-invoices/*

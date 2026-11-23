@@ -226,7 +226,8 @@
       "shipRemaining": "나머지 보내기",
       "correct": "보낸 수량 정정",
       "print": "인쇄",
-      "returnItems": "반품 처리"
+      "returnItems": "반품 처리",
+      "cancelOrder": "주문 취소"
     },
     "confirm": {
       "title": "주문 확정",
@@ -269,7 +270,11 @@
       "notYetDispatched": "{{count}}개 품목 미발송",
       "autoCompletes": "{{date}} 자동 완료",
       "stockShort": "재고 부족 · {{count}}품목",
-      "notShippedYet": "아직 안 보냄"
+      "notShippedYet": "아직 안 보냄",
+      "returnRequested": "반품 신청 있음",
+      "refundDue": "환불할 금액 · {{amount}}",
+      "refundDisputed": "환불 못 받음 · {{amount}}",
+      "refundSent": "환불 보냄 · {{amount}}"
     },
     "amend": {
       "title": "주문 품목 수정",
@@ -395,7 +400,9 @@
         "ALREADY_RECONCILED": "이 주문의 공급업체 청구서는 이미 대조를 마쳤습니다",
         "INVOICE_SUBMITTED": "구매처가 이 청구서의 결제를 제출했습니다 — 먼저 결제 제출을 거절하세요",
         "INVOICE_LOCKED": "청구서가 이미 결제되었거나 취소되어 고칠 수 없습니다"
-      }
+      },
+      "noLines": "품목을 모두 빼려면 주문을 취소하세요.",
+      "cancelInstead": "대신 주문 취소"
     },
     "hold": {
       "seller_raise": "총액을 올렸습니다 {{from}} → {{to}}",
@@ -438,7 +445,8 @@
       "status": {
         "approved": "승인됨",
         "rejected": "거절됨",
-        "requested": "신청됨"
+        "requested": "신청됨",
+        "withdrawn": "구매자가 철회함"
       },
       "approveTitle": "이 반품을 승인할까요?",
       "approveBody": "구매자 재고가 줄고 내 재고가 돌아오며, 금액은 청구서에서 빠집니다.",
@@ -449,7 +457,13 @@
         "ALREADY_PAID": "이미 결제된 주문이라 반품으로 청구를 줄일 수 없습니다. 결제를 먼저 되돌리세요.",
         "INVOICE_LOCKED": "청구서가 결제됐거나 결제 제출·취소된 상태라 줄일 수 없습니다.",
         "SOA_LOCKED": "이 청구서가 묶인 정산서가 이미 결제·제출됐습니다."
-      }
+      },
+      "sellerHintRefund": "결제된 주문입니다. 구매자가 돌려보낸 양을 넣으면 재고가 되돌아가고, 그 금액은 구매자에게 돌려줄 환불로 남습니다. 결제된 청구서는 그대로입니다.",
+      "doneRefund": "반품을 처리했습니다. 구매자에게 {{amount}} 를 환불해야 합니다 — 돌려준 뒤 «환불 보냄» 을 누르세요.",
+      "refundDue": "구매자에게 환불: {{amount}}",
+      "confirmBodyRefund": "재고가 바로 되돌아가고 이 금액이 구매자 환불로 기록됩니다. 구매자에게 메일이 갑니다. 여기서 되돌릴 수 없습니다.",
+      "approveBodyRefund": "결제된 주문입니다. 구매자 재고는 줄고 내 재고는 돌아오며, 그 금액은 구매자에게 돌려줄 환불로 남습니다.",
+      "toRefund": "구매자에게 환불할 금액 {{amount}}"
     },
     "search": {
       "placeholder": "구매자 또는 발주 번호 검색"
@@ -471,6 +485,60 @@
     "list": {
       "inclDelivery": "배송비 {{fee}} 포함",
       "selfPickup": "셀프픽업"
+    },
+    "cancel": {
+      "title": "주문 취소",
+      "keep": "그대로 두기",
+      "submit": "주문 취소",
+      "order": "주문",
+      "buyer": "구매자",
+      "total": "총액",
+      "whatHappens": "이렇게 됩니다",
+      "stays": "주문은 지워지지 않고 사유와 함께 «취소» 탭에 남습니다.",
+      "invoiceCancelled": "청구서 {{number}} ({{total}}) 도 취소됩니다 — 구매자가 이 주문으로 낼 돈은 없습니다.",
+      "stockBack": "보낸 품목 {{n}}개가 내 재고로 돌아옵니다.",
+      "buyerStock": "구매자가 이미 받은 주문입니다 — 구매자 재고가 그만큼 줄어듭니다.",
+      "mail": "구매자에게 메일로 알립니다.",
+      "reasonPlaceholder": "예: 중복 주문 — 구매자가 두 번 주문함",
+      "confirmTitle": "주문 {{po}} 을(를) 취소할까요?",
+      "confirmBody": "되돌릴 수 없습니다. 다시 보내려면 새 주문을 넣으세요.",
+      "done": "주문 {{po}} 을(를) 취소했습니다.",
+      "doneInvoice": "주문 {{po}} 을(를) 취소했습니다. 청구서 {{number}} 도 취소됐습니다.",
+      "cancelledTitle": "취소됨",
+      "invoiceWasCancelled": "청구서 {{number}} 취소됨",
+      "blocked": {
+        "BAD_STATUS": "이 단계에서는 주문을 취소할 수 없습니다.",
+        "RETURN_PENDING": "먼저 들어온 반품 신청을 승인하거나 거절하세요.",
+        "HAS_RETURNS": "이미 처리된 반품이 있는 주문입니다 — 나머지는 «반품» 으로 처리하세요.",
+        "ALREADY_PAID": "결제된 주문입니다 — «반품» 으로 처리하고 환불하세요.",
+        "INVOICE_LOCKED": "청구서가 결제됐거나 결제가 제출됐습니다 — 제출을 먼저 거절하거나 «반품» 으로 처리하세요.",
+        "SOA_LOCKED": "이 청구서가 들어간 정산서가 이미 결제됐거나 제출됐습니다.",
+        "REASON_REQUIRED": "취소 사유를 적어 주세요."
+      }
+    },
+    "refunds": {
+      "title": "환불",
+      "sentLine": "{{date}} {{method}} 로 보냄",
+      "ref": "참조",
+      "confirmedLine": "구매자가 {{date}} 받았다고 확인함",
+      "disputed": "구매자가 못 받았다고 함: {{note}}",
+      "status": {
+        "pending": "환불할 금액",
+        "sent": "보냄 · 구매자 확인 대기",
+        "confirmed": "환불 완료"
+      },
+      "markSent": "환불 보냄",
+      "sendTitle": "환불 보냄",
+      "sendHint": "먼저 구매자에게 {{amount}} 를 (이체·현금 등으로) 돌려준 뒤 여기 적으세요. 구매자가 받으면 확인합니다.",
+      "methodLabel": "어떻게 돌려줬나요?",
+      "referenceLabel": "참조 번호 (선택)",
+      "referencePlaceholder": "예: 이체 번호",
+      "noteLabel": "구매자에게 남길 말 (선택)",
+      "method": {
+        "bank_transfer": "계좌 이체",
+        "cash": "현금",
+        "other": "기타"
+      }
     }
   },
   "tradeInvoicesPage": {

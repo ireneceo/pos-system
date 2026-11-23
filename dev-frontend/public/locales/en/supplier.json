@@ -226,7 +226,8 @@
       "shipRemaining": "Ship remaining",
       "correct": "Correct quantities",
       "print": "Print",
-      "returnItems": "Return items"
+      "returnItems": "Return items",
+      "cancelOrder": "Cancel order"
     },
     "confirm": {
       "title": "Confirm Order",
@@ -269,7 +270,11 @@
       "notYetDispatched": "{{count}} item(s) not yet dispatched",
       "autoCompletes": "Auto-completes {{date}}",
       "stockShort": "Stock short · {{count}} item(s)",
-      "notShippedYet": "Not shipped yet"
+      "notShippedYet": "Not shipped yet",
+      "returnRequested": "Return requested",
+      "refundDue": "Refund due · {{amount}}",
+      "refundDisputed": "Refund not received · {{amount}}",
+      "refundSent": "Refund sent · {{amount}}"
     },
     "amend": {
       "title": "Edit order items",
@@ -395,7 +400,9 @@
         "ALREADY_RECONCILED": "The supplier invoice for this order is already reconciled",
         "INVOICE_SUBMITTED": "The buyer has submitted payment for this invoice — reject the payment submission first",
         "INVOICE_LOCKED": "The invoice is already paid or cancelled and cannot be rewritten"
-      }
+      },
+      "noLines": "To remove every item, cancel the order instead.",
+      "cancelInstead": "Cancel order instead"
     },
     "hold": {
       "seller_raise": "You raised the total {{from}} → {{to}}",
@@ -438,7 +445,8 @@
       "status": {
         "approved": "Approved",
         "rejected": "Rejected",
-        "requested": "Requested"
+        "requested": "Requested",
+        "withdrawn": "Withdrawn by buyer"
       },
       "approveTitle": "Approve this return?",
       "approveBody": "The buyer's stock goes down, your stock comes back, and the amount is taken off the invoice.",
@@ -449,7 +457,13 @@
         "ALREADY_PAID": "This order is already paid — a return cannot reduce the bill. Reverse the payment first.",
         "INVOICE_LOCKED": "The invoice is paid, submitted for payment or cancelled — it cannot be reduced.",
         "SOA_LOCKED": "The statement that contains this invoice is already paid or submitted."
-      }
+      },
+      "sellerHintRefund": "This order is paid. Enter what the buyer sent back — stock moves back, and the amount becomes a refund you send to the buyer. The paid invoice stays as it is.",
+      "doneRefund": "Return processed. Refund {{amount}} is due to the buyer — mark it sent once you pay it back.",
+      "refundDue": "Refund to the buyer: {{amount}}",
+      "confirmBodyRefund": "Stock moves back right away and a refund of this amount is recorded for the buyer. The buyer is told by email. This cannot be undone here.",
+      "approveBodyRefund": "This order is paid. The buyer's stock goes down, your stock comes back, and the amount becomes a refund you send to the buyer.",
+      "toRefund": "{{amount}} to refund to the buyer"
     },
     "search": {
       "placeholder": "Search buyer or PO #"
@@ -471,6 +485,60 @@
     "list": {
       "inclDelivery": "incl. delivery {{fee}}",
       "selfPickup": "Self-pickup"
+    },
+    "cancel": {
+      "title": "Cancel order",
+      "keep": "Keep order",
+      "submit": "Cancel order",
+      "order": "Order",
+      "buyer": "Buyer",
+      "total": "Total",
+      "whatHappens": "What happens",
+      "stays": "The order stays in the Cancelled tab with your reason — it is not erased.",
+      "invoiceCancelled": "Invoice {{number}} ({{total}}) will be cancelled — the buyer owes nothing for this order.",
+      "stockBack": "{{n}} dispatched item(s) go back into your stock.",
+      "buyerStock": "The buyer already received this order — their stock will be reduced.",
+      "mail": "The buyer is told by email.",
+      "reasonPlaceholder": "e.g. Duplicate order — the buyer ordered twice",
+      "confirmTitle": "Cancel order {{po}}?",
+      "confirmBody": "This cannot be undone. To deliver it again later, add a new order.",
+      "done": "Order {{po}} cancelled.",
+      "doneInvoice": "Order {{po}} cancelled. Invoice {{number}} was cancelled too.",
+      "cancelledTitle": "Cancelled",
+      "invoiceWasCancelled": "Invoice {{number}} was cancelled",
+      "blocked": {
+        "BAD_STATUS": "This order cannot be cancelled at this stage.",
+        "RETURN_PENDING": "Approve or reject the pending return request first.",
+        "HAS_RETURNS": "This order already has processed returns — use Return items for the rest.",
+        "ALREADY_PAID": "This order is paid — use Return items to refund it.",
+        "INVOICE_LOCKED": "The invoice is paid or payment has been submitted — reject the submission first, or use Return items.",
+        "SOA_LOCKED": "The statement that contains this invoice is already paid or submitted.",
+        "REASON_REQUIRED": "Please give a reason for cancelling this order."
+      }
+    },
+    "refunds": {
+      "title": "Refunds",
+      "sentLine": "Sent {{date}} by {{method}}",
+      "ref": "ref",
+      "confirmedLine": "Buyer confirmed receipt {{date}}",
+      "disputed": "Buyer reports not received: {{note}}",
+      "status": {
+        "pending": "Refund due",
+        "sent": "Sent · waiting for buyer",
+        "confirmed": "Refund confirmed"
+      },
+      "markSent": "Mark refund sent",
+      "sendTitle": "Mark refund sent",
+      "sendHint": "Pay {{amount}} back to the buyer outside the system first, then record it here. The buyer confirms when it arrives.",
+      "methodLabel": "How did you pay it back?",
+      "referenceLabel": "Reference (optional)",
+      "referencePlaceholder": "e.g. bank transfer number",
+      "noteLabel": "Note to the buyer (optional)",
+      "method": {
+        "bank_transfer": "Bank transfer",
+        "cash": "Cash",
+        "other": "Other"
+      }
     }
   },
   "tradeInvoicesPage": {

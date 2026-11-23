@@ -1,5 +1,17 @@
 ## 현재 작업 상태
 
+### ✅ 완료 (2026-11-23) — 판매 주문 취소·배송 뒤 수정·결제 후 반품 환불(서로 확인) [Claude Code · 백그라운드 작업방 a0ad8cc5 · /개발완료]
+- Irene «incoming-orders 이거 주문 삭제하는 게 없어. 배송완료해도 수정이나 삭제가 필요한 경우 해야 해. 인보이스도 같이 바뀌어야 하고 결제 안된 건. 그리고 고객이 돌려보내거나 환불요청 하는 거 기능 정확히 하고 서로 승인하고 대응하게 제대로 검증하고 보완해줘.»
+- Fable 설계 `.claude/fable-design-20261123-seller-order-cancel-edit-refund.md`(Irene 질문 없음) → 구현 → Fable 게이트 `.claude/fable-gate-20261123-seller-cancel-refund.md` 1차 보류(H1: 환불 기록 있는 주문의 구매자 «결제 되돌리기») → 재현·수정 → 재판정 **PASS**
+- 한 것: 판매자 «주문 취소» `POST /seller-orders/:id/cancel`(판정 sellerCancelBlock · 확정 뒤 모든 단계 · 결제 전) · 청구서 cancelled(번호 유지)·정산서 합계·빈 정산서 닫기 · 결제 후 반품=환불(`returnSettlement` · 새 표 purchase_order_refunds · `routes/po-refunds.js` · `services/poRefund.js` · 판매자 sent ↔ 구매자 confirmed/dispute · 현금이면 드로어) · 구매자 신청 철회(withdrawn) · 판매자 알림 · 목록 «반품 신청 있음»·«환불할 금액» · 취소 발주 Pay 400 · 결제 되돌리기 409 SELLER_CONFIRMED·HAS_REFUND(둘 다 실호출 재현 뒤) · 정정 «전부 0» → 취소 안내 · 화면 SellerCancelModal·SellerRefundPanel·BuyerRefundCard · 4언어 · SW 6.26-seller-cancel-refund-20261123 · 마이그 migrate-po-cancel-refund.js(deploy · 늘리기만 · 멱등 2회)
+- 검증: health-check 511/511(새 F1~F12 · 11-17 반품 검사 단언 2곳 «결제됨=막힘» → «결제됨=환불») · 고장주입 5/5 · verify-all --full 1차 24/24, H1 뒤 23/24(inspection R-SC-011 = 내 확인용 상품 track_stock 0 → 그 행만 고쳐 신규 0) · 실브라우저 e2e/seller-cancel-refund.spec.js 3회 연속 4/4(1440·390 · 한국어) · print-guard 8/8 · 타입·design·i18n 신규 0
+- 운영 읽기(쓰기 0): 브랜드 판매 paid 18건이 «판매자 확인형» → 이제 구매자 혼자 결제 되돌리기 불가 · 가입 공급업체 옛 현금 결제 3건도 같음(릴리즈 기록에 적음) · 운영 반품은 requested 1건뿐
+- 확인용 데이터(데모 매장 38 → 브랜드 17 · notes [확인용] · 지우지 않음): PO-R38-CHK-CANCEL-95317(86082 · 배송완료 미결제 → 취소 시험) · PO-R38-CHK-REFUND-95317(86084 · 결제됨 · 환불 12.50 pending) · PO-R38-CHK-RETREQ-95317(86085 · 반품 신청 중)
+- 확인 못 함: 알림 메일 실제 본문 · zh/ms 화면 · 실기기 · 카드 결제 주문
+- 운영 반영: 다음 배포 때(마이그 1 포함)
+- 진행 중인 작업: 없음 · 다음 확정 작업: 없음 — 지시 대기
+- 후속 후보(Fable 남김 · 확정 X · /개발시작 자동 추천 아님): ① 합산 화면이 반품·환불을 안 뺌 — 브랜드 «출고 매출»(`services/foodCostReport.js:118`)·판매 상품 집계(`routes/seller-orders.js:73~`) — 계산 설계(Fable calc) 별건 · 청구서 합계 4곳(owner.js:231·entity-billing.js:72·supplier.js:1000·purchase-invoices.js:372)의 취소 청구서 거름 확인 못 함 ② 구매자 발주 «목록» 환불 표시 ③ 실호출 검사 없는 것: 취소↔수령 동시 2발·정산서 직전 청구서 채우기·메일 렌더 ④ 결제됐는데 아직 «받음» 전인 주문은 반품 수량 0(자동 수령 뒤 가능)
+
 ### ✅ 완료 (2026-11-23) — 실사용 확인 작은 고침 2건 [Claude Code · 백그라운드 작업방 2e35fb76]
 - ① 발주 대조 화면 상태 표시: 짝이 확실(matched)해도 청구 단가·수량이 발주와 다르면 «● 맞음» 대신 «◐ 가격 다름»/«◐ 금액 다름» + 확인 문구(`InvoiceReconcilePage.tsx` · purchaseOrders.json 4언어 reconcile.state/reason.priceDiff·amountDiff). 실브라우저 발주 84109: Garbage Bag ▼4.4% · Mushroom ▼5.8% · Cooking Oil ▲1% 셋 다 «가격 다름», 나머지 «맞음» 그대로
   - Cooking Oil «표시 없음» 은 재현 못 함 — 이번 실행(고치기 전에도)에서 «● 맞음» 이 붙어 있었음(OCR 결과에 따라 달랐을 수 있음). 지금은 가격이 다르면 «가격 다름»

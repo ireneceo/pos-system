@@ -226,7 +226,8 @@
       "shipRemaining": "Hantar baki",
       "correct": "Betulkan kuantiti",
       "print": "Cetak",
-      "returnItems": "Proses pemulangan"
+      "returnItems": "Proses pemulangan",
+      "cancelOrder": "Batalkan pesanan"
     },
     "confirm": {
       "title": "Sahkan Pesanan",
@@ -269,7 +270,11 @@
       "notYetDispatched": "{{count}} item belum dihantar",
       "autoCompletes": "Selesai automatik {{date}}",
       "stockShort": "Stok tidak cukup · {{count}} item",
-      "notShippedYet": "Belum dihantar"
+      "notShippedYet": "Belum dihantar",
+      "returnRequested": "Permintaan pulangan",
+      "refundDue": "Bayaran balik perlu · {{amount}}",
+      "refundDisputed": "Bayaran balik belum diterima · {{amount}}",
+      "refundSent": "Bayaran balik dihantar · {{amount}}"
     },
     "amend": {
       "title": "Ubah item pesanan",
@@ -395,7 +400,9 @@
         "ALREADY_RECONCILED": "Invois pembekal untuk pesanan ini sudah disemak",
         "INVOICE_SUBMITTED": "Pembeli telah menghantar bayaran untuk invois ini — tolak penghantaran bayaran dahulu",
         "INVOICE_LOCKED": "Invois sudah dibayar atau dibatalkan dan tidak boleh diubah"
-      }
+      },
+      "noLines": "Untuk membuang semua item, batalkan pesanan.",
+      "cancelInstead": "Batalkan pesanan"
     },
     "hold": {
       "seller_raise": "Anda menaikkan jumlah {{from}} → {{to}}",
@@ -438,7 +445,8 @@
       "status": {
         "approved": "Diluluskan",
         "rejected": "Ditolak",
-        "requested": "Dimohon"
+        "requested": "Dimohon",
+        "withdrawn": "Ditarik balik oleh pembeli"
       },
       "approveTitle": "Luluskan pemulangan ini?",
       "approveBody": "Stok pembeli berkurang, stok anda kembali, dan jumlahnya ditolak daripada invois.",
@@ -449,7 +457,13 @@
         "ALREADY_PAID": "Pesanan ini sudah dibayar — pemulangan tidak boleh mengurangkan bil. Batalkan pembayaran dahulu.",
         "INVOICE_LOCKED": "Invois sudah dibayar, dihantar untuk bayaran atau dibatalkan — tidak boleh dikurangkan.",
         "SOA_LOCKED": "Penyata yang mengandungi invois ini sudah dibayar atau dihantar."
-      }
+      },
+      "sellerHintRefund": "Pesanan ini sudah dibayar. Masukkan apa yang dipulangkan pembeli — stok dikembalikan, dan jumlahnya menjadi bayaran balik yang anda hantar kepada pembeli. Invois yang dibayar kekal.",
+      "doneRefund": "Pulangan diproses. Bayaran balik {{amount}} perlu dibuat kepada pembeli — tandakan dihantar selepas anda membayarnya.",
+      "refundDue": "Bayaran balik kepada pembeli: {{amount}}",
+      "confirmBodyRefund": "Stok dikembalikan serta-merta dan bayaran balik sebanyak ini direkodkan untuk pembeli. Pembeli dimaklumkan melalui e-mel. Tidak boleh dibatalkan di sini.",
+      "approveBodyRefund": "Pesanan ini sudah dibayar. Stok pembeli berkurang, stok anda kembali, dan jumlahnya menjadi bayaran balik yang anda hantar kepada pembeli.",
+      "toRefund": "{{amount}} perlu dibayar balik kepada pembeli"
     },
     "search": {
       "placeholder": "Cari pembeli atau No. PO"
@@ -471,6 +485,60 @@
     "list": {
       "inclDelivery": "termasuk penghantaran {{fee}}",
       "selfPickup": "Ambil sendiri"
+    },
+    "cancel": {
+      "title": "Batalkan pesanan",
+      "keep": "Kekalkan pesanan",
+      "submit": "Batalkan pesanan",
+      "order": "Pesanan",
+      "buyer": "Pembeli",
+      "total": "Jumlah",
+      "whatHappens": "Apa yang berlaku",
+      "stays": "Pesanan tidak dipadam — ia kekal dalam tab Dibatalkan bersama sebab anda.",
+      "invoiceCancelled": "Invois {{number}} ({{total}}) akan dibatalkan — pembeli tidak perlu membayar untuk pesanan ini.",
+      "stockBack": "{{n}} item yang dihantar kembali ke stok anda.",
+      "buyerStock": "Pembeli sudah menerima pesanan ini — stok mereka akan dikurangkan.",
+      "mail": "Pembeli dimaklumkan melalui e-mel.",
+      "reasonPlaceholder": "cth. Pesanan berganda — pembeli memesan dua kali",
+      "confirmTitle": "Batalkan pesanan {{po}}?",
+      "confirmBody": "Tidak boleh dibatalkan semula. Untuk menghantar semula nanti, tambah pesanan baharu.",
+      "done": "Pesanan {{po}} dibatalkan.",
+      "doneInvoice": "Pesanan {{po}} dibatalkan. Invois {{number}} juga dibatalkan.",
+      "cancelledTitle": "Dibatalkan",
+      "invoiceWasCancelled": "Invois {{number}} dibatalkan",
+      "blocked": {
+        "BAD_STATUS": "Pesanan ini tidak boleh dibatalkan pada peringkat ini.",
+        "RETURN_PENDING": "Luluskan atau tolak permintaan pulangan yang menunggu dahulu.",
+        "HAS_RETURNS": "Pesanan ini sudah ada pulangan yang diproses — gunakan Pulangkan item untuk selebihnya.",
+        "ALREADY_PAID": "Pesanan ini sudah dibayar — gunakan Pulangkan item untuk membuat bayaran balik.",
+        "INVOICE_LOCKED": "Invois sudah dibayar atau bayaran telah dihantar — tolak penghantaran dahulu, atau gunakan Pulangkan item.",
+        "SOA_LOCKED": "Penyata yang mengandungi invois ini sudah dibayar atau dihantar.",
+        "REASON_REQUIRED": "Sila berikan sebab membatalkan pesanan ini."
+      }
+    },
+    "refunds": {
+      "title": "Bayaran balik",
+      "sentLine": "Dihantar {{date}} melalui {{method}}",
+      "ref": "rujukan",
+      "confirmedLine": "Pembeli mengesahkan penerimaan {{date}}",
+      "disputed": "Pembeli melaporkan belum diterima: {{note}}",
+      "status": {
+        "pending": "Bayaran balik perlu",
+        "sent": "Dihantar · menunggu pembeli",
+        "confirmed": "Bayaran balik disahkan"
+      },
+      "markSent": "Tanda bayaran balik dihantar",
+      "sendTitle": "Tanda bayaran balik dihantar",
+      "sendHint": "Bayar balik {{amount}} kepada pembeli di luar sistem dahulu, kemudian rekod di sini. Pembeli mengesahkan apabila diterima.",
+      "methodLabel": "Bagaimana anda membayar balik?",
+      "referenceLabel": "Rujukan (pilihan)",
+      "referencePlaceholder": "cth. nombor pindahan bank",
+      "noteLabel": "Nota kepada pembeli (pilihan)",
+      "method": {
+        "bank_transfer": "Pindahan bank",
+        "cash": "Tunai",
+        "other": "Lain-lain"
+      }
     }
   },
   "tradeInvoicesPage": {

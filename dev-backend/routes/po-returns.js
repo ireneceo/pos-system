@@ -11,6 +11,8 @@
  *   POST /api/seller-orders/:id/returns                       — seller direct return (2026-11-17, approved at once)
  *   POST /api/seller-orders/:id/returns/:returnId/approve     — seller approve
  *   POST /api/seller-orders/:id/returns/:returnId/reject      — seller reject
+ *   POST /api/purchase-orders/:id/returns/:returnId/withdraw  — buyer withdraws own request (2026-11-23)
+ *   Paid orders (2026-11-23): approval creates a refund due (services/poRefund) instead of a deduction — routes/po-refunds.js
  */
 
 const express = require('express');
@@ -33,7 +35,7 @@ const { requireBuyerRole } = require('../middleware/buyerScope');
 const { requireSellerRole , ownsPurchaseOrder } = require('../middleware/sellerScope');
 const { sanitizeString } = require('../middleware/validation');
 const { emitPoEvent } = require('../services/poRealtimeService');
-const { returnMoneyBlock } = require('../utils/poAmend');
+const { returnMoneyBlock, returnSettlement } = require('../utils/poAmend');
 const { applyReturnDeduction } = require('../services/poReturnDeduction');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -151,6 +153,14 @@ router.post('/purchase-orders/:id/returns', async (req, res) => {
 
     await t.commit();
     emitPoEvent(req, po, 'seller-order-updated');
+    // 판매자에게 알림 — 전에는 소켓 갱신뿐이라 화면을 안 보고 있으면 몰랐다 (2026-11-23 §4-4 ②)
+    {
+      const lines = created.map(r => ({ name: itemMap.get(r.purchase_order_item_id)?.description || 'Item', qty: parseFloat(r.quantity), unit: r.unit }));
+      setImmediate(() => {
+        require('../services/poNotifications').fireSellerReturnRefundNotification(po, { kind: 'return_requested', lines, note: reasonGlobal || null })
+          .catch(e => console.error('[po-returns] seller notify error:', e.message));
+      });
+    }
     res.status(201).json({ success: true, data: created });
   } catch (err) {
     if (!t.finished) await t.rollback();
@@ -177,6 +187,45 @@ router.get('/purchase-orders/:id/returns', async (req, res) => {
   } catch (err) {
     console.error('GET returns error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch returns' });
+  }
+});
+
+/**
+ * 구매자 신청 철회 — POST /api/purchase-orders/:id/returns/:returnId/withdraw (2026-11-23 §4-4 ①)
+ *   requested 일 때만 → withdrawn. 재고·돈 변화 없음(신청만으로는 아무것도 안 움직였다).
+ *   PO·반품 행을 잠가 승인과 겹치지 않게 한다.
+ */
+router.post('/purchase-orders/:id/returns/:returnId/withdraw', async (req, res) => {
+  const t = await database.sequelize.transaction();
+  try {
+    const id = parseInt(req.params.id, 10);
+    const returnId = parseInt(req.params.returnId, 10);
+    if (!Number.isFinite(id) || !Number.isFinite(returnId)) { await t.rollback(); return res.status(404).json({ success: false, message: 'Return not found' }); }
+    const po = await PurchaseOrder.findByPk(id, { lock: t.LOCK.UPDATE, transaction: t });
+    const buyer = req.buyerEntity;
+    if (!po || !buyer || po.entity_type !== buyer.type || parseInt(po.entity_id, 10) !== parseInt(buyer.id, 10)) {
+      await t.rollback(); return res.status(404).json({ success: false, message: 'Return not found' });
+    }
+    const ret = await PurchaseOrderReturn.findByPk(returnId, { lock: t.LOCK.UPDATE, transaction: t });
+    if (!ret || ret.purchase_order_id !== po.id) { await t.rollback(); return res.status(404).json({ success: false, message: 'Return not found' }); }
+    if (ret.status !== 'requested') {
+      await t.rollback();
+      return res.status(400).json({ success: false, code: 'BAD_STATUS', message: `Only a pending request can be withdrawn (status '${ret.status}')` });
+    }
+    await ret.update({ status: 'withdrawn', resolved_at: new Date() }, { transaction: t });
+    await t.commit();
+    emitPoEvent(req, po, 'seller-order-updated');
+    const item = await PurchaseOrderItem.findByPk(ret.purchase_order_item_id, { attributes: ['id', 'description'] });
+    setImmediate(() => {
+      require('../services/poNotifications').fireSellerReturnRefundNotification(po, {
+        kind: 'return_withdrawn', lines: [{ name: item?.description || 'Item', qty: parseFloat(ret.quantity), unit: ret.unit }]
+      }).catch(e => console.error('[po-returns] seller notify error:', e.message));
+    });
+    res.json({ success: true, data: ret, message: 'Return request withdrawn' });
+  } catch (err) {
+    if (!t.finished) await t.rollback();
+    console.error('POST withdraw return error:', err);
+    res.status(500).json({ success: false, message: 'Failed to withdraw return' });
   }
 });
 
@@ -242,6 +291,7 @@ router.post('/seller-orders/:id/returns', async (req, res) => {
     const actor = actorOf(req);
     const done = [];
     let firstInvoice = null; let totalBefore = null; let totalAfter = null;
+    let refundRow = null;
     const seen = new Set();
     for (const r of items) {
       const itemId = parseInt(r && r.purchase_order_item_id, 10);
@@ -272,6 +322,7 @@ router.post('/seller-orders/:id/returns', async (req, res) => {
       const out = await approveReturnCore({ po, ret, t, actor, initiatedBy: 'seller' });
       if (out.error) { await t.rollback(); return res.status(out.error.http).json({ success: false, code: out.error.code, message: out.error.message }); }
       const d = out.deduction;
+      if (d.refund) refundRow = d.refund;
       if (d.invoice) {
         firstInvoice = d.invoice;
         if (totalBefore == null) totalBefore = d.invoiceTotalBefore;
@@ -284,15 +335,16 @@ router.post('/seller-orders/:id/returns', async (req, res) => {
     const invOut = firstInvoice ? { id: firstInvoice.id, invoice_number: firstInvoice.invoice_number, total_before: totalBefore, total_after: totalAfter } : null;
     const soa = await followSoaAfterReturns(firstInvoice, totalBefore, totalAfter, actor);
     emitPoEvent(req, po, 'seller-order-updated');
-    notifyBuyerReturnProcessed(po, done, invOut);
+    const refundOut = refundRow ? { id: refundRow.id, amount: Number(refundRow.amount), status: refundRow.status } : null;
+    notifyBuyerReturnProcessed(po, done, invOut, refundOut);
     const amount = Math.round(done.reduce((s2, x) => s2 + x.amount, 0) * 100) / 100;
     const { resolvePayableAmount } = require('../services/purchaseOrderPayment');
     let payableAfter = null;
     try { payableAfter = (await resolvePayableAmount(await PurchaseOrder.findByPk(po.id))).amount; } catch (_) { /* 표시용 */ }
     res.status(201).json({
       success: true,
-      data: { returns: done.map(x => x.ret), deduction: { amount, invoice: invOut, payable_after: payableAfter, soa } },
-      message: 'Return processed'
+      data: { returns: done.map(x => x.ret), deduction: { amount, invoice: invOut, payable_after: payableAfter, soa }, refund: refundOut },
+      message: refundOut ? 'Return processed — refund due to the buyer' : 'Return processed'
     });
   } catch (err) {
     if (!t.finished) await t.rollback();
@@ -342,8 +394,9 @@ async function loadAndCheckReturn(req, t) {
  */
 async function approveReturnCore({ po, ret, t, actor, initiatedBy }) {
   const { invoice, soa } = await loadMoneyDocs(po, t);
-  const blk = returnMoneyBlock(po, invoice, soa);
-  if (blk) return { error: blk };
+  // 정산 방식 하나 — 결제 전 = 청구서에서 뺀다 / 결제 후 = 돌려줄 돈을 적는다 (2026-11-23 · utils/poAmend.returnSettlement)
+  const settle = returnSettlement(po, invoice, soa);
+  if (settle.block) return { error: settle.block };
 
   const item = await PurchaseOrderItem.findByPk(ret.purchase_order_item_id, { transaction: t });
   const delta = parseFloat(ret.quantity) || 0;
@@ -382,7 +435,20 @@ async function approveReturnCore({ po, ret, t, actor, initiatedBy }) {
 
   // 금액 차감 — 청구서 음수 요금 줄 + 발주 returned_amount (services/poReturnDeduction).
   //   예전 Credit Note 는 아무도 읽지 않아 청구가 그대로였다(PO-R5-20260605-001 RM 95 실례) → 더 만들지 않는다.
-  const ded = await applyReturnDeduction({ po, ret, item, invoice, t, actor, initiatedBy: initiatedBy || ret.initiated_by || 'buyer' });
+  //   결제된 주문(mode 'refund')은 낸 청구서·정산서를 건드리지 않고 환불할 금액을 적는다(services/poRefund · 2026-11-23).
+  const who = initiatedBy || ret.initiated_by || 'buyer';
+  if (settle.mode === 'refund') {
+    const { addToPending } = require('../services/poRefund');
+    const rf = await addToPending({ po, ret, item, t, actor, initiatedBy: who });
+    await ret.update({
+      status: 'approved',
+      approved_by_user_id: actor.id,
+      resolved_at: new Date(),
+      refund_id: rf.refund.id
+    }, { transaction: t });
+    return { ret, item, deduction: rf, mode: 'refund' };
+  }
+  const ded = await applyReturnDeduction({ po, ret, item, invoice, t, actor, initiatedBy: who });
 
   await ret.update({
     status: 'approved',
@@ -392,7 +458,7 @@ async function approveReturnCore({ po, ret, t, actor, initiatedBy }) {
     deducted_amount: ded.amount
   }, { transaction: t });
 
-  return { ret, item, deduction: ded };
+  return { ret, item, deduction: ded, mode: 'deduct' };
 }
 
 /** 커밋 뒤 — 정산서 합계 따라가기(자기 트랜잭션). 결과 요약을 돌려준다. */
@@ -409,7 +475,7 @@ async function followSoaAfterReturns(invoice, totalBefore, totalAfter, actor) {
 }
 
 /** 커밋 뒤 — 구매자 메일 1통(실패해도 반품은 유효). 판매자 직접 반품·승인 공용. */
-function notifyBuyerReturnProcessed(po, rows, invOut) {
+function notifyBuyerReturnProcessed(po, rows, invOut, refundOut = null) {
   setImmediate(async () => {
     try {
       const { buyerNotify } = require('./seller-orders');
@@ -426,6 +492,7 @@ function notifyBuyerReturnProcessed(po, rows, invOut) {
         'Return Processed',
         (link) => `<p style="color:#374151;font-size:16px;margin:0 0 16px;">A return on your purchase order <strong>${esc(po.po_number)}</strong> has been processed.</p>
          <table style="width:100%;border-collapse:collapse;font-size:14px;color:#374151;margin:0 0 16px;">${lines}</table>
+         ${refundOut ? `<p style="color:#374151;font-size:14px;margin:0 0 12px;">This order was already paid — the seller will refund <strong>${money(refundOut.amount)}</strong> to you. Confirm in the order once you receive it.</p>` : ''}
          ${invOut ? `<p style="color:#374151;font-size:14px;margin:0 0 12px;">Invoice <strong>${esc(invOut.invoice_number)}</strong>: <span style="color:#9CA3AF;">${money(invOut.total_before)}</span> → <strong>${money(invOut.total_after)}</strong></p>` : ''}
          ${reason ? `<div style="background:#F9FAFB;border-left:4px solid #635BFF;padding:16px;margin:12px 0 24px;border-radius:0 8px 8px 0;"><p style="color:#4B5563;font-size:13px;font-weight:600;margin:0 0 6px;">Reason</p><p style="color:#374151;font-size:14px;margin:0;">${esc(reason).slice(0, 600)}</p></div>` : ''}
          <div style="text-align:center;margin:24px 0;"><a href="${link}" style="display:inline-block;background:#635BFF;color:#ffffff;padding:12px 32px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">View Order</a></div>`
@@ -465,16 +532,17 @@ async function approveReturnHandler(req, res) {
     const invOut = d.invoice ? { id: d.invoice.id, invoice_number: d.invoice.invoice_number, total_before: d.invoiceTotalBefore, total_after: d.invoiceTotalAfter } : null;
     const soa = await followSoaAfterReturns(d.invoice, d.invoiceTotalBefore, d.invoiceTotalAfter, actor);
     emitPoEvent(req, po, 'seller-order-updated');
+    const refundOut = d.refund ? { id: d.refund.id, amount: Number(d.refund.amount), status: d.refund.status } : null;
     if (ret.initiated_by !== 'seller') {
-      notifyBuyerReturnProcessed(po, [{ name: out.item?.description || 'Item', qty: parseFloat(ret.quantity), unit: ret.unit, amount: d.amount, reason: ret.reason }], invOut);
+      notifyBuyerReturnProcessed(po, [{ name: out.item?.description || 'Item', qty: parseFloat(ret.quantity), unit: ret.unit, amount: d.amount, reason: ret.reason }], invOut, refundOut);
     }
     const { resolvePayableAmount } = require('../services/purchaseOrderPayment');
     let payableAfter = null;
     try { payableAfter = (await resolvePayableAmount(await PurchaseOrder.findByPk(po.id))).amount; } catch (_) { /* 표시용 */ }
     res.json({
       success: true,
-      data: { return: ret, deduction: { amount: d.amount, invoice: invOut, payable_after: payableAfter, soa } },
-      message: 'Return approved'
+      data: { return: ret, deduction: { amount: d.amount, invoice: invOut, payable_after: payableAfter, soa }, refund: refundOut },
+      message: refundOut ? 'Return approved — refund due to the buyer' : 'Return approved'
     });
   } catch (err) {
     if (!t.finished) await t.rollback();

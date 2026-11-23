@@ -342,20 +342,74 @@ const RETURNABLE_STATUSES = ['received', 'partial_received', 'delivered'];
 const isInternalSettlement = (po, invoice) =>
   po.payment_method === 'internal' && (!invoice || invoice.payment_method === 'internal');
 
-function returnMoneyBlock(po, invoice, soa) {
+/**
+ * 반품 정산 방식 판정 (2026-11-23 · .claude/fable-design-20261123-seller-order-cancel-edit-refund.md §4-2)
+ *   { block } — 반품 불가 / { mode: 'deduct' } — 청구서에서 뺀다(결제 전) / { mode: 'refund' } — 돌려줄 돈을 적는다(결제 후).
+ *   Irene «고객이 돌려보내거나 환불요청 하는 거 … 서로 승인하고 대응하게» — 결제된 주문도 반품 → 환불로 간다
+ *   (11-17 에는 ALREADY_PAID 로 막았다). 낸 청구서·정산서는 건드리지 않는다.
+ */
+function returnSettlement(po, invoice, soa) {
   if (!RETURNABLE_STATUSES.includes(po.status)) {
-    return { code: 'BAD_STATUS', http: 400, message: `Returns are only possible after delivery (current status '${po.status}')` };
+    return { block: { code: 'BAD_STATUS', http: 400, message: `Returns are only possible after delivery (current status '${po.status}')` } };
+  }
+  if (isInternalSettlement(po, invoice)) return { mode: 'deduct' };   // 직영 정산 — 돈이 오간 적 없다
+  if (invoice && invoice.status === 'payment_submitted') {
+    return { block: { code: 'INVOICE_LOCKED', http: 409, message: 'Payment for this invoice has been submitted — reject the payment submission first' } };
+  }
+  if (soa && soa.status === 'payment_submitted') {
+    return { block: { code: 'SOA_LOCKED', http: 409, message: 'Payment for the statement that contains this invoice has been submitted — wait until it is confirmed or rejected' } };
+  }
+  if (invoice && invoice.status === 'cancelled') {
+    return { block: { code: 'INVOICE_LOCKED', http: 409, message: 'The invoice is cancelled and cannot be reduced' } };
+  }
+  if (po.payment_status === 'paid' || (invoice && invoice.status === 'paid') || (soa && soa.status === 'paid')) {
+    return { mode: 'refund' };
+  }
+  if (invoice && Number(invoice.paid_amount) > 0) {
+    return { block: { code: 'INVOICE_LOCKED', http: 409, message: 'This invoice is partly paid and cannot be reduced' } };
+  }
+  return { mode: 'deduct' };
+}
+
+/** 예전 이름 그대로(부르는 곳 무접촉) — 반품을 막는 이유만 돌려준다. 결제된 주문은 이제 막지 않는다(환불로 간다). */
+function returnMoneyBlock(po, invoice, soa) {
+  const r = returnSettlement(po, invoice, soa);
+  return r.block || null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 판매자 주문 취소 판정 (2026-11-23 · 설계 §2-1)
+//   Irene «주문 삭제하는 게 없어. 배송완료해도 수정이나 삭제가 필요한 경우 해야 해. 인보이스도 같이 바뀌어야 하고 결제 안된 건.»
+//   목록·상세 can_cancel/cancel_blocked 와 POST /seller-orders/:id/cancel 거부가 이 함수 하나를 부른다.
+//   submitted 는 기존 «Reject», closed·cancelled 는 끝난 것. 결제된 주문은 반품→환불로.
+// ─────────────────────────────────────────────────────────────────────────────
+const SELLER_CANCELLABLE_STATUSES = ['confirmed', 'shipped', 'in_transit', 'delivered', 'partial_received', 'received', 'delivery_failed'];
+
+/**
+ * @param returns  이 발주의 반품 행들(status 만 있으면 된다)
+ * @returns {null | {code:string, message:string, http:number}}
+ */
+function sellerCancelBlock(po, invoice, soa, returns) {
+  if (!SELLER_CANCELLABLE_STATUSES.includes(po.status)) {
+    return { code: 'BAD_STATUS', http: 400, message: `This order cannot be cancelled in status '${po.status}'` };
+  }
+  const rs = Array.isArray(returns) ? returns : [];
+  if (rs.some(r => r.status === 'requested')) {
+    return { code: 'RETURN_PENDING', http: 409, message: 'Approve or reject the pending return request first' };
+  }
+  if (rs.some(r => r.status === 'approved')) {
+    return { code: 'HAS_RETURNS', http: 400, message: 'This order already has processed returns — use Return items for the rest' };
   }
   if (isInternalSettlement(po, invoice)) return null;   // 직영 정산 — 돈이 오간 적 없다
   if (po.payment_status === 'paid') {
-    return { code: 'ALREADY_PAID', http: 400, message: 'This order is already paid — a return cannot reduce the bill. Reverse the payment first.' };
+    return { code: 'ALREADY_PAID', http: 400, message: 'This order is paid — use Return items to refund it' };
   }
-  if (invoice && (['paid', 'payment_submitted', 'cancelled'].includes(invoice.status) || Number(invoice.paid_amount) > 0)) {
+  if (invoice && (['paid', 'payment_submitted'].includes(invoice.status) || Number(invoice.paid_amount) > 0)) {
     return {
       code: 'INVOICE_LOCKED', http: 409,
       message: invoice.status === 'payment_submitted'
-        ? 'Payment for this invoice has been submitted — reject the payment submission first'
-        : `The invoice is ${invoice.status} and cannot be reduced`
+        ? 'The buyer has submitted payment for this invoice — reject the payment submission first'
+        : 'The invoice for this order is already paid — use Return items to refund it'
     };
   }
   if (soa && ['paid', 'payment_submitted'].includes(soa.status)) {
@@ -369,6 +423,10 @@ module.exports = {
   sellerCorrectionBlock,
   RETURNABLE_STATUSES,
   returnMoneyBlock,
+  returnSettlement,
+  SELLER_CANCELLABLE_STATUSES,
+  sellerCancelBlock,
+  isInternalSettlement,
   buyerAmendableStatuses,
   buyerAmendBlock,
   ownerSignedOff,

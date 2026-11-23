@@ -290,14 +290,22 @@
       "status": {
         "approved": "已批准",
         "rejected": "已拒绝",
-        "requested": "已申请"
+        "requested": "已申请",
+        "withdrawn": "已撤回"
       },
       "returnedLine": "退货 −{{amount}} · 应付 {{pay}}",
       "blocked": {
         "ALREADY_PAID": "此订单已付款 — 退货无法减少账单。请先撤销付款。",
         "INVOICE_LOCKED": "发票已付款、已提交付款或已取消 — 无法减少。",
         "SOA_LOCKED": "包含此发票的对账单已付款或已提交。"
-      }
+      },
+      "withdrawFailed": "无法撤回申请",
+      "hintPaid": "此订单已付款 — 卖家批准后会把金额退还给您。收到后请在此确认。",
+      "hintPaidExternal": "此订单已付款。请把退货单发给供应商并在此关闭 — 供应商退款后再标记为已收到退款。",
+      "toRefund": "待退款 {{amount}}",
+      "withdraw": "撤回申请",
+      "withdrawTitle": "撤回此退货申请？",
+      "withdrawBody": "会通知卖家。您的库存和账单不会改变。"
     },
     "noEmailTitle": "无电子邮件",
     "noEmail": "该卖家未登记电子邮件地址。",
@@ -356,7 +364,36 @@
       "minQty": "最少 {{n}}"
     },
     "correctedBySeller": "卖方已按实际发货数量更正",
-    "correctedStockAdjusted": "库存已按差额调整。"
+    "correctedStockAdjusted": "库存已按差额调整。",
+    "cancelledBySeller": "卖家已取消此订单",
+    "cancelledInvoice": "发票 {{number}} 已取消 — 此订单无需付款。",
+    "cancelledStock": "您的库存已按已收数量减少。",
+    "refunds": {
+      "title": "退货退款",
+      "waiting": "等待卖家退款",
+      "externalHint": "供应商退款后请标记为已收到。",
+      "sentLine": "卖家已于 {{date}} 通过 {{method}} 退款",
+      "ref": "参考号",
+      "confirmedLine": "您已于 {{date}} 确认收到",
+      "received": "已收到退款",
+      "notReceived": "未收到",
+      "receivedTitle": "已收到退款",
+      "receivedHint": "确认您已收回 {{amount}}。如为现金，将放回钱箱。",
+      "receivedHow": "您是如何收到的？",
+      "notReceivedTitle": "未收到退款",
+      "tellSeller": "通知卖家",
+      "whatHappened": "发生了什么？（必填）",
+      "whatPlaceholder": "例如：银行账户尚未到账",
+      "failed": "无法保存",
+      "drawerIn": "{{amount}} 已放回钱箱。",
+      "drawerSkipped": "没有开启的班次，钱箱未变动。",
+      "method": {
+        "bank_transfer": "银行转账",
+        "cash": "现金",
+        "cashDrawer": "现金（放入钱箱）",
+        "other": "其他"
+      }
+    }
   },
   "receive": {
     "modalTitle": "收货登记",
@@ -788,7 +825,9 @@
       "multipleShifts": "有多个班次处于开启状态——请先结束其中一个，再记录现金付款。",
       "failed": "无法完成此操作。",
       "network": "网络错误，请重试。",
-      "alreadyPaid": "此订单的发票已标记为已付款，因此没有重复付款。刷新列表后订单将显示为已付款。"
+      "alreadyPaid": "此订单的发票已标记为已付款，因此没有重复付款。刷新列表后订单将显示为已付款。",
+      "sellerConfirmed": "卖家已确认此付款，无法在此撤销。请申请退货，由卖家退款给您。",
+      "hasRefund": "此订单有退货退款记录，无法撤销付款。请在订单内通过退款处理。"
     },
     "drawerSkipped": {
       "title": "付款已记录——钱箱未更新",
