@@ -1,5 +1,13 @@
 ## 현재 작업 상태
 
+### ✅ 완료 (2026-11-24 00:00) — 정기 점검 11/24 [Claude Code · 백그라운드 작업방 7eb85c9c]
+- 개발완료: 같은 폴더 일하는 다른 방 0(pid 있는 방은 1108c204 blocked 뿐) · 마지막 개발완료(219296884) 뒤 새 커밋 0 · 미커밋 = 11-23 02:10 UTC 버튼 배포(purplehere-2026-11-23T02-02-21 exit 0 · aeef7ae1f · smoke 10/10 · 백업 /var/www/backups/20261123_020221) 산출물(배포 지문·기록 보관함 이동)만 → 경로 지정 커밋 · 그대로 둔 미커밋: playwright.config(오래된 보류) · .claude/oneoff-*·run-*.sh · CHANGELOG 손대지 않음(기록만) · print-guard 8/8 · health-check 511/511 · 민감 판정 «FABLE 게이트 대상» = 운영 미반영 11-23 판매 주문 취소·환불 묶음(이미 Fable 재판정 PASS `.claude/fable-gate-20261123-seller-cancel-refund.md`)
+- 운영 sw.js = 6.24-po-delivery-pickup-20261120 → 11-23 배포는 기록만(코드 0). 개발 6.26 묶음(대조 가격 다름 · 판매 주문 취소·환불 · 마이그 1) 운영 반영: 다음 배포 때
+- 운영 문의(확인 2026-11-23 16:02 UTC · 읽기만): 열린 시스템 문의 0 · 최근 14일 새 문의·후속 글 0 · 랜딩 문의 0 · 매장↔브랜드 운영 문의 in-progress 1·closed 4 · 상황판 «들어온 문의» 빈 목록 올림(200)
+- 인쇄 지킴이(마지막 실행 15:07 UTC success): 새 문제 0 · 계속 3 · 풀림 0 — 28 print_failures critical(PRINTER_NOT_FOUND «기본 프린터» 16건, 어제 10) · 28 multi_auto_print(3대, 어제 2) · 28 old_app 0.3.4
+- 개발시작 분기 C: 진행 중 0 · 다음 확정 작업 없음 — 지시 대기
+- 진행 중인 작업: 없음 · 다음 확정 작업: 없음 — 지시 대기
+
 ### ✅ 완료 (2026-11-23) — 판매 주문 취소·배송 뒤 수정·결제 후 반품 환불(서로 확인) [Claude Code · 백그라운드 작업방 a0ad8cc5 · /개발완료]
 - Irene «incoming-orders 이거 주문 삭제하는 게 없어. 배송완료해도 수정이나 삭제가 필요한 경우 해야 해. 인보이스도 같이 바뀌어야 하고 결제 안된 건. 그리고 고객이 돌려보내거나 환불요청 하는 거 기능 정확히 하고 서로 승인하고 대응하게 제대로 검증하고 보완해줘.»
 - Fable 설계 `.claude/fable-design-20261123-seller-order-cancel-edit-refund.md`(Irene 질문 없음) → 구현 → Fable 게이트 `.claude/fable-gate-20261123-seller-cancel-refund.md` 1차 보류(H1: 환불 기록 있는 주문의 구매자 «결제 되돌리기») → 재현·수정 → 재판정 **PASS**
