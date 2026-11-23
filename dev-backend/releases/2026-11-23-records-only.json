@@ -1,0 +1,31 @@
+{
+  "tag": "records-only",
+  "sw_version": "6.24-po-delivery-pickup-20261120",
+  "date": "2026-11-23",
+  "in_progress": [
+    "작업 폴더 미커밋(playwright 설정 · .claude/oneoff-*·run-*.sh 운영 읽기 스크립트)은 다른 방 몫이라 깨끗한 사본에서 빠짐"
+  ],
+  "completed": [
+    "코드 변경 0 — 지난 배포(441ca8232) 뒤 커밋 5개는 전부 기록(배포 기록 보관 · 11/20 개발완료 기록 · 11/21~11/23 정기 점검 기록)"
+  ],
+  "issues": "none",
+  "upcoming": [
+    "다음 확정 작업 없음 — 지시 대기"
+  ],
+  "behavior_changes": "none",
+  "check_areas": [
+    "운영 화면 버전이 6.24-po-delivery-pickup-20261120 그대로인지(코드 변경 0)"
+  ],
+  "verification": {
+    "api": "배포 준비 때 개발서버에서 inspection · health-check 다시 돌림(보고 참고)",
+    "fault_injection": "none — 코드 변경 0",
+    "browser": "none — 프론트 변경 0 (배포 스크립트 mount sweep 은 그대로 돎)",
+    "printer": "인쇄 동작 무변경 — 인쇄 파일 변경 0",
+    "migrations": "새 마이그 0",
+    "sw_version": "6.24-po-delivery-pickup-20261120",
+    "fable_note": "Fable 안 씀 — 코드 변경 0(기록 파일만)"
+  },
+  "notes": "배포 준비 11/23 · 범위 441ca8232..e5bf9a5a6(5커밋 · 기록만 · 바뀐 파일 4: deploy-manifest · session-state · DEVELOPMENT_PLAN · releases/archive 이동) · wip 0 · SW 그대로 · 새 마이그 0 · Fable 대기 0 · 막음 0",
+  "irene_actions_after_deploy": [],
+  "fable_note": "Fable 대기 0 · 민감 영역 변경 0"
+}
