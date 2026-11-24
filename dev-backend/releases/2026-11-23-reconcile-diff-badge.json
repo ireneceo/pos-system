@@ -1,7 +1,7 @@
 {
   "tag": "reconcile-diff-badge",
-  "sw_version": "6.26-seller-cancel-refund-20261123",
-  "date": "2026-11-23",
+  "sw_version": "6.27-brand-manager-invite-20261124",
+  "date": "2026-11-24",
   "in_progress": [
     "작업 폴더 미커밋(playwright 설정 · .claude/oneoff-*·run-*.sh 운영 읽기 스크립트)은 다른 방 몫이라 깨끗한 사본에서 빠짐"
   ],
@@ -10,40 +10,47 @@
     "판매 주문: 결제된 주문의 «보낸 수량 정정» 막힌 안내를 화면 언어(한·영·중·말레이)로",
     "판매 주문 «주문 취소»: 확정 뒤 어느 단계든(배송완료·수령 뒤 포함) 결제 전이면 판매자가 취소 — 재고 양쪽 되돌림 · 청구서 취소 · 정산서에서 빠짐 · 구매자 메일",
     "결제된 주문도 반품 가능: 승인하면 «환불할 금액» → 판매자 «환불 보냄» → 구매자 «받았음 / 못 받았음» (서로 확인)",
-    "구매자 반품 신청 철회 · 반품 신청·환불 응답 때 판매자 알림 · 목록에 «반품 신청 있음»·«환불할 금액» 표시"
+    "구매자 반품 신청 철회 · 반품 신청·환불 응답 때 판매자 알림 · 목록에 «반품 신청 있음»·«환불할 금액» 표시",
+    "브랜드 매니저 «기존 계정 초대»: 브랜드 주인이 이미 가입한 계정을 브랜드 여러 개에 한 번에 초대 → 본인 수락 → 연결 매니저 · 대기 초대 표·초대 취소 · «이 브랜드에서 빼기» · 받은 초대 카드(역할 선택 화면) · 메일 4언어"
   ],
   "issues": [
     "대조 화면에서 가격이 다른 줄에도 «● 맞음 — 확인만 해주세요» 가 붙던 문제",
     "한국어 화면에서 «보낸 수량 정정» 비활성 안내가 영어로 나오던 문제",
     "판매자가 확정·배송된 주문을 없앨 길이 없던 문제",
     "구매자가 판매자가 입금 확인한 결제를 혼자 «결제 되돌리기» 할 수 있던 문제(실호출 재현) — 이제 409",
-    "취소된 발주에도 결제(Pay)가 기록될 수 있던 구멍"
+    "취소된 발주에도 결제(Pay)가 기록될 수 있던 구멍",
+    "Add Manager 에서 이미 쓰는 이메일이면 막히기만 하던 문제 — 이제 초대로 이어짐",
+    "브랜드 초대 알림이 «as staff» 로 나가던 문구"
   ],
-  "upcoming": ["none"],
+  "upcoming": [
+    "none"
+  ],
   "behavior_changes": [
     "대조 화면 상태 꼬리표만 바뀜(저장·원가 반영 동작 그대로)",
     "판매 주문 «보낸 수량 정정» 안내 문구 번역(서버 판정·막는 조건 그대로)",
     "결제된 주문 반품: 예전엔 막힘(ALREADY_PAID) → 이제 허용, 청구서는 그대로 두고 환불 기록(purchase_order_refunds)",
     "정정으로 품목을 전부 0 으로 만들면 «주문을 취소하세요» 안내(예전 문구 «최소 1줄»)",
     "구매자 «결제 되돌리기»: 판매자가 입금 확인한 결제는 409 SELLER_CONFIRMED (구매자가 발주 Pay 로 직접 적은 결제·외부 업체·직영은 그대로) — 운영의 옛 가입 공급업체 현금 결제 3건(paid_by 없음)도 이제 구매자 혼자 못 되돌림",
-    "구매자 «결제 되돌리기»: 반품 환불 기록이 있는 주문은 409 HAS_REFUND (환불은 환불 흐름으로 닫음)"
+    "구매자 «결제 되돌리기»: 반품 환불 기록이 있는 주문은 409 HAS_REFUND (환불은 환불 흐름으로 닫음)",
+    "새 라우트 POST /api/context-requests/invite/brand-manager (브랜드 주인·SA · 남의 브랜드 섞이면 전체 404) · 브랜드 주인이 자기 브랜드 연결 매니저 떼기(DELETE) 가능 · BG 의 /sent 가 403 → 200(자기 브랜드 매니저 초대만)"
   ],
   "check_areas": [
     "인보이스 대조 화면 — 가격이 다른 줄은 «◐ 가격 다름», 같은 줄은 «● 맞음»",
     "브랜드 판매 주문 — 결제된 주문 «보낸 수량 정정» 버튼에 마우스를 올리면 한국어 안내",
     "브랜드 판매 주문 — 배송완료 주문 «주문 취소» → 청구서 취소·Cancelled 탭",
-    "결제된 주문 반품 승인 → 판매자 «환불 보냄» → 구매자 발주 상세 «환불 받음»"
+    "결제된 주문 반품 승인 → 판매자 «환불 보냄» → 구매자 발주 상세 «환불 받음»",
+    "브랜드 매니저 화면 — «기존 계정 초대» → 받는 계정 역할 선택 화면 초대 카드 수락 → 매니저 목록에 연결 매니저 · «이 브랜드에서 빼기»"
   ],
   "verification": {
-    "api": "health-check 전체(새 F1~F11 포함) · 11-17 반품 검사 2건은 «결제됨=막힘» 단언을 «결제됨=환불» 로 바꿈(설계 §8-10)",
-    "fault_injection": "4건 — 취소 판매자 재고 복귀 제거 / 청구서 취소 제거 / 취소 판정 paid 줄 제거 / 승인 mode 항상 차감 → 각각 검사 실패 확인 후 원복",
-    "browser": "verify-all --full mount sweep · 실브라우저 판매자 취소·환불 보냄 / 구매자 환불 받음",
+    "api": "health-check 전체(새 F1~F11 포함) · 11-17 반품 검사 2건은 «결제됨=막힘» 단언을 «결제됨=환불» 로 바꿈(설계 §8-10) · 브랜드 매니저 초대 jest 17/17 · security 113/113 · 배포 준비 때 health-check 512/512 · inspection 신규 0",
+    "fault_injection": "4건 — 취소 판매자 재고 복귀 제거 / 청구서 취소 제거 / 취소 판정 paid 줄 제거 / 승인 mode 항상 차감 → 각각 검사 실패 확인 후 원복 · 브랜드 매니저 초대 5건 각각 실패 확인 후 원복",
+    "browser": "verify-all --full mount sweep · 실브라우저 판매자 취소·환불 보냄 / 구매자 환불 받음 · e2e brand-manager-invite 3회 3/3",
     "printer": "인쇄 동작 무변경 — print-guard 8/8 변경 0",
-    "migrations": "migrate-po-cancel-refund.js (deploy · 새 표 purchase_order_refunds · purchase_order_returns.refund_id · 반품 상태 withdrawn expandEnum · 멱등 2회 확인)",
-    "sw_version": "6.26-seller-cancel-refund-20261123",
-    "fable_note": "Fable 설계 .claude/fable-design-20261123-seller-order-cancel-edit-refund.md · 게이트 .claude/fable-gate-20261123-seller-cancel-refund.md 1차 보류(H1) → 재판정 PASS · health-check 511/511 · 고장주입 5/5"
+    "migrations": "migrate-po-cancel-refund.js (deploy · 새 표 purchase_order_refunds · purchase_order_returns.refund_id · 반품 상태 withdrawn expandEnum · 멱등 2회 확인) · 브랜드 매니저 초대 마이그 0",
+    "sw_version": "6.27-brand-manager-invite-20261124",
+    "fable_note": "Fable 설계 .claude/fable-design-20261123-seller-order-cancel-edit-refund.md · 게이트 .claude/fable-gate-20261123-seller-cancel-refund.md 1차 보류(H1) → 재판정 PASS · health-check 511/511 · 고장주입 5/5 · 브랜드 매니저 초대 Fable 설계 + 게이트 PASS (.claude/fable-gate-20261124-brand-manager-invite.md)"
   },
-  "notes": "11/23 실사용 확인 작은 고침 2건 + 판매자 주문 취소·결제 후 반품 환불 · 마이그 1 · 민감(돈·마이그·새 라우트) → Fable 게이트 대상",
+  "notes": "11/23 실사용 확인 작은 고침 2건 + 판매자 주문 취소·결제 후 반품 환불 · 마이그 1 · 민감(돈·마이그·새 라우트) → Fable 게이트 대상 · 11/24 브랜드 매니저 기존 계정 초대(보안 경계 · 마이그 0 · 보호 파일 0) 추가 · 범위 aeef7ae1f..HEAD 4커밋 · wip 0",
   "irene_actions_after_deploy": [],
-  "fable_note": "작은 고침 2건은 Fable 안 씀(표시 문구) · 취소·환불은 Fable 설계 + 게이트"
+  "fable_note": "작은 고침 2건은 Fable 안 씀(표시 문구) · 취소·환불은 Fable 설계 + 게이트 · 브랜드 매니저 초대 Fable 설계 + 게이트 PASS"
 }
