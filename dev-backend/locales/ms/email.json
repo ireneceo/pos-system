@@ -307,7 +307,13 @@
       "textFallback": "{{inviter}} menjemput anda menyertai {{target}} sebagai kakitangan.",
       "subjectAdmin": "Anda dijemput menjadi pentadbir {{target}}",
       "bodyAdmin": "{{inviter}} menjemput anda menjadi pentadbir restoran {{target}}.",
-      "textFallbackAdmin": "{{inviter}} menjemput anda menjadi pentadbir restoran {{target}}."
+      "textFallbackAdmin": "{{inviter}} menjemput anda menjadi pentadbir restoran {{target}}.",
+      "subjectBrandManager": "Anda dijemput mengurus {{target}}",
+      "headingBrandManager": "Jemputan pengurus jenama",
+      "bodyBrandManager": "{{inviter}} menjemput anda menjadi pengurus jenama {{target}}.",
+      "textFallbackBrandManager": "{{inviter}} menjemput anda menjadi pengurus jenama {{target}}.",
+      "targetBrand": "Jenama",
+      "hintBrandManager": "Terima setiap jenama di skrin pemilihan peranan. Anda terus log masuk dengan akaun sendiri dan bertukar ke jenama itu."
     },
     "result": {
       "subjectAccepted": "Jemputan diterima: {{who}} · {{target}}",

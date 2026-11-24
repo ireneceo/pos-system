@@ -307,7 +307,13 @@
       "textFallback": "{{inviter}} 님이 {{target}} 매장 직원으로 초대했습니다.",
       "subjectAdmin": "{{target}} 매장 관리자로 초대되었습니다",
       "bodyAdmin": "{{inviter}} 님이 {{target}} 매장 관리자로 초대했습니다.",
-      "textFallbackAdmin": "{{inviter}} 님이 {{target}} 매장 관리자로 초대했습니다."
+      "textFallbackAdmin": "{{inviter}} 님이 {{target}} 매장 관리자로 초대했습니다.",
+      "subjectBrandManager": "{{target}} 브랜드 매니저로 초대되었습니다",
+      "headingBrandManager": "브랜드 매니저 초대",
+      "bodyBrandManager": "{{inviter}} 님이 {{target}} 브랜드 매니저로 초대했습니다.",
+      "textFallbackBrandManager": "{{inviter}} 님이 {{target}} 브랜드 매니저로 초대했습니다.",
+      "targetBrand": "브랜드",
+      "hintBrandManager": "역할 선택 화면에서 브랜드마다 수락하세요. 지금 계정 그대로 로그인하고 그 브랜드로 바꿔 들어갑니다."
     },
     "result": {
       "subjectAccepted": "초대 수락: {{who}} · {{target}}",

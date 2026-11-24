@@ -307,7 +307,13 @@
       "textFallback": "{{inviter}} invited you to join {{target}} as staff.",
       "subjectAdmin": "You're invited to be the admin of {{target}}",
       "bodyAdmin": "{{inviter}} invited you to be the restaurant admin of {{target}}.",
-      "textFallbackAdmin": "{{inviter}} invited you to be the restaurant admin of {{target}}."
+      "textFallbackAdmin": "{{inviter}} invited you to be the restaurant admin of {{target}}.",
+      "subjectBrandManager": "You're invited to manage {{target}}",
+      "headingBrandManager": "Brand manager invitation",
+      "bodyBrandManager": "{{inviter}} invited you to be a brand manager of {{target}}.",
+      "textFallbackBrandManager": "{{inviter}} invited you to be a brand manager of {{target}}.",
+      "targetBrand": "Brand",
+      "hintBrandManager": "Accept each brand on the role selection screen. You keep signing in with your own account and switch to the brand."
     },
     "result": {
       "subjectAccepted": "Invitation accepted: {{who}} · {{target}}",

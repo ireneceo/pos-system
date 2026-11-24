@@ -13,6 +13,20 @@ import { useTranslation } from 'react-i18next';
 import { getAuthToken } from '../../utils/auth';
 import { statusLabel } from '../../utils/statusLabel';
 import { BRAND_MANAGER_PERMISSION_GROUPS } from '../../utils/brandManagerPermissions';
+import { formatDate } from '../../utils/dateFormat';
+import InviteExistingManagerModal from '../../components/Brand/InviteExistingManagerModal';
+import ConfirmModal from '../../components/ConfirmModal';
+
+// 보낸 초대(대기) — GET /api/context-requests/sent 의 BG 가지 = 내 브랜드의 브랜드 매니저 초대만(2026-11-24)
+interface PendingInvite {
+  id: number;
+  entity_id: number;
+  label: string | null;
+  email: string;
+  full_name: string | null;
+  permissions: string[];
+  created_at: string;
+}
 interface Manager {
   id: string;
   username: string;
@@ -219,6 +233,14 @@ const BrandStaffPage: React.FC = () => {
 
   // Form error
   const [formError, setFormError] = useState('');
+  const [addEmailInUse, setAddEmailInUse] = useState(false);
+
+  // 기존 계정 초대(2026-11-24) — 초대 모달 · 대기 초대 · 취소 · 연결 매니저 떼기
+  const [showInvite, setShowInvite] = useState(false);
+  const [invitePreset, setInvitePreset] = useState<{ email?: string; permissions?: string[] }>({});
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [cancelInviteTarget, setCancelInviteTarget] = useState<PendingInvite | null>(null);
+  const [removeLinkedTarget, setRemoveLinkedTarget] = useState<Manager | null>(null);
 
   const brandId = user?.brand_id;
   const [ownedBrands, setOwnedBrands] = useState<Array<{ id: number; name: string }>>([]);
@@ -293,6 +315,62 @@ const BrandStaffPage: React.FC = () => {
     }
   }, [user, brandId, fetchManagers, ownedBrands]);
 
+  const isOwnerGeneral = user?.role === 'Brand General';
+  const fetchPendingInvites = useCallback(async () => {
+    if (!isOwnerGeneral) return;
+    try {
+      const res = await fetch('/api/context-requests/sent', { headers: { Authorization: `Bearer ${getAuthToken()}` } });
+      if (!res.ok) return;
+      const body = await res.json();
+      const arr = Array.isArray(body?.data) ? body.data : [];
+      setPendingInvites(arr.filter((x: any) => x.entity_type === 'brand' && x.role === 'Brand Manager'));
+    } catch (_) { /* silent */ }
+  }, [isOwnerGeneral]);
+
+  useEffect(() => {
+    if (user) fetchPendingInvites();
+  }, [user, fetchPendingInvites]);
+
+  const openInvite = (preset: { email?: string; permissions?: string[] } = {}) => {
+    setInvitePreset(preset);
+    setShowInvite(true);
+  };
+
+  const executeCancelInvite = async () => {
+    if (!cancelInviteTarget) return;
+    try {
+      const res = await fetch(`/api/context-requests/${cancelInviteTarget.id}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setErrorMessage(body.message || t('common:brandStaffPage.inviteCancelFailed', 'Could not cancel the invitation.'));
+      }
+      await fetchPendingInvites();
+    } catch (error) {
+      setErrorMessage((error as Error).message);
+    }
+    setCancelInviteTarget(null);
+  };
+
+  // 연결 매니저 떼기 — 계정은 그대로, 이 브랜드 접근(모자)만 회수(DELETE /api/users/:id/contexts/:context_id · 브랜드 주인 허용)
+  const executeRemoveLinked = async () => {
+    if (!removeLinkedTarget) return;
+    try {
+      const res = await fetch(`/api/users/${removeLinkedTarget.id}/contexts/${removeLinkedTarget.context_id}`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${getAuthToken()}` }
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setErrorMessage(body.message || t('common:brandStaffPage.removeLinkedFailed', 'Could not remove this manager from the brand.'));
+      }
+      await fetchManagers();
+    } catch (error) {
+      setErrorMessage((error as Error).message);
+    }
+    setRemoveLinkedTarget(null);
+  };
+
   const filteredManagers = managers.filter(m => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -313,6 +391,7 @@ const BrandStaffPage: React.FC = () => {
     // 기본 = 회사 브랜드 전체(Fable 판정 §2-1 · Irene «권고대로»)
     setNewManager({ username: '', name: '', email: '', phone: '', permissions: ['dashboard'], brand_scope_all: true, brand_ids: [] });
     setFormError('');
+    setAddEmailInUse(false);
     setShowAddModal(true);
   };
 
@@ -357,6 +436,8 @@ const BrandStaffPage: React.FC = () => {
       } else {
         const errorData = await response.json();
         setFormError(errorData.message || 'Failed to create manager');
+        // 이메일이 이미 다른 계정 것이면 «그 계정을 초대하기» 로 잇는다(2026-11-24)
+        setAddEmailInUse(errorData.code === 'EMAIL_IN_USE');
       }
     } catch (error) {
       setFormError((error as Error).message);
@@ -610,6 +691,9 @@ const BrandStaffPage: React.FC = () => {
         <Title>{t('common:brandStaffPage.managers')}</Title>
         {isGeneral && (
           <ActionSection>
+            <Button variant="secondary" onClick={() => openInvite()}>
+              {t('common:brandStaffPage.inviteExisting', 'Invite existing account')}
+            </Button>
             <Button variant="primary" onClick={handleOpenAddModal}>
               {t('common:brandStaffPage.addManager')}
             </Button>
@@ -724,6 +808,11 @@ const BrandStaffPage: React.FC = () => {
                             </DeleteButton>
                           </>
                         )}
+                        {isGeneral && manager.linked && (
+                          <DeleteButton onClick={() => setRemoveLinkedTarget(manager)}>
+                            {t('common:brandStaffPage.removeLinked', 'Remove from this brand')}
+                          </DeleteButton>
+                        )}
                       </ActionButtons>
                     </DataTableCell>
                   </DataTableRow>
@@ -732,7 +821,94 @@ const BrandStaffPage: React.FC = () => {
             </DataTable>
           )}
         </DataTableContainer>
+
+        {isGeneral && pendingInvites.length > 0 && (
+          <div style={{ marginTop: 24 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: '#0A2540', marginBottom: 8 }}>
+              {t('common:brandStaffPage.pendingInvites', 'Invited — waiting for acceptance')}
+            </div>
+            <DataTableContainer>
+              <DataTable data-card-upto="1280">
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeaderCell align="left">{t('common:brandStaffPage.inviteEmailCol', 'Email')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:brandStaffPage.brands', 'Brands')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:brandStaffPage.permissions')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="center">{t('common:brandStaffPage.invitedOn', 'Invited')}</DataTableHeaderCell>
+                    <DataTableHeaderCell align="right">{t('common:brandStaffPage.actions')}</DataTableHeaderCell>
+                  </tr>
+                </DataTableHead>
+                <tbody>
+                  {pendingInvites.map(inv => (
+                    <DataTableRow key={`inv-${inv.id}`}>
+                      <DataTableCell data-label={t('common:brandStaffPage.inviteEmailCol', 'Email')}>
+                        <ManagerName>
+                          {inv.full_name || inv.email}
+                          <PermissionTag style={{ marginLeft: 6 }}>{t('common:brandStaffPage.pendingTag', 'Waiting')}</PermissionTag>
+                        </ManagerName>
+                        <ManagerEmail>{inv.email}</ManagerEmail>
+                      </DataTableCell>
+                      <DataTableCell data-label={t('common:brandStaffPage.brands', 'Brands')} align="center">
+                        <span style={{ fontSize: '13px', color: '#4B5563' }}>{inv.label || '—'}</span>
+                      </DataTableCell>
+                      <DataTableCell data-label={t('common:brandStaffPage.permissions')} align="center">
+                        <PermissionTags>
+                          {(inv.permissions || []).map(p => (
+                            <PermissionTag key={p}>
+                              {t(`common:ui.brandManagerPerm.${p}`, { defaultValue: PERMISSION_GROUPS.find(g => g.key === p)?.label.split(' (')[0] || p })}
+                            </PermissionTag>
+                          ))}
+                        </PermissionTags>
+                      </DataTableCell>
+                      <DataTableCell data-label={t('common:brandStaffPage.invitedOn', 'Invited')} align="center">
+                        <span style={{ fontSize: '13px', color: '#4B5563' }}>{formatDate(inv.created_at)}</span>
+                      </DataTableCell>
+                      <DataTableCell data-label="" align="right" mobileFullWidth>
+                        <ActionButtons>
+                          <DeleteButton onClick={() => setCancelInviteTarget(inv)}>
+                            {t('common:brandStaffPage.cancelInvite', 'Cancel invitation')}
+                          </DeleteButton>
+                        </ActionButtons>
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </tbody>
+              </DataTable>
+            </DataTableContainer>
+          </div>
+        )}
       </Content>
+
+      <InviteExistingManagerModal
+        isOpen={showInvite}
+        onClose={() => setShowInvite(false)}
+        brands={ownedBrands}
+        presetEmail={invitePreset.email}
+        presetPermissions={invitePreset.permissions}
+        onSent={() => { fetchPendingInvites(); }}
+      />
+
+      <ConfirmModal
+        isOpen={!!cancelInviteTarget}
+        title={t('common:brandStaffPage.cancelInvite', 'Cancel invitation')}
+        message={t('common:brandStaffPage.cancelInviteConfirm', { email: cancelInviteTarget?.email || '', brand: cancelInviteTarget?.label || '', defaultValue: 'Cancel the invitation for {{email}} to {{brand}}?' })}
+        onConfirm={executeCancelInvite}
+        onCancel={() => setCancelInviteTarget(null)}
+        confirmText={t('common:brandStaffPage.cancelInvite', 'Cancel invitation')}
+        cancelText={t('common:brandStaffPage.keep', 'Keep')}
+        type="danger"
+      />
+
+      <ConfirmModal
+        isOpen={!!removeLinkedTarget}
+        title={t('common:brandStaffPage.removeLinked', 'Remove from this brand')}
+        message={t('common:brandStaffPage.removeLinkedConfirm', { name: removeLinkedTarget?.name || '', brand: removeLinkedTarget?.brand_name || '', defaultValue: 'Remove {{name}} from {{brand}}? Their account is not deleted — only access to this brand ends.' })}
+        onConfirm={executeRemoveLinked}
+        onCancel={() => setRemoveLinkedTarget(null)}
+        confirmText={t('common:brandStaffPage.removeLinked', 'Remove from this brand')}
+        cancelText={t('common:brandStaffPage.cancel', 'Cancel')}
+        type="danger"
+      />
 
       {/* ===== Add Manager Modal ===== */}
       <Modal
@@ -807,6 +983,22 @@ const BrandStaffPage: React.FC = () => {
 
         {formError && showAddModal && (
           <ModalWarning>{formError}</ModalWarning>
+        )}
+        {addEmailInUse && showAddModal && (
+          <div style={{ marginTop: 8 }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const preset = { email: newManager.email.trim(), permissions: newManager.permissions };
+                setShowAddModal(false);
+                setFormError('');
+                setAddEmailInUse(false);
+                openInvite(preset);
+              }}
+            >
+              {t('common:brandStaffPage.inviteInstead', 'This email already has an account — invite it instead')}
+            </Button>
+          </div>
         )}
       </Modal>
 

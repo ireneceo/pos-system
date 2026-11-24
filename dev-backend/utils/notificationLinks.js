@@ -89,7 +89,7 @@ const TARGETS = {
   },
   live_orders: { store: '/restaurant/:rid/live-orders', store_staff: '/restaurant/:rid/live-orders' },
   reservations: { store: '/restaurant/:rid/reservations', store_staff: '/restaurant/:rid/reservations' },
-  staff: { store: '/restaurant/:rid/staff', admin: '/pos/admin/staff' },
+  staff: { store: '/restaurant/:rid/staff', brand: '/pos/brand/manager', admin: '/pos/admin/staff' },
   leave_requests: { store: '/restaurant/:rid/attendance?tab=leave' },
   my_attendance: { store: '/restaurant/:rid/my-attendance', store_staff: '/restaurant/:rid/my-attendance' },
   select_context: {}

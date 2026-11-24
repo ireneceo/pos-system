@@ -144,9 +144,11 @@ const NotificationToaster: React.FC = () => {
       const kind = d?.kind;
       if (kind !== 'granted' && kind !== 'rejected' && kind !== 'revoked' && kind !== 'updated' && kind !== 'invited') return;
       const label = d?.label || '';
+      // 브랜드 매니저 초대(2026-11-24)는 «직원으로» 문구가 아니라 브랜드 문구
+      const liveKey = kind === 'invited' && d?.entity_type === 'brand' ? 'invitedBrand' : kind;
       pushToast({
         id: `context-${kind}-${Date.now()}`,
-        title: tRef.current(`auth:context.live.${kind}`, { label }),
+        title: tRef.current(`auth:context.live.${liveKey}`, { label }),
         category: 'context_change',
         url: kind === 'revoked' ? undefined : '/pos/select-context',
         createdAt: Date.now()

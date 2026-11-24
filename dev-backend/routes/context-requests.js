@@ -238,7 +238,24 @@ async function findCancellableInvite(reqUser, id) {
   if (reqUser.role === 'Restaurant Admin'
       && row.entity_type === 'restaurant'
       && Number(row.entity_id) === userContexts.normalizeEntityId(reqUser.restaurant_id)) return row;
+  // 브랜드 매니저 초대 — 그 브랜드의 지금 주인(주인이 바뀌어도 새 주인이 취소 가능 · 2026-11-24 설계 §2.4)
+  if (reqUser.role === 'Brand General' && userContexts.isBrandManagerHat(row.entity_type, row.role)) {
+    const brand = await userContexts.loadGrantEntity('brand', row.entity_id);
+    if (brand && Number(brand.owner_id) === Number(reqUser.id)) return row;
+  }
   return null;
+}
+
+// 브랜드 매니저 초대를 보낸 사람이 **지금도** 그 브랜드를 초대할 자격이 있는가 — 수락 순간 재확인(설계 §2.2 ③).
+//   (활성) 그 브랜드 주인 또는 (활성) System Admin.
+async function brandInviterStillValid(row) {
+  if (!row || !row.created_by) return false;
+  const User = require('../models/User');
+  const inviter = await User.findByPk(row.created_by, { attributes: ['id', 'role', 'is_active'] });
+  if (!inviter || inviter.is_active === false || inviter.is_active === 0) return false;
+  if (inviter.role === 'System Admin') return true;
+  const brand = await userContexts.loadGrantEntity('brand', row.entity_id);
+  return !!brand && Number(brand.owner_id) === Number(inviter.id);
 }
 
 // 받은 초대 1행 — **초대받은 본인만**. 아니면 null(404).
@@ -267,14 +284,15 @@ async function notifyInviteReceived({ userId, inviter, targetName, permissionCou
   }
 }
 
-async function notifyInviteResult({ inviterId, accepted, invitee, targetName, entityId, note }) {
+async function notifyInviteResult({ inviterId, accepted, invitee, targetName, entityId, entityType, note }) {
   if (!inviterId) return;
   try {
     const ns = require('../utils/notificationService');
     const { contextInviteResultEmail } = require('../utils/notificationTemplates');
     const inviteeName = invitee ? (invitee.full_name || invitee.email || null) : null;
     const { goLink } = require('../utils/notificationLinks');
-    const addressee = await ns.getUserAddressee(inviterId, 'restaurant', entityId);
+    // 행 종류대로 — 브랜드 초대 결과는 브랜드 자격(→ /pos/brand/manager)으로 (2026-11-24)
+    const addressee = await ns.getUserAddressee(inviterId, entityType === 'brand' ? 'brand' : 'restaurant', entityId);
     const args = { accepted, inviteeName, targetName, note, link: goLink(addressee, 'staff') };
     await ns.sendNotification(inviterId, 'context_invite_result',
       (user) => Object.assign(contextInviteResultEmail(args, user.preferred_language || 'en'),
@@ -363,6 +381,125 @@ router.post('/invite', authenticateToken, async (req, res) => {
   }
 });
 
+// ── 브랜드 매니저 초대 (2026-11-24 · .claude/fable-design-20261124-brand-manager-invite.md §2.1) ──────
+// 브랜드 주인(BG — brands.owner_id) · SA 가 기존 계정을 «연결된 브랜드 매니저» 로 초대 → 본인 수락 때 grantContext.
+// 브랜드마다 한 행(모자는 브랜드 하나에 고정). 남의 브랜드가 하나라도 섞이면 전체 404(부분 진행 없음).
+// 매장 초대(POST /invite)와 별도 리터럴 경로 — /:id 계열보다 위.
+const MAX_PENDING_INVITES_PER_BRAND = 20;
+const MAX_BRANDS_PER_INVITE = 50;
+
+router.post('/invite/brand-manager', authenticateToken, async (req, res) => {
+  try {
+    const body = req.body || {};
+    if (req.user.role !== 'System Admin' && req.user.role !== 'Brand General') return bad(res, 403, 'Not allowed');
+    if (req.user.is_demo) return bad(res, 403, 'Demo accounts cannot invite');
+
+    if (!Array.isArray(body.brand_ids) || body.brand_ids.length === 0) return bad(res, 400, 'brand_ids is required');
+    if (body.brand_ids.length > MAX_BRANDS_PER_INVITE) return bad(res, 400, `At most ${MAX_BRANDS_PER_INVITE} brands per invitation`);
+    const brandIds = [];
+    for (const v of body.brand_ids) {
+      const id = userContexts.normalizeEntityId(v);
+      if (!id) return bad(res, 400, 'brand_ids must be positive integers');
+      if (!brandIds.includes(id)) brandIds.push(id);
+    }
+
+    // 브랜드 전부 실존 + (BG 면) 전부 내 것 — 하나라도 아니면 전체 404(존재 여부 안 흘림).
+    const brands = [];
+    for (const id of brandIds) {
+      const b = await userContexts.loadGrantEntity('brand', id);
+      if (!b) return bad(res, 404, userContexts.NOT_FOUND_MESSAGE.brand);
+      if (req.user.role !== 'System Admin' && Number(b.owner_id) !== Number(req.user.id)) {
+        return bad(res, 404, userContexts.NOT_FOUND_MESSAGE.brand);
+      }
+      brands.push(b);
+    }
+
+    if (body.permissions === undefined || body.permissions === null) return bad(res, 400, 'permissions is required');
+    const norm = userContexts.normalizeBrandManagerPermissions(body.permissions);
+    if (norm.error) return bad(res, 400, norm.error);
+
+    const email = typeof body.email === 'string' ? body.email.trim().toLowerCase().slice(0, 255) : '';
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return bad(res, 400, 'A valid email is required');
+
+    const User = require('../models/User');
+    const target = await User.findOne({ where: { email } });
+    if (!target) return bad(res, 404, 'No account with this email');
+    if (Number(target.id) === Number(req.user.id)) return bad(res, 400, 'You cannot invite yourself');
+    if (target.role === 'System Admin') return bad(res, 400, 'Cannot invite a system administrator');
+    if (target.is_demo) return bad(res, 400, 'Demo accounts cannot be invited');
+    if (target.is_active === false || target.is_active === 0) return bad(res, 400, 'Cannot grant to a deactivated account');
+
+    // 브랜드별 판정 — 걸린 브랜드는 건너뛰고 사유를 싣는다.
+    const results = [];
+    const toCreate = [];
+    for (const b of brands) {
+      const key = { entity_type: 'brand', entity_id: b.id, role: 'Brand Manager' };
+      const held = await userContexts.alreadyHoldsContext(target, key, b);
+      if (held) { results.push({ brand_id: b.id, label: b.name, status: 'skipped', reason: held.message }); continue; }
+      const dup = await findPendingAnyDirection(target.id, 'brand', b.id, 'Brand Manager');
+      if (dup) {
+        results.push({ brand_id: b.id, label: b.name, status: 'skipped', reason: dup.initiator === 'requester'
+          ? 'A request from this person is already waiting for approval'
+          : 'An invitation for this account is already pending' });
+        continue;
+      }
+      const [[pend]] = await sequelize.query(
+        `SELECT COUNT(*) AS c FROM user_context_requests
+          WHERE entity_type = 'brand' AND entity_id = :e AND status = 'pending' AND initiator = 'grantor'`,
+        { replacements: { e: b.id } }
+      );
+      if (Number(pend.c) >= MAX_PENDING_INVITES_PER_BRAND) {
+        results.push({ brand_id: b.id, label: b.name, status: 'skipped', reason: `A brand can have at most ${MAX_PENDING_INVITES_PER_BRAND} pending invitations` });
+        continue;
+      }
+      toCreate.push(b);
+    }
+    if (!toCreate.length) return bad(res, 400, results[0] ? results[0].reason : 'Nothing to invite');
+
+    const message = cleanText(body.message, 300);
+    const UserContextRequest = require('../models/UserContextRequest');
+    const created = [];
+    const t = await sequelize.transaction();
+    try {
+      for (const b of toCreate) {
+        const row = await UserContextRequest.create({
+          user_id: target.id, entity_type: 'brand', entity_id: b.id, role: 'Brand Manager', message, status: 'pending',
+          initiator: 'grantor', created_by: req.user.id, permissions: norm.permissions
+        }, { transaction: t });
+        created.push({ b, row });
+      }
+      await t.commit();
+    } catch (e) {
+      await t.rollback();
+      throw e;
+    }
+
+    for (const { b, row } of created) {
+      results.push({ brand_id: b.id, label: b.name, status: 'invited', id: row.id });
+      logActivity(req, {
+        action_type: 'create',
+        entity_type: 'user_context',
+        entity_id: target.id,
+        description: `Invited ${email} to brand "${b.name}" (#${b.id}) as Brand Manager [${norm.permissions.join(', ')}] (invitation #${row.id})`
+      });
+      emitContextChanged({ kind: 'invited', userId: target.id, entityType: 'brand', entityId: b.id, role: 'Brand Manager', requestId: row.id, label: b.name });
+    }
+    // 메일 한 통 — 브랜드 이름 나열.
+    notifyInviteReceived({
+      userId: target.id, inviter: req.user, targetName: created.map(c => c.b.name).join(', '),
+      permissionCount: norm.permissions.length, message, role: 'Brand Manager'
+    });
+
+    // 브랜드 순서대로 · 대상의 id·역할·소속은 싣지 않는다.
+    const order = new Map(brandIds.map((id, i) => [id, i]));
+    results.sort((a, b) => order.get(a.brand_id) - order.get(b.brand_id));
+    res.status(201).json({ success: true, data: { email, results }, message: 'Invitation sent' });
+  } catch (error) {
+    console.error('[context-requests] POST /invite/brand-manager error:', error.message);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
 // 새 매장의 관리자로 «이미 다른 매장이 있는» 기존 계정을 붙이기 (2026-10-29 Fable 판정 · Irene «권고대로»).
 //   계정 소속(users.restaurant_id)은 옮기지 않는다 — 매장 관리자 모자(restaurant × Restaurant Admin)를 준다.
 //   System Admin = 바로 부여 · BG/FG/오너 = 초대(initiator='grantor') → 본인 수락(POST /:id/accept) 때 부여.
@@ -424,6 +561,10 @@ router.get('/sent', authenticateToken, async (req, res) => {
       if (!rid) return bad(res, 403, 'Not allowed');
       where = "ucr.entity_type = 'restaurant' AND ucr.entity_id = :rid";
       replacements.rid = rid;
+    } else if (req.user.role === 'Brand General') {
+      // 내 브랜드(지금 주인)의 브랜드 매니저 초대만 (2026-11-24)
+      where = "ucr.entity_type = 'brand' AND ucr.role = 'Brand Manager' AND ucr.entity_id IN (SELECT id FROM brands WHERE owner_id = :me)";
+      replacements.me = req.user.id;
     } else {
       return bad(res, 403, 'Not allowed');
     }
@@ -704,16 +845,23 @@ router.post('/:id/accept', authenticateToken, async (req, res) => {
     if (!native) return bad(res, 401, 'User not found');
     if (native.is_active === false || native.is_active === 0) return bad(res, 400, 'Cannot grant to a deactivated account');
 
-    // 좌석 본검사(수락 순간) — 보낸 뒤 늘어난 직원이 새지 않게(FI-22).
-    const full = await seatLimitBody(row.entity_id);
-    if (full) return res.status(403).json(full);
+    const isBrandInvite = userContexts.isBrandManagerHat(row.entity_type, row.role);
+    // 브랜드 매니저 초대 — 초대한 사람이 지금도 그 브랜드 주인(또는 SA)이어야 (2026-11-24 설계 §2.2 ③)
+    if (isBrandInvite && !(await brandInviterStillValid(row))) return bad(res, 409, 'This invitation is no longer valid');
+
+    // 좌석 본검사(수락 순간) — 보낸 뒤 늘어난 직원이 새지 않게(FI-22). 매장 모자만(브랜드 번호로 매장 한도를 보지 않는다).
+    if (userContexts.isRestaurantHat(row.entity_type, row.role)) {
+      const full = await seatLimitBody(row.entity_id);
+      if (full) return res.status(403).json(full);
+    }
 
     const result = await userContexts.grantContext({
       target: native,
       entity_type: row.entity_type,
       entity_id: row.entity_id,
       role: row.role,
-      permissions: parsePermissions(row.permissions),
+      // 브랜드 매니저 행은 NULL 을 그대로(= 기본값) — 이 파일의 parsePermissions 는 NULL→[] 라 «dashboard 만» 이 된다.
+      permissions: isBrandInvite ? userContexts.parsePermissions(row.permissions) : parsePermissions(row.permissions),
       grantedBy: row.created_by || native.id
     });
     if (!result.ok) return bad(res, result.status, result.message);
@@ -735,7 +883,7 @@ router.post('/:id/accept', authenticateToken, async (req, res) => {
       description: `${result.logDescription} (accepted invitation #${row.id})`,
       ...(result.restaurantId ? { restaurant_id: result.restaurantId } : {})
     });
-    notifyInviteResult({ inviterId: row.created_by, accepted: true, invitee: native, targetName: row.label, entityId: row.entity_id });
+    notifyInviteResult({ inviterId: row.created_by, accepted: true, invitee: native, targetName: row.label, entityId: row.entity_id, entityType: row.entity_type });
     emitContextChanged({ kind: 'granted', userId: native.id, entityType: row.entity_type, entityId: row.entity_id, role: row.role, requestId: row.id, label: row.label });
 
     res.json({ success: true, data: { id: row.id, status: 'approved', grant: result.data }, message: 'Invitation accepted' });
@@ -762,7 +910,7 @@ router.post('/:id/decline', authenticateToken, async (req, res) => {
 
     const User = require('../models/User');
     const native = await User.findByPk(req.user.id);
-    notifyInviteResult({ inviterId: row.created_by, accepted: false, invitee: native, targetName: row.label, entityId: row.entity_id, note });
+    notifyInviteResult({ inviterId: row.created_by, accepted: false, invitee: native, targetName: row.label, entityId: row.entity_id, entityType: row.entity_type, note });
     emitContextChanged({ kind: 'invite_declined', userId: req.user.id, entityType: row.entity_type, entityId: row.entity_id, role: row.role, requestId: row.id });
 
     res.json({ success: true, data: { id: row.id, status: 'rejected' }, message: 'Invitation declined' });
@@ -811,8 +959,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       action_type: 'delete',
       entity_type: 'user_context',
       entity_id: inv.user_id,
-      description: `Cancelled staff invitation #${inv.id} for restaurant #${inv.entity_id}`,
-      restaurant_id: inv.entity_id
+      ...(inv.entity_type === 'brand'
+        ? { description: `Cancelled ${inv.role} invitation #${inv.id} for brand #${inv.entity_id}` }
+        : { description: `Cancelled staff invitation #${inv.id} for restaurant #${inv.entity_id}`, restaurant_id: inv.entity_id })
     });
     emitContextChanged({ kind: 'invite_cancelled', userId: inv.user_id, entityType: inv.entity_type, entityId: inv.entity_id, role: inv.role, requestId: inv.id });
     res.json({ success: true, data: { id }, message: 'Invitation cancelled' });

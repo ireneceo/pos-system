@@ -1343,22 +1343,25 @@ function contextInviteReceivedEmail({ inviterName, targetName, permissionCount, 
   const t = (k, p) => getEmailText(lang, 'contextInvite.received.' + k, p);
   const who = escHtml((inviterName || '—').toString().slice(0, 120));
   const target = escHtml((targetName || '—').toString().slice(0, 160));
-  const title = t('heading');
+  // 문구 묶음: Staff / 브랜드 매니저(2026-11-24 — 여러 브랜드면 targetName 이 이름 나열) / 그 밖(매장 관리자)
+  const isBM = role === 'Brand Manager';
+  const sfx = role === 'Staff' ? '' : (isBM ? 'BrandManager' : 'Admin');
+  const title = isBM ? t('headingBrandManager') : t('heading');
   const msgRow = message ? infoRow(t('message'), escHtml(String(message).slice(0, 300))) : '';
   const body = `
-    <p style="color:#374151;font-size:16px;margin:0 0 16px;">${t(role === 'Staff' ? 'body' : 'bodyAdmin', { inviter: `<strong>${who}</strong>`, target: `<strong>${target}</strong>` })}</p>
+    <p style="color:#374151;font-size:16px;margin:0 0 16px;">${t('body' + sfx, { inviter: `<strong>${who}</strong>`, target: `<strong>${target}</strong>` })}</p>
     ${infoTable(
-      infoRow(t('target'), target) +
+      infoRow(isBM ? t('targetBrand') : t('target'), target) +
       infoRow(t('role'), escHtml(contextRoleLabel(role, lang))) +
-      (role === 'Staff' ? infoRow(t('permissions'), escHtml(String(Number(permissionCount) || 0))) : '') +
+      ((role === 'Staff' || isBM) ? infoRow(t('permissions'), escHtml(String(Number(permissionCount) || 0))) : '') +
       msgRow
     )}
-    <p style="color:#6B7280;font-size:14px;margin:0 0 16px;">${t('hint')}</p>
+    <p style="color:#6B7280;font-size:14px;margin:0 0 16px;">${isBM ? t('hintBrandManager') : t('hint')}</p>
     ${ctaButton(t('cta'), link)}`;
   return withRenderMeta({
-    subject: t(role === 'Staff' ? 'subject' : 'subjectAdmin', { target: (targetName || '—').toString().slice(0, 160) }),
+    subject: t('subject' + sfx, { target: (targetName || '—').toString().slice(0, 160) }),
     html: wrapTemplate(title, body, lang),
-    text: t(role === 'Staff' ? 'textFallback' : 'textFallbackAdmin', { inviter: inviterName || '—', target: targetName || '—' })
+    text: t('textFallback' + sfx, { inviter: inviterName || '—', target: targetName || '—' })
   }, title, body, lang);
 }
 

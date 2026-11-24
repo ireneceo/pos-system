@@ -1,5 +1,26 @@
 ## 현재 작업 상태
 
+### ✅ 완료 (2026-11-24) — BG «매니저» 화면에서 기존 계정을 브랜드 매니저로 초대(멀티아이디) [Claude Code · 백그라운드 작업방 98789ed2]
+- Irene «https://purplehere.com/pos/brand/manager 여기에서 기존 아이디를 추가할 수 없어? 우리 withmin1 아이디를 멀티로 GIT consulting 매니저로 연결하고 싶은데»
+- Fable 설계 `.claude/fable-design-20261124-brand-manager-invite.md`(Irene 질문 없음) → 구현 → Fable 게이트 PASS `.claude/fable-gate-20261124-brand-manager-invite.md`(마커 유효)
+- 한 것: 브랜드 주인(BG)·SA → `POST /api/context-requests/invite/brand-manager`(이메일·브랜드 여러 개·메뉴 권한 · 브랜드마다 초대 한 장 · 남의 브랜드 섞이면 전체 404) → 본인 /pos/select-context 에서 브랜드마다 수락 → 연결 매니저 · 수락 때 초대자 자격 재확인(409) · 좌석 검사는 매장 모자만 · 주인이 연결 매니저 «이 브랜드에서 빼기»(DELETE contexts — 주인 허용) · 보낸 초대 BG 범위·취소 · Add Manager 이메일 겹침 → «이 계정을 초대하기» · 메일 4언어 · 토스트 «브랜드 매니저로 초대» · SW 6.27-brand-manager-invite-20261124 · DB·마이그 0 · 보호 파일 0
+- 검증: jest 새 17/17 · 고장주입 5/5(+Fable 1 재현) · 모자 묶음 --runInBand 106/106 · health-check security 113/113 · verify-all --full 23/24(deploy-ready = 배포 기록 sw_version, 배포 방 몫) · e2e brand-manager-invite 3회 3/3 · print-guard 8/8 · Fable 추가 실호출 36건
+- 기존 흔들림(이번 변경 무관): context-requests ⑨ staff_limit 가 병렬 실행 때 2/4 실패(새 시험 없이도) — 순차 실행 통과
+- Fable 참고(막지 않음 · 후속 후보): 시험에 연결 BM·오너 403·전환 범위 jest 로 옮기기 · 사례 6 은 브랜드 24 생기면 건너뜀 → 실패로
+- 확인 못 함: 실제 메일 받은 편지함 · zh/ms 화면 · 390 폭 대기 초대 표 · 운영 withmin1/GIT 상태
+- 운영 반영: 다음 배포 때 · withmin1 은 지금도 SA 카드(todomw3slas6)로 바로 가능 — 배포 뒤엔 GIT 주인 계정 «Invite existing account» 로도 가능
+- /개발완료: 같은 폴더 일하는 다른 방 0(busy 는 이 방뿐) · DEVELOPMENT_PLAN·CHANGELOG·docs/ROLES_AND_PERMISSIONS 갱신 · 경로 지정 커밋(이 일 파일만 — playwright.config·oneoff·run-*.sh 보류 그대로) · 백업 · 커밋 뒤 Fable 마커 지문은 바뀜(판정문이 증거 — 11-23 과 같은 처리)
+- 진행 중인 작업: 없음 · 다음 확정 작업: 없음 — 지시 대기 · 후속 후보(확정 X · /개발시작 자동 추천 아님): 위 Fable 참고 2건 · context-requests ⑨ 병렬 흔들림
+
+### 답 기다림: PurpleHere 카드 «배포» 버튼을 누르고 «했어요» 라고 답해 주실래요? [Claude Code · 백그라운드 작업방 664a2953 · 2026-11-24]
+- 무엇: 상황판 질문 «운영 화면이 11-23 10:08 배포 그대로 — «배포» 버튼으로 내보낼까요?» → Irene «권고대로 진행해 줘»(= 배포 버튼). 버튼은 주인 인증코드 → 작업방은 못 누름(AI 는 준비·막기만). 상황판 act 질문 askmwufnw5d.
+- 나갈 것: 6a8cc60a4(대조 «가격 다름»·정정 안내 번역) · 219296884(판매 주문 취소·결제 후 반품 환불 · 마이그 1 · Fable 재판정 PASS) · 37bceb039(기록). 운영 sw 6.24 → 6.26-seller-cancel-refund-20261123.
+- 마지막 버튼 배포 = 11-23 02:02 UTC depmwsmeu3t(aeef7ae1f · ok) — 그 뒤 실행 없음.
+- 사전 검사(08:28 UTC, 개발서버): inspection 84/102 신규 0(baseline 11) · health-check 511/511 · print-guard 8/8 변경 0 · 배포 기록 2026-11-23-reconcile-diff-badge OK · 마이그 분류 OK · 고친 시험 데이터 없음.
+- 답이 오면: 상황판 기록(board/log)에서 deploy-run-end result ok · 운영 sw.js 6.26 확인 → ✅.
+
+### (이전) 답 기다림: 운영 화면이 11-23 배포 그대로 — «배포» 버튼으로 내보낼까요? → Irene «권고대로 진행해 줘» → 위 버튼 할 일로 [2026-11-24]
+
 ### ✅ 완료 (2026-11-24 00:00) — 정기 점검 11/24 [Claude Code · 백그라운드 작업방 7eb85c9c]
 - 개발완료: 같은 폴더 일하는 다른 방 0(pid 있는 방은 1108c204 blocked 뿐) · 마지막 개발완료(219296884) 뒤 새 커밋 0 · 미커밋 = 11-23 02:10 UTC 버튼 배포(purplehere-2026-11-23T02-02-21 exit 0 · aeef7ae1f · smoke 10/10 · 백업 /var/www/backups/20261123_020221) 산출물(배포 지문·기록 보관함 이동)만 → 경로 지정 커밋 · 그대로 둔 미커밋: playwright.config(오래된 보류) · .claude/oneoff-*·run-*.sh · CHANGELOG 손대지 않음(기록만) · print-guard 8/8 · health-check 511/511 · 민감 판정 «FABLE 게이트 대상» = 운영 미반영 11-23 판매 주문 취소·환불 묶음(이미 Fable 재판정 PASS `.claude/fable-gate-20261123-seller-cancel-refund.md`)
 - 운영 sw.js = 6.24-po-delivery-pickup-20261120 → 11-23 배포는 기록만(코드 0). 개발 6.26 묶음(대조 가격 다름 · 판매 주문 취소·환불 · 마이그 1) 운영 반영: 다음 배포 때

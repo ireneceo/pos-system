@@ -587,16 +587,23 @@ const ContextSelectPage: React.FC = () => {
             const date = requestDate(inv.created_at);
             // 매장 관리자 초대(새 매장 만들 때 · 2026-10-29)는 권한 목록이 없다 — 역할만 보인다.
             const isAdminInvite = inv.role === 'Restaurant Admin';
+            // 브랜드 매니저 초대(브랜드 주인이 보냄 · 2026-11-24) — 메뉴 권한 키는 브랜드 매니저 표
+            const isBrandInvite = inv.role === 'Brand Manager';
             const line = isAdminInvite
               ? t('context.invite.lineAdmin', { who: inv.invited_by_name || '—' })
-              : t('context.invite.line', { who: inv.invited_by_name || '—', count: inv.permissions.length });
+              : isBrandInvite
+                ? t('context.invite.lineBrandManager', { who: inv.invited_by_name || '—', count: inv.permissions.length })
+                : t('context.invite.line', { who: inv.invited_by_name || '—', count: inv.permissions.length });
+            const typeKey = isAdminInvite ? 'context.request.typeStoreAdmin'
+              : isBrandInvite ? 'context.request.typeBrandManager' : 'context.request.typeStoreStaff';
+            const permText = (k: string) => (isBrandInvite ? t(`common:ui.brandManagerPerm.${k}`, { defaultValue: k }) : permLabel(k));
             return (
               <InviteRow key={`inv-${inv.id}`}>
-                <CardGlyph aria-hidden="true">▦</CardGlyph>
+                <CardGlyph aria-hidden="true">{isBrandInvite ? '◐' : '▦'}</CardGlyph>
                 <InviteText>
                   <CardLabel>{inv.label || t('context.request.deletedTarget')}</CardLabel>
                   <InviteStatus>
-                    {t(isAdminInvite ? 'context.request.typeStoreAdmin' : 'context.request.typeStoreStaff')} · {line}{date ? ` · ${date}` : ''}
+                    {t(typeKey)} · {line}{date ? ` · ${date}` : ''}
                     {!isAdminInvite && (
                       <LinkToggle role="button" tabIndex={0} onClick={() => setPermsOpen(permsOpen === inv.id ? null : inv.id)}>
                         {t('context.invite.viewPermissions')}
@@ -613,7 +620,7 @@ const ContextSelectPage: React.FC = () => {
                   </ThemedButton>
                 </InviteActions>
                 {permsOpen === inv.id && (
-                  <InvitePerms>{inv.permissions.map(permLabel).join(' · ')}{inv.message ? ` — “${inv.message}”` : ''}</InvitePerms>
+                  <InvitePerms>{inv.permissions.map(permText).join(' · ')}{inv.message ? ` — “${inv.message}”` : ''}</InvitePerms>
                 )}
                 {inviteErrors[inv.id] && <InviteError>{inviteErrors[inv.id]}</InviteError>}
               </InviteRow>

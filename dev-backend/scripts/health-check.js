@@ -633,6 +633,24 @@ function defineContextRequestTests({ adminToken }) {
     return list.status === 403 && pc.status === 200 && typeof pc.body?.data?.count === 'number' && saPost.status === 403;
   });
 
+  // 2026-11-24 브랜드 매니저 초대(기존 계정) — 쓰기 없음: 익명 401 · 데모 BG/RA/BM 은 보내기 403 · BG 보낸 초대 200(자기 브랜드만).
+  //   본 흐름(초대→수락→떼기·남의 브랜드 404·좌석·주인 바뀜)은 tests/brand-manager-invite.test.js.
+  test('security', '브랜드 매니저 초대 — 익명 401 · 데모 BG/RA/BM 보내기 403 · BG 보낸 초대 200 배열', async () => {
+    const anon = await request('POST', '/context-requests/invite/brand-manager', { email: 'x@example.com', brand_ids: [10], permissions: [] });
+    const bg = await tokenFor('demo-brand@purplehere.com');
+    const ra = await tokenFor('demo-restaurant@purplehere.com');
+    const bm = await tokenFor('test-brand-manager@example.com');
+    if (!bg || !ra || !bm) return false;
+    const body = { email: 'demo-restaurant@purplehere.com', brand_ids: [10], permissions: ['products'] };
+    const pBg = await request('POST', '/context-requests/invite/brand-manager', body, bg);
+    const pRa = await request('POST', '/context-requests/invite/brand-manager', body, ra);
+    const pBm = await request('POST', '/context-requests/invite/brand-manager', body, bm);
+    const sent = await request('GET', '/context-requests/sent', null, bg);
+    return anon.status === 401 && pBg.status === 403 && pRa.status === 403 && pBm.status === 403
+      && sent.status === 200 && Array.isArray(sent.body?.data)
+      && sent.body.data.every(x => x.entity_type === 'brand' && x.role === 'Brand Manager');
+  });
+
   // 2026-10-30 운영 사고(K-DINE IPC) — «This month» 를 한국 자정 넘어 누르면 브라우저 날짜가 매장보다 하루 앞서
   // period_end_in_future 400. 이제 화면은 { period: 'this_month' } 만 보내고 날짜는 매장 달력으로 서버가 정한다.
   // 쓰기 없음: 데모 매장 39 에 묶을 것이 없을 때만 this_month 를 부른다(있으면 그 칸만 건너뜀 — 정산서를 만들지 않게).
@@ -698,7 +716,8 @@ function defineContextRequestTests({ adminToken }) {
     return a.status === 401 && b.status === 401 && c.status === 401;
   });
 
-  test('security', '직원 초대 — 데모 RA: 보내기 403(demo) · 보낸 초대 200 배열 / 데모 BG: 보낸 초대 403 · 권한 수정 404', async () => {
+  // 2026-11-24: BG 보낸 초대 = 200(자기 브랜드의 브랜드 매니저 초대만 — 매장 직원 초대는 안 섞임)으로 바뀜(설계 fable-design-20261124 §2.4).
+  test('security', '직원 초대 — 데모 RA: 보내기 403(demo) · 보낸 초대 200 배열 / 데모 BG: 보낸 초대에 매장 초대 0 · 권한 수정 404', async () => {
     const ra = await tokenFor('demo-restaurant@purplehere.com');
     const bg = await tokenFor('demo-brand@purplehere.com');
     if (!ra || !bg) return false;
@@ -707,7 +726,9 @@ function defineContextRequestTests({ adminToken }) {
     const bgSent = await request('GET', '/context-requests/sent', null, bg);
     const bgPut = await request('PUT', '/users/1/contexts/1', { permissions: ['access_pos'] }, bg);
     return inv.status === 403 && sent.status === 200 && Array.isArray(sent.body?.data)
-      && bgSent.status === 403 && bgPut.status === 404;
+      && bgSent.status === 200 && Array.isArray(bgSent.body?.data)
+      && !bgSent.body.data.some(x => x.entity_type === 'restaurant')
+      && bgPut.status === 404;
   });
 
   test('security', '직원 생성 중복 400 — 기존 계정 역할·매장 번호를 문구에 싣지 않음(EMAIL_IN_USE)', async () => {

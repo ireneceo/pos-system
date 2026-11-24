@@ -307,7 +307,13 @@
       "textFallback": "{{inviter}} 邀请您以员工身份加入 {{target}}。",
       "subjectAdmin": "您被邀请成为 {{target}} 的管理员",
       "bodyAdmin": "{{inviter}} 邀请您成为 {{target}} 的餐厅管理员。",
-      "textFallbackAdmin": "{{inviter}} 邀请您成为 {{target}} 的餐厅管理员。"
+      "textFallbackAdmin": "{{inviter}} 邀请您成为 {{target}} 的餐厅管理员。",
+      "subjectBrandManager": "您被邀请管理 {{target}}",
+      "headingBrandManager": "品牌经理邀请",
+      "bodyBrandManager": "{{inviter}} 邀请您成为 {{target}} 的品牌经理。",
+      "textFallbackBrandManager": "{{inviter}} 邀请您成为 {{target}} 的品牌经理。",
+      "targetBrand": "品牌",
+      "hintBrandManager": "请在角色选择页面逐个接受品牌邀请。您继续使用自己的账号登录，并切换到该品牌。"
     },
     "result": {
       "subjectAccepted": "邀请已接受：{{who}} · {{target}}",

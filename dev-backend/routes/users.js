@@ -1472,10 +1472,11 @@ function canManageContextRow(reqUser, row) {
 }
 
 /**
- * 권한 **수정만**(회수 아님) — canManageContextRow 에 더해, 브랜드 매니저 모자는 **그 브랜드 소유자(BG)** 도 고친다
- * (2026-10-26 Fable 권고 · Irene «권고대로»). 부여·회수는 여전히 SA. 소유 판정은 brands.owner_id = 요청자 하나.
+ * 권한 수정·회수 — canManageContextRow 에 더해, 브랜드 매니저 모자는 **그 브랜드 소유자(BG)** 도 고치고(2026-10-26)
+ * 뗄 수 있다(2026-11-24 .claude/fable-design-20261124-brand-manager-invite.md D4). PUT·DELETE 가 같이 쓰는 판정 하나.
+ * 만들기는 여전히 SA 바로 부여 · 주인은 초대(본인 수락)로만. 소유 판정은 brands.owner_id = 요청자 하나.
  */
-async function canEditContextPermissions(reqUser, row) {
+async function canManageContextRowOrOwnBrandHat(reqUser, row) {
   if (canManageContextRow(reqUser, row)) return true;
   if (reqUser && reqUser.role === 'Brand General' && userContexts.isBrandManagerHat(row.entity_type, row.role)) {
     const [[b]] = await _seq.query('SELECT owner_id FROM brands WHERE id = :e', { replacements: { e: row.entity_id } });
@@ -1498,7 +1499,7 @@ router.put('/:id/contexts/:contextId', authenticateToken, async (req, res) => {
     );
     // 범위 밖이면 존재 여부도 흘리지 않는다(404).
     const normalize = rows.length ? userContexts.permissionNormalizerFor(rows[0].entity_type, rows[0].role) : null;
-    if (!rows.length || !normalize || !(await canEditContextPermissions(req.user, rows[0]))) {
+    if (!rows.length || !normalize || !(await canManageContextRowOrOwnBrandHat(req.user, rows[0]))) {
       return res.status(404).json({ success: false, message: 'Context not found' });
     }
     const norm = normalize((req.body || {}).permissions);
@@ -1546,8 +1547,8 @@ router.delete('/:id/contexts/:contextId', authenticateToken, async (req, res) =>
       'SELECT id, entity_type, entity_id, role FROM user_contexts WHERE id = :c AND user_id = :u',
       { replacements: { c: ctxId, u: uid } }
     );
-    // SA 는 종전 그대로(모든 행) · RA 는 자기 매장 Staff 모자만 — 범위 밖은 404(존재 여부 안 흘림).
-    if (!rows.length || !canManageContextRow(req.user, rows[0])) {
+    // SA 는 종전 그대로(모든 행) · RA 는 자기 매장 Staff 모자만 · BG 는 자기 브랜드의 브랜드 매니저 모자만 — 범위 밖은 404(존재 여부 안 흘림).
+    if (!rows.length || !(await canManageContextRowOrOwnBrandHat(req.user, rows[0]))) {
       return res.status(404).json({ success: false, message: 'Context not found' });
     }
 
@@ -1558,8 +1559,8 @@ router.delete('/:id/contexts/:contextId', authenticateToken, async (req, res) =>
       action_type: 'delete',
       entity_type: 'user_context',
       entity_id: uid,
-      description: `Revoked ${rows[0].role} context for restaurant #${rows[0].entity_id} from user #${uid}`,
-      restaurant_id: rows[0].entity_id
+      description: `Revoked ${rows[0].role} context for ${rows[0].entity_type} #${rows[0].entity_id} from user #${uid}`,
+      ...(rows[0].entity_type === 'restaurant' ? { restaurant_id: rows[0].entity_id } : {})
     });
 
     // 당사자 화면(헤더 스위처·선택 화면)과 그 매장 직원 목록을 즉시 갱신 — 데이터 없는 «다시 읽어라» 신호.

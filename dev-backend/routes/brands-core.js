@@ -981,7 +981,11 @@ router.post('/:id/staff', authenticateToken, async (req, res) => {
       } else {
         errorDetail = `Username "${username}" is already in use`;
       }
-      return res.status(400).json({ success: false, message: errorDetail });
+      // 이메일이 겹치면 화면이 «이 계정을 초대하기»(POST /api/context-requests/invite/brand-manager)로 잇는다(2026-11-24).
+      return res.status(400).json({
+        success: false, message: errorDetail,
+        ...(existingUser.email === email ? { code: 'EMAIL_IN_USE' } : {})
+      });
     }
 
     // Auto-generate password (12 chars)
