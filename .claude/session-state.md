@@ -10,9 +10,15 @@
 - 확인 못 함: 실제 메일 받은 편지함 · zh/ms 화면 · 390 폭 대기 초대 표 · 운영 withmin1/GIT 상태
 - 운영 반영: 다음 배포 때 · withmin1 은 지금도 SA 카드(todomw3slas6)로 바로 가능 — 배포 뒤엔 GIT 주인 계정 «Invite existing account» 로도 가능
 - /개발완료: 같은 폴더 일하는 다른 방 0(busy 는 이 방뿐) · DEVELOPMENT_PLAN·CHANGELOG·docs/ROLES_AND_PERMISSIONS 갱신 · 경로 지정 커밋(이 일 파일만 — playwright.config·oneoff·run-*.sh 보류 그대로) · 백업 · 커밋 뒤 Fable 마커 지문은 바뀜(판정문이 증거 — 11-23 과 같은 처리)
+- Fable 통과 마커: 커밋 + 문서 3개(DEVELOPMENT_PLAN·CHANGELOG·ROLES_AND_PERMISSIONS) 수정으로 지문이 바뀌어 지금 «무효» — 마커 뒤 바뀐 코드 파일 0(find -newer 확인) · 넘기기(.fable-gate-skip)는 자동 허락 검사에서 거부 → 하지 않음 · 판정문 PASS 는 그대로 증거. 배포 때 마커가 필요하면 배포 방이 Fable 재발급
 - 진행 중인 작업: 없음 · 다음 확정 작업: 없음 — 지시 대기 · 후속 후보(확정 X · /개발시작 자동 추천 아님): 위 Fable 참고 2건 · context-requests ⑨ 병렬 흔들림
 
-### 답 기다림: PurpleHere 카드 «배포» 버튼을 누르고 «했어요» 라고 답해 주실래요? [Claude Code · 백그라운드 작업방 664a2953 · 2026-11-24]
+### ✅ 완료 (2026-11-24) — PurpleHere 운영 배포(버튼) 성공 [Claude Code · 백그라운드 작업방 664a2953]
+- 상황판 기록: 14:23 UTC 버튼 배포 depmwusby3w(by Irene · 커밋 19d74d432) → 14:45 result ok · exit 0 · 운영 표식 11-23 02:08 → 11-24 14:29 · 준비 방 1dc5842c · 일시정지 풀림
+- 운영 sw.js = 6.27-brand-manager-invite-20261124 (11-23 묶음 6.26 + 11-24 브랜드 매니저 초대까지 함께 나감)
+- 배포 산출물(배포 지문·기록 보관함 이동) 경로 지정 커밋 · 그대로 둔 미커밋: playwright.config(오래된 보류) · .claude/oneoff-*·run-*.sh
+
+### 답 기다림 (이전): PurpleHere 카드 «배포» 버튼을 누르고 «했어요» 라고 답해 주실래요? → Irene «했어요» → 위 ✅ [작업방 664a2953 · 2026-11-24]
 - 무엇: 상황판 질문 «운영 화면이 11-23 10:08 배포 그대로 — «배포» 버튼으로 내보낼까요?» → Irene «권고대로 진행해 줘»(= 배포 버튼). 버튼은 주인 인증코드 → 작업방은 못 누름(AI 는 준비·막기만). 상황판 act 질문 askmwufnw5d.
 - 나갈 것: 6a8cc60a4(대조 «가격 다름»·정정 안내 번역) · 219296884(판매 주문 취소·결제 후 반품 환불 · 마이그 1 · Fable 재판정 PASS) · 37bceb039(기록). 운영 sw 6.24 → 6.26-seller-cancel-refund-20261123.
 - 마지막 버튼 배포 = 11-23 02:02 UTC depmwsmeu3t(aeef7ae1f · ok) — 그 뒤 실행 없음.
