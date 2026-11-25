@@ -1,5 +1,13 @@
 ## 현재 작업 상태
 
+### ✅ 완료 (2026-11-26 00:00 점검 · 실행 2026-11-25 16:00 UTC) — 정기 점검 11/26 [Claude Code · 백그라운드 작업방 0b448955]
+- 개발완료 건너뜀: 같은 폴더 일하는 다른 방 0(pid 있는 방은 1108c204 blocked 뿐) · 마지막 점검 커밋(df85cb86e) 뒤 새 커밋 0 · origin 과 같음 · 미커밋은 오래된 보류(playwright.config · .claude/oneoff-*·run-*.sh)뿐 → 바뀐 것 없음
+- 운영 sw.js = 6.27-brand-manager-invite-20261124 — 개발과 같음
+- 운영 문의(확인 2026-11-25 16:00 UTC · 읽기만): 열린 시스템 문의 0 · 최근 14일 새 문의·후속 글 0 · 랜딩 문의 0 · 매장↔브랜드 운영 문의 in-progress 1·closed 4 · 상황판 «들어온 문의» 빈 목록 올림(200)
+- 인쇄 지킴이(마지막 실행 15:07 UTC success): 새 문제 0 · 계속 3 · 풀림 0 — 28 print_failures critical(PRINTER_NOT_FOUND «기본 프린터» 12건, 어제 10) · 28 multi_auto_print(2대, 어제 3) · 28 old_app 0.3.4
+- 개발시작 분기 C: 진행 중 0 · 다음 확정 작업 없음 — 지시 대기
+- 진행 중인 작업: 없음 · 다음 확정 작업: 없음 — 지시 대기
+
 ### ✅ 완료 (2026-11-25 00:00 점검 · 실행 2026-11-24 16:00 UTC) — 정기 점검 11/25 [Claude Code · 백그라운드 작업방 066c5121]
 - 개발완료: 같은 폴더 일하는 다른 방 0(pid 있는 방은 1108c204 blocked 뿐) · 마지막 개발완료(53f75bbbb) 뒤 새 개발 변경 0 — 커밋 2건은 배포 기록(19d74d432·aad9b463e, 이미 커밋됨)뿐 → 문서·CHANGELOG·백업 없이 푸시만(origin/deploy-isolation 53f75bbbb..aad9b463e) · print-guard 8/8 · 민감 판정 비대상 · 그대로 둔 미커밋: playwright.config(오래된 보류) · .claude/oneoff-*·run-*.sh
 - 운영 sw.js = 6.27-brand-manager-invite-20261124(11-24 버튼 배포) — 개발과 같음
