@@ -1,5 +1,13 @@
 ## 현재 작업 상태
 
+### ✅ 완료 (2026-11-28 00:00 점검 · 실행 2026-11-27 16:00 UTC) — 정기 점검 11/28 [Claude Code · 백그라운드 작업방 8b440152]
+- 개발완료 건너뜀: 같은 폴더 일하는 다른 방 0(working+pid 는 이 방뿐) · 마지막 점검 커밋(731fbcb58) 뒤 새 커밋 0 · origin 과 같음 · 미커밋은 오래된 보류(playwright.config · .claude/oneoff-*·run-*.sh)뿐 → 바뀐 것 없음
+- 운영 sw.js = 6.27-brand-manager-invite-20261124 — 개발과 같음
+- 운영 문의(확인 2026-11-27 16:00 UTC · 읽기만): 열린 시스템 문의 0 · 최근 14일 새 문의·후속 글 0 · 랜딩 문의 0 · 매장↔브랜드 운영 문의 in-progress 1·closed 4 · 상황판 «들어온 문의» 빈 목록 올림(200)
+- 인쇄 지킴이(마지막 실행 15:07 UTC success): 새 문제 0 · 계속 3 · 풀림 0 — 28 print_failures critical(PRINTER_NOT_FOUND «기본 프린터» 5건, 어제 14) · 28 multi_auto_print(2대) · 28 old_app 0.3.4
+- 개발시작 분기 C: 진행 중 0 · 다음 확정 작업 없음 — 지시 대기
+- 진행 중인 작업: 없음 · 다음 확정 작업: 없음 — 지시 대기
+
 ### ✅ 완료 (2026-11-27 00:00 점검 · 실행 2026-11-26 16:00 UTC) — 정기 점검 11/27 [Claude Code · 백그라운드 작업방 b6419d10]
 - 개발완료 건너뜀: 같은 폴더 일하는 다른 방 0(working+pid 는 이 방뿐) · 마지막 점검 커밋(2da4b7fc8) 뒤 새 커밋 0 · origin 과 같음 · 미커밋은 오래된 보류(playwright.config · .claude/oneoff-*·run-*.sh)뿐 → 바뀐 것 없음
 - 운영 sw.js = 6.27-brand-manager-invite-20261124 — 개발과 같음
