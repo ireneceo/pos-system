@@ -35,7 +35,7 @@
   "verification": {
     "api": "실호출 21/21(공급업체 20 ↔ 데모 매장 38) · health-check 새 사례 «공급업체 전용 상품 (E1~E4)» — 카탈로그·상세·연결 검색·미리보기·담기·직접 연결·다른 업체 상품 번호·익명·발주 검사 · health-check 전체",
     "fault_injection": "5건 — 카탈로그 조건 제거 / 발주 검사 제거 / 담기 검사 제거 / 미리보기 조건 제거 / 직접 연결 검사 제거 → 각각 검사 실패 확인 후 원복 · 인스펙션 S3 반증 3건(서비스 연결 빠짐 · 기존 #32·#41 잡힘 · 서비스→재고로 바꾸면 다시 잡힘)",
-    "browser": "실브라우저 e2e supplier-custom-product.spec.js 15/15(3회) + Fable 재실행 5/5 — 등록 창 1440·390 · zh·ms · 매장 발주 카드. 전체 mount sweep 은 이번에 판정 불능: 개발 사이트 로그인 관문(11-28 09:49Z 켬) 때문에 sweep 이 어떤 화면도 못 엶(도구 문제 · 이 변경과 무관) — 운영 배포 전 sweep 도구를 고쳐 전체 1회 통과 필요",
+    "browser": "실브라우저 e2e supplier-custom-product.spec.js 15/15(3회) + Fable 재실행 5/5 — 등록 창 1440·390 · zh·ms · 매장 발주 카드. 전체 mount sweep 은 이번에 판정 불능: 개발 사이트 로그인 관문(11-28 09:49Z 켬) 때문에 sweep 이 어떤 화면도 못 엶(도구 문제 · 이 변경과 무관) — 운영 배포 전 sweep 도구를 고쳐 전체 1회 통과 필요 → 11-28 검사 도구 수리 뒤(관문 시험 표식 · 막히면 GATE_BLOCKED 즉시 실패 · 실패 줄 전부 표시 · 반증 2건) verify-all --full mount sweep 전체 통과(845초). 같은 실행의 번들 신선도 실패 1건은 다른 방(3a95bda0 인보이스)의 미커밋 소스 때문 — 이 묶음 화면은 서빙 번들에 들어 있음",
     "printer": "인쇄 동작 무변경 — print-guard 8/8 변경 0",
     "migrations": "migrate-supplier-product-kind-audience.js (deploy · 칸 2개 + 표 1개 추가만 · 멱등 2회 확인 · 기존 116행 stock/all)",
     "sw_version": "6.28-supplier-custom-product-20261128",

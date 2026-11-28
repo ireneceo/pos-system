@@ -2,6 +2,9 @@
 // Captures pageerrors + ErrorBoundary fallback + non-noise console errors.
 const { chromium } = require('playwright');
 const BASE = process.env.BASE_URL || 'https://dev.purplehere.com';
+// 개발 사이트 로그인 관문 통과 표식(2026-11-28 Fable §R3) — 값은 출력하지 않는다. 막히면 GATE_BLOCKED 로 바로 실패.
+const { gateTestHeaders, isGateLogin } = require('./lib/gateTestHeaders');
+const GATE_HEADERS = process.env.SWEEP_NO_GATE_HEADER ? undefined : gateTestHeaders();
 
 const ROLES = {
   admin: {
@@ -144,6 +147,7 @@ async function visit(context, route) {
   let fallback = false;
   try {
     await page.goto(BASE + route, { waitUntil: 'networkidle', timeout: 25000 });
+    if (isGateLogin(page.url())) { await page.close(); return { route, status: 'GATE_BLOCKED', pageerrors: [], consoleErrs: [], fallback: false }; }
     await page.waitForTimeout(2500);
     const body = await page.evaluate(() => document.body?.innerText?.slice(0, 5000) || '');
     fallback = ERR_MARKERS.some(m => body.includes(m));
@@ -171,12 +175,20 @@ async function runRole(label, cfg) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
+    ...(GATE_HEADERS ? { extraHTTPHeaders: GATE_HEADERS } : {}),
     storageState: { cookies: [], origins: [{ origin: BASE, localStorage: [{ name: 'auth_token', value: cfg.token }, { name: 'currentUserRole', value: cfg.role }] }] },
   });
   console.log(`\n=== ${label} (${cfg.role}, ${cfg.routes.length} routes) ===`);
   const out = [];
   for (const r of cfg.routes) {
     let v = await visit(context, r);
+    if (v.status === 'GATE_BLOCKED') {
+      // 표식이 없거나 안 먹음 — 남은 화면도 전부 같은 로그인 화면이다. 빈 화면으로 찍지 말고 바로 끝낸다.
+      console.error(`\n✗ GATE_BLOCKED — 개발 사이트 로그인 관문에 막힘(${label} ${r} → /__gate/login). 검사한 화면이 없습니다.`);
+      console.error('  관문 시험 표식이 붙는지 확인: scripts/lib/gateTestHeaders.js');
+      await browser.close();
+      process.exit(1);
+    }
     // 2026-07-10: 전이적 flake(배포 빌드 직후 blip) 흡수 — 실패 시 1회 재검. 진짜 크래시는 재검도 실패 → 여전히 차단.
     if (v.status !== 'OK' || v.pageerrors.length > 0) {
       await new Promise((res) => setTimeout(res, 1500));

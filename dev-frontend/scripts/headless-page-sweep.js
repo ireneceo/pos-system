@@ -7,6 +7,9 @@
 const { chromium } = require('playwright');
 
 const BASE = process.env.BASE_URL || 'https://dev.purplehere.com';
+// 개발 사이트 로그인 관문 통과 표식(2026-11-28 Fable §R3) — 값은 출력하지 않는다. 막히면 GATE_BLOCKED 로 바로 실패.
+const { gateTestHeaders, isGateLogin } = require('./lib/gateTestHeaders');
+const GATE_HEADERS = process.env.SWEEP_NO_GATE_HEADER ? undefined : gateTestHeaders();
 const RA_TOKEN = process.env.RA_TOKEN;
 const BG_TOKEN = process.env.BG_TOKEN;
 const RA_RID = process.env.RA_RID || '5';
@@ -143,6 +146,7 @@ async function visitRoute(context, route, label) {
   let status = '';
   try {
     await page.goto(url, { waitUntil: 'networkidle', timeout: 20000 });
+    if (isGateLogin(page.url())) { await page.close(); return { route, label, status: 'GATE_BLOCKED', pageerrors: [], consoleErrors: [], fallbackDetected: false }; }
     // Settle async data loads
     await page.waitForTimeout(2500);
     const bodyText = await page.evaluate(() => document.body?.innerText?.slice(0, 5000) || '');
@@ -165,6 +169,7 @@ async function runFor(label, token, routes) {
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
+    ...(GATE_HEADERS ? { extraHTTPHeaders: GATE_HEADERS } : {}),
     // 2026-06-05: PWA Service Worker 가 헤드리스 네비게이션을 가로채 /pos(로그인)로
     // 리다이렉트시켜 실제 인증 페이지가 mount 안 되던 문제 → SW 차단으로 토큰 인증이
     // 실제로 적용된다(이전엔 로그인 페이지를 "OK"로 오판할 수 있었음).
@@ -186,6 +191,12 @@ async function runFor(label, token, routes) {
   const results = [];
   for (const route of routes) {
     let r = await visitRoute(context, route, label);
+    if (r.status === 'GATE_BLOCKED') {
+      console.error(`\n✗ GATE_BLOCKED — 개발 사이트 로그인 관문에 막힘(${label} ${route} → /__gate/login). 검사한 화면이 없습니다.`);
+      console.error('  관문 시험 표식이 붙는지 확인: scripts/lib/gateTestHeaders.js');
+      await browser.close();
+      process.exit(1);
+    }
     // 2026-07-10: 전이적 flake(배포 빌드 직후 네비/네트워크 blip, SW 스왑 타이밍) 흡수 — 실패 시 1회 재검.
     // 진짜 페이지 크래시는 재검도 실패 → 여전히 잡힌다(가드 약화 아님). e2e playwright retries:2 와 동일 원리.
     if (r.status !== 'OK' || r.pageerrors.length > 0) {

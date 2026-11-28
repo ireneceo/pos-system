@@ -289,7 +289,16 @@ function runGate(gate, extraEnv) {
         // 거짓 실패를 진짜 결함으로 오독하지 않도록 판단 힌트를 남긴다.
         console.log(c.yellow(`      ⏱ ${Math.round((gate.timeout || 0) / 1000)}초 초과 — 빌드·e2e·브라우저가 같이 돌고 있었는지 확인하고, 유휴 상태에서 단독 재실행해 볼 것.`));
       }
-      r.out.trim().split('\n').slice(-15).forEach((l) => console.log(c.gray('      | ' + l)));
+      // 2026-11-28 Fable §R3: 마지막 15줄만 보여 주면 긴 sweep 의 실패 목록이 «끝 15개» 로 잘려
+      //   «앞쪽은 통과» 로 오독된다(실제로는 관문에 막혀 전부 실패였다). 실패 줄·요약·GATE_BLOCKED 는 전부 보인다.
+      const lines = r.out.trim().split('\n');
+      const failLines = lines.filter((l) => /^\s*✗ |GATE_BLOCKED|=== Summary|^\s+\[[^\]]+\] \S+ → /.test(l));
+      if (failLines.length > 15) {
+        console.log(c.gray(`      | 실패·요약 줄 ${failLines.length}개 (전부):`));
+        failLines.forEach((l) => console.log(c.gray('      | ' + l)));
+      } else {
+        lines.slice(-15).forEach((l) => console.log(c.gray('      | ' + l)));
+      }
     }
     results.push({ gate, ...r, effOk });
   }

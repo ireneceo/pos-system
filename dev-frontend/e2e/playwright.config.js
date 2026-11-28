@@ -10,6 +10,10 @@ const { defineConfig, devices } = require('@playwright/test');
 const BASE_URL = process.env.E2E_BASE_URL || 'https://dev.purplehere.com';
 const OUT = process.env.E2E_OUT || `/tmp/e2e/${new Date().toISOString().replace(/[:.]/g, '-')}`;
 
+// 상황판 개발 사이트 로그인 관문 통과 표식(서버 안 시험 전용). 값은 파일에서만 읽고 출력하지 않는다.
+// 파일이 없거나 못 읽으면 머리글 없이 돈다(관문 꺼짐 상태와 같음). 읽는 곳 = scripts/lib/gateTestHeaders.js 한 곳(sweep 과 공용).
+const gateHeaders = require('../scripts/lib/gateTestHeaders').gateTestHeaders();
+
 module.exports = defineConfig({
   testDir: __dirname,
   testMatch: '**/*.spec.js',
@@ -29,6 +33,7 @@ module.exports = defineConfig({
     video: 'retain-on-failure',
     actionTimeout: 15000,
     navigationTimeout: 25000,
+    ...(gateHeaders ? { extraHTTPHeaders: gateHeaders } : {}),
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
