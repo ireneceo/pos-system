@@ -1,4 +1,5 @@
 import React from 'react';
+import { invoiceLineCells, DETAIL_CELL_STYLE, DETAIL_ROW_PADDING } from '../../../utils/invoiceLines';
 import { useTranslation } from 'react-i18next';
 import { Modal as CommonModal } from '../../../components/UI';
 import { formatCurrency } from '../../../utils/currency';
@@ -198,14 +199,19 @@ const FoodcourtInvoiceViewModal: React.FC<FoodcourtInvoiceViewModalProps> = ({
               </tr>
             </thead>
             <tbody>
-              {invoice.items.map((item, index) => (
-                <tr key={index} style={{ borderBottom: '1px solid #F1F4F8' }}>
-                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937' }}>{item.description}</td>
-                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{item.quantity}</td>
-                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
-                  <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, invoice.currency || 'MYR')}</td>
-                </tr>
-              ))}
+              {invoice.items.map((item, index) => {
+                // 세부 줄(내용만)은 «- 내용» · 단가/금액 빈칸 — 규칙 utils/invoiceLines (2026-11-28)
+                const c = invoiceLineCells(item, (n) => formatCurrency(n, invoice.currency || 'MYR'));
+                const pad = c.detail ? DETAIL_ROW_PADDING : '12px 8px';
+                return (
+                  <tr key={index} style={{ borderBottom: '1px solid #F1F4F8' }}>
+                    <td style={{ padding: pad, fontSize: '14px', color: '#1F2937', ...(c.detail ? DETAIL_CELL_STYLE : {}) }}>{c.description}</td>
+                    <td style={{ padding: pad, fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{c.qty}</td>
+                    <td style={{ padding: pad, fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.unitPrice}</td>
+                    <td style={{ padding: pad, fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.amount}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

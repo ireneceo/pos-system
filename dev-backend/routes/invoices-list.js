@@ -42,6 +42,7 @@ const {
   getCategoryDisplayName,
   checkPaymentPermission,
   checkConfirmPermission,
+  isDetailItem,
 } = require('./invoices-helpers');
 const { invoiceInBranch } = require('./invoices-helpers');
 
@@ -222,7 +223,8 @@ router.get('/', authenticateToken, async (req, res) => {
         as: 'items',
         attributes: ['item_type', 'description', 'calculated_amount', 'tax_amount', 'total_amount']
       }],
-      order: [['due_date', 'DESC'], ['id', 'DESC']]
+      // 줄 순서 고정 — 세부 줄은 바로 앞 금액 줄에 속한다(2026-11-28 Fable 설계 §2-2)
+      order: [['due_date', 'DESC'], ['id', 'DESC'], [{ model: InvoiceItem, as: 'items' }, 'id', 'ASC']]
     });
 
     // Post-filter: exclude demo restaurant invoices if needed
@@ -420,7 +422,10 @@ router.get('/', authenticateToken, async (req, res) => {
           let fullDescription;
 
           // For subscription, just use the stored display name or plan name
-          if ((item.item_type || invoice.invoice_category) === 'subscription') {
+          if (isDetailItem(item)) {
+            // 세부 줄 — 카테고리 접두 없이 원문 그대로(2026-11-28 Fable 설계 §2-2)
+            fullDescription = item.description || '';
+          } else if ((item.item_type || invoice.invoice_category) === 'subscription') {
             fullDescription = categoryName;
           } else {
             // For others: Category Name + Description (if any)
@@ -430,6 +435,8 @@ router.get('/', authenticateToken, async (req, res) => {
           return {
             // 줄 종류 — 관리자 «수정» 저장이 이 줄을 그대로 돌려보내므로 종류도 같이 실어야 안 바뀐다(2026-11-08)
             itemType: item.item_type || null,
+            isDetail: isDetailItem(item),
+            rawDescription: item.description || '',
             description: fullDescription,
             quantity: Number(item.quantity ?? 1),
             unit: item.unit || null,
@@ -534,7 +541,7 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
         model: InvoiceItem,
         as: 'items'
       }],
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC'], [{ model: InvoiceItem, as: 'items' }, 'id', 'ASC']]
     });
 
     // 청구서 ↔ 원본 발주 (2026-09-08) — 매장이 "이 청구서가 어느 발주 것인지, 업로드한 인보이스와
@@ -563,6 +570,9 @@ router.get('/restaurant/:restaurantId', authenticateToken, checkRestaurantAccess
       // Transform items to frontend format
       const transformedItems = (invoice.items || []).map(item => ({
         id: item.id?.toString(),
+        itemType: item.item_type || null,
+        isDetail: isDetailItem(item),
+        rawDescription: item.description || '',
         description: item.description || item.item_name || 'Service',
         quantity: Number(item.quantity ?? 1),
         unit: item.unit || null,
@@ -719,7 +729,7 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
           required: false
         }
       ],
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC'], [{ model: InvoiceItem, as: 'items' }, 'id', 'ASC']]
     });
     // Transform data to match frontend format
     const transformedInvoices = invoices.map(invoice => {
@@ -727,6 +737,9 @@ router.get('/manager/:managerId', authenticateToken, async (req, res) => {
       let invoiceItems = [];
       if (invoice.items && invoice.items.length > 0) {
         invoiceItems = invoice.items.map(item => ({
+          itemType: item.item_type || null,
+          isDetail: isDetailItem(item),
+          rawDescription: item.description || '',
           description: item.description,
           quantity: Number(item.quantity ?? 1),
           unit: item.unit || null,
@@ -996,7 +1009,7 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
         model: InvoiceItem,
         as: 'items'
       }],
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC'], [{ model: InvoiceItem, as: 'items' }, 'id', 'ASC']]
     });
 
     // Transform for frontend - include all fields needed by frontend
@@ -1096,7 +1109,10 @@ router.get('/to-pay', authenticateToken, async (req, res) => {
             }
           }
           return {
-            description: desc,
+            itemType: item.item_type || null,
+            isDetail: isDetailItem(item),
+            rawDescription: item.description || '',
+            description: isDetailItem(item) ? (item.description || '') : desc,
             quantity: Number(item.quantity ?? 1),
             unit: item.unit || null,
             unitPrice: parseFloat(item.unit_price || item.fixed_amount || item.calculated_amount || 0),
@@ -1167,7 +1183,8 @@ router.get('/:id', authenticateToken, async (req, res) => {
     }
 
     const items = await InvoiceItem.findAll({
-      where: { invoice_id: req.params.id }
+      where: { invoice_id: req.params.id },
+      order: [['id', 'ASC']]
     });
 
     // Get issuer company info (with currency for bank info)
@@ -1217,6 +1234,9 @@ router.get('/:id', authenticateToken, async (req, res) => {
       total: parseFloat(invoice.total_amount),
       items: items?.map(item => ({
         id: item.id?.toString(),
+        itemType: item.item_type || null,
+        isDetail: isDetailItem(item),
+        rawDescription: item.description || '',
         description: item.description,
         quantity: Number(item.quantity ?? 1),
         unit: item.unit || null,
@@ -1306,7 +1326,7 @@ router.get('/issued-by/:issuerType/:issuerId', authenticateToken, async (req, re
         model: InvoiceItem,
         as: 'items'
       }],
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC'], [{ model: InvoiceItem, as: 'items' }, 'id', 'ASC']]
     });
 
     // Transform for frontend

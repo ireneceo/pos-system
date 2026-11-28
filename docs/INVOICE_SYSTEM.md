@@ -54,6 +54,7 @@
 5. **이메일 독립**: 각 발행자가 자기 SMTP 설정으로 자기 인보이스를 발송
 6. **Single source of truth (v3.18)**: 인보이스 헤더의 `subtotal`/`discount_amount`/`total_amount` 는 항상 `items` + `additional_charges` + `discount_value` 로부터 자동 재계산됨 (`utils/invoiceCalculation.js`의 `recomputeInvoiceTotals` / `finalizeInvoice`). Frontend가 보낸 헤더 합계 값은 무시되며 모든 invoice 생성/수정 path (POST/PUT, scheduler, brands, foodcourts, hardware-quotes, subscriptions, restaurants-subscription, subscriptionInvoiceService) 에서 동일 helper를 호출함.
 7. **Tax는 `additional_charges`에만 (Path B, v3.18)**: 과거에는 `items.tax_amount` 와 `header.additional_charges` 양쪽에 같은 tax 금액을 저장하는 패턴이 일부 존재해 double-count risk가 있었음. v3.18 마이그레이션 (`scripts/recompute-invoice-totals.js`) 로 `items.tax_amount = 0` 강제 + tax는 `additional_charges`에만. 이메일 템플릿/GET 응답의 `tax` 필드는 `additional_charges` 합으로 도출.
+8. **세부 내용 줄 (2026-11-28 · `.claude/fable-design-20261128-invoice-detail-lines.md`)**: `invoice_items.item_type = 'line_detail'` 인 줄은 금액 없는 내용 줄. 판별은 이 표식 하나뿐(금액 0·단가 NULL 로 가르지 않는다 — 0원 구독 줄은 금액 줄). 불변식 `unit_price/fixed_amount NULL · calculated/tax/total 0` 을 `normalizeItem` 이 강제. 줄 순서 `id ASC`, 세부 줄은 바로 앞 금액 줄에 속함. 표시 규칙 단일 소스 `dev-frontend/src/utils/invoiceLines.ts`(«- 내용» · 단가·금액 빈칸 · 수량은 1 아닐 때만), 메일은 `is_detail`. 응답 줄에 `isDetail`·`rawDescription`·`itemType`. `PUT /api/invoices/:id`: 금액 줄 2개 이상이면 되돌아온 `items` 무시(`replaceItems:true` 만 통째 교체) · `details`(문자열 배열) = 세부 줄 교체(금액 줄 여럿이면 400 · 255자·30줄 상한) · 안 오면 기존 세부 줄 보존 · 설명은 `rawDescription` 우선. 카테고리 코드 `line_detail` 예약. 입력칸은 브랜드 작성·수정만(관리자·푸드코트는 표시만).
 
 ### 1.3 통화 매칭 체인
 

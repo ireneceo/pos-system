@@ -40,7 +40,7 @@ const {
   checkPaymentPermission,
   checkConfirmPermission,
 } = require('./invoices-helpers');
-const { invoiceInBranch } = require('./invoices-helpers');
+const { invoiceInBranch, DETAIL_ITEM_TYPE, isDetailItem, cleanDetailLines } = require('./invoices-helpers');
 const { currencySymbol } = require('../utils/currency');
 
 router.post('/categories', authenticateToken, async (req, res) => {
@@ -50,6 +50,8 @@ router.post('/categories', authenticateToken, async (req, res) => {
     const fieldErrors = {};
     if (!name) fieldErrors.name = 'Name is required';
     if (!code) fieldErrors.code = 'Code is required';
+    // 'line_detail' = 세부 줄 예약 코드(2026-11-28 Fable 설계 §2-4a)
+    else if (code === DETAIL_ITEM_TYPE) fieldErrors.code = 'Reserved code';
     if (Object.keys(fieldErrors).length > 0) {
       return res.status(400).json({
         success: false,
@@ -107,6 +109,10 @@ router.put('/categories/:categoryId', authenticateToken, async (req, res) => {
     const category = await InvoiceCategory.findByPk(categoryId);
     if (!category) {
       return res.status(404).json({ success: false, error: { message: 'Category not found', code: 'NOT_FOUND' } });
+    }
+
+    if (code === DETAIL_ITEM_TYPE) {
+      return res.status(400).json({ success: false, error: { message: 'Reserved code', code: 'VALIDATION_ERROR', fieldErrors: { code: 'Reserved code' } } });
     }
 
     // Check for duplicate code if changing
@@ -424,36 +430,90 @@ router.put('/:id', authenticateToken, async (req, res) => {
     // Determine items to use for recalculation: incoming `items` if provided,
     // else existing rows (so an additional_charges/discount edit alone still
     // recomputes header against the items already on disk).
+    // 세부 줄(내용만 · item_type 'line_detail') 규칙 — 2026-11-28 Fable 설계 §2-4b
+    //   .claude/fable-design-20261128-invoice-detail-lines.md
+    //   · 금액 줄이 여러 개인 청구서는 «수정» 화면이 되돌려 보낸 items 를 무시(줄이 바뀌지 않음) — replaceItems:true 만 통째 교체
+    //   · details(문자열 배열) = 세부 줄 교체 · 안 오면 기존 세부 줄 보존
+    //   · 설명은 rawDescription(접두 없는 원문) 우선 — «Service: » 중복 방지
+    const { details, replaceItems } = req.body;
+    const replaceAll = replaceItems === true;
+    const prevRows = await InvoiceItem.findAll({
+      where: { invoice_id: invoiceId }, order: [['id', 'ASC']], transaction
+    });
+    const prevAmount = prevRows.filter(r => !isDetailItem(r));
+    const prevDetail = prevRows.filter(r => isDetailItem(r));
+    const badRequest = async (message, fieldErrors) => {
+      await transaction.rollback();
+      return res.status(400).json({ success: false, message, error: { message, code: 'VALIDATION_ERROR', fieldErrors } });
+    };
+    let detailLines;
+    if (details !== undefined) {
+      const cleaned = cleanDetailLines(details);
+      if (cleaned.error) return badRequest(cleaned.error, { details: cleaned.error });
+      detailLines = cleaned.lines;
+      if (prevAmount.length > 1 && !replaceAll) {
+        return badRequest('This invoice has several priced lines, so its details cannot be changed here.', { details: 'Several priced lines' });
+      }
+      if (replaceAll && Array.isArray(items)) {
+        return badRequest('With replaceItems, send detail lines inside items.', { details: 'Send inside items' });
+      }
+    }
+    const detailRow = (description, extra = {}) => ({
+      invoice_id: invoiceId, item_type: DETAIL_ITEM_TYPE, description, quantity: 1, unit: null,
+      unit_price: null, fixed_amount: null, calculation_method: 'fixed',
+      calculated_amount: 0, tax_rate: 0, tax_amount: 0, total_amount: 0, ...extra
+    });
+    // 기존 줄을 새 줄로 다시 쓸 때 — id·시각을 빼야 새 id 가 순서대로 붙는다(세부 줄 소속 = 순서)
+    const asNewRow = (r) => { const { id, createdAt, updatedAt, created_at, updated_at, ...rest } = r.toJSON(); return rest; };
+    const ignoreIncoming = prevAmount.length > 1 && !replaceAll;
+    const incoming = (!ignoreIncoming && items && Array.isArray(items)) ? items : null;
+
+    // Determine items to use for recalculation: incoming `items` if provided,
+    // else existing rows (so an additional_charges/discount edit alone still
+    // recomputes header against the items already on disk).
     let itemsForRecalc;
-    if (items && Array.isArray(items)) {
+    let rewriteItems = false;
+    if (incoming) {
       // 관리자 «수정» 화면은 목록 응답의 줄(종류 없음)을 그대로 돌려보낸다 — 종류가 없으면 'service' 로 바뀌어
       //   구독 청구서가 «서비스» 로 보였다(2026-11-08 Irene). 종류가 안 오면 같은 자리의 기존 줄 종류,
       //   그것도 없으면 청구서 분류(invoice_category)를 쓴다.
-      const prevRows = await InvoiceItem.findAll({
-        where: { invoice_id: invoiceId }, order: [['id', 'ASC']], attributes: ['item_type'], transaction
-      });
-      const fallbackType = (idx) => prevRows[idx]?.item_type
+      const typeSource = replaceAll ? prevRows : prevAmount;
+      const fallbackType = (idx) => typeSource[idx]?.item_type
         || (invoiceCategory !== undefined ? invoiceCategory : invoice.invoice_category)
         || 'service';
-      itemsForRecalc = items.map((item, idx) => ({
-        invoice_id: invoiceId,
-        item_type: item.itemType || item.item_type || fallbackType(idx),
-        description: item.description || '',
-        quantity: Number(item.quantity ?? 1),
-        unit: item.unit || null,
-        unit_price: item.unitPrice || item.unit_price || 0,
-        calculation_method: item.calculationMethod || 'fixed',
-        calculated_amount: item.unitPrice || item.unit_price || item.calculatedAmount || 0,
-        tax_rate: item.taxRate || item.tax_rate || 0,
-        tax_amount: item.taxAmount || item.tax_amount || 0,
-        total_amount: item.total || item.total_amount || 0
-      }));
-    } else {
-      const existingItems = await InvoiceItem.findAll({
-        where: { invoice_id: invoiceId },
-        transaction
+      // 교체 모드가 아니면 되돌아온 세부 줄은 버리고(아래에서 details 또는 기존 세부 줄로 다시 붙인다)
+      const incomingRows = replaceAll ? incoming : incoming.filter(it => !isDetailItem(it));
+      const mapped = incomingRows.map((item, idx) => {
+        const itemType = item.itemType || item.item_type || fallbackType(idx);
+        const description = item.rawDescription ?? item.description ?? '';
+        if (itemType === DETAIL_ITEM_TYPE) {
+          return detailRow(description, { quantity: Number(item.quantity ?? 1), unit: item.unit || null });
+        }
+        return {
+          invoice_id: invoiceId,
+          item_type: itemType,
+          description,
+          quantity: Number(item.quantity ?? 1),
+          unit: item.unit || null,
+          unit_price: item.unitPrice || item.unit_price || 0,
+          calculation_method: item.calculationMethod || 'fixed',
+          calculated_amount: item.unitPrice || item.unit_price || item.calculatedAmount || 0,
+          tax_rate: item.taxRate || item.tax_rate || 0,
+          tax_amount: item.taxAmount || item.tax_amount || 0,
+          total_amount: item.total || item.total_amount || 0
+        };
       });
-      itemsForRecalc = existingItems.map(r => r.toJSON());
+      const detailsAfter = replaceAll ? []
+        : detailLines !== undefined ? detailLines.map(d => detailRow(d))
+        : prevDetail.map(asNewRow);
+      itemsForRecalc = [...mapped, ...detailsAfter];
+      rewriteItems = true;
+    } else if (detailLines !== undefined) {
+      // details 만 — 금액 줄은 그대로, 세부 줄만 교체
+      itemsForRecalc = [...prevAmount.map(asNewRow), ...detailLines.map(d => detailRow(d))];
+      rewriteItems = true;
+    } else {
+      itemsForRecalc = prevRows.map(r => r.toJSON());
     }
 
     // Single source of truth recalculation. Merge incoming partial updates
@@ -488,7 +548,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 
     // Update items if provided (replace) or normalize existing rows so each
     // row's total_amount = calculated_amount + tax_amount.
-    if (items && Array.isArray(items)) {
+    if (rewriteItems) {
       await InvoiceItem.destroy({
         where: { invoice_id: invoiceId },
         transaction
@@ -913,7 +973,9 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
       }, {
         model: InvoiceItem,
         as: 'items'
-      }]
+      }],
+      // 줄 순서 고정 — 세부 줄은 바로 앞 금액 줄 밑에 보인다(2026-11-28)
+      order: [[{ model: InvoiceItem, as: 'items' }, 'id', 'ASC']]
     });
 
     if (!invoice) {
@@ -962,6 +1024,7 @@ router.post('/:id/send-email', authenticateToken, async (req, res) => {
     if (issuerType !== 'system_admin' && invoice.items && invoice.items.length > 0) {
       // Entity plan invoice (brand/foodcourt) — use multi-item template
       const items = invoice.items.map(item => ({
+        is_detail: isDetailItem(item),
         description: item.description,
         calculated_amount: item.calculated_amount,
         tax_amount: item.tax_amount,

@@ -83,6 +83,10 @@ export interface CurrencyConfig {
 }
 
 export interface InvoiceItem {
+  // 세부 줄(내용만) 표식 — 2026-11-28 utils/invoiceLines
+  isDetail?: boolean;
+  rawDescription?: string;
+  itemType?: string | null;
   description: string;
   quantity: number;
   unitPrice: number;

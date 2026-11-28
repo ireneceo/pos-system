@@ -12896,6 +12896,64 @@ function defineInvoiceBoundaryTests() {
       F = null;
     }
   });
+
+  // 세부 줄(내용만 · item_type 'line_detail') — 2026-11-28 .claude/fable-design-20261128-invoice-detail-lines.md §4-6
+  const itemDump = async (id) => {
+    const { sequelize } = require('../config/database');
+    const [rows] = await sequelize.query('SELECT item_type, description, quantity, unit_price, calculated_amount, total_amount FROM invoice_items WHERE invoice_id = ? ORDER BY id', { replacements: [id] });
+    return JSON.stringify(rows);
+  };
+  const mkDetailInvoice = async (f, tag, rows) => {
+    const Invoice = require('../models/Invoice');
+    const InvoiceItem = require('../models/InvoiceItem');
+    const total = rows.reduce((s, r) => s + (r[0] === 'service' ? r[2] : 0), 0);
+    const [[b]] = await require('../config/database').sequelize.query('SELECT issuer_id, issued_by FROM invoices WHERE id = ?', { replacements: [f.A] });
+    const inv = await Invoice.create({ invoice_number: `${MARK}${tag}-${f.stamp}`, type: 'manual', invoice_category: 'service', subtotal: total, total_amount: total,
+      currency: 'MYR', status: 'draft', issuer_type: 'brand', issuer_id: b.issuer_id, issued_by: b.issued_by, issued_at: new Date(),
+      due_date: new Date(Date.now() + 7 * 864e5), payer_type: 'restaurant', payer_id: 38, restaurant_id: 38 });
+    for (const [type, desc, amt] of rows) {
+      await InvoiceItem.create({ invoice_id: inv.id, item_type: type, description: desc, quantity: 1, unit_price: type === 'service' ? amt : null,
+        calculation_method: 'fixed', calculated_amount: amt, tax_amount: 0, total_amount: amt });
+    }
+    return inv.id;
+  };
+  test('invoice-boundary', '⑩ 금액 줄 여러 개 청구서 — «수정» 이 줄을 되돌려 보내도(접두·0 단가) 줄 안 바뀜', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    try {
+      const id = await mkDetailInvoice(f, 'DL1', [['service', 'Printed materials', 100], ['line_detail', 'Booklet', 0], ['service', 'Install fee', 50], ['line_detail', 'On-site setup', 0]]);
+      const before = await itemDump(id);
+      const list = await request('GET', `/invoices/${id}`, null, f.bg);
+      const items = list.body?.invoice?.items;
+      if (!Array.isArray(items) || items.map(i => i.isDetail ? 'D' : 'A').join('') !== 'ADAD') return say(`조회 ${list.status} ${JSON.stringify(items)?.slice(0, 120)}`);
+      // 옛 «수정» 화면 모양 — 설명에 접두가 붙고 세부 줄 단가 0
+      const sent = items.map(i => ({ ...i, description: `Service: ${i.description}`, rawDescription: undefined, unitPrice: i.unitPrice || 0 }));
+      const r = await request('PUT', `/invoices/${id}`, { items: sent }, f.bg);
+      if (r.status !== 200) return say(`PUT ${r.status}`);
+      const after = await itemDump(id);
+      return after === before || say(`줄 바뀜 ${after.slice(0, 160)}`);
+    } finally {
+      await sweep().catch(() => {}); F = null;
+    }
+  });
+  test('invoice-boundary', '⑪ 세부 줄은 합계 기여 0 — 돈이 실려 와도 0 · details 교체 뒤 합계 그대로', async () => {
+    const f = await fixtures(); if (!f) return skip();
+    try {
+      const { recomputeInvoiceTotals } = require('../utils/invoiceCalculation');
+      const calc = recomputeInvoiceTotals({}, [{ item_type: 'service', calculated_amount: 100 }, { item_type: 'line_detail', calculated_amount: 99, unit_price: 99 }]);
+      if (calc.header.subtotal !== 100 || calc.items[1].unit_price !== null) return say(`계산 ${calc.header.subtotal} / ${calc.items[1].unit_price}`);
+      const id = await mkDetailInvoice(f, 'DL2', [['service', 'Consulting', 80], ['line_detail', 'Old line', 0]]);
+      const r = await request('PUT', `/invoices/${id}`, { details: ['- New A', 'New B'] }, f.bg);
+      if (r.status !== 200) return say(`PUT ${r.status}`);
+      const { sequelize } = require('../config/database');
+      const [[h]] = await sequelize.query('SELECT total_amount FROM invoices WHERE id = ?', { replacements: [id] });
+      const rows = JSON.parse(await itemDump(id));
+      const ok = Number(h.total_amount) === 80 && rows.map(x => x.description).join('|') === 'Consulting|New A|New B'
+        && rows.slice(1).every(x => x.item_type === 'line_detail' && x.unit_price === null && Number(x.total_amount) === 0);
+      return ok || say(`합계 ${h.total_amount} · ${JSON.stringify(rows).slice(0, 160)}`);
+    } finally {
+      await sweep().catch(() => {}); F = null;
+    }
+  });
 }
 
 // ============================================

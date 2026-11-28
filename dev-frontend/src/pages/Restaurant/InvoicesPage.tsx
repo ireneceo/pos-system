@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { invoiceLineCells, DETAIL_CELL_STYLE, DETAIL_CELL_CSS, DETAIL_ROW_PADDING } from '../../utils/invoiceLines';
 import styled from 'styled-components';
 import { printHTMLContent } from '../../utils/billPrint';
 import { useSearchParams, useParams } from 'react-router-dom';
@@ -164,6 +165,10 @@ interface Invoice {
 }
 
 interface InvoiceItem {
+  // 세부 줄(내용만) 표식 — 2026-11-28 utils/invoiceLines
+  isDetail?: boolean;
+  rawDescription?: string;
+  itemType?: string | null;
   description: string;
   quantity: number;
   /** 수량을 따라다니는 단위(kg/g/L…). 발주 유래가 아닌 인보이스는 없음 (2026-08-31) */
@@ -1067,14 +1072,14 @@ const RestaurantInvoicesPage: React.FC = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    ${invoice.items && invoice.items.length > 0 ? invoice.items.map(item => `
+                    ${invoice.items && invoice.items.length > 0 ? invoice.items.map(item => { const c = invoiceLineCells(item, (n) => formatCurrency(n, invoice.currency || 'MYR'), (it) => `${it.quantity}${it.unit ? ' ' + it.unit : ''}`); return `
                     <tr>
-                        <td>${item.description}</td>
-                        <td class="text-center">${item.quantity}${item.unit ? ' ' + item.unit : ''}</td>
-                        <td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td>
-                        <td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td>
+                        <td${c.detail ? ` style="${DETAIL_CELL_CSS}"` : ''}>${c.description}</td>
+                        <td class="text-center">${c.qty}</td>
+                        <td class="text-right">${c.unitPrice}</td>
+                        <td class="text-right">${c.amount}</td>
                     </tr>
-                    `).join('') : `
+                    `; }).join('') : `
                     <tr>
                         <td>${invoice.categoryDisplayName || invoice.planType || 'Service'}</td>
                         <td class="text-center">1</td>
@@ -1692,14 +1697,19 @@ const RestaurantInvoicesPage: React.FC = () => {
                     </thead>
                     <tbody>
                       {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
-                        selectedInvoice.items.map((item, index) => (
-                          <tr key={index} style={{ borderBottom: '1px solid #F1F4F8' }}>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937' }}>{item.description}</td>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{item.quantity}{item.unit ? ` ${item.unit}` : ''}</td>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.unitPrice, selectedInvoice.currency || 'MYR')}</td>
-                            <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{formatCurrency(item.total, selectedInvoice.currency || 'MYR')}</td>
-                          </tr>
-                        ))
+                        selectedInvoice.items.map((item, index) => {
+                          // 세부 줄(내용만)은 «- 내용» · 단가/금액 빈칸 — 규칙 utils/invoiceLines (2026-11-28)
+                          const c = invoiceLineCells(item, (n) => formatCurrency(n, selectedInvoice.currency || 'MYR'), (it) => `${it.quantity}${it.unit ? ` ${it.unit}` : ''}`);
+                          const pad = c.detail ? DETAIL_ROW_PADDING : '12px 8px';
+                          return (
+                            <tr key={index} style={{ borderBottom: '1px solid #F1F4F8' }}>
+                              <td style={{ padding: pad, fontSize: '14px', color: '#1F2937', ...(c.detail ? DETAIL_CELL_STYLE : {}) }}>{c.description}</td>
+                              <td style={{ padding: pad, fontSize: '14px', color: '#1F2937', textAlign: 'center' }}>{c.qty}</td>
+                              <td style={{ padding: pad, fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.unitPrice}</td>
+                              <td style={{ padding: pad, fontSize: '14px', color: '#1F2937', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.amount}</td>
+                            </tr>
+                          );
+                        })
                       ) : (
                         <tr style={{ borderBottom: '1px solid #F1F4F8' }}>
                           <td style={{ padding: '12px 8px', fontSize: '14px', color: '#1F2937' }}>{selectedInvoice.categoryDisplayName || selectedInvoice.planType || 'Service'}</td>

@@ -1107,5 +1107,11 @@
   "ui.invoices.searchIssuedPh": "Search invoice, status, company, type...",
   "ui.invoices.paidTab": "Paid Invoices",
   "ui.invoices.searchToPayPh": "Search invoice, status, issuer...",
-  "ui.invoices.searchPaidPh": "Search invoice, issuer, restaurant..."
+  "ui.invoices.searchPaidPh": "Search invoice, issuer, restaurant...",
+  "brandInvoicesPage.detailLines": "Details (optional)",
+  "brandInvoicesPage.detailLinesPlaceholder": "e.g. On-site installation and setup",
+  "brandInvoicesPage.detailLinesHelp": "One per line. Shown under the item, without an amount.",
+  "brandInvoicesPage.detailLinesTooLong": "Each line must be {{max}} characters or fewer.",
+  "brandInvoicesPage.detailLinesTooMany": "Up to {{max}} lines.",
+  "brandInvoicesPage.severalPricedLines": "This invoice has several priced lines. Amount and lines can't be changed here."
 }

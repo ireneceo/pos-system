@@ -6,6 +6,7 @@ import { formatCurrency } from '../../../utils/currency';
 import { formatDateTime } from '../../../utils/timezone';
 import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
 import { formatEntityAddress, AppLocale } from '../../../utils/formatAddress';
+import { parseDetailLines, DETAIL_MAX_LEN, DETAIL_MAX_LINES } from '../../../utils/invoiceLines';
 import { Invoice, Manager, Restaurant, InvoiceCategory, AdditionalChargeConfig } from './types';
 import {
   Button,
@@ -65,9 +66,11 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
   onSave,
 }) => {
   const { t, i18n } = useTranslation('brand');
+  const severalPriced = (editInvoice.amountLineCount ?? 0) > 1;
+  const detailError = severalPriced ? null : parseDetailLines(editInvoice.detailLines || '').error;
 
   return (
-    <CommonModal isOpen={true} onClose={onClose} title={`Edit Invoice - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={onClose}> Cancel </Button><Button variant="primary" onClick={onSave}> Save Changes </Button></>}>
+    <CommonModal isOpen={true} onClose={onClose} title={`Edit Invoice - ${selectedInvoice.invoiceNumber}`} footer={<><Button variant="secondary" onClick={onClose}> Cancel </Button><Button variant="primary" onClick={onSave} disabled={!!detailError}> Save Changes </Button></>}>
 
       <FormGroup>
         <FormLabel>Search Restaurant *</FormLabel>
@@ -200,6 +203,7 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
           <FormInput
             type="number"
             value={editInvoice.amount}
+            disabled={severalPriced}
             onChange={(e) => {
               const amount = parseFloat(e.target.value) || 0;
               const editCharges = getChargesForCurrency(editInvoice.currency || '');
@@ -281,6 +285,31 @@ const BrandInvoiceEditModal: React.FC<BrandInvoiceEditModalProps> = ({
             onChange={(e) => setEditInvoice({...editInvoice, serviceDescription: e.target.value})}
             rows={3}
           />
+        </FormGroup>
+      )}
+
+      {/* 세부 내용(금액 없는 줄) — 금액 줄이 여러 개면 여기서 못 바꾼다(2026-11-28 Fable 설계 §3-3) */}
+      {severalPriced ? (
+        <div style={{ fontSize: '13px', color: '#4B5563', background: '#F9FAFB', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '10px 12px', marginBottom: '16px' }}>
+          {t('brand:brandInvoicesPage.severalPricedLines', "This invoice has several priced lines. Amount and lines can't be changed here.")}
+        </div>
+      ) : (
+        <FormGroup>
+          <FormLabel>{t('brand:brandInvoicesPage.detailLines', 'Details (optional)')}</FormLabel>
+          <FormTextarea
+            value={editInvoice.detailLines || ''}
+            onChange={(e) => setEditInvoice({ ...editInvoice, detailLines: e.target.value })}
+            placeholder={t('brand:brandInvoicesPage.detailLinesPlaceholder', 'e.g. On-site installation and setup')}
+            rows={4}
+          />
+          <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('brand:brandInvoicesPage.detailLinesHelp', 'One per line. Shown under the item, without an amount.')}</div>
+          {detailError && (
+            <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '4px' }}>
+              {detailError === 'too_long'
+                ? t('brand:brandInvoicesPage.detailLinesTooLong', { max: DETAIL_MAX_LEN, defaultValue: 'Each line must be {{max}} characters or fewer.' })
+                : t('brand:brandInvoicesPage.detailLinesTooMany', { max: DETAIL_MAX_LINES, defaultValue: 'Up to {{max}} lines.' })}
+            </div>
+          )}
         </FormGroup>
       )}
 

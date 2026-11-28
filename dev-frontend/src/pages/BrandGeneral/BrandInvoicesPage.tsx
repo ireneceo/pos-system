@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { invoiceLineCells, DETAIL_CELL_CSS, parseDetailLines, detailItemRow, countAmountLines, isDetailLine } from '../../utils/invoiceLines';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
 import { InvoiceActionButtons, INVOICE_ACTIONS_COL } from '../../components/Invoices/InvoiceActionButtons';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
@@ -237,6 +238,7 @@ const BrandInvoicesPage: React.FC = () => {
     invoiceCategory: 'service',
     customDescription: '',
     serviceDescription: '',
+    detailLines: '',
     currency: 'MYR',
     discountType: 'none' as 'none' | 'percentage' | 'fixed',
     discountValue: '',
@@ -962,7 +964,7 @@ const BrandInvoicesPage: React.FC = () => {
             <div class="section-label">${t('brand:brandInvoicesPage.items')}</div>
             <table class="items-table">
                 <thead><tr><th>${t('brand:brandInvoicesPage.description')}</th><th class="text-center">${t('brand:brandInvoicesPage.qty')}</th><th class="text-right">${t('brand:brandInvoicesPage.unitPrice')}</th><th class="text-right">${t('brand:brandInvoicesPage.amount')}</th></tr></thead>
-                <tbody>${invoice.items.map(item => `<tr><td>${item.description}</td><td class="text-center">${item.quantity}</td><td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td><td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td></tr>`).join('')}</tbody>
+                <tbody>${invoice.items.map(item => { const c = invoiceLineCells(item, (n) => formatCurrency(n, invoice.currency || 'MYR')); return `<tr><td${c.detail ? ` style="${DETAIL_CELL_CSS}"` : ''}>${c.description}</td><td class="text-center">${c.qty}</td><td class="text-right">${c.unitPrice}</td><td class="text-right">${c.amount}</td></tr>`; }).join('')}</tbody>
             </table>
         </div>`}
         <div class="summary-section">
@@ -1048,7 +1050,7 @@ const BrandInvoicesPage: React.FC = () => {
   };
 
   const resetInvoiceForm = () => {
-    setNewInvoice({ managerId: '', managerName: '', companyName: '', restaurantId: '', restaurantName: '', amount: '', tax: '0', total: '0', description: '', dueDate: '', planType: 'professional', billingCycle: 'monthly', invoiceCategory: 'service', customDescription: '', serviceDescription: '', currency: 'MYR', discountType: 'none' as 'none' | 'percentage' | 'fixed', discountValue: '', discountReason: '' });
+    setNewInvoice({ managerId: '', managerName: '', companyName: '', restaurantId: '', restaurantName: '', amount: '', tax: '0', total: '0', description: '', dueDate: '', planType: 'professional', billingCycle: 'monthly', invoiceCategory: 'service', customDescription: '', serviceDescription: '', detailLines: '', currency: 'MYR', discountType: 'none' as 'none' | 'percentage' | 'fixed', discountValue: '', discountReason: '' });
     setSelectedTarget(null); setSearchQuery(''); setShowSearchDropdown(false);
     setPayerMode('member'); setExternalPayer({ name: '', email: '', phone: '', company: '', address: '', tax_id: '' });
     setPrefillContractId(null);
@@ -1219,7 +1221,10 @@ const BrandInvoicesPage: React.FC = () => {
       billingCycle: 'monthly', description: invoice.items?.[0]?.description || '',
       payerType: invoice.payerType || 'restaurant', payerId: invoice.payerId || '',
       invoiceCategory: invoice.invoiceCategory || 'service', customDescription: invoice.customDescription || '',
-      serviceDescription: invoice.serviceDescription || '', currency: invoice.currency || 'MYR', items: invoice.items
+      serviceDescription: invoice.serviceDescription || '', currency: invoice.currency || 'MYR', items: invoice.items,
+      // 세부 내용(금액 없는 줄) — 금액 줄 1개 이하일 때만 여기서 고친다(2026-11-28 Fable 설계 §3-3)
+      amountLineCount: countAmountLines(invoice.items),
+      detailLines: (invoice.items || []).filter(isDetailLine).map(it => it.rawDescription ?? it.description).join('\n')
     });
     if (invoice.restaurantId) {
       const restaurant = restaurants.find(r => r.id === invoice.restaurantId);
@@ -1265,6 +1270,7 @@ const BrandInvoicesPage: React.FC = () => {
           amount: parseFloat(editInvoice.amount), tax: parseFloat(editInvoice.tax), total: parseFloat(editInvoice.total),
           dueDate: editInvoice.dueDate, status: editInvoice.status, payerType: editInvoice.payerType, payerId: editInvoice.payerId,
           items: editInvoice.items,
+          ...(editInvoice.amountLineCount <= 1 ? { details: parseDetailLines(editInvoice.detailLines || '').lines } : {}),
           discountType: editInvoice.discountType !== 'none' ? editInvoice.discountType : null,
           discountValue: editInvoice.discountType !== 'none' ? parseFloat(editInvoice.discountValue) || 0 : null,
           discountAmount: (() => { const amt = parseFloat(editInvoice.amount) || 0; const dv = parseFloat(editInvoice.discountValue) || 0; if (editInvoice.discountType === 'percentage') return amt * (dv / 100); if (editInvoice.discountType === 'fixed') return dv; return null; })(),
@@ -1330,7 +1336,10 @@ const BrandInvoicesPage: React.FC = () => {
         invoiceData.external_payer_phone = externalPayer.phone || null; invoiceData.external_payer_company = externalPayer.company || null;
         invoiceData.external_payer_address = externalPayer.address || null; invoiceData.external_payer_tax_id = externalPayer.tax_id || null;
       }
-      const items = [{ item_type: newInvoice.invoiceCategory, description, calculation_method: 'fixed', fixed_amount: amount, calculated_amount: amount, tax_rate: 0, tax_amount: 0, total_amount: amount }];
+      // 세부 내용(금액 없는 줄)은 금액 줄 뒤에 순서대로 — 2026-11-28 Fable 설계 §3-3
+      const detail = parseDetailLines(newInvoice.detailLines || '');
+      if (detail.error) return;
+      const items = [{ item_type: newInvoice.invoiceCategory, description, calculation_method: 'fixed', fixed_amount: amount, calculated_amount: amount, tax_rate: 0, tax_amount: 0, total_amount: amount }, ...detail.lines.map(detailItemRow)];
       const token = getAuthToken();
       const response = await fetch('/api/invoices', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ invoice_data: invoiceData, items }) });
       if (response.ok) { await fetchInvoices(); setShowCreateInvoiceModal(false); resetInvoiceForm(); }

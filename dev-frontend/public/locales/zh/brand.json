@@ -1107,5 +1107,11 @@
   "ui.invoices.searchIssuedPh": "搜索发票、状态、公司、类型...",
   "ui.invoices.paidTab": "已付发票",
   "ui.invoices.searchToPayPh": "搜索发票、状态、开票方...",
-  "ui.invoices.searchPaidPh": "搜索发票、开票方、餐厅..."
+  "ui.invoices.searchPaidPh": "搜索发票、开票方、餐厅...",
+  "brandInvoicesPage.detailLines": "明细（可选）",
+  "brandInvoicesPage.detailLinesPlaceholder": "例如：现场安装与设置",
+  "brandInvoicesPage.detailLinesHelp": "每行一项。显示在项目下方，不含金额。",
+  "brandInvoicesPage.detailLinesTooLong": "每行不超过 {{max}} 个字符。",
+  "brandInvoicesPage.detailLinesTooMany": "最多 {{max}} 行。",
+  "brandInvoicesPage.severalPricedLines": "此发票有多个计价行，无法在此修改金额和明细。"
 }

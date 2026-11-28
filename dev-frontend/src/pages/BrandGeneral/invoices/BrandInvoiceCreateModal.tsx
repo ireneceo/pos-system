@@ -4,6 +4,7 @@ import { Modal as CommonModal } from '../../../components/UI';
 import DateField from '../../../components/Common/DateField';
 import { formatCurrency } from '../../../utils/currency';
 import { getRestaurantDisplayName } from '../../../utils/restaurantDisplay';
+import { parseDetailLines, DETAIL_MAX_LEN, DETAIL_MAX_LINES } from '../../../utils/invoiceLines';
 import { Manager, Restaurant, InvoiceCategory, AdditionalChargeConfig } from './types';
 import {
   Button,
@@ -69,6 +70,7 @@ const BrandInvoiceCreateModal: React.FC<BrandInvoiceCreateModalProps> = ({
   resetInvoiceForm,
 }) => {
   const { t } = useTranslation('brand');
+  const detailError = parseDetailLines(newInvoice.detailLines || '').error;
 
   const handleClose = () => {
     onClose();
@@ -76,7 +78,7 @@ const BrandInvoiceCreateModal: React.FC<BrandInvoiceCreateModalProps> = ({
   };
 
   return (
-    <CommonModal isOpen={true} onClose={handleClose} title="Create Invoice" footer={<><Button variant="secondary" onClick={handleClose}> Cancel </Button> {paymentMethodWarning && ( <div style={{ padding: '10px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', fontSize: '13px', color: '#92400E', marginBottom: '12px', flex: '1 1 100%' }}> {paymentMethodWarning} </div> )} <Button variant="primary" onClick={onSubmit} disabled={payerMode === 'member' ? (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate) : (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate)} > Create Invoice </Button></>}>
+    <CommonModal isOpen={true} onClose={handleClose} title="Create Invoice" footer={<><Button variant="secondary" onClick={handleClose}> Cancel </Button> {paymentMethodWarning && ( <div style={{ padding: '10px 16px', background: '#FEF3C7', border: '1px solid #F59E0B', borderRadius: '8px', fontSize: '13px', color: '#92400E', marginBottom: '12px', flex: '1 1 100%' }}> {paymentMethodWarning} </div> )} <Button variant="primary" onClick={onSubmit} disabled={!!detailError || (payerMode === 'member' ? (!selectedTarget || !newInvoice.amount || !newInvoice.dueDate) : (!externalPayer.name || !externalPayer.email || !newInvoice.amount || !newInvoice.dueDate))} > Create Invoice </Button></>}>
 
       <FormGroup>
         <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
@@ -379,6 +381,24 @@ const BrandInvoiceCreateModal: React.FC<BrandInvoiceCreateModalProps> = ({
           placeholder={`Enter ${newInvoice.invoiceCategory || 'service'} description...`}
           rows={3}
         />
+      </FormGroup>
+      {/* 세부 내용(금액 없는 줄) — 한 줄에 하나, 항목 밑에 «- 내용» 으로 보임 (2026-11-28 Fable 설계 §3-3) */}
+      <FormGroup>
+        <FormLabel>{t('brand:brandInvoicesPage.detailLines', 'Details (optional)')}</FormLabel>
+        <FormTextarea
+          value={newInvoice.detailLines || ''}
+          onChange={(e) => setNewInvoice({ ...newInvoice, detailLines: e.target.value })}
+          placeholder={t('brand:brandInvoicesPage.detailLinesPlaceholder', 'e.g. On-site installation and setup')}
+          rows={4}
+        />
+        <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '4px' }}>{t('brand:brandInvoicesPage.detailLinesHelp', 'One per line. Shown under the item, without an amount.')}</div>
+        {detailError && (
+          <div style={{ fontSize: '12px', color: '#DC2626', marginTop: '4px' }}>
+            {detailError === 'too_long'
+              ? t('brand:brandInvoicesPage.detailLinesTooLong', { max: DETAIL_MAX_LEN, defaultValue: 'Each line must be {{max}} characters or fewer.' })
+              : t('brand:brandInvoicesPage.detailLinesTooMany', { max: DETAIL_MAX_LINES, defaultValue: 'Up to {{max}} lines.' })}
+          </div>
+        )}
       </FormGroup>
       <InvoiceSummary>
         <SummaryRow>

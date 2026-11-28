@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { isDetailLine } from '../../utils/invoiceLines';
 import { SearchInput, FilterBar, FilterSelect } from '../../components/Common/FilterComponents';
 import { Container, Header, Title, ActionSection, Content } from '../../components/UI/PageComponents';
 import { useAuth } from '../../contexts/AuthContext';
@@ -67,6 +68,10 @@ interface Invoice {
 }
 
 interface InvoiceItem {
+  // 세부 줄(내용만) 표식 — 2026-11-28 utils/invoiceLines
+  isDetail?: boolean;
+  rawDescription?: string;
+  itemType?: string | null;
   description: string;
   quantity: number;
   unitPrice: number;
@@ -1008,9 +1013,16 @@ const ManagerInvoicesPage: React.FC = () => {
                 <FormGroup>
                   <FormLabel>{t('admin:invoicesPage.items')}</FormLabel>
                   {selectedInvoice.items.map((item, index) => (
+                    // 세부 줄(내용만)은 금액 없이 «- 내용» 들여쓰기 — 규칙 utils/invoiceLines (2026-11-28)
+                    isDetailLine(item) ? (
+                      <div key={index} style={{ padding: '0 8px 0 28px', color: '#6B7280', fontSize: 13, marginTop: '-4px', marginBottom: '8px' }}>
+                        - {(item as any).rawDescription ?? item.description}
+                      </div>
+                    ) : (
                     <div key={index} style={{ padding: '8px', background: '#F1F4F8', borderRadius: '4px', marginBottom: '8px' }}>
                       {item.description} - {formatCurrency(item.total, selectedCurrency)}
                     </div>
+                    )
                   ))}
                 </FormGroup>
                 <InvoiceSummary>

@@ -1,5 +1,57 @@
 ## 현재 작업 상태
 
+### 진행 중인 작업
+- 없음
+
+### 다음 확정 작업
+- 없음 — 지시 대기
+
+### 후속 후보 (아이디어 메모, 확정 X — /개발시작 자동 추천 대상 아님)
+- (Fable 권고 · 묶어서 작은 일 하나) ① `routes/invoices-list.js` GET /invoices include attributes 에 id·quantity·unit·unit_price·fixed_amount 추가(발행자 화면 수량 늘 1 · 세부 줄 수량 빈칸) — 화면 전후 대조와 함께 ② PUT `incomingRows`: 표식 없는 items(줄 수 = 기존)를 보내면 세부 줄이 0원 service 줄로 한 벌 더 생김 — 같은 자리 기존 줄 종류로 먼저 채운 뒤 거르기(우리 화면 3곳은 표식을 실어 안 일어남)
+- 금액 줄 여러 개를 화면에서 만드는 줄 편집기 · 관리자·푸드코트 작성 화면 «세부 내용» 칸
+- 기존 동작: 브랜드 «수정» 금액 칸 미반영
+
+### ✅ 완료 (2026-11-28) — 청구서 «세부 내용» 줄(금액 없이 내용만) [Claude Code · 백그라운드 작업방 3a95bda0]
+- (이전) 답 기다림: 운영 DB 읽기(830 청구서 대조 숫자)는 배포 방에 맡기고 이 방은 빌드·검증·Fable 검증으로 넘어갈까요? → Irene «권고대로 진행해 줘»(= 배포 방 몫)
+- Fable 게이트 PASS(조건 2) `.claude/fable-gate-20261128-invoice-detail-lines.md` — **배포 전 조건**: ① 운영 읽기 대조 4개(INV-BR13261128001 조건 일치 줄 = 15 · 카테고리 code line_detail 0 · item_type line_detail 줄 0 · 그 청구서 «Service: » 로 시작하는 줄 0) — 다르면 배포 세우고 Fable 에 ② 배포 전 운영에서 그 청구서 «수정 → 저장» 금지
+- 빌드 1회 · verify-all --full 24/24 · 배포 기록은 오늘 기록(2026-11-28-supplier-custom-product.json)에 합침 · SW 6.28(다른 방이 올린 것과 같이 나감)
+- 일: 인보이스 «내용만 줄»(금액 없는 세부항목) — Irene «금액 말고 내용만 추가할 수도 … 0원 없이 … 하이픈 뒤로 세부항목» · 운영 INV-BR13261128001(id 830, GIT Consulting) 세부 줄 15개 unit_price NULL·금액 0
+- Fable 설계 `.claude/fable-design-20261128-invoice-detail-lines.md`(Irene 질문 없음): 표식 `item_type='line_detail'`(DB 구조 변경 0) · 금액 줄 밑 «- 내용» · 단가/금액 빈칸 · 운영 기준(«단가 없고 0원»)은 안 씀(0원 구독 줄까지 비워져서)
+- 구현 끝(코드 확정): 백엔드 invoices-helpers(isDetailItem·cleanDetailLines) · invoices-list 줄 매핑 5곳+순서 id ASC · invoiceCalculation 세부 줄 0 강제 · invoices-crud PUT(금액 줄 여럿이면 되돌아온 items 무시 · details · rawDescription) · 카테고리 코드 예약 · 메일 템플릿 · 마이그 `scripts/migrate-invoice-detail-lines-br13261128001.js`(deploy 등록) · health-check ⑩⑪ / 프론트 `utils/invoiceLines.ts`(+test 9건) · 6역할 화면+인쇄(PDF) · 브랜드 작성/수정 «Details» 칸 · 번역 4언어
+- 검증 끝: 실호출 16+α 통과(합계=금액 줄 합 · 세부 줄 접두 없음 · 순서 · «수정» 저장 전후 줄 같음 · details 교체/빈칸/256자 400 · 매장·결제 목록) · 메일 렌더 확인 · 고장주입 3/3(normalizeItem·되돌림 무시·isDetailLine) 원복 · 마이그 시험 사본 4줄→0줄 · typecheck 신규 0 · i18n 통과 · health invoice-boundary 11/11
+- 운영 DB 읽기(대조 숫자 4개)는 허락 창에서 멈춰 실행 안 함 → Irene «권고대로» 로 배포 방 몫
+- 기존 동작(별건·안 고침): 브랜드 «수정» 에서 금액 칸을 바꿔도 반영 안 됨(items 가 옛 금액을 실어 옴) · 브랜드 목록(GET /invoices)은 수량 칸을 안 읽어 늘 1 로 보임(830 화면 수량 1 의 원인)
+- 시험 데이터(데모 매장 38 · [확인용]): 청구서 54235(금액 2+세부 3) · 54236(금액 1+세부 2) · 54237(금액 1) — pending_payment 로 바꿈(54237 은 draft)
+- 운영 반영 전 주의: 지금 운영에서 830 을 «수정 → 저장» 하면 세부 줄 단가 0·설명 앞 «Service: » 중복이 생길 수 있음 → 반영 전 수정 저장 금지
+
+### ✅ 완료 (2026-11-28) — 맞춤 제작 루트 1단계(공급업체 상품 종류 + 전용 상품) + 화면 일괄 검사 도구 관문 통과 [Claude Code · 백그라운드 작업방 9b2ceb4e]
+- 커밋 cecab1257(1단계) · d42df5c3f(sweep 도구) — 이 일 파일만. 다른 방 3a95bda0(인보이스 세부내용) 미커밋·oneoff·run-*.sh 그대로
+- Fable 설계 + 게이트 1차 보완 → 재판정 PASS(.claude/fable-gate-20261128-supplier-custom-product.md) · 배포 조건(sweep 전체 1회 통과) 충족: verify-all --full mount sweep 통과 845초 · 같은 실행 번들 신선도 실패 1 = 3a95bda0 미커밋 소스(이 묶음 화면은 서빙 번들에 있음 — e2e 15/15×3)
+- sweep 도구: scripts/lib/gateTestHeaders.js 한 곳 · GATE_BLOCKED 즉시 실패(반증: 표식 빼면 1.3초) · 깬 화면 하나만 실패(반증) · verify-all 실패 줄 전부
+- Fable 통과 마커: 지금 작업 폴더 지문에 다른 방의 인보이스 미커밋 변경(민감)이 섞여 있어 찍지 않음 — 찍으면 검증 안 된 남의 변경까지 통과로 묶인다. 이 묶음의 증거 = 판정문 PASS. 배포 때 마커는 배포 방이 Fable 재발급
+- /개발완료 건너뜀: 같은 폴더에 다른 방(3a95bda0) 미커밋 작업이 있어 폴더 전체 기록·백업을 하지 않음
+- 운영 반영: 다음 배포 때 · 다음 일 후보(Fable 권고 별건): supplier-catalog ?supplier_id= / supplier-directory/:id 외부 업체 노출 막기 · 2단계 의뢰함
+
+#### (이전) 답 기다림: 화면 일괄 검사 도구(mount sweep)가 개발 사이트 관문을 통과하게 이 방이 고쳐도 될까요? → Irene «(가)로 해 주세요»
+- 11-28 Irene «opus 의견 말고 fable 의견 줘» → 판정문 §R3 Fable 권고(가 — 이 방이 고침, 권한 막히면 서버 방)로 바꿔 다시 올림 [Claude Code · 백그라운드 작업방 9b2ceb4e · 2026-11-28]
+- 무엇: 맞춤 제작 루트 1단계(공급업체 상품 종류 칸 + 전용 상품) 구현·검증 끝. Fable 재판정 PASS — 조건 «운영 배포 전 mount sweep 도구 수리 후 전체 1회 통과» (releases/2026-11-28-supplier-custom-product.json fable_note).
+- 왜: 개발 사이트 로그인 관문이 11-28 09:49Z 켜진 뒤 sweep 스크립트(dev-frontend/scripts/headless-page-sweep.js·headless-roles-sweep.js)는 관문 시험 머리글이 없어 화면을 못 엶 → verify-all 23/24. e2e 설정(playwright.config.js, 관문 설치 방의 미커밋)은 머리글을 붙임. 이 방이 관문 비밀 파일을 직접 읽는 시험은 권한 거부(우회 안 함). 같은 화면 7개를 e2e 설정으로 열면 7/7 정상.
+- Fable 재판정 PASS · 마커 찍음(지문 24bb8699a281) · 판정문 «재판정 (gate 2회차)» 절 · 커밋 cecab1257(이 일 파일만 — playwright.config·oneoff·run-*.sh 그대로). 커밋 뒤 마커 지문은 바뀜(판정문이 증거).
+- 답이 오면: (가) sweep 두 스크립트에 e2e 설정과 같은 방식(파일에서 읽고 출력 안 함)으로 관문 표식 + 관문에 막히면 «관문에 막힘» 으로 크게 실패 + 실패 목록 전부 출력 + 고장주입 → verify-all --full 1회(Fable 불필요 — 판정문 §R3). 표식 파일 읽기가 권한에 막히면 우회 않고 관문 설치 서버 방에 넘김 / (나) 수리는 서버 방 몫으로 넘기고 이 방은 끝.
+- 확인용 데이터(데모만): 공급업체 20 상품 16968(주문제작·전용 매장 38)·16969(서비스·전용 38) · 매장 38 발주 88112·88113 [확인용]
+- 다음 일 후보(Fable 권고, 별건): 발주 카탈로그 ?supplier_id= 와 공급업체 상세로 계약 없는 외부 업체 상품이 보이는 문 막기(판정문 §6)
+
+### (이전) 답 기다림: 맞춤 제작(견적) 판매 루트 — Fable 권고 4가지대로 1단계부터 설계를 시작할까요? → Irene «권고대로 진행해 줘» [Claude Code · 백그라운드 작업방 9b2ceb4e · 2026-11-28]
+- 무엇: Irene «견적문의받은 후 상품등록해서 견적상품 판매하는 루트 … 디자인 의뢰 … 파트너 업체 따로 표시 … fable이 전체 검토» → Fable 전체 검토 `.claude/fable-design-20261128-quote-custom-product-route.md`(코드 변경 0)
+- Fable 판정: 가능. 뒤쪽(상품→발주→배송→청구→결제)은 그대로, 앞쪽(의뢰 받기·손님 전용 상품)만 새로. 견적 = 그 손님 전용 상품, 수락 = 발주에 담기. 공급업체 기준 · BG 는 자기 브랜드에만 · 운영사도 공급업체 계정으로 — 모두 맞음
+- 정할 것(Fable 권고): ① BG 의뢰 범위 = 자기 가맹점만 ② 입구 이름 «맞춤 제작 의뢰»(안에서 디자인·인쇄/식품/기타) ③ «공식 파트너» = 시스템 관리자가 지정 ④ 1단계(공급업체 상품 종류 칸 + 손님 전용 상품)부터 → 2단계 의뢰함 → 3단계 파트너 표시·운영사 공급업체 계정
+- 답이 오면: 구현 전 `docs/TRADE_STRUCTURE.md` «맞춤 제작 루트» 절 작성 → 1단계 기술 설계(공급업체 상품 읽는 자리 전수 조사) → 구현 → Fable 검증(N2 는 보안 경계)
+
+### ✅ 완료 (2026-11-28) — 현황 문의: 가입 안 한 매장도 공급업체·브랜드 상품을 사고 결제할 수 있나 [Claude Code · 백그라운드 작업방 eddb44f7]
+- 답: 비회원 구매·결제 없음(발주·결제 라우트 전부 로그인 필요). 일반 소비자 역할 없음 — 대신 Restaurant Admin + 무료 요금제 «Ordering (Free)»(`buyer_free`, 2026-09-12 · 운영 반영됨). 주문 중 자동 가입 없음. 판매자가 «누구나 주문»(open)이면 첫 주문 때 계약 자동 생성(`utils/salesAccess.ensureOpenSupplierContract`)
+- 빈틈: `/shop/:slug` «무료 가입하고 주문하기» 가 그냥 `/signup` 으로 감 — 어느 판매자에서 왔는지 안 넘어가서, 가입 뒤 무료 요금제 미리 선택·그 판매자 계약 걸기·발주 화면 도착이 안 됨(설계 BUYER_FREE_TIER_DESIGN §2-5 에는 있는데 구현 안 됨). 다음 할 일 후보 — Irene 지시 있을 때
+- 코드 변경 0 · Fable 안 씀(읽기만 한 현황 조사)
+
 ### ✅ 완료 (2026-11-28 00:00 점검 · 실행 2026-11-27 16:00 UTC) — 정기 점검 11/28 [Claude Code · 백그라운드 작업방 8b440152]
 - 개발완료 건너뜀: 같은 폴더 일하는 다른 방 0(working+pid 는 이 방뿐) · 마지막 점검 커밋(731fbcb58) 뒤 새 커밋 0 · origin 과 같음 · 미커밋은 오래된 보류(playwright.config · .claude/oneoff-*·run-*.sh)뿐 → 바뀐 것 없음
 - 운영 sw.js = 6.27-brand-manager-invite-20261124 — 개발과 같음

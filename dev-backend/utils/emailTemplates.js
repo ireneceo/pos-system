@@ -380,7 +380,11 @@ function entityPlanInvoiceEmail(data) {
   const issuerName = issuerInfo?.name || 'PurpleHere';
 
   // Build items HTML rows
-  const itemRows = (items || []).map(item => `
+  // 세부 줄(is_detail) — 금액 없이 «- 내용» 한 칸, 들여쓰기(2026-11-28 Fable 설계 §2-5)
+  const itemRows = (items || []).map(item => item.is_detail ? `
+      <tr>
+        <td colspan="2" style="padding:4px 20px 4px 36px;border-bottom:1px solid #F3F4F6;"><span style="color:#6B7280;font-size:13px;">- ${item.description}</span></td>
+      </tr>` : `
       <tr>
         <td style="padding:10px 20px;border-bottom:1px solid #F3F4F6;">
           <span style="color:#4B5563;font-size:14px;">${item.description}</span>
@@ -476,8 +480,9 @@ function entityPlanInvoiceEmail(data) {
   const subject = `Invoice ${invoiceNumber} - ${issuerName}`;
 
   // Build plain text items
-  const itemsText = (items || []).map(item =>
-    `${item.description}: ${sym} ${parseFloat(item.calculated_amount).toFixed(2)}`
+  const itemsText = (items || []).map(item => item.is_detail
+    ? `  - ${item.description}`
+    : `${item.description}: ${sym} ${parseFloat(item.calculated_amount).toFixed(2)}`
   ).join('\n');
 
   const chargeLines = chargesArr.map(c =>

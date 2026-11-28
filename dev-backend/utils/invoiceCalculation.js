@@ -25,6 +25,10 @@
 function round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
 
 function normalizeItem(item) {
+  // 세부 줄(내용만) 불변식 — 돈이 실려 들어와도 합계 기여 0 (2026-11-28 Fable 설계 §2-3)
+  if (item && item.item_type === 'line_detail') {
+    return { ...item, unit_price: null, fixed_amount: null, calculated_amount: 0, tax_amount: 0, total_amount: 0 };
+  }
   const calc = round2(item.calculated_amount ?? item.unit_price ?? item.amount ?? 0);
   return {
     ...item,

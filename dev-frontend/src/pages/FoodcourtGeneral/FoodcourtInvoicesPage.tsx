@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { invoiceLineCells, DETAIL_CELL_CSS } from '../../utils/invoiceLines';
 import ExternalInvoicePayAction from '../../components/Invoices/ExternalInvoicePayAction';
 import TradeInvoiceDates from '../../components/Invoices/TradeInvoiceDates';
 import { InvoiceActionButtons } from '../../components/Invoices/InvoiceActionButtons';
@@ -806,7 +807,7 @@ const FoodcourtInvoicesPage: React.FC = () => {
             <div class="section-label">${t('foodcourt:foodcourtInvoicesPage.items')}</div>
             <table class="items-table">
                 <thead><tr><th>${t('foodcourt:foodcourtInvoicesPage.description')}</th><th class="text-center">${t('foodcourt:foodcourtInvoicesPage.qty')}</th><th class="text-right">${t('foodcourt:foodcourtInvoicesPage.unitPrice')}</th><th class="text-right">${t('foodcourt:foodcourtInvoicesPage.amount')}</th></tr></thead>
-                <tbody>${invoice.items.map(item => `<tr><td>${item.description}</td><td class="text-center">${item.quantity}</td><td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td><td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td></tr>`).join('')}</tbody>
+                <tbody>${invoice.items.map(item => { const c = invoiceLineCells(item, (n) => formatCurrency(n, invoice.currency || 'MYR')); return `<tr><td${c.detail ? ` style="${DETAIL_CELL_CSS}"` : ''}>${c.description}</td><td class="text-center">${c.qty}</td><td class="text-right">${c.unitPrice}</td><td class="text-right">${c.amount}</td></tr>`; }).join('')}</tbody>
             </table>
         </div>
         <div class="summary-section">

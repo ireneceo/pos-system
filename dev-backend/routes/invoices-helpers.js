@@ -561,7 +561,36 @@ async function invoiceInBranch(invoice, branchId) {
   return false;
 }
 
+// 세부 줄(금액 없는 내용 줄) — 2026-11-28 Fable 설계 .claude/fable-design-20261128-invoice-detail-lines.md
+// 판별은 이 표식 하나뿐(금액 0·단가 NULL 로 가르지 않는다 — 0원 구독 줄 등 진짜 금액 줄이 있음).
+const DETAIL_ITEM_TYPE = 'line_detail';
+const isDetailItem = (it) => (it?.item_type || it?.itemType) === DETAIL_ITEM_TYPE;
+const DETAIL_MAX_LINES = 30;
+const DETAIL_MAX_LEN = 255;
+// 세부 내용 정리 — 줄마다 trim · 빈 줄 제거 · 맨 앞 «- »/«– »/«• » 제거 · 255자·30줄 상한
+// 입력: 문자열 배열(또는 줄바꿈 문자열) → { lines } | { error }
+function cleanDetailLines(input) {
+  let raw;
+  if (Array.isArray(input)) raw = input;
+  else if (typeof input === 'string') raw = input.split(/\r?\n/);
+  else if (input == null) raw = [];
+  else return { error: 'Details must be a list of text lines' };
+  const lines = [];
+  for (const v of raw) {
+    if (typeof v !== 'string') return { error: 'Details must be a list of text lines' };
+    const line = v.trim().replace(/^[-–•]\s*/, '').trim();
+    if (!line) continue;
+    if (line.length > DETAIL_MAX_LEN) return { error: `Each detail line must be ${DETAIL_MAX_LEN} characters or fewer` };
+    lines.push(line);
+  }
+  if (lines.length > DETAIL_MAX_LINES) return { error: `Up to ${DETAIL_MAX_LINES} detail lines` };
+  return { lines };
+}
+
 module.exports = {
+  DETAIL_ITEM_TYPE,
+  isDetailItem,
+  cleanDetailLines,
   generateInvoiceNumber,
   getAdditionalCharges,
   calculateAdditionalCharges,

@@ -1107,5 +1107,11 @@
   "ui.invoices.searchIssuedPh": "인보이스·상태·회사·종류 검색...",
   "ui.invoices.paidTab": "결제완료 인보이스",
   "ui.invoices.searchToPayPh": "인보이스·상태·발행처 검색...",
-  "ui.invoices.searchPaidPh": "인보이스·발행처·레스토랑 검색..."
+  "ui.invoices.searchPaidPh": "인보이스·발행처·레스토랑 검색...",
+  "brandInvoicesPage.detailLines": "세부 내용 (선택)",
+  "brandInvoicesPage.detailLinesPlaceholder": "예: 현장 설치 및 세팅",
+  "brandInvoicesPage.detailLinesHelp": "한 줄에 하나씩. 항목 밑에 금액 없이 표시됩니다.",
+  "brandInvoicesPage.detailLinesTooLong": "한 줄은 {{max}}자 이하로 적어 주세요.",
+  "brandInvoicesPage.detailLinesTooMany": "최대 {{max}}줄까지 적을 수 있습니다.",
+  "brandInvoicesPage.severalPricedLines": "이 청구서는 금액 줄이 여러 개라 여기서 금액과 줄을 바꿀 수 없습니다."
 }

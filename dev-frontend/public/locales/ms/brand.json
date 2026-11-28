@@ -1107,5 +1107,11 @@
   "ui.invoices.searchIssuedPh": "Cari invois, status, syarikat, jenis...",
   "ui.invoices.paidTab": "Invois Dibayar",
   "ui.invoices.searchToPayPh": "Cari invois, status, pengeluar...",
-  "ui.invoices.searchPaidPh": "Cari invois, pengeluar, restoran..."
+  "ui.invoices.searchPaidPh": "Cari invois, pengeluar, restoran...",
+  "brandInvoicesPage.detailLines": "Butiran (pilihan)",
+  "brandInvoicesPage.detailLinesPlaceholder": "cth. Pemasangan dan persediaan di tapak",
+  "brandInvoicesPage.detailLinesHelp": "Satu baris setiap satu. Dipaparkan di bawah item, tanpa jumlah.",
+  "brandInvoicesPage.detailLinesTooLong": "Setiap baris mesti {{max}} aksara atau kurang.",
+  "brandInvoicesPage.detailLinesTooMany": "Sehingga {{max}} baris.",
+  "brandInvoicesPage.severalPricedLines": "Invois ini mempunyai beberapa baris berharga. Jumlah dan baris tidak boleh diubah di sini."
 }

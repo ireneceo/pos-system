@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { invoiceLineCells, DETAIL_CELL_CSS } from '../../utils/invoiceLines';
 import DatePeriodFilter, { PeriodType, calculatePeriodDateRange } from '../../components/Common/DatePeriodFilter';
 import { printHTMLContent } from '../../utils/billPrint';
 import { getRestaurantDisplayName } from '../../utils/restaurantDisplay';
@@ -829,7 +830,7 @@ const InvoicesPage: React.FC = () => {
             <table class="items-table">
                 <thead><tr><th>${t('admin:invoicesPage.description')}</th><th class="text-center">${t('admin:invoicesPage.qty')}</th><th class="text-right">${t('admin:invoicesPage.unitPrice')}</th><th class="text-right">${t('admin:invoicesPage.amount')}</th></tr></thead>
                 <tbody>
-                    ${invoice.items.map(item => `<tr><td>${item.description}</td><td class="text-center">${item.quantity}${(item as any).unit ? ' ' + (item as any).unit : ''}</td><td class="text-right">${formatCurrency(item.unitPrice, invoice.currency || 'MYR')}</td><td class="text-right">${formatCurrency(item.total, invoice.currency || 'MYR')}</td></tr>`).join('')}
+                    ${invoice.items.map(item => { const c = invoiceLineCells(item, (n) => formatCurrency(n, invoice.currency || 'MYR'), (it) => `${it.quantity}${it.unit ? ' ' + it.unit : ''}`); return `<tr><td${c.detail ? ` style="${DETAIL_CELL_CSS}"` : ''}>${c.description}</td><td class="text-center">${c.qty}</td><td class="text-right">${c.unitPrice}</td><td class="text-right">${c.amount}</td></tr>`; }).join('')}
                 </tbody>
             </table>
         </div>
