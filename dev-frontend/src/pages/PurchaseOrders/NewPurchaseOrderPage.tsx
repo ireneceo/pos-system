@@ -154,6 +154,8 @@ interface CatalogRow {
   package_unit?: string | null;
   /** 브랜드 상품 행의 브랜드 재고(phase2 §5-1) */
   seller_stock?: SellerStock | null;
+  /** 공급업체가 나에게만 열어 둔 상품(맞춤 제작·견적 · 2026-11-28 docs/TRADE_STRUCTURE.md §2-6) */
+  is_exclusive?: boolean;
 }
 
 interface CartRow {
@@ -2606,6 +2608,7 @@ const NewPurchaseOrderPage: React.FC = () => {
                       <>
                         {p.supplier?.seller_type === 'brand' && <Badge $variant="brand">{t('newPo.brandBadge', 'BRAND')}</Badge>}
                         {p.supplier?.seller_type === 'foodcourt' && <Badge $variant="foodcourt">{t('newPo.foodcourtBadge', 'FOODCOURT')}</Badge>}
+                        {p.is_exclusive && <Badge $variant="warning">{t('newPo.exclusiveBadge', 'FOR YOU')}</Badge>}
                         {inCart && <Badge $variant="cart">×{qInCart}</Badge>}
                         {!inCart && p.already_mapped && <Badge $variant="success">{t('newPo.linked', 'Linked')}</Badge>}
                       </>

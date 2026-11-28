@@ -68,10 +68,12 @@ function resolveUnitConversion(raw) {
  * @param {function} o.brandSellerEntityId async (brandProduct) => number|null
  *                                       ⚠ 패밀리마다 의미가 다르다(파일 상단 경고 참조)
  * @param {function} [o.brandAccessCheck] async (brandProduct) => boolean  (false 면 403). 없으면 검사 안 함
+ * @param {function} [o.audienceBuyers]  async (supplierCompanyId) => Array<{type,id}> — 전용 상품 판정에 쓸 손님들.
+ *                                       없으면 계약의 구매자 한 명(2026-11-28 Fable 게이트 F3 — 다브랜드 BG 는 계약한 자기 브랜드 전부)
  * @returns {{ok:true, sellerType, sellerProductRow, sellerEntityId, productName, productUnit, productPrice, productMinQty}}
  *        | {ok:false, status, body}
  */
-async function resolveSellerProduct({ body, transaction, supplierContract, brandSellerEntityId, brandAccessCheck }) {
+async function resolveSellerProduct({ body, transaction, supplierContract, brandSellerEntityId, brandAccessCheck, audienceBuyers }) {
   const SupplierProduct = require('../models/SupplierProduct');
   const BrandProduct = require('../models/BrandProduct');
   const FoodcourtProduct = require('../models/FoodcourtProduct');
@@ -89,6 +91,17 @@ async function resolveSellerProduct({ body, transaction, supplierContract, brand
         ok: false, status: 403,
         body: { success: false, code: 'NO_ACTIVE_CONTRACT', message: 'No active contract with this supplier' }
       };
+    }
+    // 전용 상품(2026-11-28 · docs/TRADE_STRUCTURE.md §2-6) — 계약의 구매자가 대상이 아니면 «없는 상품» 과 같은 404.
+    //   있는지도 알리지 않는다. 판정은 utils/supplierProductAudience.js 하나.
+    if (sp.audience_mode === 'selected') {
+      const { canBuyerSee } = require('./supplierProductAudience');
+      const buyers = audienceBuyers
+        ? await audienceBuyers(sp.supplier_company_id)
+        : [{ type: contract.entity_type, id: contract.entity_id }];
+      let ok = false;
+      for (const b of buyers || []) { if (await canBuyerSee(sp, b, { transaction })) { ok = true; break; } }
+      if (!ok) return { ok: false, status: 404, body: { success: false, message: 'Supplier product not found' } };
     }
     return {
       ok: true, sellerType: 'supplier', sellerProductRow: sp, sellerEntityId: sp.supplier_company_id,

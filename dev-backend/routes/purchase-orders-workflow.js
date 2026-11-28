@@ -383,7 +383,7 @@ router.post('/purchase-orders/:id/mark-sent-external', async (req, res) => {
     // 판매 중지 상품 — 수동전송도 발주가 나가는 경로다(utils/poSellerProductActive.js)
     try {
       const lines = await PurchaseOrderItem.findAll({ where: { purchase_order_id: po.id }, transaction: t });
-      await assertLinesSellerProductActive(lines, { transaction: t });
+      await assertLinesSellerProductActive(lines, { transaction: t, buyer: { type: po.entity_type, id: po.entity_id } });
       await assertLinesWithinBrandStock(lines, { transaction: t });   // 브랜드 재고 «막기» 설정(phase2 §4-3)
     } catch (e) {
       if (e instanceof InactiveSellerProductError) { await t.rollback(); return res.status(400).json(inactiveSellerProductErrorBody(e)); }

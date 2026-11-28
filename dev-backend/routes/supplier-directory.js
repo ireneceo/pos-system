@@ -21,6 +21,7 @@
 
 const express = require('express');
 const router = express.Router();
+const { audienceWhere } = require('../utils/supplierProductAudience');
 const { Op, fn, col } = require('sequelize');
 const {
   SupplierCompany,
@@ -209,7 +210,7 @@ router.get('/supplier-directory', async (req, res) => {
       const catId = parseInt(category_id, 10);
       if (Number.isFinite(catId)) {
         const products = await SupplierProduct.findAll({
-          where: { category_id: catId, is_active: true },
+          where: { category_id: catId, is_active: true, [Op.and]: [audienceWhere(req.buyerEntity)] },
           attributes: ['supplier_company_id'],
           group: ['supplier_company_id']
         });
@@ -244,7 +245,7 @@ router.get('/supplier-directory', async (req, res) => {
 
     // Aggregate counts per supplier (products active, categories)
     const productCounts = await SupplierProduct.findAll({
-      where: { supplier_company_id: { [Op.in]: supplierIds }, is_active: true },
+      where: { supplier_company_id: { [Op.in]: supplierIds }, is_active: true, [Op.and]: [audienceWhere(req.buyerEntity)] },
       attributes: ['supplier_company_id'],
       raw: true
     });
@@ -330,15 +331,17 @@ router.get('/supplier-directory/:supplierCompanyId', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Supplier not found' });
     }
 
+    // 전용 상품은 그 손님에게만(2026-11-28 · utils/supplierProductAudience.js)
+    const detailWhere = { supplier_company_id: supplierCompanyId, is_active: true, [Op.and]: [audienceWhere(req.buyerEntity)] };
     const products = await SupplierProduct.findAll({
-      where: { supplier_company_id: supplierCompanyId, is_active: true },
+      where: detailWhere,
       include: [{ model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] }],
       order: [['sort_order', 'ASC'], ['name', 'ASC']],
       // 2026-10-15: 50 에서 잘려 큰 업체(LSH 63개)의 뒤쪽 상품이 상세 화면에 안 보였다 — 카탈로그와 같은 상한 + 잘렸는지 알림
       limit: CATALOG_LIMIT
     });
     const productTotal = products.length < CATALOG_LIMIT ? products.length
-      : await SupplierProduct.count({ where: { supplier_company_id: supplierCompanyId, is_active: true } });
+      : await SupplierProduct.count({ where: detailWhere });
 
     const categories = await SupplierProductCategory.findAll({
       where: { supplier_company_id: supplierCompanyId, is_active: true },
@@ -688,7 +691,9 @@ router.get('/supplier-catalog', async (req, res) => {
     // 2. 필터 + 검색 (이름/SKU/설명/단위/카테고리/공급사 이름까지 매칭)
     const where = {
       supplier_company_id: { [Op.in]: supplierIds.length > 0 ? supplierIds : [-1] },
-      is_active: true
+      is_active: true,
+      // 전용 상품은 그 손님에게만(2026-11-28 · docs/TRADE_STRUCTURE.md §2-6 · utils/supplierProductAudience.js)
+      [Op.and]: [audienceWhere(req.buyerEntity)]
     };
     const search = (req.query.search || '').trim();
     if (search) {
@@ -800,6 +805,9 @@ router.get('/supplier-catalog', async (req, res) => {
         order_mode: p.order_mode || 'pack',
         unit_price: parseFloat(p.unit_price) || 0,
         min_order_quantity: parseMinOrderQty(p.min_order_quantity),
+        // 맞춤 제작 루트(2026-11-28) — 종류 · «내 전용» 표시용(전용 상품은 대상 손님에게만 여기까지 온다)
+        product_kind: p.product_kind || 'stock',
+        is_exclusive: p.audience_mode === 'selected',
         image_url: p.image_url,
         category_id: p.category_id,
         category_name: p.category?.name || null,

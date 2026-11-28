@@ -252,6 +252,22 @@ graph TD
 
 회귀 박제: `dev-frontend/src/utils/productMargin.test.ts` 5건(환산을 빼면 4건 실패). 단, 화면 jest 는 배포 게이트 밖이라 직접 돌려야 한다.
 
+### 2-6. 맞춤 제작(견적) 루트 — 견적 = 그 손님 전용 상품 (2026-11-28 Fable 판정 · Irene «권고대로»)
+
+> Irene 원문: 「견적문의받은 후 상품등록해서 견적상품 판매하는 루트도 만들자. 지금 있는 형태에서 모두 그래도 기능 사용하면서 … 공급업체 기준으로 두고 플랫폼 운영사여도 이 사업루트는 그 역할로 운영하는 게 맞겠지?」
+> 판정 전문 `.claude/fable-design-20261128-quote-custom-product-route.md`.
+
+- **새 목록·새 주문·새 금액 문서 없음.** 견적 = 판매자가 그 손님(들)에게만 보이게 등록한 **평범한 판매 상품**(가격·최소 수량·납기). 수락 = 손님이 그 상품을 발주에 담는 것. 그 뒤(발주→준비→배송→청구→결제·재주문)는 §4 그대로.
+- **판매자 = 공급업체**가 기본. 플랫폼 운영사도 이 사업은 **공급업체 회사 하나**로 운영한다(System Admin 이 판매자가 되지 않는다). BG 는 **자기 가맹점에만** 맞춤 제작을 받는다 — 바깥에 팔려면 공급업체 계정을 따로 둔다.
+- **1단계(이 절의 구현 범위)** — 공급업체 상품에 브랜드와 같은 두 칸:
+  - `supplier_products.product_kind ENUM('stock','made_to_order','service')` 기본 `stock` — §2-4 와 **같은 세 값·같은 뜻**. 출고 차감 skip(`routes/seller-orders.js` 공급업체 분기) · 취소/반품 복원 skip(`services/poStockReversal.js`) · 서비스만 담긴 주문/서비스 줄 판정(`utils/orderFulfillment.js` — JOIN 에 공급업체 상품을 더했을 뿐, 판정은 여전히 한 곳).
+  - **전용 상품**: `supplier_products.audience_mode ENUM('all','selected')` 기본 `all` + 표 `supplier_product_buyers(supplier_product_id, entity_type restaurant|brand|foodcourt, entity_id)` — 브랜드의 «특정 매장에만»(`brand_product_restaurants`)과 대칭. 대상 = **구매자 자기 자신**(발주서 `entity_type/entity_id` 와 같은 칸) — 가입 공급업체는 계약 상속이 없으므로(`utils/supplierAccess.js`) 상속 규칙도 없다.
+  - **판정은 `utils/supplierProductAudience.js` 하나.** 읽는 곳 전부가 이 함수만 쓴다: 공급업체 찾기 목록(상품 수·분류 필터) · 공급업체 상세 · 발주 카탈로그 · 연결 고르기 검색(`ingredient-seller-products`) · 담기(`utils/catalogLink.resolveSellerProduct` — 대상 아니면 404, 있는지도 안 알림) · 공개 상품 링크 `/shop/:slug`(전용 상품은 **언제나 숨김**) · 발주 생성·수정·제출·정기 발주(`utils/poSellerProductActive.assertLinesSellerProductActive` — 대상 아니면 «판매 중지» 와 같은 400).
+    · 한꺼번에 담기 미리보기·담기(`routes/stock-ledger.js loadSellerCatalog` — 대상 아니면 목록에 아예 없음) · 재료에 공급처 직접 붙이기 3곳(매장 `ingredient-seller-products` seller-sources · BG `product-ingredients` seller-sources · BG `brand-products` stock-item 의 seller_source — `assertSupplierProductLinkable`, 업체 불일치·대상 아님 404). BG 는 «그 업체와 계약한 내 브랜드 전부» 를 손님으로 본다(`contractedBrandBuyers`). (2026-11-28 Fable 게이트 F1~F3)
+  - 인스펙션 R-SC-007(단위 환산 1) 은 서비스 상품 연결을 보지 않는다 — 수령해도 재고를 안 건드린다(S3).
+  - ⛔ 판매자 자기 화면(상품 목록·주문 처리)은 거르지 않는다 — 자기 상품이다.
+- **2단계 이후**(이 절 범위 밖): 의뢰함(의뢰 표 1개 · 대화·파일은 댓글 재사용 · «맞춤 제작 받음» 스위치 · 알림) → 3단계 «공식 파트너» 표시(시스템 관리자 지정) · 운영사 공급업체 계정.
+
 ---
 
 ---

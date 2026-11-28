@@ -39,7 +39,19 @@ const SupplierProduct = sequelize.define('SupplierProduct', {
   lead_time_days: { type: DataTypes.INTEGER, defaultValue: 0 },
   emoji: { type: DataTypes.STRING(10), allowNull: true },
   // 복사본 상품의 출처 상품 (2026-09-24 ⑥ «매장에 공유») — 매장 재료 연결을 사본으로 옮길 때 짝 찾기
-  copied_from_supplier_product_id: { type: DataTypes.INTEGER, allowNull: true }
+  copied_from_supplier_product_id: { type: DataTypes.INTEGER, allowNull: true },
+  // 상품 종류 (2026-11-28 · docs/TRADE_STRUCTURE.md §2-4·§2-6) — brand_products.product_kind 와 같은 세 값·같은 뜻.
+  //   stock 이 아니면 출고·되돌림에서 자체 재고를 건드리지 않는다. service 만 담긴 발주는 배송 없이 완료.
+  product_kind: {
+    type: DataTypes.ENUM('stock', 'made_to_order', 'service'), allowNull: false, defaultValue: 'stock',
+    comment: '상품 종류 — stock 재고/배송 · made_to_order 재고없음/배송 · service 재고없음/배송없음'
+  },
+  // 전용 상품 (2026-11-28 · §2-6) — selected 면 supplier_product_buyers 의 손님에게만 보이고 주문된다.
+  //   판정은 utils/supplierProductAudience.js 하나. 판매자 자기 화면은 거르지 않는다.
+  audience_mode: {
+    type: DataTypes.ENUM('all', 'selected'), allowNull: false, defaultValue: 'all',
+    comment: 'all=모든 거래처 · selected=supplier_product_buyers 의 손님에게만'
+  }
 }, {
   tableName: 'supplier_products',
   timestamps: true,

@@ -1,0 +1,47 @@
+{
+  "tag": "supplier-custom-product",
+  "sw_version": "6.28-supplier-custom-product-20261128",
+  "date": "2026-11-28",
+  "in_progress": [
+    "맞춤 제작(견적) 루트 2단계 «맞춤 제작 의뢰» 입구·의뢰함은 아직 — 이번은 1단계(공급업체 전용 상품·주문제작)만",
+    "작업 폴더 미커밋(playwright 설정 · .claude/oneoff-*·run-*.sh 운영 읽기 스크립트)은 다른 방 몫"
+  ],
+  "completed": [
+    "공급업체 상품에 «상품 종류» 칸: 재고 상품 / 주문제작 / 서비스 — 브랜드 상품과 같은 세 가지",
+    "공급업체 «전용 상품»: 상품마다 «누가 보고 주문하나 — 모든 거래처 / 고른 손님만» · 고른 손님에게만 보이고 그 손님만 주문(견적 상품을 그 손님 전용으로 등록)",
+    "공급업체 상품 카드에 «주문제작 · 서비스 · 전용 N곳» 표시 · 매장 발주 화면 상품 카드에 «내 전용» 표시"
+  ],
+  "issues": [
+    "공급업체는 주문을 받아 만드는 상품도 보낼 때마다 재고가 깎여 마이너스가 되던 문제",
+    "공급업체 상품은 한 손님을 위해 만든 것도 그 업체의 모든 거래처에 보이던 문제"
+  ],
+  "upcoming": [
+    "2단계: 발주 화면 «맞춤 제작 의뢰» 입구 · 판매자 의뢰함(대화·파일) · «견적 상품 만들기» · 알림",
+    "3단계: «공식 파트너» 표시(시스템 관리자 지정) · 운영사 공급업체 계정",
+    "별건: 발주 카탈로그 ?supplier_id= 로 계약 없는 외부 업체 상품이 보이는 문 막기(Fable 권고 — 다음 일로 따로)"
+  ],
+  "behavior_changes": [
+    "새 칸 supplier_products.product_kind(기본 stock)·audience_mode(기본 all) + 새 표 supplier_product_buyers — 기존 상품은 전부 stock·모든 거래처(지금 동작 그대로)",
+    "주문제작·서비스 공급업체 상품: 출고·반품 되돌림에서 재고를 건드리지 않음 · 공급업체 재고 화면·재고 금액·재고 부족 집계에서 빠짐 · 서비스만 담긴 주문은 배송 없이 «완료 처리»",
+    "전용 상품: 대상이 아닌 손님에게는 카탈로그·업체 상세·찾기 목록 상품 수·연결 검색·한꺼번에 담기 미리보기·공개 상품 링크에 없음 · 담기·직접 연결 404 · 발주 생성·수정·제출·정기 발주 400 SELLER_PRODUCT_INACTIVE",
+    "새 라우트 GET /api/supplier-products-audience-candidates (공급업체 · 계약(거절 제외)·발주 이력 손님 목록) · 공급업체 상품 저장에 product_kind·audience_mode·audience_buyers(모르는 손님 400)",
+    "인스펙션 R-SC-007 은 서비스 상품 연결을 보지 않음"
+  ],
+  "check_areas": [
+    "공급업체 상품 화면 — 상품 등록 창에서 «주문제작» 고르면 재고 칸이 사라짐 · «고른 손님만» 고르면 손님 목록 · 저장 뒤 카드에 «전용 · 1곳»",
+    "매장 발주 화면 — 그 손님에게만 연 상품 카드에 «내 전용», 다른 매장에서는 안 보임",
+    "공급업체 판매 주문 — 주문제작 상품 출고 뒤 재고 그대로 · 서비스만 담긴 주문 «완료 처리»"
+  ],
+  "verification": {
+    "api": "실호출 21/21(공급업체 20 ↔ 데모 매장 38) · health-check 새 사례 «공급업체 전용 상품 (E1~E4)» — 카탈로그·상세·연결 검색·미리보기·담기·직접 연결·다른 업체 상품 번호·익명·발주 검사 · health-check 전체",
+    "fault_injection": "5건 — 카탈로그 조건 제거 / 발주 검사 제거 / 담기 검사 제거 / 미리보기 조건 제거 / 직접 연결 검사 제거 → 각각 검사 실패 확인 후 원복 · 인스펙션 S3 반증 3건(서비스 연결 빠짐 · 기존 #32·#41 잡힘 · 서비스→재고로 바꾸면 다시 잡힘)",
+    "browser": "실브라우저 e2e supplier-custom-product.spec.js 15/15(3회) + Fable 재실행 5/5 — 등록 창 1440·390 · zh·ms · 매장 발주 카드. 전체 mount sweep 은 이번에 판정 불능: 개발 사이트 로그인 관문(11-28 09:49Z 켬) 때문에 sweep 이 어떤 화면도 못 엶(도구 문제 · 이 변경과 무관) — 운영 배포 전 sweep 도구를 고쳐 전체 1회 통과 필요",
+    "printer": "인쇄 동작 무변경 — print-guard 8/8 변경 0",
+    "migrations": "migrate-supplier-product-kind-audience.js (deploy · 칸 2개 + 표 1개 추가만 · 멱등 2회 확인 · 기존 116행 stock/all)",
+    "sw_version": "6.28-supplier-custom-product-20261128",
+    "fable_note": "Fable 설계 .claude/fable-design-20261128-quote-custom-product-route.md (Irene «권고대로») · 게이트 .claude/fable-gate-20261128-supplier-custom-product.md 1차 보완 필요(F1~F4·S1~S3) → 재판정 PASS(F1~F3 실호출 21/21 · 고장주입 1건 직접 재현 · 조건: 배포 전 mount sweep 도구 수리 후 전체 1회 통과)"
+  },
+  "notes": "맞춤 제작(견적) 루트 1단계 — 공급업체 상품 종류 칸 + 전용 상품 · 마이그 1 · 민감(주문 무결성·DB 스키마·보이는 범위) → Fable 게이트 대상 · 보호 파일 0",
+  "irene_actions_after_deploy": [],
+  "fable_note": "Fable 설계 1 + 게이트 2(1차 보완 필요 → 재판정 PASS · 배포 전 mount sweep 수리·통과 조건)"
+}

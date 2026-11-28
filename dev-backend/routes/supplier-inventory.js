@@ -57,7 +57,8 @@ async function loadProductWithIdor(req, productId) {
  */
 router.get('/summary', async (req, res) => {
   try {
-    const where = supplierWhere(req, { is_active: true });
+    // 재고를 세는 상품만(주문제작·서비스 제외 · 2026-11-28)
+    const where = supplierWhere(req, { is_active: true, product_kind: 'stock' });
     const products = await SupplierProduct.findAll({
       where,
       attributes: ['id', 'current_stock', 'low_stock_threshold', 'unit_price']
@@ -103,7 +104,8 @@ router.get('/summary', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { category_id, low_stock, search } = req.query;
-    const where = supplierWhere(req, {});
+    // 재고 화면 = 재고를 세는 상품만(주문제작·서비스는 상품 화면에만 · 2026-11-28 · TRADE_STRUCTURE §2-6)
+    const where = supplierWhere(req, { product_kind: 'stock' });
 
     if (category_id) {
       where.category_id = parseInt(category_id, 10);

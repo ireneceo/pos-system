@@ -656,7 +656,8 @@
     },
     "brandStockBadge": "Brand stock",
     "selfPickup": "Self-pickup (no delivery fee)",
-    "deliveryPickup": "Self-pickup"
+    "deliveryPickup": "Self-pickup",
+    "exclusiveBadge": "FOR YOU"
   },
   "staging": {
     "noPhoneTitle": "No Phone Number",

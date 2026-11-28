@@ -345,6 +345,11 @@ router.post('/from-catalog', async (req, res) => {
     const seller = await catalogLink.resolveSellerProduct({
       body,
       transaction: t,
+      // 전용 상품 판정 손님 = 그 업체와 계약한 내 브랜드 전부(2026-11-28 Fable 게이트 F3)
+      audienceBuyers: async (supplierCompanyId) => {
+        const brandIds = (await Brand.findAll({ where: { owner_id: req.bgOwnerId }, attributes: ['id'], transaction: t })).map(b => b.id);
+        return require('../utils/supplierProductAudience').contractedBrandBuyers(supplierCompanyId, brandIds, { transaction: t });
+      },
       // BG 소유 브랜드 중 하나라도 이 공급업체와 active 계약 필요 (seller-sources POST 와 동일 검증)
       supplierContract: async (supplierCompanyId) => {
         const brandIds = (await Brand.findAll({ where: { owner_id: req.bgOwnerId }, attributes: ['id'], transaction: t })).map(b => b.id);
@@ -1389,6 +1394,11 @@ router.post('/:id/seller-sources', async (req, res) => {
       if (!contract) {
         return res.status(400).json({ success: false, code: 'NO_ACTIVE_CONTRACT', message: 'No active contract with this supplier' });
       }
+      // 상품이 그 업체 것이고, 전용이면 그 업체와 계약한 내 브랜드 중 하나가 대상인가(2026-11-28 Fable 게이트 F2)
+      const Aud = require('../utils/supplierProductAudience');
+      const linkable = await Aud.assertSupplierProductLinkable(supplierId, parseInt(seller_product_id, 10),
+        await Aud.contractedBrandBuyers(supplierId, brandIds));
+      if (!linkable.ok) return res.status(linkable.status).json(linkable.body);
     }
 
     if (is_preferred) {

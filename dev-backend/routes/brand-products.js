@@ -1639,6 +1639,11 @@ router.post('/brand-products/:productId/stock-item', authenticateToken, requireB
             success: false, code: 'NO_ACTIVE_CONTRACT', message: 'No active contract with this supplier'
           });
         }
+        // 상품이 그 업체 것이고, 전용이면 그 업체와 계약한 내 브랜드 중 하나가 대상인가(2026-11-28 Fable 게이트 F2)
+        const Aud = require('../utils/supplierProductAudience');
+        const linkable = await Aud.assertSupplierProductLinkable(supplierId, sellerProductId,
+          await Aud.contractedBrandBuyers(supplierId, brandIds, { transaction: t }), { transaction: t });
+        if (!linkable.ok) { await t.rollback(); return res.status(linkable.status).json(linkable.body); }
       }
       // 환산 기본값 = 「발주 줄 1개에 든 내용물 양」. 공급업체 상품의 기준수량이 그 숫자다
       // (14 kg/carton 이면 14). 안 주면 여기서 읽어 채운다 — 사람이 다시 계산하지 않게.

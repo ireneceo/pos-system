@@ -73,6 +73,7 @@ const SupplierBrand = require('./SupplierBrand');
 // Sprint 1 (Supply Chain Design 1) — Supplier/Foodcourt seller catalog + inventory
 const SupplierCompany = require('./SupplierCompany');
 const SupplierProduct = require('./SupplierProduct');
+const SupplierProductBuyer = require('./SupplierProductBuyer');
 const SupplierProductCategory = require('./SupplierProductCategory');
 const SupplierProductOptionGroup = require('./SupplierProductOptionGroup');
 const SupplierProductOption = require('./SupplierProductOption');
@@ -807,6 +808,9 @@ SupplierCompany.hasMany(SupplierProductOptionGroup, { foreignKey: 'supplier_comp
 
 // SupplierProduct relationships
 SupplierProduct.belongsTo(SupplierCompany, { foreignKey: 'supplier_company_id', as: 'company' });
+// 전용 상품의 손님 목록 (2026-11-28 · docs/TRADE_STRUCTURE.md §2-6)
+SupplierProduct.hasMany(SupplierProductBuyer, { foreignKey: 'supplier_product_id', as: 'audienceBuyers' });
+SupplierProductBuyer.belongsTo(SupplierProduct, { foreignKey: 'supplier_product_id', as: 'product' });
 SupplierProduct.belongsTo(SupplierProductCategory, { foreignKey: 'category_id', as: 'category' });
 SupplierProductCategory.hasMany(SupplierProduct, { foreignKey: 'category_id', as: 'products' });
 SupplierProductCategory.belongsTo(SupplierCompany, { foreignKey: 'supplier_company_id', as: 'company' });
@@ -1190,6 +1194,7 @@ module.exports = {
   // Sprint 1 (Supply Chain Design 1)
   SupplierCompany,
   SupplierProduct,
+  SupplierProductBuyer,
   SupplierProductCategory,
   SupplierProductOptionGroup,
   SupplierProductOption,

@@ -65,7 +65,17 @@ interface SupplierProduct {
   lead_time_days: number;
   sort_order: number;
   optionGroups?: SupplierProductOptionGroup[];
+  // 맞춤 제작 루트(2026-11-28 · docs/TRADE_STRUCTURE.md §2-6) — 종류 · 보이는 손님
+  product_kind?: ProductKind;
+  audience_mode?: AudienceMode;
+  audienceBuyers?: { entity_type: BuyerType; entity_id: number }[];
 }
+
+type ProductKind = 'stock' | 'made_to_order' | 'service';
+type AudienceMode = 'all' | 'selected';
+type BuyerType = 'restaurant' | 'brand' | 'foodcourt';
+interface AudienceCandidate { entity_type: BuyerType; entity_id: number; name: string; city?: string | null }
+const buyerKey = (b: { entity_type: string; entity_id: number }) => `${b.entity_type}:${b.entity_id}`;
 
 interface PlanLimitError {
   message: string;
@@ -473,8 +483,13 @@ const SupplierProductsTab: React.FC<Props> = ({
     is_active: true,
     low_stock_threshold: '0',
     lead_time_days: '0',
-    option_group_ids: [] as number[]
+    option_group_ids: [] as number[],
+    product_kind: 'stock' as ProductKind,
+    audience_mode: 'all' as AudienceMode,
+    audience_buyers: [] as string[]
   });
+  // 전용 상품 손님 후보 — 이 판매자와 계약했거나 주문한 적 있는 손님(서버 저장 검증과 같은 집합)
+  const [audienceCandidates, setAudienceCandidates] = useState<AudienceCandidate[] | null>(null);
   // 등록 폼의 «구매자가 보는 문장»·칸 설명 — 브랜드 폼과 같은 한 벌(2026-10-05 Fable 설계 §4-C)
   const specCopy = useSellerSpecCopy(formData);
   // 개시 재고 — 등록할 때만. 수량은 상품 행에 직접 쓰지 않고 Inventory 조정 기록으로 넣는다(2026-10-22 Fable 설계 D6).
@@ -599,7 +614,10 @@ const SupplierProductsTab: React.FC<Props> = ({
         is_active: detail.is_active,
         low_stock_threshold: (detail.low_stock_threshold ?? 0).toString(),
         lead_time_days: (detail.lead_time_days ?? 0).toString(),
-        option_group_ids: detail.optionGroups?.map((og) => og.id) || []
+        option_group_ids: detail.optionGroups?.map((og) => og.id) || [],
+        product_kind: (detail.product_kind || 'stock') as ProductKind,
+        audience_mode: (detail.audience_mode || 'all') as AudienceMode,
+        audience_buyers: (detail.audienceBuyers || []).map(buyerKey)
       });
     } else {
       setEditingProduct(null);
@@ -619,8 +637,17 @@ const SupplierProductsTab: React.FC<Props> = ({
         is_active: true,
         low_stock_threshold: '0',
         lead_time_days: '0',
-        option_group_ids: []
+        option_group_ids: [],
+        product_kind: 'stock' as ProductKind,
+        audience_mode: 'all' as AudienceMode,
+        audience_buyers: []
       });
+    }
+    if (audienceCandidates === null) {
+      fetch('/api/supplier-products-audience-candidates', { headers: { Authorization: `Bearer ${getAuthToken()}` } })
+        .then((r) => r.json())
+        .then((d) => setAudienceCandidates(d && d.success ? (d.data || []) : []))
+        .catch(() => setAudienceCandidates([]));
     }
     setShowModal(true);
   };
@@ -644,6 +671,10 @@ const SupplierProductsTab: React.FC<Props> = ({
     const unitPrice = parseFloat(formData.unit_price);
     if (!Number.isFinite(unitPrice) || unitPrice < 0) {
       setFormError('Unit price must be a non-negative number');
+      return;
+    }
+    if (formData.audience_mode === 'selected' && (formData.audience_buyers || []).length === 0) {
+      setFormError(t('products.audience.needOne', 'Tick at least one customer for an exclusive product'));
       return;
     }
 
@@ -681,7 +712,12 @@ const SupplierProductsTab: React.FC<Props> = ({
           is_active: formData.is_active,
           low_stock_threshold: parseFloat(formData.low_stock_threshold) || 0,
           lead_time_days: parseInt(formData.lead_time_days, 10) || 0,
-          option_group_ids: formData.option_group_ids
+          option_group_ids: formData.option_group_ids,
+          product_kind: formData.product_kind,
+          audience_mode: formData.audience_mode,
+          audience_buyers: formData.audience_mode === 'selected'
+            ? (formData.audience_buyers || []).map((k) => { const [entity_type, id] = k.split(':'); return { entity_type, entity_id: Number(id) }; })
+            : []
         })
       });
 
@@ -689,7 +725,7 @@ const SupplierProductsTab: React.FC<Props> = ({
 
       if (data.success) {
         const opening = parseFloat(openingStock);
-        if (!editingProduct && data.data?.id && Number.isFinite(opening) && opening > 0) {
+        if (!editingProduct && formData.product_kind === 'stock' && data.data?.id && Number.isFinite(opening) && opening > 0) {
           const adj = await fetch('/api/supplier-inventory/adjust', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -903,7 +939,7 @@ const SupplierProductsTab: React.FC<Props> = ({
       ) : (
         <>
           <ProductsGrid>
-            {sortItems(products, sortKey).map((product) => (
+            {(sortItems(products as any, sortKey) as unknown as SupplierProduct[]).map((product) => (
               <ProductCard
                 key={product.id}
                 isActive={product.is_active}
@@ -946,6 +982,7 @@ const SupplierProductsTab: React.FC<Props> = ({
                     </DetailLabel>
                     <DetailValue>{product.min_order_quantity}</DetailValue>
                   </DetailRow>
+                  {(!product.product_kind || product.product_kind === 'stock') && (
                   <DetailRow>
                     <DetailLabel>{t('products.fields.currentStock', 'Stock')}</DetailLabel>
                     <DetailValue>
@@ -959,6 +996,7 @@ const SupplierProductsTab: React.FC<Props> = ({
                       </StockBadge>
                     </DetailValue>
                   </DetailRow>
+                  )}
                   {product.lead_time_days > 0 && (
                     <DetailRow>
                       <DetailLabel>
@@ -969,6 +1007,16 @@ const SupplierProductsTab: React.FC<Props> = ({
                   )}
                 </ProductDetails>
 
+                {/* 종류·전용 표시 — 맞춤 제작·견적 상품을 목록에서 바로 알아보게(2026-11-28) */}
+                {((product.product_kind && product.product_kind !== 'stock') || product.audience_mode === 'selected') && (
+                  <BadgeContainer>
+                    {product.product_kind === 'made_to_order' && <OptionBadge>{t('products.audience.kindBadgeMadeToOrder', 'Made to order')}</OptionBadge>}
+                    {product.product_kind === 'service' && <OptionBadge>{t('products.audience.kindBadgeService', 'Service')}</OptionBadge>}
+                    {product.audience_mode === 'selected' && (
+                      <OptionBadge>{t('products.audience.badge', { defaultValue: 'Exclusive · {{count}}', count: (product.audienceBuyers || []).length })}</OptionBadge>
+                    )}
+                  </BadgeContainer>
+                )}
                 {product.optionGroups && product.optionGroups.length > 0 && (
                   <BadgeContainer>
                     {product.optionGroups.map((og) => (
@@ -1128,7 +1176,7 @@ const SupplierProductsTab: React.FC<Props> = ({
                   >
                     <option value="">{t('common:sellerProduct.fields.selectUnit', 'Select unit')}</option>
                     {/* 내용물 단위만(kg·g·L·ml·piece). 포장 이름은 기준단위(포장) 칸 — 옛 상품의 값은 그대로 남긴다. */}
-                    {withCurrentUnit(CONTENT_UNIT_OPTIONS, formData.unit).map((u) => (
+                    {withCurrentUnit(formData.product_kind === 'service' ? [...CONTENT_UNIT_OPTIONS, 'hour'] : CONTENT_UNIT_OPTIONS, formData.unit).map((u) => (
                       <option key={u} value={u}>{u}</option>
                     ))}
                   </FormSelect>
@@ -1192,7 +1240,112 @@ const SupplierProductsTab: React.FC<Props> = ({
               </UIFormGroup>
             </FormGrid2>
 
+            {/*
+              5. 상품 종류 — 브랜드 폼과 같은 세 값·같은 문구(2026-11-28 · docs/TRADE_STRUCTURE.md §2-4·§2-6).
+                 재고 상품 = 재고 셈·배송 / 주문제작 = 재고 안 셈·배송 / 서비스 = 재고·배송 없음(완료 처리로 끝)
+            */}
+            <UIFormGroup>
+              <FormLabel>{t('products.fields.kind', 'Product type')}</FormLabel>
+              <OrderModeRow role="radiogroup" aria-label={t('products.fields.kind', 'Product type') as string}>
+                {(['stock', 'made_to_order', 'service'] as ProductKind[]).map((kind) => (
+                  <OrderModeOption key={kind} $active={formData.product_kind === kind}>
+                    <input
+                      type="radio"
+                      name="supplier_product_kind"
+                      value={kind}
+                      checked={formData.product_kind === kind}
+                      onChange={() => setFormData({ ...formData, product_kind: kind })}
+                    />
+                    <span>
+                      {kind === 'stock'
+                        ? t('products.fields.kindStock', 'Stocked goods')
+                        : kind === 'made_to_order'
+                          ? t('products.fields.kindMadeToOrder', 'Made to order')
+                          : t('products.fields.kindService', 'Service / other')}
+                    </span>
+                  </OrderModeOption>
+                ))}
+              </OrderModeRow>
+              <OrderModeHint>
+                {formData.product_kind === 'stock'
+                  ? t('products.fields.kindStockHint', 'Counted in stock and shipped — the usual case.')
+                  : formData.product_kind === 'made_to_order'
+                    ? t('products.fields.kindMadeToOrderHint', 'No stock is kept; made when an order comes in, then shipped.')
+                    : t('products.fields.kindServiceHint', 'No stock and no delivery — mark it complete when the work is done.')}
+              </OrderModeHint>
+            </UIFormGroup>
+
+            {/*
+              6. 누가 보고 주문하나 — 전용 상품(맞춤 제작·견적) = 고른 손님에게만. 판정은 서버 utils/supplierProductAudience.js 하나.
+                 손님 후보 = 나와 계약했거나 주문한 적 있는 곳(서버 저장 검증과 같은 집합).
+            */}
+            <UIFormGroup>
+              <FormLabel>{t('products.audience.title', 'Who can see and order this')}</FormLabel>
+              <OrderModeRow role="radiogroup" aria-label={t('products.audience.title', 'Who can see and order this') as string}>
+                {(['all', 'selected'] as AudienceMode[]).map((mode) => (
+                  <OrderModeOption key={mode} $active={formData.audience_mode === mode}>
+                    <input
+                      type="radio"
+                      name="supplier_audience_mode"
+                      value={mode}
+                      checked={formData.audience_mode === mode}
+                      onChange={() => setFormData({ ...formData, audience_mode: mode })}
+                    />
+                    <span>
+                      {mode === 'all'
+                        ? t('products.audience.all', 'All my customers')
+                        : t('products.audience.selected', 'Only selected customers (custom / quote product)')}
+                    </span>
+                  </OrderModeOption>
+                ))}
+              </OrderModeRow>
+              <OrderModeHint>
+                {formData.audience_mode === 'all'
+                  ? t('products.audience.allHint', 'Every customer you trade with sees it — the usual case.')
+                  : t('products.audience.selectedHint', 'Only the customers you tick below see it and can order it.')}
+              </OrderModeHint>
+              {formData.audience_mode === 'selected' && (
+                <div style={{ marginTop: 8, border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 12px', maxHeight: 220, overflowY: 'auto' }}>
+                  {audienceCandidates === null ? (
+                    <PriceMeaning style={{ marginTop: 0 }}>…</PriceMeaning>
+                  ) : audienceCandidates.length === 0 ? (
+                    <PriceMeaning style={{ marginTop: 0 }}>{t('products.audience.noCandidates', 'No customers yet.')}</PriceMeaning>
+                  ) : (
+                    audienceCandidates.map((c) => {
+                      const key = buyerKey(c);
+                      const checked = (formData.audience_buyers || []).includes(key);
+                      return (
+                        <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 36, fontSize: 14, color: '#0A2540', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => setFormData({
+                              ...formData,
+                              audience_buyers: checked
+                                ? (formData.audience_buyers || []).filter((k) => k !== key)
+                                : [...(formData.audience_buyers || []), key]
+                            })}
+                          />
+                          {/* 이름이 같은 손님이 있다(매장과 푸드코트가 같은 이름 — 실측) → 종류를 꼭 붙인다 */}
+                          <span>{c.name || key}</span>
+                          <span style={{ fontSize: 12, color: '#6B7280' }}>
+                            {c.entity_type === 'restaurant'
+                              ? t('products.audience.typeRestaurant', 'Store')
+                              : c.entity_type === 'brand'
+                                ? t('products.audience.typeBrand', 'Brand')
+                                : t('products.audience.typeFoodcourt', 'Food court')}
+                            {` #${c.entity_id}`}{c.city ? ` · ${c.city}` : ''}
+                          </span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </UIFormGroup>
+
             <FormGrid2>
+              {formData.product_kind === 'stock' ? (
               <UIFormGroup>
                 <FormLabel>
                   {t('products.fields.lowStockThreshold', 'Low Stock Threshold')}
@@ -1207,6 +1360,12 @@ const SupplierProductsTab: React.FC<Props> = ({
                   }
                 />
               </UIFormGroup>
+              ) : (
+                <UIFormGroup>
+                  <FormLabel>{t('products.fields.currentStock', 'Stock')}</FormLabel>
+                  <PriceMeaning style={{ marginTop: 0 }}>{t('products.audience.noStockTracked', 'No stock is counted for this type')}</PriceMeaning>
+                </UIFormGroup>
+              )}
 
               <UIFormGroup>
                 <FormLabel>{t('products.fields.leadTimeDays', 'Lead Time (days)')}</FormLabel>
@@ -1220,7 +1379,7 @@ const SupplierProductsTab: React.FC<Props> = ({
             </FormGrid2>
 
             {/* 재고 — 상품 행 자체가 재고다. 등록 때 개시 재고만 받고, 그 뒤 수량은 Inventory(조정·입고 기록)에서 바꾼다. */}
-            {!editingProduct ? (
+            {formData.product_kind !== 'stock' ? null : !editingProduct ? (
               <UIFormGroup>
                 <FormLabel>{t('products.fields.openingStock', { defaultValue: 'Opening stock ({{orderUnit}})', orderUnit: specCopy.orderUnit || formData.unit || '' })}</FormLabel>
                 <FormInput
@@ -1267,7 +1426,7 @@ const SupplierProductsTab: React.FC<Props> = ({
                     <CheckboxItem key={og.id}>
                       <input
                         type="checkbox"
-                        checked={formData.option_group_ids.includes(og.id)}
+                        checked={(formData.option_group_ids || []).includes(og.id)}
                         onChange={() => handleOptionGroupToggle(og.id)}
                       />
                       <span>

@@ -1338,7 +1338,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
       // 최소주문 — 합친 수량으로 판정(어제 10 + 오늘 12 = 22 면 통과). 실패 시 호출부가 트랜잭션을 되돌린다.
       // 판매 중지 상품 — 구매자 경로만(enforceMinOrder 와 같은 갈래 · utils/poSellerProductActive.js)
       if (enforceMinOrder) {
-        try { await assertLinesMeetMinOrder(touched, { transaction }); await assertLinesSellerProductActive(touched, { transaction }); }
+        try { await assertLinesMeetMinOrder(touched, { transaction }); await assertLinesSellerProductActive(touched, { transaction, buyer: buyerEntity }); }
         catch (e) {
           if (e instanceof MinOrderError) return { ok: false, status: 400, body: minOrderErrorBody(e) };
           if (e instanceof InactiveSellerProductError) return { ok: false, status: 400, body: inactiveSellerProductErrorBody(e) };
@@ -1374,7 +1374,7 @@ async function createPurchaseOrderCore({ buyerEntity, userId, payload, transacti
   // 최소주문 — 판매자 상품 현재 MOQ 미달이면 400 (구매자 경로만 · utils/poMinOrder.js)
   // 판매 중지 상품 — 판매자가 끈 상품은 담을 수 없다(구매자 경로만 · utils/poSellerProductActive.js)
   if (enforceMinOrder) {
-    try { await assertLinesMeetMinOrder(validatedItems, { transaction }); await assertLinesSellerProductActive(validatedItems, { transaction }); }
+    try { await assertLinesMeetMinOrder(validatedItems, { transaction }); await assertLinesSellerProductActive(validatedItems, { transaction, buyer: buyerEntity }); }
     catch (e) {
       if (e instanceof MinOrderError) return { ok: false, status: 400, body: minOrderErrorBody(e) };
       if (e instanceof InactiveSellerProductError) return { ok: false, status: 400, body: inactiveSellerProductErrorBody(e) };
@@ -1520,7 +1520,7 @@ router.post('/purchase-orders/bulk', async (req, res) => {
             // 예전엔 여기서 submitted 직행이라 승인 ON 이어도 그냥 나갔다 (Fable 2026-07-13).
             // 합쳐진 옛 초안 줄에 판매 중지 상품이 있으면 보내지 않고 초안으로 남긴다(아래 catch).
             const freshItems = await PurchaseOrderItem.findAll({ where: { purchase_order_id: fresh.id } });
-            await assertLinesSellerProductActive(freshItems);
+            await assertLinesSellerProductActive(freshItems, { buyer: { type: fresh.entity_type, id: fresh.entity_id } });
             // 브랜드 재고 «막기» 설정 — 걸리면 아래 catch 가 초안으로 남긴다(2026-11-03 phase2 §4-3)
             await require('../utils/sellerStockPool').assertLinesWithinBrandStock(freshItems);
             const needsApproval = await applySubmitGate(fresh, null, appendTrackingEvent, req.user);
@@ -1649,7 +1649,7 @@ router.put('/purchase-orders/:id', async (req, res) => {
         });
       }
       // 최소주문 — 수정으로 하한 아래로 내리는 길도 막는다 (utils/poMinOrder.js)
-      try { await assertLinesMeetMinOrder(validated, { transaction: t }); await assertLinesSellerProductActive(validated, { transaction: t }); }
+      try { await assertLinesMeetMinOrder(validated, { transaction: t }); await assertLinesSellerProductActive(validated, { transaction: t, buyer: { type: po.entity_type, id: po.entity_id } }); }
       catch (e) {
         if (e instanceof MinOrderError) { await t.rollback(); return res.status(400).json(minOrderErrorBody(e)); }
         if (e instanceof InactiveSellerProductError) { await t.rollback(); return res.status(400).json(inactiveSellerProductErrorBody(e)); }

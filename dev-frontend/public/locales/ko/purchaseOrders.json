@@ -656,7 +656,8 @@
     },
     "brandStockBadge": "브랜드 재고",
     "selfPickup": "셀프픽업 (배송비 없음)",
-    "deliveryPickup": "셀프픽업"
+    "deliveryPickup": "셀프픽업",
+    "exclusiveBadge": "내 전용"
   },
   "staging": {
     "noPhoneTitle": "전화번호 없음",

@@ -457,7 +457,7 @@ async function submitDraftInTx(id, t, { canAccess, actor, preApproved } = {}) {
   // 최소주문 — 옛 초안·담은 뒤 판매자가 MOQ 를 올린 경우의 안전망 (utils/poMinOrder.js · MinOrderError 로 던진다)
   await assertLinesMeetMinOrder(locked.items, { transaction: t });
   // 판매 중지 상품 — 담은 뒤 판매자가 끈 경우(utils/poSellerProductActive.js)
-  await assertLinesSellerProductActive(locked.items, { transaction: t });
+  await assertLinesSellerProductActive(locked.items, { transaction: t, buyer: { type: locked.entity_type, id: locked.entity_id } });
   // 브랜드 재고 «막기» 설정이면 보내는 순간 검사(utils/sellerStockPool · BRAND_STOCK_SHORT) — 2026-11-03 phase2 §4-3
   await require('../utils/sellerStockPool').assertLinesWithinBrandStock(locked.items, { transaction: t });
   // 배송비 제출 때 1회 재계산 (2026-10-07 Fable 배송 지역) — 담은 뒤 매장 주소(주)·판매자 지역이 바뀌었으면

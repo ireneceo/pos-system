@@ -69,7 +69,14 @@
       "isActive": "Active",
       "orderMode": "Order Method",
       "baseQuantityHint": "If sold in packs, put the content unit here (kg, g) and the amount in Base Qty (e.g. 5)",
-      "openingStock": "Opening stock ({{orderUnit}})"
+      "openingStock": "Opening stock ({{orderUnit}})",
+      "kind": "Product type",
+      "kindStock": "Stocked goods",
+      "kindStockHint": "Counted in stock and shipped — the usual case.",
+      "kindMadeToOrder": "Made to order",
+      "kindMadeToOrderHint": "No stock is kept; made when an order comes in, then shipped.",
+      "kindService": "Service / other",
+      "kindServiceHint": "No stock and no delivery — mark it complete when the work is done."
     },
     "categoryManagement": "Category Management",
     "optionGroups": "Option Groups",
@@ -96,7 +103,24 @@
     "optionGroupPlaceholder": "e.g., Cut Style, Grade, Aging",
     "currentStockReadOnly": "{{qty}} {{orderUnit}} — change it in Inventory (adjust or receive).",
     "openInventory": "Open Inventory",
-    "openingStockFailed": "Product saved, but the opening stock could not be recorded. Add it in Inventory."
+    "openingStockFailed": "Product saved, but the opening stock could not be recorded. Add it in Inventory.",
+    "audience": {
+      "title": "Who can see and order this",
+      "all": "All my customers",
+      "allHint": "Every customer you trade with sees it — the usual case.",
+      "selected": "Only selected customers (custom / quote product)",
+      "selectedHint": "Only the customers you tick below see it and can order it. Use this for a quote you made for one customer.",
+      "pick": "Customers",
+      "noCandidates": "No customers yet. A customer appears here once they have a contract with you or have ordered from you.",
+      "needOne": "Tick at least one customer for an exclusive product",
+      "badge": "Exclusive · {{count}}",
+      "kindBadgeMadeToOrder": "Made to order",
+      "kindBadgeService": "Service",
+      "noStockTracked": "No stock is counted for this type",
+      "typeRestaurant": "Store",
+      "typeBrand": "Brand",
+      "typeFoodcourt": "Food court"
+    }
   },
   "inventory": {
     "title": "Inventory Management",

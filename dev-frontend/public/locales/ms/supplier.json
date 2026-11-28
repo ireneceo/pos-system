@@ -69,7 +69,14 @@
       "isActive": "Aktif",
       "orderMode": "Kaedah Pesanan",
       "baseQuantityHint": "Jika dijual dalam pek, isi unit kandungan (kg, g) di Unit dan jumlahnya di Base Qty (cth: 5)",
-      "openingStock": "Stok pembukaan ({{orderUnit}})"
+      "openingStock": "Stok pembukaan ({{orderUnit}})",
+      "kind": "Jenis produk",
+      "kindStock": "Barang berstok",
+      "kindStockHint": "Dikira dalam stok dan dihantar — kes biasa.",
+      "kindMadeToOrder": "Dibuat selepas pesanan",
+      "kindMadeToOrderHint": "Tiada stok disimpan; dibuat apabila pesanan masuk, kemudian dihantar.",
+      "kindService": "Perkhidmatan / lain-lain",
+      "kindServiceHint": "Tiada stok dan tiada penghantaran — tandakan selesai apabila kerja siap."
     },
     "categoryManagement": "Pengurusan Kategori",
     "optionGroups": "Kumpulan Pilihan",
@@ -96,7 +103,24 @@
     "optionGroupPlaceholder": "cth., Gaya Potongan, Gred, Pemeraman",
     "currentStockReadOnly": "{{qty}} {{orderUnit}} — ubah dalam Inventory (laras atau terima).",
     "openInventory": "Buka Inventory",
-    "openingStockFailed": "Produk disimpan, tetapi stok pembukaan tidak dapat direkodkan. Tambahkannya dalam Inventory."
+    "openingStockFailed": "Produk disimpan, tetapi stok pembukaan tidak dapat direkodkan. Tambahkannya dalam Inventory.",
+    "audience": {
+      "title": "Siapa boleh lihat dan pesan",
+      "all": "Semua pelanggan saya",
+      "allHint": "Semua pelanggan yang berurusan dengan anda dapat melihatnya — kes biasa.",
+      "selected": "Pelanggan terpilih sahaja (produk tempahan / sebut harga)",
+      "selectedHint": "Hanya pelanggan yang ditanda di bawah dapat melihat dan memesannya. Gunakan untuk sebut harga yang dibuat untuk seorang pelanggan.",
+      "pick": "Pelanggan",
+      "noCandidates": "Belum ada pelanggan. Pelanggan akan muncul di sini selepas ada kontrak atau pernah membuat pesanan dengan anda.",
+      "needOne": "Tandakan sekurang-kurangnya seorang pelanggan untuk produk eksklusif",
+      "badge": "Eksklusif · {{count}}",
+      "kindBadgeMadeToOrder": "Dibuat selepas pesanan",
+      "kindBadgeService": "Perkhidmatan",
+      "noStockTracked": "Stok tidak dikira untuk jenis ini",
+      "typeRestaurant": "Kedai",
+      "typeBrand": "Jenama",
+      "typeFoodcourt": "Medan selera"
+    }
   },
   "inventory": {
     "title": "Pengurusan Inventori",

@@ -10,6 +10,7 @@
  *   같은 판매자 상품은 한 장의 발주로 합쳐지므로 «컨설팅 10시간 + 소스 2kg» 이 한 장에 담길 수 있다.
  *   그때 배송을 없애면 «배송 중인데 완료» 같은 모순이 생긴다 → 서비스만 담긴 발주일 때만 배송을 건너뛴다.
  *
+ * 2026-11-28: 공급업체 상품(supplier_products.product_kind)도 같은 세 값을 가진다 — JOIN 에 더했을 뿐 판정은 여기 하나.
  * ⛔ 이 판정을 화면·라우트에 복사하지 말 것. 세 벌이 갈라지면 «목록엔 완료인데 상세는 배송 대기» 가 된다.
  */
 const { QueryTypes } = require('sequelize');
@@ -22,10 +23,11 @@ const { QueryTypes } = require('sequelize');
 async function isServiceOnlyOrder(sequelize, purchaseOrderId, transaction) {
   const rows = await sequelize.query(
     `SELECT COUNT(*) AS total,
-            SUM(CASE WHEN bp.product_kind = 'service' THEN 1 ELSE 0 END) AS service_lines
+            SUM(CASE WHEN bp.product_kind = 'service' OR sp.product_kind = 'service' THEN 1 ELSE 0 END) AS service_lines
        FROM purchase_order_items poi
        LEFT JOIN ingredient_seller_products m ON m.id = poi.ingredient_seller_product_id
        LEFT JOIN brand_products bp ON bp.id = m.seller_product_id AND m.seller_type = 'brand'
+       LEFT JOIN supplier_products sp ON sp.id = m.seller_product_id AND m.seller_type = 'supplier'
       WHERE poi.purchase_order_id = :id`,
     { type: QueryTypes.SELECT, replacements: { id: purchaseOrderId }, transaction });
   const total = Number(rows[0]?.total || 0);
@@ -43,8 +45,9 @@ async function serviceLineIdsOf(sequelize, purchaseOrderId, transaction) {
     `SELECT poi.id
        FROM purchase_order_items poi
        JOIN ingredient_seller_products m ON m.id = poi.ingredient_seller_product_id
-       JOIN brand_products bp ON bp.id = m.seller_product_id AND m.seller_type = 'brand'
-      WHERE poi.purchase_order_id = :id AND bp.product_kind = 'service'`,
+       LEFT JOIN brand_products bp ON bp.id = m.seller_product_id AND m.seller_type = 'brand'
+       LEFT JOIN supplier_products sp ON sp.id = m.seller_product_id AND m.seller_type = 'supplier'
+      WHERE poi.purchase_order_id = :id AND (bp.product_kind = 'service' OR sp.product_kind = 'service')`,
     { type: QueryTypes.SELECT, replacements: { id: purchaseOrderId }, transaction });
   return new Set(rows.map(r => Number(r.id)));
 }

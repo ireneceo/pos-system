@@ -656,7 +656,8 @@
     },
     "brandStockBadge": "Stok jenama",
     "selfPickup": "Ambil sendiri (tiada yuran penghantaran)",
-    "deliveryPickup": "Ambil sendiri"
+    "deliveryPickup": "Ambil sendiri",
+    "exclusiveBadge": "UNTUK ANDA"
   },
   "staging": {
     "noPhoneTitle": "Tiada Nombor Telefon",

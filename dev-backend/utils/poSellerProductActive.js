@@ -54,9 +54,9 @@ function inactiveSellerProductErrorBody(err) {
  * 발주 줄들의 판매자 상품이 판매 중인지 본다. 하나라도 꺼져 있으면 InactiveSellerProductError 를 던진다.
  *
  * @param {Array<{id?, description?, ingredient_seller_product_id?}>} items
- * @param {{transaction?}} opts
+ * @param {{transaction?, buyer?: {type, id}}} opts  buyer = 발주서 구매자(entity_type/entity_id) — 전용 상품 판정에 쓴다
  */
-async function assertLinesSellerProductActive(items, { transaction } = {}) {
+async function assertLinesSellerProductActive(items, { transaction, buyer } = {}) {
   const lines = (items || []).filter(it => it && it.ingredient_seller_product_id);
   if (!lines.length) return;
   const mapIds = [...new Set(lines.map(it => parseInt(it.ingredient_seller_product_id, 10)).filter(Number.isFinite))];
@@ -66,7 +66,7 @@ async function assertLinesSellerProductActive(items, { transaction } = {}) {
   // seller_product_id 는 다형 참조 — poMinOrder 와 같은 조인. 삭제된 상품도 잡아야 하므로 deleted_at 을 거르지 않는다.
   const [rows] = await sequelize.query(`
     SELECT isp.id map_id, isp.seller_type,
-           sp.id sp_id, sp.name sp_name, sp.is_active sp_active, sp.deleted_at sp_deleted,
+           sp.id sp_id, sp.name sp_name, sp.is_active sp_active, sp.deleted_at sp_deleted, sp.audience_mode sp_audience,
            bp.id bp_id, bp.name bp_name, bp.is_active bp_active,
            fp.id fp_id, fp.name fp_name, fp.is_active fp_active, fp.deleted_at fp_deleted
       FROM ingredient_seller_products isp
@@ -75,8 +75,19 @@ async function assertLinesSellerProductActive(items, { transaction } = {}) {
       LEFT JOIN foodcourt_products fp ON fp.id = isp.seller_product_id AND isp.seller_type = 'foodcourt'
      WHERE isp.id IN (:ids)`, { replacements: { ids: mapIds }, transaction });
 
+  // 전용 상품(2026-11-28 · docs/TRADE_STRUCTURE.md §2-6) — 이 발주의 구매자가 대상이 아니면 «판매 중지» 와 같은 400.
+  //   구매자를 모르면(호출부가 안 넘김) 전용 상품은 막는다(닫는 쪽). 판정은 utils/supplierProductAudience.js 하나.
+  const { visibleIdsFor } = require('./supplierProductAudience');
+  const selectedRows = rows.filter(r => r.seller_type === 'supplier' && r.sp_id && r.sp_audience === 'selected')
+    .map(r => ({ id: r.sp_id, audience_mode: 'selected' }));
+  const visibleSelected = selectedRows.length ? await visibleIdsFor(selectedRows, buyer, { transaction }) : new Set();
+
   const offByMap = {};
   for (const r of rows) {
+    if (r.seller_type === 'supplier' && r.sp_id && r.sp_audience === 'selected' && !visibleSelected.has(Number(r.sp_id))) {
+      offByMap[r.map_id] = r.sp_name || null;
+      continue;
+    }
     let prod = null;
     if (r.seller_type === 'supplier' && r.sp_id) prod = { name: r.sp_name, is_active: r.sp_active, deleted_at: r.sp_deleted };
     else if (r.seller_type === 'brand' && r.bp_id) prod = { name: r.bp_name, is_active: r.bp_active };

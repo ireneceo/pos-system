@@ -850,6 +850,8 @@ router.post('/:id/ship', async (req, res) => {
           if (!mapping || !mapping.seller_product_id) continue;
           const sp = await SupplierProduct.findByPk(mapping.seller_product_id, { lock: t.LOCK.UPDATE, transaction: t });
           if (!sp) continue;
+          // 주문제작·서비스는 재고를 세지 않는다 — 깎지 않는다(브랜드 분기와 같은 규칙 · docs/TRADE_STRUCTURE.md §2-4·§2-6)
+          if (sp.product_kind && sp.product_kind !== 'stock') continue;
           const oldStock = parseFloat(sp.current_stock) || 0;
           const delta = -1 * (parseFloat(it.quantity_ordered) || 0);
           const newStockS = Math.round((oldStock + delta) * 100) / 100;

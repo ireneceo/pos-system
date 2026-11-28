@@ -9906,6 +9906,101 @@ function defineInventoryTests({ demoRestId, demoRaToken, demoBgUserId, demoBgTok
   });
 
   // ══════════════════════════════════════════════════════════════════
+  // 공급업체 전용 상품(맞춤 제작·견적) — 고른 손님에게만 보이고 주문된다 (2026-11-28 · docs/TRADE_STRUCTURE.md §2-6)
+  //   판정 단일 소스 utils/supplierProductAudience.js. E1 대상 아님 → 카탈로그·상세·연결 검색에 없음 · 담기 404 · 공개 링크 판정 닫힘
+  //   E2 대상 → 카탈로그에 보임(is_exclusive) · 발주 검사 통과   E3 대상에서 빠지면 발주 검사 400(판매 중지와 같은 코드)
+  //   E4 판매자가 모르는 손님은 저장 400 · 주문제작은 출고·되돌림 재고 skip 판정 코드 존재
+  // ══════════════════════════════════════════════════════════════════
+  //   (2026-11-28 Fable 게이트 F4) E1b 한꺼번에 담기 미리보기 · E1c 재료에 공급처 직접 붙이기·다른 업체 상품 번호 → 404
+  test('po', '공급업체 전용 상품 = 고른 손님에게만 보이고 주문됨 (E1~E4)', async () => {
+    const { sequelize } = require('../config/database');
+    const jwtLib = require('jsonwebtoken');
+    const { SupplierProduct, SupplierProductBuyer, User } = require('../models');
+    const A = require('../utils/supplierProductAudience');
+    const { assertLinesSellerProductActive } = require('../utils/poSellerProductActive');
+    const q = (sql, r) => sequelize.query(sql, { replacements: r, type: sequelize.QueryTypes.SELECT });
+    const fx = (await q(`SELECT sc.supplier_company_id sid, sc.entity_id rid FROM supplier_contracts sc
+        JOIN restaurants r ON r.id = sc.entity_id AND r.is_demo = 1
+        JOIN supplier_companies co ON co.id = sc.supplier_company_id AND co.is_system_registered = 1
+       WHERE sc.entity_type = 'restaurant' AND sc.status = 'active' ORDER BY (sc.entity_id = 38) DESC, sc.id LIMIT 1`))[0];
+    const ra = fx && await User.findOne({ where: { role: 'Restaurant Admin', restaurant_id: fx.rid } });
+    const sa = fx && await User.findOne({ where: { role: 'Supplier Admin', supplier_company_id: fx.sid } });
+    if (!fx || !ra || !sa) { console.log(c.gray('      (건너뜀: 데모 매장↔가입 공급업체 계약/RA/SA 픽스처 불가)')); return true; }
+    const raAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: ra.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const saAuth = { Authorization: `Bearer ${jwtLib.sign({ userId: sa.id }, process.env.JWT_SECRET, { expiresIn: '10m' })}` };
+    const fail = (m) => { console.log(c.gray(`      (${m})`)); return false; };
+    const otherBuyer = { entity_type: 'restaurant', entity_id: -1 };   // 아무도 아닌 손님 — 표에만 넣어 «대상 아님» 을 만든다
+    let sp = null;
+    try {
+      sp = await SupplierProduct.create({ supplier_company_id: fx.sid, name: 'ZZ-HC-EXCL-' + Date.now(), sku: 'ZZE-' + Math.random().toString(36).slice(2, 9),
+        unit: 'pcs', base_quantity: 1, order_mode: 'pack', unit_price: 2, min_order_quantity: 1, is_active: true,
+        product_kind: 'made_to_order', audience_mode: 'selected' });
+      await SupplierProductBuyer.create({ supplier_product_id: sp.id, ...otherBuyer });
+      // E1
+      const cat1 = await request('GET', '/supplier-catalog', null, raAuth);
+      if (cat1.status !== 200 || (cat1.body.data || []).some(x => x.id === sp.id)) return fail(`E1 카탈로그 노출 ${cat1.status}`);
+      const det1 = await request('GET', `/supplier-directory/${fx.sid}`, null, raAuth);
+      if (det1.status !== 200 || (det1.body.data?.products || []).some(x => x.id === sp.id)) return fail(`E1 상세 노출 ${det1.status}`);
+      const srch1 = await request('GET', `/seller-catalog?seller_type=supplier&seller_entity_id=${fx.sid}&search=ZZ-HC-EXCL`, null, raAuth);
+      if (srch1.status !== 200 || (srch1.body.data || []).some(x => x.id === sp.id)) return fail(`E1 연결 검색 노출 ${srch1.status}`);
+      const link1 = await request('POST', `/restaurants/${fx.rid}/ingredients/from-catalog`, { supplier_product_id: sp.id }, raAuth);
+      if (link1.status !== 404) return fail(`E1 담기 ${link1.status} (404 기대)`);
+      if (await A.canBuyerSee(sp, null)) return fail('E1 익명(공개 링크)에 보임');
+      // E1b 한꺼번에 담기 미리보기(stock-ledger loadSellerCatalog — Fable 게이트 F1)
+      const pv1 = await request('GET', `/restaurants/${fx.rid}/catalog-link/preview?seller_type=supplier&seller_entity_id=${fx.sid}&limit=500`, null, raAuth);
+      if (pv1.status !== 200 || (pv1.body.data?.items || []).some(x => x.seller_product_id === sp.id)) return fail(`E1b 미리보기 노출 ${pv1.status}`);
+      // E1c 재료에 공급처 직접 붙이기(seller-sources — Fable 게이트 F2) → 404 · 다른 업체 상품 번호도 404
+      const [ingRow] = await q('SELECT id FROM ingredients WHERE restaurant_id = :r ORDER BY id LIMIT 1', { r: fx.rid });
+      if (!ingRow) return fail('E1c 픽스처 재료 없음');
+      const direct = await request('POST', `/ingredients/${ingRow.id}/seller-sources`, { seller_type: 'supplier', seller_entity_id: fx.sid, seller_product_id: sp.id, unit_price: 2 }, raAuth);
+      if (direct.status !== 404) {
+        if (direct.body?.data?.id) await sequelize.query('DELETE FROM ingredient_seller_products WHERE id = ?', { replacements: [direct.body.data.id] });
+        return fail(`E1c 직접 연결 ${direct.status} (404 기대)`);
+      }
+      const [foreign] = await q('SELECT id FROM supplier_products WHERE supplier_company_id <> :s AND deleted_at IS NULL ORDER BY id LIMIT 1', { s: fx.sid });
+      if (foreign) {
+        const cross = await request('POST', `/ingredients/${ingRow.id}/seller-sources`, { seller_type: 'supplier', seller_entity_id: fx.sid, seller_product_id: foreign.id, unit_price: 2 }, raAuth);
+        if (cross.status !== 404) {
+          if (cross.body?.data?.id) await sequelize.query('DELETE FROM ingredient_seller_products WHERE id = ?', { replacements: [cross.body.data.id] });
+          return fail(`E1c 다른 업체 상품 번호 ${cross.status} (404 기대)`);
+        }
+      }
+      // E2
+      await SupplierProductBuyer.create({ supplier_product_id: sp.id, entity_type: 'restaurant', entity_id: fx.rid });
+      const cat2 = await request('GET', '/supplier-catalog', null, raAuth);
+      const hit = (cat2.body.data || []).find(x => x.id === sp.id);
+      if (!hit || hit.is_exclusive !== true) return fail('E2 대상인데 카탈로그에 없음/전용 표시 없음');
+      const pv2 = await request('GET', `/restaurants/${fx.rid}/catalog-link/preview?seller_type=supplier&seller_entity_id=${fx.sid}&limit=500`, null, raAuth);
+      if (!(pv2.body.data?.items || []).some(x => x.seller_product_id === sp.id)) return fail('E2 대상인데 미리보기에 없음');
+      // E3 — 발주 검사(생성·수정·제출·정기 발주가 같은 함수)를 연결 행으로 직접
+      const [m] = await sequelize.query(`INSERT INTO ingredient_seller_products (seller_type, seller_entity_id, seller_product_id, unit_price, created_at, updated_at) VALUES ('supplier', ?, ?, 2, NOW(), NOW())`, { replacements: [fx.sid, sp.id] });
+      const line = [{ ingredient_seller_product_id: m, description: 'x' }];
+      try {
+        await assertLinesSellerProductActive(line, { buyer: { type: 'restaurant', id: fx.rid } });
+        let blocked = false;
+        try { await assertLinesSellerProductActive(line, { buyer: { type: 'restaurant', id: fx.rid + 100000 } }); } catch (e) { blocked = e.code === 'SELLER_PRODUCT_INACTIVE'; }
+        if (!blocked) return fail('E3 대상 아닌 구매자 발주 검사 통과');
+        let blockedNoBuyer = false;
+        try { await assertLinesSellerProductActive(line, {}); } catch (e) { blockedNoBuyer = e.code === 'SELLER_PRODUCT_INACTIVE'; }
+        if (!blockedNoBuyer) return fail('E3 구매자 모름인데 통과(닫는 쪽이어야)');
+      } finally {
+        await sequelize.query('DELETE FROM ingredient_seller_products WHERE id = ?', { replacements: [m] });
+      }
+      // E4
+      const bad = await request('PUT', `/supplier-products/${sp.id}`, { audience_mode: 'selected', audience_buyers: [{ entity_type: 'restaurant', entity_id: 999999999 }] }, saAuth);
+      if (bad.status !== 400 || bad.body?.code !== 'INVALID_AUDIENCE_BUYERS') return fail(`E4 모르는 손님 저장 ${bad.status}`);
+      const fs = require('fs');
+      const ship = fs.readFileSync(require('path').join(__dirname, '../routes/seller-orders.js'), 'utf8');
+      const rev = fs.readFileSync(require('path').join(__dirname, '../services/poStockReversal.js'), 'utf8');
+      if (!/sp\.product_kind && sp\.product_kind !== 'stock'\) continue;/.test(ship)) return fail('E4 공급업체 출고 재고 skip 없음');
+      if (!/sp\.product_kind && sp\.product_kind !== 'stock'\) return false;/.test(rev)) return fail('E4 공급업체 되돌림 재고 skip 없음');
+      return true;
+    } finally {
+      if (sp) { await SupplierProductBuyer.destroy({ where: { supplier_product_id: sp.id } }); await sp.destroy({ force: true }); }
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════
   // 판매 중지 상품은 구매자가 발주할 수 없다 (2026-10-09 Irene «권고대로» · utils/poSellerProductActive.js)
   //   그전: 판매자가 상품을 끄면 카탈로그에서만 빠지고, 매장 재료에 붙은 연결로는 발주가 만들어지고 제출됐다.
   //   S1 켜진 동안 초안 201 → S2 BG 끔 → 재고 목록 seller_product_active=false

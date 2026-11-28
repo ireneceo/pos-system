@@ -69,7 +69,14 @@
       "isActive": "활성화",
       "orderMode": "주문 방식",
       "baseQuantityHint": "포대·박스로 팔면 Unit 에는 내용물 단위(kg·g), Base Qty 에는 그 양(예: 5)을 넣으세요",
-      "openingStock": "개시 재고 ({{orderUnit}})"
+      "openingStock": "개시 재고 ({{orderUnit}})",
+      "kind": "상품 종류",
+      "kindStock": "재고 상품",
+      "kindStockHint": "재고를 세고 배송합니다 — 보통의 경우입니다.",
+      "kindMadeToOrder": "주문제작",
+      "kindMadeToOrderHint": "재고를 두지 않고 주문이 들어오면 만들어 배송합니다.",
+      "kindService": "서비스 / 기타",
+      "kindServiceHint": "재고도 배송도 없습니다 — 일이 끝나면 완료로 표시합니다."
     },
     "categoryManagement": "카테고리 관리",
     "optionGroups": "옵션 그룹",
@@ -96,7 +103,24 @@
     "optionGroupPlaceholder": "예: 손질 방식, 등급, 숙성",
     "currentStockReadOnly": "{{qty}} {{orderUnit}} — 수량은 Inventory 에서 바꿉니다(조정·입고).",
     "openInventory": "Inventory 열기",
-    "openingStockFailed": "상품은 저장됐지만 개시 재고는 기록되지 않았습니다. Inventory 에서 넣어 주세요."
+    "openingStockFailed": "상품은 저장됐지만 개시 재고는 기록되지 않았습니다. Inventory 에서 넣어 주세요.",
+    "audience": {
+      "title": "누가 보고 주문할 수 있나",
+      "all": "내 모든 거래처",
+      "allHint": "거래하는 모든 손님에게 보입니다 — 보통의 경우입니다.",
+      "selected": "고른 손님만 (맞춤 제작·견적 상품)",
+      "selectedHint": "아래에서 고른 손님에게만 보이고 그 손님만 주문할 수 있습니다. 한 손님을 위해 만든 견적 상품에 씁니다.",
+      "pick": "손님",
+      "noCandidates": "아직 손님이 없습니다. 나와 계약했거나 주문한 적이 있는 손님이 여기에 나옵니다.",
+      "needOne": "전용 상품은 손님을 한 곳 이상 골라 주세요",
+      "badge": "전용 · {{count}}곳",
+      "kindBadgeMadeToOrder": "주문제작",
+      "kindBadgeService": "서비스",
+      "noStockTracked": "이 종류는 재고를 세지 않습니다",
+      "typeRestaurant": "매장",
+      "typeBrand": "브랜드",
+      "typeFoodcourt": "푸드코트"
+    }
   },
   "inventory": {
     "title": "재고 관리",

@@ -124,6 +124,8 @@ async function restoreSellerStock({
   if (po.seller_type === 'supplier') {
     const sp = await SupplierProduct.findByPk(mapping.seller_product_id, { lock: t.LOCK.UPDATE, transaction: t });
     if (!sp) return false;
+    // 출고가 건너뛴 종류(주문제작·서비스)는 되돌림도 건너뛴다(대칭 · 2026-11-28)
+    if (sp.product_kind && sp.product_kind !== 'stock') return false;
     const old = parseFloat(sp.current_stock) || 0;
     const nu = Math.round((old + delta) * 100) / 100;
     await sp.update({ current_stock: nu }, { transaction: t });

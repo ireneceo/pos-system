@@ -119,7 +119,7 @@ router.get('/dashboard', async (req, res) => {
     // ─── Products ───────────────────────────────────────────────
     const products = await SupplierProduct.findAll({
       where: { supplier_company_id: company.id },
-      attributes: ['id', 'name', 'is_active', 'current_stock', 'low_stock_threshold', 'unit_price', 'unit']
+      attributes: ['id', 'name', 'is_active', 'current_stock', 'low_stock_threshold', 'unit_price', 'unit', 'product_kind']
     });
 
     let products_total = products.length;
@@ -134,8 +134,10 @@ router.get('/dashboard', async (req, res) => {
         const stock = parseFloat(p.current_stock) || 0;
         const threshold = parseFloat(p.low_stock_threshold) || 0;
         const price = parseFloat(p.unit_price) || 0;
-        inventory_value += stock * price;
-        if (stock <= 0 || (threshold > 0 && stock <= threshold)) {
+        // 주문제작·서비스는 재고를 세지 않는다 — 재고 금액·«재고 부족» 어디에도 넣지 않는다(2026-11-28 · TRADE_STRUCTURE §2-6)
+        const counted = !p.product_kind || p.product_kind === 'stock';
+        if (counted) inventory_value += stock * price;
+        if (counted && (stock <= 0 || (threshold > 0 && stock <= threshold))) {
           low_stock_count += 1;
           if (lowStockItems.length < 5) {
             lowStockItems.push({ id: p.id, name: p.name, current_stock: stock, low_stock_threshold: threshold, unit: p.unit });
@@ -1128,7 +1130,7 @@ router.get('/reports/summary', async (req, res) => {
 
     const products = await SupplierProduct.findAll({
       where: { supplier_company_id: company.id },
-      attributes: ['id', 'is_active', 'current_stock', 'low_stock_threshold', 'unit_price']
+      attributes: ['id', 'is_active', 'current_stock', 'low_stock_threshold', 'unit_price', 'product_kind']
     });
 
     let products_total = products.length;
@@ -1142,8 +1144,10 @@ router.get('/reports/summary', async (req, res) => {
         const stock = parseFloat(p.current_stock) || 0;
         const threshold = parseFloat(p.low_stock_threshold) || 0;
         const price = parseFloat(p.unit_price) || 0;
-        inventory_value += stock * price;
-        if (stock <= 0 || (threshold > 0 && stock <= threshold)) {
+        // 주문제작·서비스는 재고를 세지 않는다 — 재고 금액·«재고 부족» 어디에도 넣지 않는다(2026-11-28 · TRADE_STRUCTURE §2-6)
+        const counted = !p.product_kind || p.product_kind === 'stock';
+        if (counted) inventory_value += stock * price;
+        if (counted && (stock <= 0 || (threshold > 0 && stock <= threshold))) {
           low_stock_count += 1;
         }
       }

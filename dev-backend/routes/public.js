@@ -692,7 +692,8 @@ router.get('/shop/:slug', async (req, res) => {
       const SupplierProduct = require('../models/SupplierProduct');
       const SupplierProductCategory = require('../models/SupplierProductCategory');
       const rows = await SupplierProduct.findAll({
-        where: { supplier_company_id: e.id, is_active: true },
+        // 전용 상품(맞춤 제작·견적)은 공개 링크에 언제나 안 보인다(2026-11-28 · docs/TRADE_STRUCTURE.md §2-6)
+        where: { supplier_company_id: e.id, is_active: true, ...require('../utils/supplierProductAudience').audienceWhere(null) },
         include: [{ model: SupplierProductCategory, as: 'category', attributes: ['id', 'name'], required: false }],
         order: [['sort_order', 'ASC'], ['name', 'ASC']],
         limit: 200

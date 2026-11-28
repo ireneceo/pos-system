@@ -188,6 +188,10 @@ router.post('/ingredients/:ingredientId/seller-sources', async (req, res) => {
           message: 'No active contract with this supplier'
         });
       }
+      // 상품이 그 업체 것이고, 전용이면 이 손님이 대상인가(2026-11-28 Fable 게이트 F2 · utils/supplierProductAudience.js)
+      const linkable = await require('../utils/supplierProductAudience')
+        .assertSupplierProductLinkable(supplierId, sellerProductId, [req.buyerEntity]);
+      if (!linkable.ok) return res.status(linkable.status).json(linkable.body);
     }
 
     // If preferred=true, demote others — 같은 범위(공용 / 이 매장 연결) 안에서만.
@@ -380,7 +384,9 @@ router.get('/seller-catalog', async (req, res) => {
           message: 'No active contract with this supplier'
         });
       }
-      const where = { supplier_company_id: sellerEntityId, is_active: true };
+      // 전용 상품은 그 손님에게만(2026-11-28 · utils/supplierProductAudience.js)
+      const where = { supplier_company_id: sellerEntityId, is_active: true,
+        [Op.and]: [require('../utils/supplierProductAudience').audienceWhere(req.buyerEntity)] };
       if (term) {
         where[Op.or] = [
           { name: { [Op.like]: term } },

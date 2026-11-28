@@ -173,6 +173,9 @@ module.exports = {
              AND isp.seller_type = '${leg.type}'
              AND t.unit IS NOT NULL AND s.unit IS NOT NULL
              AND ${mismatchClause('t.unit', 's.unit')}
+             -- 서비스 상품 연결은 지키는 대상이 아니다 — 수령해도 재고를 안 건드린다
+             -- (services/purchaseOrderReceive.js serviceLineIdsOf · 2026-11-28 Fable 게이트 S3). 두 다리 모두.
+             AND COALESCE(s.product_kind, 'stock') <> 'service'
            LIMIT 300`));
         for (const r of rows) {
           const verdict = classifyConversion(r);

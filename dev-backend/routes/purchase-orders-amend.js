@@ -151,7 +151,7 @@ router.post('/purchase-orders/:id/amend', async (req, res) => {
 
       // 구매자 경로는 제출 라우트와 같은 두 규칙을 건다(판매자 amend 는 규칙 주인이라 안 건다).
       await assertLinesMeetMinOrder(validated, { transaction: t });
-      await assertLinesSellerProductActive(validated, { transaction: t });
+      await assertLinesSellerProductActive(validated, { transaction: t, buyer: { type: po.entity_type, id: po.entity_id } });
 
       const totals = await computeTotalsWithDelivery(validated, po, { orderCurrency: po.currency });
       const totalBefore = parseFloat(po.total_amount) || 0;

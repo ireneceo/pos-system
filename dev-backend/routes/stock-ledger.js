@@ -402,7 +402,9 @@ async function loadSellerCatalog({ buyer, sellerType, sellerEntityId, search }) 
     const contract = await findEffectiveContract(sellerEntityId, buyer);
     if (!contract) return { error: { status: 403, code: 'NO_ACTIVE_CONTRACT', message: 'No active contract with this supplier' } };
     const rows = await SupplierProduct.findAll({
-      where: { supplier_company_id: sellerEntityId, is_active: true, ...like(['name', 'sku', 'description']) },
+      // 전용 상품은 그 손님에게만 — 대상 아니면 미리보기에도 아예 없다(2026-11-28 Fable 게이트 F1 · utils/supplierProductAudience.js)
+      where: { supplier_company_id: sellerEntityId, is_active: true, ...like(['name', 'sku', 'description']),
+        [Op.and]: [require('../utils/supplierProductAudience').audienceWhere(buyer)] },
       order: [['sort_order', 'ASC'], ['name', 'ASC']]
     });
     return { rows: rows.map(r => ({ row: r, blocked: null })) };

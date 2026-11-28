@@ -20,7 +20,8 @@ const {
   SupplierProductCategory,
   SupplierProductOptionGroup,
   SupplierProductOption,
-  SupplierProductOptionGroupProduct
+  SupplierProductOptionGroupProduct,
+  SupplierProductBuyer
 } = require('../models');
 const { authenticateToken } = require('../middleware/auth');
 const { parseMinOrderQty } = require('../utils/quantity');
@@ -28,6 +29,44 @@ const { parseMinOrderQty } = require('../utils/quantity');
 // 판매상품 주문 방식. 모델/DB ENUM 과 같은 목록을 유지한다(models/SupplierProduct.js).
 // 'pack' = 개수로 주문(팩/박스/포대) — 기존 전 행의 동작. 'measure' = 무게·부피로 주문(소수).
 const ORDER_MODES = ['pack', 'measure'];
+// 상품 종류 — brand_products 와 같은 세 값 (2026-11-28 · docs/TRADE_STRUCTURE.md §2-4·§2-6)
+const PRODUCT_KINDS = ['stock', 'made_to_order', 'service'];
+const Audience = require('../utils/supplierProductAudience');
+
+/**
+ * 본문의 종류·보이는 손님 칸을 읽는다 (2026-11-28 · 맞춤 제작 루트 1단계).
+ * 보내지 않은 칸은 건드리지 않는다(undefined). audience_mode='selected' 면 audience_buyers 가 필요하고,
+ * 손님은 그 판매자의 «아는 손님»(계약·발주 이력)이어야 한다 — utils/supplierProductAudience.validateAudienceBuyers.
+ * @returns {{ok:true, product_kind?, audience_mode?, buyers?} | {ok:false, status, body}}
+ */
+async function readKindAndAudience(body, supplierCompanyId, currentMode, { transaction } = {}) {
+  const out = { ok: true };
+  if (body.product_kind !== undefined && body.product_kind !== '') {
+    const k = String(body.product_kind);
+    if (!PRODUCT_KINDS.includes(k)) return { ok: false, status: 400, body: { success: false, message: `product_kind must be one of ${PRODUCT_KINDS.join(', ')}` } };
+    out.product_kind = k;
+  }
+  if (body.audience_mode !== undefined && body.audience_mode !== '') {
+    const m = String(body.audience_mode);
+    if (!Audience.AUDIENCE_MODES.includes(m)) return { ok: false, status: 400, body: { success: false, message: `audience_mode must be one of ${Audience.AUDIENCE_MODES.join(', ')}` } };
+    out.audience_mode = m;
+  }
+  const mode = out.audience_mode || currentMode || Audience.AUDIENCE_ALL;
+  if (body.audience_buyers !== undefined) {
+    const v = await Audience.validateAudienceBuyers(supplierCompanyId, body.audience_buyers, { transaction });
+    if (!v.ok) return { ok: false, status: 400, body: { success: false, code: 'INVALID_AUDIENCE_BUYERS', message: v.message } };
+    out.buyers = v.buyers;
+  }
+  if (mode === Audience.AUDIENCE_SELECTED && out.audience_mode === Audience.AUDIENCE_SELECTED && !(out.buyers && out.buyers.length)) {
+    return { ok: false, status: 400, body: { success: false, code: 'AUDIENCE_BUYERS_REQUIRED', message: 'Choose at least one customer for an exclusive product' } };
+  }
+  if (mode === Audience.AUDIENCE_SELECTED && out.buyers && !out.buyers.length) {
+    return { ok: false, status: 400, body: { success: false, code: 'AUDIENCE_BUYERS_REQUIRED', message: 'Choose at least one customer for an exclusive product' } };
+  }
+  return out;
+}
+
+const AUDIENCE_INCLUDE = () => ({ model: SupplierProductBuyer, as: 'audienceBuyers', attributes: ['entity_type', 'entity_id'], required: false });
 const {
   requireSupplierScope,
   applySupplierFilter
@@ -489,7 +528,8 @@ router.get('/supplier-products', ...baseGates, async (req, res) => {
     const { rows, count } = await SupplierProduct.findAndCountAll({
       where,
       include: [
-        { model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] }
+        { model: SupplierProductCategory, as: 'category', attributes: ['id', 'name', 'emoji'] },
+        AUDIENCE_INCLUDE()
       ],
       order: [['sort_order', 'ASC'], ['name', 'ASC']],
       limit,
@@ -514,6 +554,33 @@ router.get('/supplier-products', ...baseGates, async (req, res) => {
 });
 
 /**
+ * GET /api/supplier-products-audience-candidates
+ * 전용 상품을 보여 줄 수 있는 손님 후보 = 이 판매자의 «아는 손님»(계약 — 거절 제외 · 발주 이력) (2026-11-28 · 맞춤 제작 루트).
+ * 저장 검증(utils/supplierProductAudience.validateAudienceBuyers)과 같은 집합이다.
+ */
+router.get('/supplier-products-audience-candidates', ...baseGates, async (req, res) => {
+  try {
+    if (!req.supplierCompany) return res.status(400).json({ success: false, message: 'supplier_company_id required' });
+    const keys = [...(await Audience.knownBuyerKeys(req.supplierCompany.id))];
+    const idsOf = (t) => keys.filter(k => k.startsWith(`${t}:`)).map(k => Number(k.split(':')[1]));
+    const { Restaurant, Brand, Foodcourt } = require('../models');
+    const load = async (Model, ids, extra = []) => (ids.length
+      ? await Model.findAll({ where: { id: ids }, attributes: ['id', 'name', ...extra], raw: true }) : []);
+    // 같은 이름 매장이 흔하다(가맹 지점 · 데모 매장 2·38 실측) → 화면이 번호·도시로 가른다
+    const [rs, bs, fs] = await Promise.all([load(Restaurant, idsOf('restaurant'), ['city']), load(Brand, idsOf('brand')), load(Foodcourt, idsOf('foodcourt'))]);
+    const data = [
+      ...rs.map(r => ({ entity_type: 'restaurant', entity_id: r.id, name: r.name, city: r.city || null })),
+      ...bs.map(b => ({ entity_type: 'brand', entity_id: b.id, name: b.name })),
+      ...fs.map(f => ({ entity_type: 'foodcourt', entity_id: f.id, name: f.name }))
+    ].sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')));
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('GET /supplier-products-audience-candidates error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch customers' });
+  }
+});
+
+/**
  * GET /api/supplier-products/:productId
  * Detail with category + option groups (and their options).
  */
@@ -528,7 +595,8 @@ router.get('/supplier-products/:productId', ...baseGates, async (req, res) => {
           as: 'optionGroups',
           through: { attributes: [] },
           include: [{ model: SupplierProductOption, as: 'options' }]
-        }
+        },
+        AUDIENCE_INCLUDE()
       ]
     });
     if (!assertSupplierOwnsRow(product, req, res)) return;
@@ -610,6 +678,10 @@ router.post(
         }
       }
 
+      // 종류·보이는 손님 (2026-11-28 · 맞춤 제작 루트) — 보내지 않으면 stock · 모든 거래처(종전 동작)
+      const ka = await readKindAndAudience(req.body, req.supplierCompany.id, Audience.AUDIENCE_ALL);
+      if (!ka.ok) return res.status(ka.status).json(ka.body);
+
       const sku = req.body.sku
         ? sanitizeString(req.body.sku)
         : await generateSupplierProductSKU(req.supplierCompany.id);
@@ -634,8 +706,14 @@ router.post(
         sort_order: req.body.sort_order !== undefined ? parseInt(req.body.sort_order, 10) || 0 : 0,
         current_stock: 0,
         low_stock_threshold,
-        lead_time_days
+        lead_time_days,
+        product_kind: ka.product_kind || 'stock',
+        audience_mode: ka.audience_mode || Audience.AUDIENCE_ALL
       });
+      // 손님 목록 — 실패하면 selected 인데 손님 0 = 아무에게도 안 보임(닫힌 쪽)이라 안전하다
+      if ((ka.audience_mode || Audience.AUDIENCE_ALL) === Audience.AUDIENCE_SELECTED) {
+        await Audience.replaceAudienceBuyers(product.id, Audience.AUDIENCE_SELECTED, ka.buyers || []);
+      }
 
       // Link option groups (validate each belongs to this supplier)
       const optionGroupIds = Array.isArray(req.body.option_group_ids) ? req.body.option_group_ids : [];
@@ -660,7 +738,8 @@ router.post(
             as: 'optionGroups',
             through: { attributes: [] },
             include: [{ model: SupplierProductOption, as: 'options' }]
-          }
+          },
+          AUDIENCE_INCLUDE()
         ]
       });
 
@@ -763,6 +842,17 @@ router.put('/supplier-products/:productId', ...baseGates, async (req, res) => {
       }
       updates.lead_time_days = v;
     }
+    // 종류·보이는 손님 (2026-11-28 · 맞춤 제작 루트)
+    const ka = await readKindAndAudience(req.body, product.supplier_company_id, product.audience_mode, { transaction: t });
+    if (!ka.ok) { await t.rollback(); return res.status(ka.status).json(ka.body); }
+    if (ka.product_kind) updates.product_kind = ka.product_kind;
+    if (ka.audience_mode) updates.audience_mode = ka.audience_mode;
+    const nextMode = ka.audience_mode || product.audience_mode || Audience.AUDIENCE_ALL;
+    if (nextMode === Audience.AUDIENCE_SELECTED && !ka.buyers && ka.audience_mode === Audience.AUDIENCE_SELECTED
+      && product.audience_mode !== Audience.AUDIENCE_SELECTED) {
+      await t.rollback();
+      return res.status(400).json({ success: false, code: 'AUDIENCE_BUYERS_REQUIRED', message: 'Choose at least one customer for an exclusive product' });
+    }
     // 재고 수량은 여기서 쓰지 않는다 — 거래 기록 없이 수량이 바뀌던 문이었다(화면은 안 보냈다).
     //   조정은 Inventory(`/supplier-inventory/adjust` · 입고 `/receive`)에서 기록과 함께 (2026-10-22 Fable 설계 D6).
     if (req.body.current_stock !== undefined) {
@@ -792,6 +882,12 @@ router.put('/supplier-products/:productId', ...baseGates, async (req, res) => {
     }
 
     await product.update(updates, { transaction: t });
+    // 손님 목록 — 모든 거래처로 바꾸면 비우고, 전용이면 보낸 목록으로 통째로 바꾼다
+    if (ka.audience_mode === Audience.AUDIENCE_ALL) {
+      await Audience.replaceAudienceBuyers(product.id, Audience.AUDIENCE_ALL, [], { transaction: t });
+    } else if (nextMode === Audience.AUDIENCE_SELECTED && ka.buyers) {
+      await Audience.replaceAudienceBuyers(product.id, Audience.AUDIENCE_SELECTED, ka.buyers, { transaction: t });
+    }
 
     // Replace option group links if array provided
     if (Array.isArray(req.body.option_group_ids)) {
@@ -917,8 +1013,15 @@ router.post(
         sort_order: original.sort_order,
         current_stock: 0,
         low_stock_threshold: original.low_stock_threshold,
-        lead_time_days: original.lead_time_days
+        lead_time_days: original.lead_time_days,
+        // 종류·보이는 손님도 그대로 — 전용 상품을 복사했는데 모두에게 열리면 안 된다(2026-11-28)
+        product_kind: original.product_kind || 'stock',
+        audience_mode: original.audience_mode || Audience.AUDIENCE_ALL
       });
+      if (original.audience_mode === Audience.AUDIENCE_SELECTED) {
+        const buyers = await SupplierProductBuyer.findAll({ where: { supplier_product_id: original.id }, attributes: ['entity_type', 'entity_id'], raw: true });
+        await Audience.replaceAudienceBuyers(copy.id, Audience.AUDIENCE_SELECTED, buyers);
+      }
 
       if (original.optionGroups && original.optionGroups.length > 0) {
         for (const g of original.optionGroups) {

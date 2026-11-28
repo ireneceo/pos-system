@@ -656,7 +656,8 @@
     },
     "brandStockBadge": "品牌库存",
     "selfPickup": "自取（无配送费）",
-    "deliveryPickup": "自取"
+    "deliveryPickup": "自取",
+    "exclusiveBadge": "专属"
   },
   "staging": {
     "noPhoneTitle": "无电话号码",
